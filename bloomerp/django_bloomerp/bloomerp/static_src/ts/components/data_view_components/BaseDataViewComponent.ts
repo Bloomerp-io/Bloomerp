@@ -1,10 +1,12 @@
 import { BaseDataViewCell } from "./BaseDataViewCell";
+import { bindForeignValuePreviews } from "../../utils/foreignValuePreviews";
 import BaseComponent, { componentIdentifier, getComponent } from "../BaseComponent";
 import { getContextMenu, type ContextMenuItem } from "../../utils/contextMenu";
 import type { DataViewContainer } from "./DataViewContainer";
 
 export abstract class BaseDataViewComponent extends BaseComponent {
     protected abortController: AbortController | null = null;
+    private foreignPreviewCleanup: (() => void) | null = null;
 
     // Get the corresponding dataview (lazy-loaded)
     private _dataViewContainer: DataViewContainer | null = null;
@@ -48,8 +50,11 @@ export abstract class BaseDataViewComponent extends BaseComponent {
     // Content type id
     public contentTypeId: string | null = null;
 
+    /** Initialize shared dataview controls and lifecycle-owned foreign-value previews. */
     public initialize(): void {
         if (!this.element) return;
+        this.foreignPreviewCleanup?.();
+        this.foreignPreviewCleanup = bindForeignValuePreviews(this.element);
 
         const abortController = this.ensureAbortController();
 
@@ -308,7 +313,10 @@ export abstract class BaseDataViewComponent extends BaseComponent {
         return this.abortController;
     }
 
+    /** Release preview bindings together with the dataview's controls and selection state. */
     public override destroy(): void {
+        this.foreignPreviewCleanup?.();
+        this.foreignPreviewCleanup = null;
         if (this.abortController) {
             this.abortController.abort();
             this.abortController = null;

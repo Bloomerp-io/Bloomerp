@@ -1,9 +1,20 @@
-<div class="flex flex-col gap-1">
+{% if can_view %}
+<div class="min-w-0 flex flex-col gap-1" data-preview-field="{{ application_field.id }}" style="grid-column: span {{ colspan|default:'1' }} / span {{ colspan|default:'1' }};">
+    <div class="flex items-center gap-2">
+        <span class="text-sm font-medium text-slate-700" data-preview-label>{{ application_field.title }}</span>
+        {% if not preview_field_error_message %}
+            <button type="button" data-preview-copy class="shrink-0 rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline focus-visible:outline-2" aria-label="Copy {{ application_field.title }}" title="Copy {{ application_field.title }}">
+                <i class="fa-regular fa-copy" aria-hidden="true"></i>
+            </button>
+        {% endif %}
+    </div>
     {% if preview_field_error_message %}
         <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
             {{ preview_field_error_message }}
         </div>
     {% else %}
-        {% include "inclusion_tags/layout_field.html" with application_field=application_field value=value input=input help_text=help_text errors=errors colspan=colspan is_required=is_required only %}
+        <div class="break-words text-sm text-slate-900" data-preview-value>{{ value|default_if_none:"" }}</div>
+        <span class="text-xs text-slate-500" data-preview-copy-status role="status" aria-live="polite"></span>
     {% endif %}
 </div>
+{% endif %}

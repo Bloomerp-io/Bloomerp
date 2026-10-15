@@ -6,8 +6,8 @@ from typing import Any
 import bleach
 from django import template
 from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
-from django.db.models import Model
+from django.core.exceptions import FieldDoesNotExist, ImproperlyConfigured, ObjectDoesNotExist
+from django.db.models import ForeignKey, Model
 from django.http import HttpRequest
 from bloomerp.models.definition import ObjectAction, ObjectHTMLAction, ObjectModalAction
 from bloomerp.models.users.base_preference import BasePreference
@@ -33,11 +33,10 @@ from bloomerp.permissions.manager import (
     field_access_annotation_name,
 )
 from bloomerp.services.sectioned_layout_services import (
-    build_crud_layout_field_context,
     dump_layout_json as dump_layout_json_service,
-    get_object_field_value,
 )
 from bloomerp.widgets.icon_picker_widget import parse_icon_value as parse_icon_value_service
+from bloomerp.utils.rich_text import sanitize_html
 
 register = template.Library()
 
@@ -264,6 +263,17 @@ def detail_view_url(object:Model):
             return ""
 
     
+def _foreign_preview_target(obj: Model, application_field: ApplicationField) -> Model | None:
+    """Resolve only an existing concrete foreign-key target, never collections or labels."""
+    try:
+        if not isinstance(application_field._get_model_field(), ForeignKey):
+            return None
+        related = getattr(obj, application_field.field, None)
+    except (FieldDoesNotExist, ObjectDoesNotExist):
+        return None
+    return related if isinstance(related, Model) and related.pk is not None else None
+
+
 @register.inclusion_tag('inclusion_tags/dataview_value.html')
 def render_dataview_value(
     object: Model,
@@ -298,6 +308,12 @@ def render_dataview_value(
         value = ""
     
     data_value = value
+    foreign_preview = None
+    if can_view and value is not None and (not isinstance(value, str) or value != ""):
+        foreign_preview = _foreign_preview_target(object, application_field)
+        if foreign_preview is not None:
+            # Preserve trusted rendered links; escape plain relation labels.
+            value = format_html("{}", value)
     if can_view and application_field.get_field_type().id in {"CharField", "ChoiceField"}:
         # Display labels can be localized; filters still need the stored choice key.
         data_value = getattr(object, application_field.field, None)
@@ -314,6 +330,11 @@ def render_dataview_value(
         "application_field" : application_field,
         "split_view_enabled": split_view_enabled,
         "value_content_type_id": application_field.related_model_id,
+        "foreign_preview_object_id": foreign_preview.pk if foreign_preview is not None else None,
+        "foreign_preview_content_type_id": (
+            ContentType.objects.get_for_model(foreign_preview).pk
+            if foreign_preview is not None else None
+        ),
         "object_string": (
             ""
             if getattr(object, FIELD_ACCESS_CONTROLLED_ANNOTATION, False)
@@ -330,26 +351,29 @@ def render_object_preview_value(
         can_view: bool = False,
         can_edit: bool = False,
         colspan: int = 1,
-        ):
-    """Renders a detail value inside an object preview without failing the whole preview."""
+        ) -> dict[str, Any]:
+    """Render an authorized preview value without inputs or cross-field failures."""
     context = {
         "application_field": application_field,
         "colspan": colspan,
         "preview_field_error_message": None,
     }
 
+    if not can_view:
+        return {"can_view": False}
+
+    context["can_view"] = True
     try:
-        detail_context = build_crud_layout_field_context(
-            application_field=application_field,
-            value=get_object_field_value(obj=object, application_field=application_field),
-            can_edit=can_edit,
-        )
-        detail_context["colspan"] = colspan
-        detail_context["preview_field_error_message"] = None
-        return detail_context
+        field_type = application_field.get_field_type()
+        value = field_type.render_value(application_field, object)
+        # These legacy renderers return HTML as ordinary strings. Other strings
+        # stay autoescaped; format_html-based renderers retain their SafeData.
+        if value is not None and field_type.id in {"TextField", "EmailField", "URLField", "FileField"}:
+            value = mark_safe(sanitize_html(str(value)))
+        context["value"] = value
     except Exception:
         context["preview_field_error_message"] = "Preview is not available for this field."
-        return context
+    return context
     
 
 @register.filter
