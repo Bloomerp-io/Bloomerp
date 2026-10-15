@@ -1,9 +1,13 @@
 """Model object actions for permission-scoped carrier administration."""
 
 from __future__ import annotations
+import json
 from typing import TYPE_CHECKING
 from uuid import UUID
+from django import forms
 from django.contrib.auth import get_user_model
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.validators import RegexValidator
 from django.http import (
     HttpRequest,
     HttpResponse,
@@ -15,9 +19,15 @@ from django.urls import reverse
 from django.utils.translation import gettext as _
 from django_htmx.http import HttpResponseClientRedirect
 from bloomerp.utils.async_utils import run_async_or_sync
-from bloomerp.utils.requests import render_message
+from bloomerp.utils.requests import render_blank_form, render_message
+from bloomerp.form_fields.phone_number_field import PhoneNumberFormField
+from bloomerp.widgets.phone_number_widget import PhoneNumberWidget
 
 if TYPE_CHECKING:
+    from bloomerp.communication.builtins.instant_messaging.definition import (
+        IMCreationAction,
+        IMProviderDefinition,
+    )
     from bloomerp.models.definition import DataviewActionContext
     from bloomerp.models.communication.voip import VoIPConnection
 
@@ -105,3 +115,90 @@ def can_create_connection(context: DataviewActionContext) -> bool:
     return UserPolicyManager(context.request.user).has_global_permission(
         context.model, "add"
     )
+
+
+def can_dial(request: HttpRequest) -> bool:
+    """Allow manual phone chats for actors with an available telephone line."""
+    from .access import VoIPAccessManager
+
+    return VoIPAccessManager(request.user).get_numbers().exists()
+
+
+def dial(
+    request: HttpRequest,
+    provider_definition: IMProviderDefinition,
+    action: IMCreationAction,
+) -> HttpResponse:
+    """Collect a recipient and authorized business line, then open their phone chat."""
+    from .access import VoIPAccessManager
+
+    from bloomerp.communication.builtins.instant_messaging.builtins.phone import (
+        start_phone_address,
+    )
+    from bloomerp.components.communication.instant_messaging.conversation import (
+        render_conversation,
+    )
+
+    if request.method not in {"GET", "POST"}:
+        return HttpResponseNotAllowed(["GET", "POST"])
+    if not can_dial(request):
+        raise PermissionDenied
+    numbers = (
+        VoIPAccessManager(request.user)
+        .get_numbers()
+        .select_related("connection")
+        .order_by("number")
+    )
+    form = forms.Form(request.POST if request.method == "POST" else None)
+    form.fields["phone_number"] = PhoneNumberFormField(
+        label=_("Phone number"),
+        validators=[
+            RegexValidator(
+                r"^\+[1-9][0-9]{3,14}$",
+                _("Enter an international phone number including the country code."),
+            )
+        ],
+        widget=PhoneNumberWidget(
+            attrs={
+                "class" : "input w-full"
+            }
+        )
+    )
+    form.fields["number_id"] = forms.ModelChoiceField(
+        label=_("Business number"), queryset=numbers,
+    )
+    if numbers.count() == 1:
+        form.initial["number_id"] = numbers.first().pk
+    if request.method == "POST" and form.is_valid():
+        try:
+            chat = start_phone_address(
+                request.user,
+                form.cleaned_data["number_id"].pk,
+                form.cleaned_data["phone_number"],
+            )
+        except (ValueError, ValidationError) as error:
+            form.add_error(None, error)
+        else:
+            response = render_conversation(request, chat.pk)
+            response["HX-Retarget"] = "#im-conversation-host"
+            response["HX-Reswap"] = "innerHTML"
+            response["HX-Trigger"] = json.dumps(
+                {
+                    "im:conversation-opened": {
+                        "id": str(chat.pk),
+                        "target": "[bloomerp-component='bloomerp:messaging-panel']",
+                    }
+                }
+            )
+            response["Cache-Control"] = "private, no-store"
+            return response
+    response = render_blank_form(
+        request,
+        form,
+        reverse("components_im_create_group"),
+        hidden_args={"provider": provider_definition.key, "action": action.key},
+        submit_label=_("Start chat"),
+        form_args={"hx-disabled-elt": "find button"},
+    )
+    response["Cache-Control"] = "private, no-store"
+    return response

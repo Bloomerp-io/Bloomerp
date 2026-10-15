@@ -1,0 +1,9 @@
+{% load i18n %}
+<div class="rounded-xl border border-gray-200 p-3 my-2" data-call-session-id="{{ call.pk }}">
+    <i class="fa-solid fa-video" aria-hidden="true"></i>
+    {% translate 'Conference call' %} · {{ call.get_status_display }}
+    <small>{{ call.started_at|date:"SHORT_DATETIME_FORMAT" }}</small>
+    {% if call.status == 'ringing' or call.status == 'active' %}
+    <button type="button" class="btn btn-primary btn-sm" data-call-action="join" data-join-url="{% url 'components_conferencing_join' call.pk %}">{% translate 'Join call' %}</button>
+    {% endif %}
+</div>

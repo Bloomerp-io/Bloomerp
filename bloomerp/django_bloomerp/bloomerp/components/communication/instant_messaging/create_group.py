@@ -19,7 +19,9 @@ from bloomerp.router import router
 @require_http_methods(["GET", "POST"])
 def create_group(request: HttpRequest) -> HttpResponse:
     """Resolve the requested action from its provider and authorize both GET and POST."""
-    data = request.POST if request.method == "POST" else request.GET
+    data = request.GET.copy()
+    if request.method == "POST":
+        data.update(request.POST)
     provider = IM_PROVIDER_REGISTRY.get(data.get("provider", ""))
     action = (
         next(

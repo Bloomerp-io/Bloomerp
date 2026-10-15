@@ -1,0 +1,67 @@
+{% load i18n %}
+<section bloomerp-component="bloomerp:calling" data-registrations-url="{% url 'components_im_call_registrations' %}" class="fixed bottom-4 left-4 z-[90] rounded-xl border border-gray-200 bg-base p-4 shadow-xl" data-call-panel data-collapsed="false" aria-label="{% translate 'Call' %}" hidden>
+    {% csrf_token %}
+    <div data-call-panel-header>
+        <p data-call-status role="status" aria-live="polite"></p>
+        <button type="button" class="btn btn-secondary btn-sm" data-call-panel-toggle aria-expanded="true" aria-label="{% translate 'Collapse call controls' %}" title="{% translate 'Collapse call controls' %}">
+            <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+        </button>
+    </div>
+    <p data-call-error role="alert" hidden></p>
+    <div data-call-media></div>
+    <div data-call-admissions role="region" aria-label="{% translate 'Waiting to join' %}" aria-live="polite" class="space-y-2 my-3"></div>
+    <template data-call-admission-template><div class="flex items-center gap-2 rounded-xl border border-gray-200 p-3 bg-white"><span data-guest-name class="flex-1"></span><button type="button" class="btn btn-primary btn-sm" data-call-action="admit" data-decision="admit">{% translate 'Admit' %}</button><button type="button" class="btn btn-secondary btn-sm" data-call-action="admit" data-decision="reject">{% translate 'Decline' %}</button></div></template>
+    <div data-call-panel-actions class="flex flex-wrap gap-2 mt-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-call-action="open" title="{% translate 'Open call' %}" hidden><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i><span>{% translate 'Open call' %}</span></button>
+        <button type="button" class="btn btn-primary btn-sm" data-call-action="answer" hidden><i class="fa-solid fa-phone" aria-hidden="true"></i><span>{% translate 'Join call' %}</span></button>
+        <button type="button" class="btn btn-secondary btn-sm" data-call-action="dismiss" hidden><i class="fa-solid fa-xmark" aria-hidden="true"></i><span>{% translate 'Dismiss' %}</span></button>
+        <button type="button" class="btn btn-secondary btn-sm" data-call-action="microphone" title="{% translate 'Microphone' %}" aria-pressed="true" hidden><i class="fa-solid fa-microphone" aria-hidden="true"></i><span>{% translate 'Microphone' %}</span></button>
+        <button type="button" class="btn btn-secondary btn-sm" data-call-action="screen" aria-pressed="false" hidden><i class="fa-solid fa-display" aria-hidden="true"></i><span data-share-start>{% translate 'Share screen' %}</span><span data-share-stop hidden>{% translate 'Stop sharing' %}</span></button>
+        <button type="button" class="btn btn-secondary btn-sm" data-call-action="share" hidden><i class="fa-solid fa-link" aria-hidden="true"></i><span>{% translate 'Copy meeting link' %}</span></button>
+        <button type="button" class="btn btn-secondary btn-sm" data-call-action="camera" aria-pressed="false" hidden><i class="fa-solid fa-video" aria-hidden="true"></i><span>{% translate 'Camera' %}</span></button>
+        <button type="button" class="btn btn-secondary btn-sm" data-call-action="audio" hidden><i class="fa-solid fa-volume-high" aria-hidden="true"></i><span>{% translate 'Enable sound' %}</span></button>
+        <button type="button" class="btn btn-danger btn-sm" data-call-action="leave" title="{% translate 'Leave call' %}" hidden><i class="fa-solid fa-phone-slash" aria-hidden="true"></i><span>{% translate 'Leave call' %}</span></button>
+        <button type="button" class="btn btn-secondary btn-sm" data-call-action="end" hidden><i class="fa-solid fa-stop" aria-hidden="true"></i><span>{% translate 'End for everyone' %}</span></button>
+    </div>
+    <template data-call-view-template>
+        <main data-call-view class="call-page bg-base text-gray-800">
+            <section class="call-stage bg-white rounded-xl border border-gray-200">
+                <header class="call-header border-b border-gray-200">
+                    <div class="flex items-center gap-3"><span class="text-primary-600"><i class="fa-solid fa-headset" aria-hidden="true"></i></span><h1 class="font-semibold">{% translate 'Call' %}</h1></div>
+                    <span class="text-gray-500 text-sm"><i class="fa-solid fa-users" aria-hidden="true"></i> <span data-call-count>0</span> <span>{% translate 'Participants' %}</span></span>
+                </header>
+                <div class="call-notices"><p data-call-status role="status" aria-live="polite" class="text-gray-500 text-sm"></p><p data-call-error role="alert" class="text-red-600 text-sm" hidden></p></div>
+                <div data-call-participants class="call-participants"></div>
+                <p data-call-empty class="text-gray-500 text-center m-auto">{% translate 'Waiting for participants…' %}</p>
+            </section>
+            <footer class="call-footer">
+                <div data-call-admissions role="region" aria-label="{% translate 'Waiting to join' %}" aria-live="polite" class="space-y-2 mb-3"></div>
+                <nav data-call-toolbar class="call-toolbar bg-white border border-gray-200 rounded-xl shadow-lg" aria-label="{% translate 'Call controls' %}"></nav>
+                <p class="text-gray-500 text-xs text-center">{% translate 'Closing this tab keeps you in the call. Keep your original Bloomerp tab open.' %}</p>
+            </footer>
+        </main>
+        <template data-call-participant-template>
+            <figure class="call-participant bg-base rounded-xl border border-gray-200">
+                <div data-participant-avatar class="call-avatar bg-primary-100 text-primary-800"><img alt="" hidden><span data-participant-initials></span></div>
+                <video autoplay muted playsinline hidden></video>
+                <figcaption class="call-participant-label bg-white rounded-xl border border-gray-200"><span data-participant-name></span><span data-participant-local class="text-gray-500" hidden> ({% translate 'You' %})</span><i data-participant-camera-off class="fa-solid fa-video-slash text-gray-400" aria-label="{% translate 'Camera off' %}"></i></figcaption>
+            </figure>
+        </template>
+        <style>
+            html,body{margin:0;min-height:100%;font-family:var(--font-sans,system-ui)}[hidden]{display:none!important}
+            .call-page{min-height:100dvh;display:flex;flex-direction:column;padding:20px;gap:20px;box-sizing:border-box}
+            .call-stage{flex:1;display:flex;flex-direction:column;min-height:65vh;overflow:hidden}
+            .call-header{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;gap:16px}
+            .call-notices{padding:12px 24px}.call-participants{flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));align-content:center;gap:20px;padding:24px;width:100%;max-width:1400px;margin:auto;box-sizing:border-box}
+            .call-participants[data-count="1"]{max-width:800px}.call-participant{position:relative;aspect-ratio:16/10;display:grid;place-items:center;overflow:hidden;margin:0}
+            .call-avatar{width:clamp(80px,12vw,144px);aspect-ratio:1;border-radius:28%;display:grid;place-items:center;overflow:hidden;font-size:clamp(28px,4vw,48px);font-weight:600}
+            .call-avatar img{width:100%;height:100%;object-fit:cover}.call-participant video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+            .call-participant-label{position:absolute;left:12px;bottom:12px;max-width:calc(100% - 24px);padding:7px 12px;display:flex;align-items:center;gap:6px;font-size:13px}.call-participant-label [data-participant-name]{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+            .call-footer{display:flex;flex-direction:column;align-items:center;gap:12px;padding:0 0 4px;position:sticky;bottom:12px}
+            .call-participant[data-screen="true"]{grid-column:1/-1;aspect-ratio:16/9}.call-participant[data-screen="true"] video{object-fit:contain}
+            .call-footer [data-call-admissions]{max-height:28vh;overflow-y:auto;width:min(100%,640px)}
+            .call-toolbar{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;padding:10px}.call-toolbar button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:42px}.call-toolbar button[aria-pressed="true"]{background:var(--color-primary-100);color:var(--color-primary-800)}
+            @media(max-width:600px){.call-page{padding:10px;gap:12px}.call-header{padding:14px}.call-participants{padding:12px;gap:12px}.call-toolbar button span{display:none}.call-stage{min-height:70vh}}
+        </style>
+    </template>
+</section>

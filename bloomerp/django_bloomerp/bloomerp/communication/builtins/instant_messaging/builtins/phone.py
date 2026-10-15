@@ -7,6 +7,7 @@ from uuid import UUID
 from django.apps import apps
 from django.core import signing
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.validators import RegexValidator
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
@@ -15,11 +16,14 @@ from bloomerp.model_fields.phone_number_field import PhoneNumberField
 from bloomerp.permissions.manager import UserPolicyManager, field_access_annotation_name
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.communication.builtins.voip.access import VoIPAccessManager
+from bloomerp.form_fields.phone_number_field import normalize_phone_number
 from ..definition import (
     BaseIMAdapter,
     IMCapabilities,
+    IMCallingDefinition,
     IMConnectionValidation,
     IMConversationActions,
+    IMCreationAction,
     IMDeliveryResult,
     IMOutboundMessage,
     IMProviderDefinition,
@@ -165,18 +169,42 @@ def business_numbers(
 def start_phone(user: AbstractBloomerpUser, selected: dict[str, str]) -> IMConversation:
     """Create or reuse a line/address chat and enroll its active assigned staff."""
     from bloomerp.models.communication.instant_messaging import (
-        IMConversation,
-        IMConversationParticipant,
-        IMIdentity,
         IMIdentitySource,
     )
 
     obj, field, address = source_recipient(user, selected["recipient_id"])
+    chat = start_phone_address(user, selected["number_id"], address)
+    identity = chat.participants.get(identity__isnull=False).identity
+    IMIdentitySource.objects.get_or_create(
+        identity=identity,
+        content_type=ContentType.objects.get_for_model(obj),
+        object_id=str(obj.pk),
+        field_name=field,
+    )
+    return chat
+
+
+@transaction.atomic
+def start_phone_address(
+    user: AbstractBloomerpUser, number_id: str | UUID, address: str
+) -> IMConversation:
+    """Create or reuse an authorized line/address chat and restore staff membership."""
+    from bloomerp.models.communication.instant_messaging import (
+        IMConversation,
+        IMConversationParticipant,
+        IMIdentity,
+    )
+
+    address = normalize_phone_number(address)
+    RegexValidator(
+        r"^\+[1-9][0-9]{3,14}$",
+        _("Enter an international phone number including the country code."),
+    )(address)
     number = (
         VoIPAccessManager(user)
         .get_numbers()
         .select_for_update()
-        .filter(pk=selected["number_id"])
+        .filter(pk=number_id)
         .first()
     )
     if number is None:
@@ -186,12 +214,6 @@ def start_phone(user: AbstractBloomerpUser, selected: dict[str, str]) -> IMConve
         provider_key="phone",
         external_id=address,
         defaults={"display_name": address, "address": address},
-    )
-    IMIdentitySource.objects.get_or_create(
-        identity=identity,
-        content_type=ContentType.objects.get_for_model(obj),
-        object_id=str(obj.pk),
-        field_name=field,
     )
     chat, _created = IMConversation.objects.get_or_create(
         provider_key="phone", voip_number=number, phone_address=address
@@ -222,10 +244,8 @@ def phone_actions(
     )
     if number is None or chat.status == "archived":
         return {"can_send": False}
-    browser = number.connection.settings.get("browser_calling", False)
     return {
         "can_send": number.supports_sms,
-        "can_call": number.supports_voice and browser,
         "business_number": str(number),
     }
 
@@ -296,6 +316,8 @@ def phone_identity_label(identity: IMIdentity, user_id: int | UUID) -> str:
     return identity.address
 
 
+
+
 PHONE_IM_PROVIDER = IMProviderDefinition(
     key="phone",
     display_name=_("Phone"),
@@ -320,11 +342,27 @@ PHONE_IM_PROVIDER = IMProviderDefinition(
     start_handler=start_phone,
     send_handler=send_phone_message,
     actions_resolver=phone_actions,
+    calling=IMCallingDefinition(
+        capabilities_resolver="bloomerp.communication.builtins.voip.im_calling.capabilities",
+        participants_resolver="bloomerp.communication.builtins.voip.im_calling.participants",
+        start_handler="bloomerp.communication.builtins.voip.im_calling.start",
+        registrations_resolver="bloomerp.communication.builtins.voip.im_calling.registrations",
+        browser_driver="voip",
+    ),
     identity_label_resolver=phone_identity_label,
     timeline_sources=(
         IMTimelineSource(
             call_timeline,
             "components/communication/voip/call_card.html",
+        ),
+    ),
+    creation_actions=(
+        IMCreationAction(
+            key="dial",
+            label=_("Dial"),
+            icon="fa fa-phone",
+            permission_resolver="bloomerp.communication.builtins.voip.actions.can_dial",
+            handler="bloomerp.communication.builtins.voip.actions.dial",
         ),
     ),
 )

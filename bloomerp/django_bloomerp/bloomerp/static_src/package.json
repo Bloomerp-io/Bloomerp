@@ -24,7 +24,8 @@
     "test:agent-progress": "node --experimental-strip-types --test ts/utils/agentProgress.test.ts",
     "preview": "vite preview",
     "tailwindcss": "node ./node_modules/tailwindcss/lib/cli.js",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test:calling": "node --experimental-strip-types --test ts/components/communication/Calling.test.ts ts/communication/voip/calling.test.ts ts/communication/voip/telnyx.test.ts"
   },
   "keywords": [],
   "author": "",
@@ -63,6 +64,7 @@
     "@lexical/rich-text": "^0.18.0",
     "@lexical/selection": "^0.18.0",
     "@tailwindcss/postcss": "^4.1.18",
+    "@telnyx/webrtc": "^2.27.10",
     "@twilio/voice-sdk": "^2.18.5",
     "ace-builds": "^1.32.9",
     "alpinejs": "^3.15.3",
@@ -72,6 +74,7 @@
     "grapesjs-preset-webpage": "^1.0.3",
     "htmx.org": "^2.0.3",
     "lexical": "^0.18.0",
+    "livekit-client": "^2.22.4",
     "marked": "^16.4.2",
     "sortablejs": "^1.15.7"
   }

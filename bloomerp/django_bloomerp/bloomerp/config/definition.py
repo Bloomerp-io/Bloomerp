@@ -1,8 +1,9 @@
 import os
 from typing import Literal, Optional
+from urllib.parse import urlsplit
 
 from django.conf import settings
-from pydantic import BaseModel, ConfigDict, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 
 
 INTERNAL_MODELS = [
@@ -135,6 +136,50 @@ class BloomerpAgentSettings(BaseModel):
     history_limit: int = Field(default=100, ge=1, le=1000)
 
 
+class ConferencingSettings(BaseModel):
+    """Configure the instance's LiveKit service independently of its host placement."""
+
+    model_config = ConfigDict(extra="forbid", validate_assignment=True)
+
+    enabled: bool = False
+    api_url: str = ""
+    public_url: str = ""
+    api_key: str = Field(default="", repr=False, exclude=True)
+    api_secret: SecretStr = Field(default=SecretStr(""), repr=False, exclude=True)
+    max_participants: int = Field(default=32, ge=2, le=500)
+    join_token_ttl_seconds: int = Field(default=300, ge=30, le=3600)
+    api_timeout_seconds: int = Field(default=10, ge=1, le=60)
+
+    @model_validator(mode="after")
+    def validate_connection(self) -> "ConferencingSettings":
+        """Reject incomplete enabled configurations and invalid endpoint URLs."""
+        for name, schemes in (
+            ("api_url", {"http", "https"}),
+            ("public_url", {"ws", "wss"}),
+        ):
+            value = getattr(self, name)
+            if not value and not self.enabled:
+                continue
+            parsed = urlsplit(value)
+            if (
+                parsed.scheme not in schemes
+                or not parsed.hostname
+                or parsed.username
+                or parsed.password
+                or parsed.query
+                or parsed.fragment
+            ):
+                raise ValueError(
+                    f"{name} must be an absolute endpoint URL without credentials, "
+                    "query or fragment."
+                )
+        if self.enabled and (
+            not self.api_key.strip() or not self.api_secret.get_secret_value().strip()
+        ):
+            raise ValueError("Enabled conferencing requires a LiveKit API key and secret.")
+        return self
+
+
 class BloomerpConfig(BaseModel):
     """
     Configuration class to be set on the settings. This contains all the necessary configurable settings for bloomerp.
@@ -162,6 +207,8 @@ class BloomerpConfig(BaseModel):
     auth: BloomerpAuthSettings = Field(default_factory=BloomerpAuthSettings)
 
     i18n: BloomerpI18nSettings = Field(default_factory=BloomerpI18nSettings)
+
+    conferencing: ConferencingSettings = Field(default_factory=ConferencingSettings)
 
     email_secret_key: Optional[str] = Field(
         default_factory=lambda: SecretStr(os.getenv("BLOOMERP_EMAIL_SECRET_KEY") if os.getenv("BLOOMERP_EMAIL_SECRET_KEY") else None),

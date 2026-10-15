@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-12 20:10+0000\n"
+"POT-Creation-Date: 2026-10-15 13:03+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: es\n"
@@ -34,6 +34,11 @@ msgstr "Una regla de política de filas requiere exactamente un grupo de condici
 msgid "AND"
 msgstr "Y"
 
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:76
+#, fuzzy
+msgid "Action"
+msgstr "Acción"
+
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:268 static_src/ts/utils/contextMenu.ts:157
 msgid "Actions"
 msgstr "Acciones"
@@ -55,7 +60,7 @@ msgstr "Añadir filtro"
 msgid "Add group"
 msgstr "Añadir grupo"
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:350
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:364
 msgid "Add row below"
 msgstr "Añadir fila debajo"
 
@@ -68,56 +73,90 @@ msgstr "Todos los objetos"
 msgid "All rows"
 msgstr "Todas las filas"
 
+#: static_src/ts/components/communication/Calling.ts:103
+msgid "Allow pop-ups to open the call tab. Your call controls are available here."
+msgstr ""
+"Permite que las ventanas emergentes abran la pestaña de llamada. Los controles de llamada están "
+"disponibles aquí."
+
 #: static_src/ts/components/filters/FilterContainer.ts:69
 msgid "Apply"
 msgstr "Aplicar"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:300
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:299
 msgid "Attachment"
 msgstr "Archivo adjunto"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:393
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:392
 #: static_src/ts/utils/contextMenu.ts:164
 msgid "Back"
 msgstr "Volver"
+
+#: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:237
+#, fuzzy
+msgid "Behavior evaluation failed ({status})."
+msgstr "Falló la evaluación del comportamiento ({status})."
+
+#: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:254
+#, fuzzy
+msgid "Behavior evaluation failed."
+msgstr "Falló la evaluación del comportamiento."
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:241
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:242
 msgid "Behavior name"
 msgstr "Nombre del comportamiento"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:429
+#: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:245
+#, fuzzy
+msgid "Behavior response revision does not match the draft."
+msgstr "La revisión de la respuesta del comportamiento no coincide con el borrador."
+
+#: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:266
+#: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:270
+#: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:279
+#, fuzzy
+msgid "Behavior target '{field}' is not rendered."
+msgstr "El destino «{field}» del comportamiento no está renderizado."
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
 msgid "Blue"
 msgstr "Azul"
 
-#: static_src/ts/components/text_editor/actions.ts:206
+#: static_src/ts/components/text_editor/actions.ts:222
 msgid "Bullet List"
 msgstr "Lista con viñetas"
 
-#: static_src/ts/components/communication/Phone.ts:147
+#: static_src/ts/components/communication/Calling.ts:373
+msgid "Call disconnected"
+msgstr "Llamada desconectada"
+
+#: static_src/ts/components/communication/Calling.ts:151
+#: static_src/ts/components/communication/Calling.ts:361
 msgid "Call ended"
 msgstr "Llamada finalizada"
 
-#: static_src/ts/components/communication/Phone.ts:51
-#: static_src/ts/components/communication/Phone.ts:141
+#: static_src/ts/components/communication/Calling.ts:374
 msgid "Call in progress"
 msgstr "Llamada en curso"
 
-#: static_src/ts/components/communication/Phone.ts:154
-msgid "Calling failed. Check microphone permission, connection settings and line access."
-msgstr ""
-"Error al llamar. Comprueba los permisos del micrófono, la configuración de conexión y el acceso a"
-" la línea."
+#: static_src/ts/components/communication/Calling.ts:188
+msgid "Call not connected"
+msgstr "No se pudo conectar la llamada"
 
-#: static_src/ts/components/communication/Phone.ts:58
-msgid "Calling is unavailable. Check your connection and line access."
-msgstr "No se puede llamar. Comprueba la conexión y el acceso a la línea."
+#: static_src/ts/components/communication/Calling.ts:384
+msgid "Calling failed. Check your connection and access, then try again."
+msgstr "No se pudo realizar la llamada. Comprueba tu conexión y tus permisos e inténtalo de nuevo."
 
-#: static_src/ts/components/communication/Phone.ts:107
-msgid "Calling…"
-msgstr "Llamando…"
+#: static_src/ts/components/communication/Calling.ts:189
+msgid "Calling is unavailable."
+msgstr "Las llamadas no están disponibles."
 
-#: static_src/ts/components/text_editor/actions.ts:218
+#: static_src/ts/components/text_editor/utils/linkPicker.ts:48
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: static_src/ts/components/text_editor/actions.ts:234
 msgid "Checklist"
 msgstr "Lista de verificación"
 
@@ -129,14 +168,24 @@ msgstr "Limpiar"
 msgid "Close"
 msgstr "Cerrar"
 
-#: static_src/ts/components/text_editor/actions.ts:165
+#: static_src/ts/components/text_editor/actions.ts:181
 msgid "Code Block"
 msgstr "Bloque de código"
+
+#: static_src/ts/components/communication/Calling.ts:74
+#, fuzzy
+msgid "Collapse call controls"
+msgstr "Contraer controles de llamada"
 
 #: static_src/ts/components/filters/FilterContainer.ts:106
 #: static_src/ts/components/filters/FilterContainer.ts:155
 msgid "Collapse group"
 msgstr "Contraer grupo"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:207
+#, fuzzy
+msgid "Complete every action and wait for its configuration to load."
+msgstr "Completa todas las acciones y espera a que se cargue su configuración."
 
 #: static_src/ts/components/filters/ConditionEditor.ts:175
 #: static_src/ts/components/filters/widget.ts:26
@@ -151,6 +200,16 @@ msgstr "Grupo de condiciones"
 msgid "Conditions"
 msgstr "Condiciones"
 
+#: static_src/ts/components/communication/MeetingLobby.ts:44
+#, fuzzy
+msgid "Connection interrupted. Retrying…"
+msgstr "Conexión interrumpida. Reintentando…"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:151
+#, fuzzy
+msgid "Could not load action configuration."
+msgstr "No se pudo cargar la configuración de la acción."
+
 #: static_src/ts/components/filters/api.ts:24
 msgid "Could not load filter options. Please try again."
 msgstr "No se pudieron cargar las opciones del filtro. Inténtalo de nuevo."
@@ -158,6 +217,11 @@ msgstr "No se pudieron cargar las opciones del filtro. Inténtalo de nuevo."
 #: static_src/ts/utils/contextMenu.ts:280
 msgid "Could not load results. Try searching again."
 msgstr "No se pudieron cargar los resultados. Inténtalo de nuevo."
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:189
+#, fuzzy
+msgid "Could not read configuration."
+msgstr "No se pudo leer la configuración."
 
 #: static_src/ts/components/filters/FilterContainer.ts:91
 msgid "Could not restore the initial filters."
@@ -171,6 +235,11 @@ msgstr "No se pudieron restaurar los filtros iniciales. Bórralos para empezar d
 msgid "Create label"
 msgstr "Crear etiqueta"
 
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:81
+#, fuzzy
+msgid "Default"
+msgstr "Predeterminado"
+
 #: static_src/ts/components/SelectPreference.ts:73
 msgid "Delete {preference}"
 msgstr "Eliminar {preference}"
@@ -183,9 +252,14 @@ msgstr "Los archivos adjuntos del borrador no pueden superar los 20 MB en total.
 msgid "Draft saved."
 msgstr "Borrador guardado."
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:351
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:365
 msgid "Drag row"
 msgstr "Arrastrar fila"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:322
+#, fuzzy
+msgid "Each behavior needs at least one action."
+msgstr "Cada comportamiento necesita al menos una acción."
 
 #: static_src/ts/components/filters/RenderedFilter.ts:95
 msgid "Edit"
@@ -195,6 +269,11 @@ msgstr "Editar"
 msgid "Email operation failed. Your edits are still here; please try again."
 msgstr "La operación de correo electrónico falló. Tus cambios siguen aquí; inténtalo de nuevo."
 
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:245
+#, fuzzy
+msgid "Enabled"
+msgstr "Activado"
+
 #: static_src/ts/components/filters/ConditionEditor.ts:94
 msgid "Enter a single field key."
 msgstr "Introduce una única clave de campo."
@@ -202,6 +281,15 @@ msgstr "Introduce una única clave de campo."
 #: static_src/ts/components/inbox/EmailRecipients.ts:136
 msgid "Enter a valid email address or remove the invalid recipient."
 msgstr "Introduce una dirección de correo electrónico válida o elimina el destinatario no válido."
+
+#: static_src/ts/components/text_editor/utils/linkPicker.ts:67
+msgid "Enter a valid http, https, mailto, or tel URL."
+msgstr "Introduce una URL válida de tipo http, https, mailto o tel."
+
+#: static_src/ts/components/communication/Calling.ts:74
+#, fuzzy
+msgid "Expand call controls"
+msgstr "Expandir controles de llamada"
 
 #: static_src/ts/components/filters/FilterContainer.ts:155
 msgid "Expand group"
@@ -211,7 +299,7 @@ msgstr "Expandir grupo"
 msgid "Field"
 msgstr "Campo"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:300
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:299
 msgid "Field reference"
 msgstr "Referencia de campo"
 
@@ -219,7 +307,7 @@ msgstr "Referencia de campo"
 msgid "File upload failed"
 msgstr "Error al subir el archivo"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:351
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:350
 msgid "Files"
 msgstr "Archivos"
 
@@ -240,51 +328,127 @@ msgstr "Nombre del filtro"
 msgid "Filter scope is missing."
 msgstr "Falta el ámbito del filtro."
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:426
+#: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:202
+#, fuzzy
+msgid "Form behaviors changed each other repeatedly. Check for a cycle in the configured behaviors."
+msgstr ""
+"Los comportamientos del formulario se modificaron entre sí repetidamente. Comprueba si hay un "
+"ciclo en los comportamientos configurados."
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:49
+#, fuzzy
+msgid "Form fields"
+msgstr "Campos del formulario"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:425
 msgid "Gray"
 msgstr "Gris"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:427
 msgid "Green"
 msgstr "Verde"
 
-#: static_src/ts/components/text_editor/actions.ts:252
+#: static_src/ts/components/text_editor/actions.ts:268
 msgid "HTML"
 msgstr "HTML"
 
-#: static_src/ts/components/text_editor/actions.ts:171
+#: static_src/ts/components/text_editor/actions.ts:187
 msgid "Heading 1"
 msgstr "Encabezado 1"
 
-#: static_src/ts/components/text_editor/actions.ts:177
+#: static_src/ts/components/text_editor/actions.ts:193
 msgid "Heading 2"
 msgstr "Encabezado 2"
 
-#: static_src/ts/components/text_editor/actions.ts:183
+#: static_src/ts/components/text_editor/actions.ts:199
 msgid "Heading 3"
 msgstr "Encabezado 3"
 
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:386
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:387
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:308
+#, fuzzy
+msgid "Hide behavior"
+msgstr "Ocultar comportamiento"
+
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:389
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:390
 msgid "Hide formatting toolbar"
 msgstr "Ocultar barra de herramientas de formato"
 
-#: static_src/ts/components/text_editor/actions.ts:189
+#: static_src/ts/components/text_editor/actions.ts:205
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:146
 msgid "Image"
 msgstr "Imagen"
 
-#: static_src/ts/components/communication/Phone.ts:122
+#: static_src/ts/components/communication/Calling.ts:349
+#: static_src/ts/components/communication/Calling.ts:366
 msgid "Incoming call"
 msgstr "Llamada entrante"
+
+#: static_src/ts/components/communication/Calling.ts:315
+msgid "Incoming calling is unavailable."
+msgstr "Las llamadas entrantes no están disponibles."
+
+#: static_src/ts/components/communication/Calling.ts:334
+msgid "Incoming calling is unavailable. Check your connection and access."
+msgstr "Las llamadas entrantes no están disponibles. Comprueba tu conexión y tus permisos."
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:248
+#, fuzzy
+msgid "Initial load and change"
+msgstr "Al cargar inicialmente y al cambiar"
+
+#: static_src/ts/components/text_editor/utils/linkPicker.ts:24
+#: static_src/ts/components/text_editor/utils/linkPicker.ts:55
+msgid "Insert link"
+msgstr "Insertar enlace"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:359
+#, fuzzy
+msgid "Invalid behavior configuration: expected version 1 with a behaviors list."
+msgstr ""
+"Configuración de comportamiento no válida: se esperaba la versión 1 con una lista de "
+"comportamientos."
+
+#: static_src/ts/components/communication/Calling.ts:380
+msgid "Invalid call endpoint."
+msgstr "El punto de conexión de la llamada no es válido."
 
 #: static_src/ts/components/PermissionsTable.ts:354 static_src/ts/components/PermissionsTable.ts:405
 msgid "Invalid row policy"
 msgstr "Política de filas no válida"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:453
+#: static_src/ts/components/communication/Calling.ts:197
+msgid "Joining call…"
+msgstr "Uniéndose a la llamada…"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:452
 msgid "Label could not be created"
 msgstr "No se pudo crear la etiqueta"
+
+#: static_src/ts/components/communication/Calling.ts:119
+msgid "Leave or dismiss the current call first."
+msgstr "Sal de la llamada actual o descártala primero."
+
+#: static_src/ts/components/communication/Calling.ts:132
+msgid "Leave the current call first."
+msgstr "Sal de la llamada actual primero."
+
+#: static_src/ts/components/text_editor/actions.ts:168
+msgid "Link"
+msgstr "Enlace"
+
+#: static_src/ts/components/text_editor/utils/linkPicker.ts:40
+msgid "Link URL"
+msgstr "URL del enlace"
+
+#: static_src/ts/components/text_editor/utils/linkPicker.ts:39
+msgid "Link name"
+msgstr "Nombre del enlace"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:138
+#, fuzzy
+msgid "Loading configuration…"
+msgstr "Cargando configuración…"
 
 #: static_src/ts/components/filters/SavedFilters.ts:152
 msgid "Loading saved filters…"
@@ -304,7 +468,12 @@ msgstr "Buscar"
 msgid "Match conditions"
 msgstr "Coincidir con las condiciones"
 
-#: static_src/ts/components/text_editor/actions.ts:196
+#: static_src/ts/components/communication/Calling.ts:181
+#, fuzzy
+msgid "Meeting link copied"
+msgstr "Enlace de la reunión copiado"
+
+#: static_src/ts/components/text_editor/actions.ts:212
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:146
 msgid "Mention"
 msgstr "Mención"
@@ -315,10 +484,6 @@ msgstr "Mención"
 msgid "Mention suggestions"
 msgstr "Sugerencias de menciones"
 
-#: static_src/ts/components/communication/Phone.ts:51
-msgid "Microphone muted"
-msgstr "Micrófono silenciado"
-
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:98
 msgid "Move action down"
 msgstr "Bajar acción"
@@ -327,9 +492,19 @@ msgstr "Bajar acción"
 msgid "Move action up"
 msgstr "Subir acción"
 
-#: static_src/ts/components/communication/Phone.ts:92
-msgid "No authorized voice lines are available"
-msgstr "No hay líneas de voz autorizadas disponibles"
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:400
+#, fuzzy
+msgid "Move behavior down"
+msgstr "Bajar comportamiento"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:399
+#, fuzzy
+msgid "Move behavior up"
+msgstr "Subir comportamiento"
+
+#: static_src/ts/components/communication/Calling.ts:321
+msgid "No incoming call accounts are available"
+msgstr "No hay cuentas de llamadas entrantes disponibles"
 
 #: static_src/ts/components/data_view_components/KanbanBoard.ts:453
 msgid "No items"
@@ -344,8 +519,8 @@ msgid "No objects"
 msgstr "No hay objetos"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:182
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:446
-#: static_src/ts/components/widgets/ForeignFieldWidget.ts:416
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:445
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:418
 msgid "No results"
 msgstr "Sin resultados"
 
@@ -362,7 +537,7 @@ msgstr "No hay filas"
 msgid "No saved filters yet."
 msgstr "Aún no hay filtros guardados."
 
-#: static_src/ts/components/text_editor/actions.ts:212
+#: static_src/ts/components/text_editor/actions.ts:228
 msgid "Numbered List"
 msgstr "Lista numerada"
 
@@ -370,7 +545,7 @@ msgstr "Lista numerada"
 msgid "OR"
 msgstr "O"
 
-#: static_src/ts/components/text_editor/actions.ts:201
+#: static_src/ts/components/text_editor/actions.ts:217
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:146
 msgid "Object"
 msgstr "Objeto"
@@ -379,7 +554,17 @@ msgstr "Objeto"
 msgid "Objects"
 msgstr "Objetos"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:427
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:248
+#, fuzzy
+msgid "On change"
+msgstr "Al cambiar"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:248
+#, fuzzy
+msgid "On initial load"
+msgstr "Al cargar inicialmente"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:426
 msgid "Orange"
 msgstr "Naranja"
 
@@ -387,7 +572,7 @@ msgstr "Naranja"
 msgid "Permission required"
 msgstr "Permiso obligatorio"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:430
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:429
 msgid "Pink"
 msgstr "Rosa"
 
@@ -403,19 +588,23 @@ msgstr "Selecciona al menos un permiso para la política de filas."
 msgid "Preference"
 msgstr "Preferencia"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:429
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
 msgid "Purple"
 msgstr "Morado"
 
-#: static_src/ts/components/communication/Phone.ts:92
+#: static_src/ts/components/communication/Calling.ts:321
 msgid "Ready for incoming calls"
 msgstr "Listo para recibir llamadas"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:426
+#: static_src/ts/components/communication/Calling.ts:374
+msgid "Reconnecting…"
+msgstr "Reconectando…"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:425
 msgid "Red"
 msgstr "Rojo"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:315
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:314
 #: static_src/ts/components/filters/RenderedFilter.ts:94
 msgid "Remove"
 msgstr "Eliminar"
@@ -423,6 +612,11 @@ msgstr "Eliminar"
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:99
 msgid "Remove action"
 msgstr "Eliminar acción"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:257
+#, fuzzy
+msgid "Remove behavior"
+msgstr "Eliminar comportamiento"
 
 #: static_src/ts/components/filters/ConditionEditor.ts:23
 msgid "Remove condition"
@@ -436,17 +630,27 @@ msgstr "Quitar grupo"
 msgid "Remove recipient"
 msgstr "Eliminar destinatario"
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:352
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:366
 msgid "Remove row"
 msgstr "Eliminar fila"
 
-#: static_src/ts/components/widgets/ForeignFieldWidget.ts:528
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:530
 msgid "Remove {label}"
 msgstr "Eliminar {label}"
 
-#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:349
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:162
+#, fuzzy
+msgid "Retry"
+msgstr "Reintentar"
+
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:363
 msgid "Row title"
 msgstr "Título de la fila"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:247
+#, fuzzy
+msgid "Run behavior"
+msgstr "Ejecutar comportamiento"
 
 #: static_src/ts/components/filters/SavedFilters.ts:89
 #: static_src/ts/components/filters/SavedFilters.ts:90
@@ -462,11 +666,11 @@ msgstr "Filtros guardados"
 msgid "Saving draft…"
 msgstr "Guardando borrador…"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:400
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:399
 msgid "Search colors"
 msgstr "Buscar colores"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:399
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:398
 msgid "Search colors…"
 msgstr "Buscar colores…"
 
@@ -506,6 +710,16 @@ msgstr "Buscar…"
 msgid "Select"
 msgstr "Seleccionar"
 
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:78
+#, fuzzy
+msgid "Select action"
+msgstr "Seleccionar acción"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:135
+#, fuzzy
+msgid "Select an action and its required target to configure it."
+msgstr "Selecciona una acción y el destino obligatorio para configurarla."
+
 #: static_src/ts/components/filters/ConditionEditor.ts:65
 msgid "Select field"
 msgstr "Seleccionar campo"
@@ -517,6 +731,11 @@ msgstr "Seleccionar clave"
 #: static_src/ts/components/filters/ConditionEditor.ts:124
 msgid "Select lookup"
 msgstr "Seleccionar operador de búsqueda"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:113
+#, fuzzy
+msgid "Select target field"
+msgstr "Seleccionar campo de destino"
 
 #: static_src/ts/components/inbox/EmailEditor.ts:268
 msgid "Sending email…"
@@ -530,32 +749,47 @@ msgstr "Establecer como predeterminado"
 msgid "Share {preference}"
 msgstr "Compartir {preference}"
 
-#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:547
+#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:668
 msgid "Show All Fields"
 msgstr "Mostrar todos los campos"
 
-#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:546
+#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:667
 msgid "Show Required Only"
 msgstr "Mostrar solo los obligatorios"
 
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:407
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:408
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:259
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:308
+#, fuzzy
+msgid "Show behavior"
+msgstr "Mostrar comportamiento"
+
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:410
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:411
 msgid "Show formatting toolbar"
 msgstr "Mostrar la barra de herramientas de formato"
+
+#: static_src/ts/components/communication/Calling.ts:124
+msgid "Starting call…"
+msgstr "Iniciando llamada…"
 
 #: static_src/ts/components/inbox/EmailRecipients.ts:52
 msgid "Suggested email addresses"
 msgstr "Direcciones de correo electrónico sugeridas"
 
-#: static_src/ts/components/text_editor/actions.ts:224
+#: static_src/ts/components/text_editor/actions.ts:240
 msgid "Table"
 msgstr "Tabla"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:77
+#, fuzzy
+msgid "Target field"
+msgstr "Campo de destino"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:427
 msgid "Teal"
 msgstr "Verde azulado"
 
-#: static_src/ts/components/text_editor/actions.ts:158
+#: static_src/ts/components/text_editor/actions.ts:174
 #: static_src/ts/components/text_editor/utils/templatePicker.ts:30
 msgid "Template"
 msgstr "Plantilla"
@@ -563,6 +797,16 @@ msgstr "Plantilla"
 #: static_src/ts/components/PermissionsTable.ts:339
 msgid "The filter editor is not ready."
 msgstr "El editor de filtros no está listo."
+
+#: static_src/ts/components/communication/MeetingLobby.ts:52
+#, fuzzy
+msgid "The host did not admit you."
+msgstr "El anfitrión no te admitió."
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:378
+#, fuzzy
+msgid "The saved behavior configuration cannot be edited in this format."
+msgstr "La configuración de comportamiento guardada no se puede editar en este formato."
 
 #: static_src/ts/components/filters/ConditionEditor.ts:112
 msgid "The saved filter field is unavailable."
@@ -572,17 +816,30 @@ msgstr "El campo del filtro guardado no está disponible."
 msgid "The saved filter lookup could not be restored."
 msgstr "No se pudo restaurar el operador de búsqueda del filtro guardado."
 
+#: static_src/ts/components/communication/Calling.ts:199
+msgid "This call has ended."
+msgstr "Esta llamada ha finalizado."
+
 #: static_src/ts/components/filters/FilterContainer.ts:183
 msgid "This editor accepts one condition group per rule."
 msgstr "Este editor acepta un grupo de condiciones por regla."
+
+#: static_src/ts/components/communication/MeetingLobby.ts:52
+#, fuzzy
+msgid "This meeting is no longer available."
+msgstr "Esta reunión ya no está disponible."
 
 #: static_src/ts/utils/modals.ts:43
 msgid "Toggle fullscreen"
 msgstr "Activar o desactivar pantalla completa"
 
-#: static_src/ts/components/ResizableDiv.ts:249
+#: static_src/ts/components/ResizableDiv.ts:313
 msgid "Toggle side panel"
 msgstr "Alternar panel lateral"
+
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:492
+msgid "Unable to load field settings. Please try again."
+msgstr "No se pudo cargar la configuración de los campos. Inténtalo de nuevo."
 
 #: static_src/ts/components/widgets/ForeignFieldWidget.ts:209
 msgid "Unable to load this form. Close the dialog and try again."
@@ -597,15 +854,76 @@ msgstr "No se pudo cargar el mosaico."
 msgid "Unable to move card. Please try again."
 msgstr "No se pudo mover la tarjeta. Inténtalo de nuevo."
 
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:206
+msgid "Unable to refresh field settings. Please try again."
+msgstr "No se pudo actualizar la configuración de los campos. Inténtalo de nuevo."
+
+#: static_src/ts/components/communication/MeetingLobby.ts:26
+#: static_src/ts/components/communication/MeetingLobby.ts:29
+#, fuzzy
+msgid "Unable to request admission."
+msgstr "No se pudo solicitar el acceso."
+
+#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:292
+#, fuzzy
+msgid "Unable to save changes. Please try again."
+msgstr "No se pueden guardar los cambios. Inténtalo de nuevo."
+
+#: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:955
+msgid "Unable to save the layout. Please try again before editing settings."
+msgstr "No se pudo guardar el diseño. Inténtalo de nuevo antes de editar la configuración."
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:92
+#, fuzzy
+msgid "Unavailable action: {action}"
+msgstr "Acción no disponible: {action}"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:117
+#, fuzzy
+msgid "Unavailable field: {field}"
+msgstr "Campo no disponible: {field}"
+
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:164
 msgid "Upload image"
 msgstr "Subir imagen"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:427
+#: static_src/ts/components/communication/MeetingLobby.ts:52
+#, fuzzy
+msgid "Waiting for the host to admit you…"
+msgstr "Esperando a que el anfitrión te admita…"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:426
 msgid "Yellow"
 msgstr "Amarillo"
 
 #: static_src/ts/components/data_view_components/KanbanBoard.ts:402
 msgid "You do not have permission to move this card."
 msgstr "No tienes permiso para mover esta tarjeta."
+
+#: static_src/ts/components/communication/MeetingLobby.ts:52
+#, fuzzy
+msgid "You have been admitted. You can now join."
+msgstr "Te han admitido. Ya puedes unirte."
+
+#: static_src/ts/components/communication/Calling.ts:264
+msgid "You left the call"
+msgstr "Has salido de la llamada"
+
+#~ msgid "Calling failed. Check microphone permission, connection settings and line access."
+#~ msgstr ""
+#~ "Error al llamar. Comprueba los permisos del "
+#~ "micrófono, la configuración de conexión y el acceso"
+#~ " a la línea."
+
+#~ msgid "Calling is unavailable. Check your connection and line access."
+#~ msgstr "No se puede llamar. Comprueba la conexión y el acceso a la línea."
+
+#~ msgid "Calling…"
+#~ msgstr "Llamando…"
+
+#~ msgid "Microphone muted"
+#~ msgstr "Micrófono silenciado"
+
+#~ msgid "No authorized voice lines are available"
+#~ msgstr "No hay líneas de voz autorizadas disponibles"
 

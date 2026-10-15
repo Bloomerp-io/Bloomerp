@@ -106,7 +106,9 @@ export const initMessagesWebsocket = (): void => {
     socket.onmessage = (event: MessageEvent<string>): void => {
         try {
             const data = JSON.parse(event.data) as MessagePayload;
-            if (data.action === 'im.message.created' || data.action === 'im.read.updated' || data.action === 'im.group.updated') {
+            if (data.action === 'conferencing.session.changed') {
+                document.dispatchEvent(new CustomEvent('im:call-changed', { detail: data }));
+            } else if (data.action === 'im.message.created' || data.action === 'im.read.updated' || data.action === 'im.group.updated') {
                 const counter = document.getElementById('inbox-notification-count');
                 if (counter && data.notification_count !== undefined) {
                     counter.textContent = data.notification_count > 0 ? String(data.notification_count) : '';
