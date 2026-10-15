@@ -6,6 +6,8 @@ import BaseSectionedLayoutContainer, { type SectionedLayoutRowPayload } from "..
 import { DetailViewCell, type DetailViewCellChangeDetail, type DetailViewCellSnapshot, type DetailViewCellValue } from "./DetailViewCell";
 import FormBehaviorRuntime from "../behaviors/FormBehaviorRuntime";
 import { t } from "@/utils/i18n";
+import showMessage from "../../utils/messages";
+import { MessageType } from "../UiMessage";
 
 type RowInfo = {
     element: HTMLElement;
@@ -23,6 +25,19 @@ type PendingCellChange = {
 };
 type PendingAttachmentChange = { restore: () => void };
 type PendingChange = PendingCellChange | PendingAttachmentChange;
+
+type SaveRequestDetail = {
+    elt?: Element;
+    xhr?: XMLHttpRequest;
+    requestConfig?: { verb?: string };
+};
+type SaveButtonState = {
+    button: HTMLButtonElement;
+    disabled: boolean;
+    ariaBusy: string | null;
+    icon: HTMLElement | null;
+    iconClass: string | null;
+};
 
 // TODO: This can be refactored even more
 
@@ -48,6 +63,10 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
     private undoShortcutHandler: ((event: KeyboardEvent) => void) | null = null;
     private layoutFieldUpdatedHandler: ((event: Event) => void) | null = null;
     private behaviorRuntime: FormBehaviorRuntime | null = null;
+    private saveLifecycle: AbortController | null = null;
+    private saveForm: HTMLFormElement | null = null;
+    private saveRequest: XMLHttpRequest | null = null;
+    private saveButtons: SaveButtonState[] = [];
 
     protected getItemSelector(): string {
         return `[${componentIdentifier}="detail-view-value"]`;
@@ -87,6 +106,7 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         this.toggleVisibilityBtn?.addEventListener("click", this.toggleVisibilityHandler);
         this.openFullFormBtn?.addEventListener("click", this.openFullFormHandler);
         this.cacheChangeActionButtons();
+        this.initializeSaveFeedback();
         this.backButtonHandler = () => this.undoLastChange();
         this.resetButtonHandler = () => this.resetChanges();
         this.backBtn?.addEventListener("click", this.backButtonHandler);
@@ -150,6 +170,11 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
 
     /** Release field history, attachment listeners, and layout resources. */
     public override destroy(): void {
+        this.saveLifecycle?.abort();
+        this.saveLifecycle = null;
+        this.restoreSaveButtons();
+        this.saveRequest = null;
+        this.saveForm = null;
         this.attachmentLifecycle?.abort();
         this.behaviorRuntime?.destroy();
         this.behaviorRuntime = null;
@@ -195,6 +220,7 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         this.resetBtn = null;
     }
 
+    /** Reconcile layout controls without losing feedback for an active form save. */
     public override onAfterSwap(): void {
         super.onAfterSwap();
         this.reindexRows();
@@ -210,6 +236,101 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         this.syncToggleVisibility();
         this.setNonRequiredFieldsVisibility(this.nonRequiredFieldsVisible);
         this.behaviorRuntime?.refresh();
+        if (this.saveRequest) this.showSaveProgress();
+    }
+
+    /** Bind request feedback only to the form that owns this CRUD container. */
+    private initializeSaveFeedback(): void {
+        this.saveLifecycle?.abort();
+        this.saveForm = this.element.closest("form");
+        if (!this.saveForm) return;
+        this.saveLifecycle = new AbortController();
+        const { signal } = this.saveLifecycle;
+        this.saveForm.addEventListener("submit", this.onSaveSubmit, { capture: true, signal });
+        this.saveForm.addEventListener("htmx:beforeRequest", this.onSaveBeforeRequest, { signal });
+        this.saveForm.addEventListener("htmx:beforeSend", this.onSaveBeforeSend, { signal });
+        this.saveForm.addEventListener("htmx:afterRequest", this.onSaveFinished, { signal });
+        this.saveForm.addEventListener("htmx:onLoadError", this.onSaveFinished, { signal });
+        this.saveForm.addEventListener("htmx:beforeCleanupElement", this.onSaveCleanup, { signal });
+        document.body.addEventListener("htmx:beforeHistorySave", this.onSaveHistorySnapshot, { signal });
+    }
+
+    /** Prevent keyboard or synthetic submits from queuing a second save in HTMX. */
+    private onSaveSubmit = (event: Event): void => {
+        if (event.target !== this.saveForm || !this.saveRequest) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+    };
+
+    /** Ignore field/layout requests and cancel additional saves of this same form. */
+    private onSaveBeforeRequest = (event: Event): void => {
+        if (this.isSaveRequest(event) && this.saveRequest) event.preventDefault();
+    };
+
+    /** Begin feedback after validation and cancellable before-request handlers finish. */
+    private onSaveBeforeSend = (event: Event): void => {
+        if (!this.isSaveRequest(event)) return;
+        this.saveRequest = (event as CustomEvent<SaveRequestDetail>).detail.xhr;
+        this.showSaveProgress();
+    };
+
+    /** Recognize the owning form's POST without capturing nested component requests. */
+    private isSaveRequest(event: Event): boolean {
+        const detail = (event as CustomEvent<SaveRequestDetail>).detail;
+        return this.element.isConnected && detail?.elt === this.saveForm
+            && detail.requestConfig?.verb?.toLowerCase() === "post" && !!detail.xhr;
+    }
+
+    /** Restore controls once for this request, retaining edits after server errors. */
+    private onSaveFinished = (event: Event): void => {
+        const detail = (event as CustomEvent<SaveRequestDetail>).detail;
+        if (!this.saveRequest || detail?.xhr !== this.saveRequest) return;
+        const serverError = this.saveRequest.status >= 500;
+        this.saveRequest = null;
+        this.restoreSaveButtons();
+        if (serverError && this.element.isConnected && this.saveForm?.contains(this.element)) {
+            showMessage(t("Unable to save changes. Please try again."), MessageType.ERROR);
+        }
+    };
+
+    /** Remove request listeners before navigation or a successful form replacement. */
+    private onSaveCleanup = (event: Event): void => {
+        const element = (event as CustomEvent<SaveRequestDetail>).detail?.elt;
+        if (element === this.saveForm || element === this.element) this.destroy();
+    };
+
+    /** Keep transient disabled controls out of HTMX's Back/Forward history snapshots. */
+    private onSaveHistorySnapshot = (): void => {
+        this.restoreSaveButtons();
+        queueMicrotask((): void => {
+            if (this.saveRequest && this.element.isConnected) this.showSaveProgress();
+        });
+    };
+
+    /** Disable both save variants without altering their submitted names or values. */
+    private showSaveProgress(): void {
+        const buttons = this.element.querySelectorAll<HTMLButtonElement>(
+            "#object-crud-container-save-button, #object-crud-container-save-and-create-new-button",
+        );
+        for (const button of buttons) {
+            if (button.form !== this.saveForm || this.saveButtons.some((state: SaveButtonState): boolean => state.button === button)) continue;
+            const icon = button.querySelector<HTMLElement>("i");
+            this.saveButtons.push({ button, disabled: button.disabled, ariaBusy: button.getAttribute("aria-busy"), icon, iconClass: icon?.className ?? null });
+            button.disabled = true;
+            button.setAttribute("aria-busy", "true");
+            if (icon) icon.className = "fa-solid fa-spinner fa-spin";
+        }
+    }
+
+    /** Restore original control attributes on success, failure, cancellation or cleanup. */
+    private restoreSaveButtons(): void {
+        for (const { button, disabled, ariaBusy, icon, iconClass } of this.saveButtons) {
+            button.disabled = disabled;
+            if (ariaBusy === null) button.removeAttribute("aria-busy");
+            else button.setAttribute("aria-busy", ariaBusy);
+            if (icon && iconClass !== null) icon.className = iconClass;
+        }
+        this.saveButtons = [];
     }
 
     public override toggleEditMode(): void {
