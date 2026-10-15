@@ -9,6 +9,7 @@ from typing import Any
 from django import forms
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
+from django.utils.translation import gettext_lazy as _
 
 from bloomerp.form_behaviors.definition import BehaviorActionDefinition
 from bloomerp.models.application_field import ApplicationField
@@ -25,7 +26,7 @@ def build_action_config_form(
 ) -> type[forms.Form]:
     """Return an action form with rendered listener and target configurations."""
     if action.requires_target_field and target_field is None:
-        raise ValidationError("Select a target field first.")
+        raise ValidationError(_("Select a target field first."))
     if listener_field is not None:
         listener_field._behavior_layout_config = dict(listener_layout_config or {})
     if target_field is not None and target_layout_config is not None:
@@ -58,7 +59,7 @@ def action_config_form(
     form = form_class(prefix=prefix, initial=values.copy())
     known_fields = set(form.fields) if bound else set(form.fields) | set(form_class.base_fields)
     if set(values) - known_fields:
-        raise ValidationError("Unknown action configuration fields.")
+        raise ValidationError(_("Unknown action configuration fields."))
     for name, field in form.fields.items():
         if (
             isinstance(field, forms.ModelChoiceField)

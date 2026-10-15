@@ -5,6 +5,7 @@ from typing import Any
 
 from django import forms
 from django.core.exceptions import FieldDoesNotExist, ValidationError
+from django.core.serializers.json import DjangoJSONEncoder
 from django.urls import reverse
 
 from bloomerp.form_behaviors.definition import BehaviorConfig
@@ -81,7 +82,7 @@ class BehaviorBuilderWidget(forms.Widget):
         context["widget"].update({
             "value": self.format_value(value), "listener_id": str(self.source_field.get("id", "")),
             "content_type_id": listener.content_type_id if listener else "",
-            "actions_json": json.dumps(actions), "conditions_json": json.dumps(condition_fields),
+            "actions_json": json.dumps(actions, cls=DjangoJSONEncoder), "conditions_json": json.dumps(condition_fields, cls=DjangoJSONEncoder),
             "layout_context_json": json.dumps(self.layout_context),
             "action_url": reverse("components_render_action_form"),
             "value_editor_url": reverse("components_filters_value_editor"),

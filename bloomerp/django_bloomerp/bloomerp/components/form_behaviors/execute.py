@@ -9,6 +9,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Q
 from django.http import HttpRequest, JsonResponse
 from django.shortcuts import get_object_or_404
+from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_POST
 from pydantic import (
     BaseModel,
@@ -45,7 +46,7 @@ class ExecuteRequest(BaseModel):
     def validate_owner(self) -> ExecuteRequest:
         """Reject ambiguous requests rather than choosing a layout implicitly."""
         if (self.preference_id is None) == (self.form_id is None):
-            raise ValueError("Supply exactly one preference_id or form_id.")
+            raise ValueError(_("Supply exactly one preference_id or form_id."))
         return self
 
 
@@ -60,7 +61,7 @@ def execute(request: HttpRequest) -> JsonResponse:
         payload = ExecuteRequest.model_validate_json(request.body)
     except SchemaError:
         return JsonResponse(
-            {"error": "Invalid behavior execution request."}, status=400
+            {"error": _("Invalid behavior execution request.")}, status=400
         )
     try:
         manager = UserPolicyManager(request.user)
@@ -96,7 +97,7 @@ def execute(request: HttpRequest) -> JsonResponse:
                 )
         model = owner.content_type.model_class()
         if model is None:
-            raise ValidationError("Layout model is unavailable.")
+            raise ValidationError(_("Layout model is unavailable."))
         instance = None
         if payload.object_id is not None:
             instance = get_object_or_404(
@@ -116,6 +117,6 @@ def execute(request: HttpRequest) -> JsonResponse:
         )
     except (SchemaError, ValidationError, ValueError, TypeError) as error:
         return JsonResponse(
-            {"error": "Behavior evaluation failed.", "detail": str(error)}, status=400
+            {"error": _("Behavior evaluation failed."), "detail": str(error)}, status=400
         )
     return JsonResponse({"revision": payload.revision, **asdict(result)})

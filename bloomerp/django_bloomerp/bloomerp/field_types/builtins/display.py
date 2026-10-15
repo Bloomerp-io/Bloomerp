@@ -1,12 +1,16 @@
 from __future__ import annotations
-from bloomerp.field_types.display_options import FieldDisplayOption, LABEL_OPTION
+
+from typing import TYPE_CHECKING, Any
+
+from django import forms
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+
+from bloomerp.field_types.display_options import LABEL_OPTION, FieldDisplayOption
 from bloomerp.form_fields.behavior_field import BehaviorField
 from bloomerp.widgets.behavior_builder_widget import BehaviorBuilderWidget
 from bloomerp.widgets.one_to_many_field_widget import OneToManyFieldWidget
 from bloomerp.widgets.ordered_field_select_widget import OrderedFieldSelectWidget
-from django import forms
-from django.db import models
-from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from bloomerp.models import ApplicationField
@@ -15,8 +19,10 @@ if TYPE_CHECKING:
 def get_related_model_field_choices(
     application_field: "ApplicationField",
 ) -> dict[str, Any]:
-    from bloomerp.models import ApplicationField
+    """Build selectable fields for the related model of a display option."""
     from django.contrib.contenttypes.models import ContentType
+
+    from bloomerp.models import ApplicationField
 
     related_model = application_field.get_related_model()
     if related_model is None:
@@ -144,9 +150,9 @@ def standard_display_options(application_field: "ApplicationField") -> tuple[Fie
 
 BEHAVIORS_DISPLAY_OPTION = FieldDisplayOption(
     id="behaviors",
-    label="Behaviors",
+    label=_("Behaviors"),
     form_factory=behavior_option_field,
     required=False,
-    help_text="Define what this form should do when the field changes.",
+    help_text=_("Define what this form should do when the field changes."),
 )
 

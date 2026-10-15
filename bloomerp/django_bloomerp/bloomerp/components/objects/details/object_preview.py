@@ -56,6 +56,18 @@ def object_preview(request: HttpRequest, content_type_id: int, object_id: str) -
         )
     }
 
+    # Layout availability can include fields granted only on other objects.
+    allowed_field_ids = set(
+        policy_manager.get_accessible_fields_for_object(
+            obj, BloomerpPermission.VIEW
+        ).values_list("pk", flat=True)
+    )
+    for row in layout["rows"]:
+        row["items"] = [
+            item for item in row["items"]
+            if item["application_field"].pk in allowed_field_ids
+        ]
+
     context = {
         "object": obj,
         "layout": layout,

@@ -10,6 +10,7 @@ from typing import Any
 from django import forms
 from django.db.models import QuerySet
 from django.http import HttpRequest
+from django.utils.translation import gettext_lazy as _
 
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.form_behaviors.builtins.set_o2m_value import collection_rows
@@ -60,13 +61,13 @@ def _inspect(
     elif isinstance(node, ast.Name):
         if aggregate:
             raise forms.ValidationError(
-                "Aggregations must reference a collection column."
+                _("Aggregations must reference a collection column.")
             )
         names.add(node.id)
     elif isinstance(node, ast.Attribute):
         if not isinstance(node.value, ast.Name) or (not aggregate and not row_mode):
             raise forms.ValidationError(
-                "Collection columns must be used inside an aggregation."
+                _("Collection columns must be used inside an aggregation.")
             )
         columns.add((node.value.id, node.attr))
     elif isinstance(node, ast.Call):
@@ -79,37 +80,37 @@ def _inspect(
             or node.keywords
         ):
             raise forms.ValidationError(
-                "Use sum, count, first, or last with one collection expression."
+                _("Use sum, count, first, or last with one collection expression.")
             )
         if node.func.id != "sum" and not isinstance(node.args[0], ast.Attribute):
             raise forms.ValidationError(
-                "Count, first, and last require one collection column."
+                _("Count, first, and last require one collection column.")
             )
         aggregate_columns: set[tuple[str, str]] = set()
         _inspect(node.args[0], names, aggregate_columns, aggregate=True)
         if not aggregate_columns:
             raise forms.ValidationError(
-                "An aggregation must reference a collection column."
+                _("An aggregation must reference a collection column.")
             )
         columns.update(aggregate_columns)
     elif isinstance(node, ast.Constant):
         if isinstance(node.value, bool) or not isinstance(node.value, (int, float)):
             raise forms.ValidationError(
-                "Expressions may contain only numeric literals."
+                _("Expressions may contain only numeric literals.")
             )
     elif isinstance(node, ast.BinOp):
         if not isinstance(node.op, (ast.Add, ast.Sub, ast.Mult, ast.Div)):
             raise forms.ValidationError(
-                "Expressions support only +, -, *, and / operators."
+                _("Expressions support only +, -, *, and / operators.")
             )
         _inspect(node.left, names, columns, aggregate=aggregate, row_mode=row_mode)
         _inspect(node.right, names, columns, aggregate=aggregate, row_mode=row_mode)
     elif isinstance(node, ast.UnaryOp):
         if not isinstance(node.op, (ast.UAdd, ast.USub)):
-            raise forms.ValidationError("Expressions support only unary + and -.")
+            raise forms.ValidationError(_("Expressions support only unary + and -."))
         _inspect(node.operand, names, columns, aggregate=aggregate, row_mode=row_mode)
     else:
-        raise forms.ValidationError("Unsupported expression syntax.")
+        raise forms.ValidationError(_("Unsupported expression syntax."))
 
 
 def _parse(
@@ -119,9 +120,9 @@ def _parse(
     try:
         tree = ast.parse(expression, mode="eval")
     except (SyntaxError, ValueError) as error:
-        raise forms.ValidationError("Enter a valid arithmetic expression.") from error
+        raise forms.ValidationError(_("Enter a valid arithmetic expression.")) from error
     if sum(1 for _ in ast.walk(tree)) > MAX_EXPRESSION_NODES:
-        raise forms.ValidationError("The expression is too complex.")
+        raise forms.ValidationError(_("The expression is too complex."))
     for node in ast.walk(tree):
         if (
             isinstance(node, ast.Constant)
@@ -133,7 +134,7 @@ def _parse(
                 node._bloomerp_decimal_value = Decimal((literal or "").replace("_", ""))
             except DecimalException as error:
                 raise forms.ValidationError(
-                    "Expressions require decimal numeric literals."
+                    _("Expressions require decimal numeric literals.")
                 ) from error
     names: set[str] = set()
     columns: set[tuple[str, str]] = set()
@@ -158,18 +159,18 @@ def _validate_result_type(
         if left or right:
             if not left or right or not isinstance(node.op, (ast.Add, ast.Sub)):
                 raise forms.ValidationError(
-                    "A date or datetime supports only adding or subtracting a numeric offset."
+                    _("A date or datetime supports only adding or subtracting a numeric offset.")
                 )
             kind = left
     elif isinstance(node, ast.UnaryOp):
         if _validate_result_type(node.operand, temporal_operands):
             raise forms.ValidationError(
-                "Unary operators cannot apply to a date or datetime."
+                _("Unary operators cannot apply to a date or datetime.")
             )
     elif isinstance(node, ast.Call) and _validate_result_type(
         node.args[0], temporal_operands
     ):
-        raise forms.ValidationError("Aggregations cannot return a date or datetime.")
+        raise forms.ValidationError(_("Aggregations cannot return a date or datetime."))
     node._bloomerp_temporal_kind = kind
     return kind
 
@@ -184,10 +185,10 @@ def _evaluate(
         field = getattr(node, "_bloomerp_temporal_field", None)
         if field is not None:
             return clean_temporal_value(field, values.get(node.id))
-        return decimal_value(values.get(node.id), node.id, noun="Field")
+        return decimal_value(values.get(node.id), node.id, noun=_("Field"))
     if isinstance(node, ast.Attribute):
         if row is None:
-            raise forms.ValidationError("A collection row is required.")
+            raise forms.ValidationError(_("A collection row is required."))
         return decimal_value(row.get(node.attr), node.attr)
     if isinstance(node, ast.Constant):
         return decimal_value(
@@ -243,13 +244,13 @@ def _evaluate(
             if isinstance(node.op, ast.Mult):
                 return left * right
             if right == 0:
-                raise forms.ValidationError("The expression divides by zero.")
+                raise forms.ValidationError(_("The expression divides by zero."))
             return left / right
         except DecimalException as error:
             raise forms.ValidationError(
-                "The expression cannot be calculated."
+                _("The expression cannot be calculated.")
             ) from error
-    raise forms.ValidationError("Unsupported expression syntax.")
+    raise forms.ValidationError(_("Unsupported expression syntax."))
 
 
 def calculate_config_form_factory(
@@ -260,7 +261,7 @@ def calculate_config_form_factory(
     """Build a formula editor whose destination column appears only for O2M targets."""
     owner = listener or target
     if owner is None or target is None:
-        raise forms.ValidationError("Select a listener and target field first.")
+        raise forms.ValidationError(_("Select a listener and target field first."))
     row_mode = target.field_type == FIELD_TYPE_REGISTRY.ONE_TO_MANY_FIELD.id
     parent_operands = numeric_fields(owner.get_model())
     if not row_mode:
@@ -287,17 +288,19 @@ def calculate_config_form_factory(
 
         if row_mode:
             target_column = forms.ModelChoiceField(
-                queryset=target_columns, label="Target column"
+                queryset=target_columns, label=_("Target column")
             )
         expression = forms.CharField(
+            label=_('Expression'),
             max_length=500,
             help_text=(
-                "Use numeric fields, collection.column, and sum/count/first/last. "
+                _("Use numeric fields, collection.column, and sum/count/first/last. "
                 "For scalar date/datetime targets, add or subtract whole-number offsets "
-                "from a date (days) or datetime (minutes). Blank dates leave the target unchanged."
+                "from a date (days) or datetime (minutes). Blank dates leave the target unchanged.")
             ),
         )
         write_policy = WritePolicyField(
+            label=_('Write policy'),
             allowed=("always", "if_empty", "if_empty_or_zero"), default="always"
         )
 
@@ -315,20 +318,20 @@ def calculate_config_form_factory(
                 }
                 if names - parent_fields.keys():
                     raise forms.ValidationError(
-                        f"Unknown or unsupported calculation field: {', '.join(sorted(names - parent_fields.keys()))}."
+                        _('Unknown or unsupported calculation field: %(details)s.') % {'details': ', '.join(sorted(names - parent_fields.keys()))}
                     )
                 if not row_mode and target.field in names:
                     raise forms.ValidationError(
-                        "The target field cannot reference itself."
+                        _("The target field cannot reference itself.")
                     )
                 collection_fields = {field.field: field for field in collections}
                 if row_mode and any(name != target.field for name, _ in columns):
                     raise forms.ValidationError(
-                        "Row formulas may only reference the target collection."
+                        _("Row formulas may only reference the target collection.")
                     )
                 if len({name for name, _ in columns}) > 1:
                     raise forms.ValidationError(
-                        "An expression may reference only one collection."
+                        _("An expression may reference only one collection.")
                     )
                 child_fields: dict[tuple[str, str], ApplicationField] = {}
                 for collection_name, column_name in columns:
@@ -338,7 +341,7 @@ def calculate_config_form_factory(
                         or collection_field.get_related_model() is None
                     ):
                         raise forms.ValidationError(
-                            f"Unknown collection: {collection_name}."
+                            _('Unknown collection: %(collection_name)s.') % {'collection_name': collection_name}
                         )
                     child = (
                         numeric_fields(collection_field.get_related_model())
@@ -347,7 +350,7 @@ def calculate_config_form_factory(
                     )
                     if child is None:
                         raise forms.ValidationError(
-                            f"Unknown or non-numeric column: {collection_name}.{column_name}."
+                            _('Unknown or non-numeric column: %(collection_name)s.%(column_name)s.') % {'collection_name': collection_name, 'column_name': column_name}
                         )
                     child_fields[(collection_name, column_name)] = child
                 destination = cleaned.get("target_column") if row_mode else None
@@ -357,7 +360,7 @@ def calculate_config_form_factory(
                     and (target.field, destination.field) in columns
                 ):
                     raise forms.ValidationError(
-                        "The target column cannot reference itself."
+                        _("The target column cannot reference itself.")
                     )
                 result_kind = _validate_result_type(
                     tree,
@@ -369,7 +372,7 @@ def calculate_config_form_factory(
                 )
                 if result_kind != (None if row_mode else temporal_kind(target)):
                     raise forms.ValidationError(
-                        "The expression result type must match the date or datetime target."
+                        _("The expression result type must match the date or datetime target.")
                     )
                 cleaned["source_fields"] = {
                     name: BehaviorFieldReference(field=field)
@@ -441,10 +444,10 @@ def calculate(
 
 CALCULATE = BehaviorActionDefinition(
     id="calculate",
-    label="Calculate",
+    label=_("Calculate"),
     description=(
-        "Calculate numeric values or scalar date/datetime offsets "
-        "(days for dates, minutes for datetimes) from a safe formula."
+        _("Calculate numeric values or scalar date/datetime offsets "
+        "(days for dates, minutes for datetimes) from a safe formula.")
     ),
     requires_target_field=True,
     execute=calculate,

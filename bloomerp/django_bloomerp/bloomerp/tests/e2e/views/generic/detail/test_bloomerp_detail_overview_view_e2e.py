@@ -580,3 +580,141 @@ class TestDetailViewE2E(e2e_test_cases.BloomerpE2ETestCase):
         box = pane.bounding_box()
         self.assertIsNotNone(box)
         self.assertAlmostEqual(box['width'], self.split_list_width, delta=1)
+
+
+class TestOverviewSaveFeedbackE2E(e2e_test_cases.BloomerpE2ETestCase):
+    """Exercise pending and failed saves through the ordinary object overview form."""
+
+    def get_test_scenarios(self) -> list[E2ERequestScenario]:
+        """Keep the loading and HTTP 500 journeys declarative with focused validators."""
+        return [
+            E2ERequestScenario(
+                name="Overview Save spins and blocks duplicate submissions until success",
+                user=self.admin_user,
+                prepare=self.prepare_save_request,
+                url=self.save_url,
+                actions=[
+                    E2EAction(
+                        name="Start a delayed overview save",
+                        execute=self.start_save,
+                        validators=self.assert_save_pending,
+                    ),
+                    E2EAction(
+                        name="Attempt a second submission while saving",
+                        execute=self.repeat_submit,
+                        validators=self.assert_save_pending,
+                    ),
+                    E2EAction(
+                        name="Complete the original save",
+                        execute=self.complete_save,
+                        validators=self.assert_save_succeeded,
+                    ),
+                ],
+            ),
+            E2ERequestScenario(
+                name="Overview HTTP 500 shows one toast and allows a successful retry",
+                user=self.admin_user,
+                prepare=self.prepare_save_request,
+                url=self.save_url,
+                actions=[
+                    E2EAction(
+                        name="Start a delayed overview save",
+                        execute=self.start_save,
+                        validators=self.assert_save_pending,
+                    ),
+                    E2EAction(
+                        name="Return a server error",
+                        execute=self.fail_save,
+                        validators=self.assert_save_failed,
+                    ),
+                    E2EAction(
+                        name="Retry the preserved form",
+                        execute=self.press_button("Save"),
+                        validators=self.assert_save_pending,
+                    ),
+                    E2EAction(
+                        name="Complete the retry",
+                        execute=self.complete_save,
+                        validators=self.assert_save_succeeded,
+                    ),
+                ],
+            ),
+        ]
+
+    def prepare_save_request(self) -> None:
+        """Create an isolated test record and intercept only its overview POST requests."""
+        self.save_todo = Todo.objects.create(title="Before save")
+        self.pending_save_routes: list[Route] = []
+        self.save_request_count = 0
+        self.page.route(self.url(self.save_url()), self.hold_save_request)
+
+    def save_url(self) -> str:
+        """Resolve the current scenario's overview URL after its preparation."""
+        return self.save_todo.get_absolute_url()
+
+    def hold_save_request(self, route: Route) -> None:
+        """Hold form submissions until the next action explicitly releases them."""
+        if route.request.method == "POST":
+            self.save_request_count += 1
+            self.pending_save_routes.append(route)
+        else:
+            route.continue_()
+
+    def start_save(self) -> None:
+        """Edit the overview title and start the request without releasing its response."""
+        self.page.locator("#id_title").fill("Saved after waiting")
+        self.page.get_by_role("button", name="Save", exact=True).click()
+
+    def repeat_submit(self) -> None:
+        """Attempt a native form submission while the first save remains in flight."""
+        self.page.locator("#object-crud-container-save-button").evaluate(
+            "button => button.form.requestSubmit()"
+        )
+
+    def assert_save_pending(self) -> None:
+        """Check the disabled, animated Save control and single outstanding request."""
+        button = self.page.locator("#object-crud-container-save-button")
+        expect(button).to_be_disabled()
+        expect(button).to_have_attribute("aria-busy", "true")
+        expect(button.locator(".fa-spinner.fa-spin")).to_be_visible()
+        self.assertEqual(len(self.pending_save_routes), 1)
+
+    def complete_save(self) -> None:
+        """Release the intercepted POST to Django and await its real success response."""
+        with self.expect_response_for(self.save_url(), method="POST") as response:
+            self.pending_save_routes.pop(0).continue_()
+        self.assertEqual(response.value.status, 200)
+
+    def fail_save(self) -> None:
+        """Return HTTP 500 without changing a record or depending on a real server fault."""
+        with self.expect_response_for(self.save_url(), method="POST") as response:
+            self.pending_save_routes.pop(0).fulfill(
+                status=500,
+                content_type="text/html",
+                body="<h1>Simulated server error</h1>",
+            )
+        self.assertEqual(response.value.status, 500)
+
+    def assert_save_failed(self) -> None:
+        """Validate one error toast, preserved edits, restored controls and unchanged data."""
+        button = self.page.locator("#object-crud-container-save-button")
+        expect(button).to_be_enabled()
+        expect(button.locator(".fa-spinner")).to_have_count(0)
+        expect(self.page.locator("#id_title")).to_have_value("Saved after waiting")
+        toast = self.page.locator(".message-container.alert-danger").filter(
+            has_text="Unable to save changes. Please try again."
+        )
+        expect(toast).to_have_count(1)
+        expect(toast).to_be_visible()
+        self.save_todo.refresh_from_db()
+        self.assertEqual(self.save_todo.title, "Before save")
+        self.assertEqual(self.save_request_count, 1)
+
+    def assert_save_succeeded(self) -> None:
+        """Validate persistence, settled controls and absence of a queued duplicate POST."""
+        expect(self.page.locator("#id_title")).to_have_value("Saved after waiting")
+        expect(self.page.locator("#object-crud-container-save-button")).to_be_enabled()
+        expect(self.page.locator("#object-crud-container-save-button .fa-spinner")).to_have_count(0)
+        self.save_todo.refresh_from_db()
+        self.assertEqual(self.save_todo.title, "Saved after waiting")
+        self.assertEqual(self.pending_save_routes, [])

@@ -8,13 +8,15 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal, Optional, Type
+from typing import TYPE_CHECKING, Any, Literal
 
 from django import forms
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AnonymousUser
 from django.db.models import Model, QuerySet
 from django.http import HttpRequest
+from django.utils.functional import Promise
+from django.utils.translation import gettext_lazy as _
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -55,13 +57,13 @@ class BehaviorContext:
 
     values: Mapping[str, Any]
     listener_field: str  # Trigger field; action sources are configured separately.
-    model:Optional[Type[Model]] = None
+    model: type[Model] | None = None
     target_field: str = ""  # Empty for actions without an explicit target.
     resolve_related_values: Callable[
         [ApplicationField, ApplicationField, tuple[Any, ...]], Mapping[str, Any]
     ] | None = None
-    
-    
+
+
     @property
     def listener_value(self) -> Any:
         """Return the triggering field's current draft value."""
@@ -134,13 +136,16 @@ def all_target_fields(
     return fields
 
 
+DEFAULT_ACTION_GROUP = _("Default")
+
+
 @dataclass(frozen=True, kw_only=True)
 class BehaviorActionDefinition:
     """Describe one request-aware form behavior action implementation."""
 
     id: str
-    label: str
-    description: str
+    label: str | Promise
+    description: str | Promise
     requires_target_field: bool
     execute: Callable[[BehaviorContext, CleanedConfigData, BehaviorUser], BehaviorResult]
     config_form_factory: Callable[
@@ -153,7 +158,7 @@ class BehaviorActionDefinition:
         [QuerySet[ApplicationField], ApplicationField | None],
         QuerySet[ApplicationField],
     ] = all_target_fields
-    group: str = "Default"
+    group: str | Promise = DEFAULT_ACTION_GROUP
 
     def run(
         self,
@@ -172,7 +177,7 @@ class BehaviorActionDefinition:
         they do not grant authorization.
         """
         if self.requires_target_field and not context.target_field:
-            raise forms.ValidationError("Select a target field for this action.")
+            raise forms.ValidationError(_("Select a target field for this action."))
         from bloomerp.form_behaviors.utils import clean_action_config
 
         return self.execute(
@@ -226,7 +231,7 @@ class BehaviorConfig(BaseModel):
         """Reject duplicate identifiers within one listener configuration."""
         ids = [behavior.id for behavior in self.behaviors]
         if len(ids) != len(set(ids)):
-            raise ValueError("Behavior IDs must be unique within a field.")
+            raise ValueError(_("Behavior IDs must be unique within a field."))
         return self
 
     def to_storage(self) -> dict[str, Any]:
