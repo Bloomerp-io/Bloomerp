@@ -8,6 +8,7 @@ from django import forms
 from django.core.exceptions import FieldDoesNotExist, PermissionDenied
 from django.db.models import Model, QuerySet
 from django.http import HttpRequest
+from django.utils.translation import gettext_lazy as _
 
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.form_behaviors.definition import (
@@ -32,7 +33,7 @@ def collection_rows(value: Any) -> list[dict[str, Any]]:
     if value is None:
         return []
     if not isinstance(value, list) or any(not isinstance(row, dict) for row in value):
-        raise forms.ValidationError("Expected a list of row dictionaries.")
+        raise forms.ValidationError(_("Expected a list of row dictionaries."))
     return deepcopy(value)
 
 
@@ -75,7 +76,7 @@ def config_form_factory(
 ) -> type[forms.Form]:
     """Return a form class whose choices depend on its current initial configuration."""
     if target is None or target.get_related_model() is None:
-        raise forms.ValidationError("Select a collection target first.")
+        raise forms.ValidationError(_("Select a collection target first."))
     columns = value_columns(target.get_related_model()).exclude(
         field=target._get_model_field().field.name,
     )
@@ -85,14 +86,16 @@ def config_form_factory(
 
         refresh_fields = ("from_column", "to_column")
 
-        from_column = forms.ModelChoiceField(queryset=columns, label="From column")
-        to_column = forms.ModelChoiceField(queryset=columns, label="To column")
+        from_column = forms.ModelChoiceField(queryset=columns, label=_("From column"))
+        to_column = forms.ModelChoiceField(queryset=columns, label=_("To column"))
         accessor = forms.ModelChoiceField(
+            label=_('Accessor'),
             queryset=ApplicationField.objects.none(),
             required=False,
-            help_text="Optional field on the selected related record, for example sales_price.",
+            help_text=_("Optional field on the selected related record, for example sales_price."),
         )
         write_policy = WritePolicyField(
+            label=_('Write policy'),
             allowed=("always", "if_empty_or_zero"),
             default="always",
         )
@@ -146,7 +149,7 @@ def config_form_factory(
                 ).exists():
                     self.add_error(
                         "accessor",
-                        "Select a related field compatible with the target column.",
+                        _("Select a related field compatible with the target column."),
                     )
             return cleaned
 
@@ -171,7 +174,7 @@ def resolve_related_values(
     model = source.get_related_model()
     if model is None or accessor.get_model() is not model:
         raise forms.ValidationError(
-            "Accessor must belong to the source relation's model."
+            _("Accessor must belong to the source relation's model.")
         )
     manager = UserPolicyManager(user)
     if not manager.has_global_permission(model, "view"):
@@ -182,10 +185,10 @@ def resolve_related_values(
     if {str(record.pk) for record in records} != {
         str(identity) for identity in identities
     }:
-        raise PermissionDenied("A related source record is unavailable.")
+        raise PermissionDenied(_("A related source record is unavailable."))
     model_field = model._meta.get_field(accessor.field)
     if not model_field.concrete or model_field.many_to_many:
-        raise forms.ValidationError("Accessor must expose a single stored value.")
+        raise forms.ValidationError(_("Accessor must expose a single stored value."))
     values: dict[str, Any] = {}
     for record in records:
         if (
@@ -193,7 +196,7 @@ def resolve_related_values(
             .filter(pk=accessor.pk)
             .exists()
         ):
-            raise PermissionDenied("The related source field is unavailable.")
+            raise PermissionDenied(_("The related source field is unavailable."))
         values[str(record.pk)] = getattr(record, model_field.attname)
     return values
 
@@ -232,7 +235,7 @@ def set_o2m_value(
                 )
             except PermissionDenied:
                 return permission_denied_result(
-                    "you cannot read the configured related data"
+                    _("you cannot read the configured related data")
                 )
     changed = False
     for row in active:
@@ -243,7 +246,7 @@ def set_o2m_value(
             if value in (None, ""):
                 continue
             if str(value) not in related_values:
-                raise forms.ValidationError("A related source value is unavailable.")
+                raise forms.ValidationError(_("A related source value is unavailable."))
             value = related_values[str(value)]
 
         should_write = should_write_value(
@@ -264,8 +267,8 @@ def set_o2m_value(
 
 SET_O2M_VALUE = BehaviorActionDefinition(
     id="set_o2m_value",
-    label="Set related-row value",
-    description="Copy each active row's source column or related accessor into a compatible column.",
+    label=_("Set related-row value"),
+    description=_("Copy each active row's source column or related accessor into a compatible column."),
     requires_target_field=True,
     execute=set_o2m_value,
     config_form_factory=config_form_factory,

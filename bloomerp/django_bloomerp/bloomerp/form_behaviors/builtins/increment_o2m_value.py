@@ -3,6 +3,7 @@
 from django import forms
 from django.db.models import QuerySet
 from django.http import HttpRequest
+from django.utils.translation import gettext_lazy as _
 
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.form_behaviors.builtins.set_o2m_value import collection_rows
@@ -23,13 +24,14 @@ def increment_o2m_value_config_form_factory(
 ) -> type[forms.Form]:
     """Build the integer-column selector for the chosen collection listener."""
     if listener is None or listener.get_related_model() is None:
-        raise forms.ValidationError("Select a collection listener first.")
+        raise forms.ValidationError(_("Select a collection listener first."))
 
     return type(
         "IncrementO2MValueForm",
         (forms.Form,),
         {
             "field": forms.ModelChoiceField(
+                label=_('Field'),
                 queryset=ApplicationField.get_for_model(
                     listener.get_related_model()
                 ).filter(field_type__in=[
@@ -41,7 +43,7 @@ def increment_o2m_value_config_form_factory(
                     FIELD_TYPE_REGISTRY.SMALL_AUTO_FIELD.id,
                     FIELD_TYPE_REGISTRY.POSITIVE_SMALL_INTEGER_FIELD.id,
                     FIELD_TYPE_REGISTRY.BIG_INTEGER_FIELD.id,
-                    
+
                 ]
                 )
             )
@@ -95,8 +97,8 @@ def increment_o2m_listener_fields(
 
 INCREMENT_O2M_VALUE = BehaviorActionDefinition(
     id="increment_o2m_value",
-    label="Increment o2m value",
-    description="Fill blank integer cells in a collection with sequential values.",
+    label=_("Increment o2m value"),
+    description=_("Fill blank integer cells in a collection with sequential values."),
     config_form_factory=increment_o2m_value_config_form_factory,
     get_listener_fields=increment_o2m_listener_fields,
     execute=increment_o2m_value,

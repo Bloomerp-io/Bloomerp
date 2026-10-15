@@ -1,4 +1,4 @@
-{% load crispy_forms_tags %}
+{% load crispy_forms_tags i18n %}
 
 
 {% for entry in entries %}
@@ -6,4 +6,4 @@
     {{ entry.field | as_crispy_field }}
     {{ entry.field.errors }}
 </div>
-{% empty %}<p class="text-sm">No additional configuration.</p>{% endfor %}
+{% empty %}<p class="text-sm">{% translate "No additional configuration." %}</p>{% endfor %}

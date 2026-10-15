@@ -1,6 +1,7 @@
 """Set a user relation to the authenticated user evaluating the behavior."""
 
 from django.db.models import QuerySet
+from django.utils.translation import gettext_lazy as _
 
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.form_behaviors.definition import (
@@ -30,7 +31,7 @@ def set_user_field_to_current_user(
 ) -> BehaviorResult:
     """Assign the authenticated user's identifier to the selected target field."""
     if not getattr(user, "is_authenticated", False) or user.pk is None:
-        return permission_denied_result("an authenticated user is required")
+        return permission_denied_result(_("an authenticated user is required"))
     if context.target_value == user.pk:
         return BehaviorResult()
     return BehaviorResult(
@@ -40,10 +41,10 @@ def set_user_field_to_current_user(
 
 SET_USER_FIELD_TO_CURRENT_USER = BehaviorActionDefinition(
     id="set_user_field_to_current_user",
-    label="Set user field to current user",
-    description="Set the selected user field to the authenticated user evaluating the form.",
+    label=_("Set user field to current user"),
+    description=_("Set the selected user field to the authenticated user evaluating the form."),
     get_target_fields=user_field_targets,
     requires_target_field=True,
     execute=set_user_field_to_current_user,
-    group="Field values",
+    group=_("Field values"),
 )

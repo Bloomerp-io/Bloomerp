@@ -4,6 +4,7 @@ from typing import Literal, cast
 
 from django import forms
 from django.http import HttpRequest
+from django.utils.translation import gettext_lazy as _
 
 from bloomerp.form_behaviors.definition import (
     BehaviorActionDefinition,
@@ -22,7 +23,8 @@ class SetFieldInteractionForm(forms.Form):
     """Choose whether the target field accepts interaction."""
 
     interaction = forms.ChoiceField(
-        choices=(("enabled", "Enabled"), ("disabled", "Disabled")),
+        label=_('Interaction'),
+        choices=(("enabled", _("Enabled")), ("disabled", _("Disabled"))),
     )
 
 
@@ -54,10 +56,10 @@ def set_field_interaction(
 
 SET_FIELD_INTERACTION = BehaviorActionDefinition(
     id="set_field_interaction",
-    label="Set field interaction",
-    description="Enable or disable the target field without changing its value or visibility.",
+    label=_("Set field interaction"),
+    description=_("Enable or disable the target field without changing its value or visibility."),
     requires_target_field=True,
     execute=set_field_interaction,
     config_form_factory=set_field_interaction_config_form_factory,
-    group="Field state",
+    group=_("Field state"),
 )

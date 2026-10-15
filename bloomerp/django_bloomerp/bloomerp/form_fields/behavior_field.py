@@ -1,7 +1,9 @@
+
 from typing import Any
 
 from django import forms
 from django.http import HttpRequest
+from django.utils.translation import gettext_lazy as _
 from pydantic import ValidationError as PydanticValidationError
 
 from bloomerp.form_behaviors.definition import BehaviorConfig
@@ -20,13 +22,13 @@ class BehaviorField(forms.JSONField):
         if cleaned in self.empty_values:
             return None
         if not isinstance(cleaned, dict):
-            raise forms.ValidationError("Behaviors must be a structured object.")
+            raise forms.ValidationError(_("Behaviors must be a structured object."))
 
         try:
             config = BehaviorConfig.model_validate(cleaned)
         except PydanticValidationError as exc:
             raise forms.ValidationError(
-                f"Invalid behavior configuration: {exc}",
+                _('Invalid behavior configuration: %(exc)s') % {'exc': exc},
             ) from exc
 
         if not config.behaviors:
@@ -39,7 +41,7 @@ class BehaviorField(forms.JSONField):
 
         listener = ApplicationField.objects.filter(pk=self.widget.source_field.get("id")).first()
         if listener is None:
-            raise forms.ValidationError("Behavior listener is unavailable.")
+            raise forms.ValidationError(_("Behavior listener is unavailable."))
         available = ApplicationField.objects.filter(
             content_type=listener.content_type,
             pk__in=[item["id"] for item in self.widget.field_catalog],
@@ -48,19 +50,19 @@ class BehaviorField(forms.JSONField):
             for group in behavior.conditions:
                 for condition in group.conditions:
                     if not available.filter(field=condition.field_path).exists():
-                        raise forms.ValidationError("Condition field is not in this layout.")
-                    _, _, lookup, _ = resolve_condition(condition, model=listener.get_model())
+                        raise forms.ValidationError(_("Condition field is not in this layout."))
+                    _resolved_field, _target, lookup, _expected = resolve_condition(condition, model=listener.get_model())
                     if lookup.get_python_evaluator() is None:
-                        raise forms.ValidationError("This condition cannot evaluate draft values.")
+                        raise forms.ValidationError(_("This condition cannot evaluate draft values."))
             for configured in behavior.actions:
                 action = ACTION_REGISTRY.get(configured.action)
                 if action is None or not action.get_listener_fields(available).filter(pk=listener.pk).exists():
-                    raise forms.ValidationError(f"Unavailable action: {configured.action}.")
+                    raise forms.ValidationError(_('Unavailable action: %(action)s.') % {'action': configured.action})
                 target = None
                 if configured.target_field:
                     target = action.get_target_fields(available, listener).filter(field=configured.target_field).first()
                     if target is None:
-                        raise forms.ValidationError("Select an eligible target field.")
+                        raise forms.ValidationError(_("Select an eligible target field."))
                 target_layout_config = None
                 if target is not None:
                     for item in self.widget.field_catalog:

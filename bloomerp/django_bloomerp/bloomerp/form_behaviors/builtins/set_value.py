@@ -1,8 +1,10 @@
+
 from copy import deepcopy
 from typing import Any
 
 from django import forms
 from django.http import HttpRequest
+from django.utils.translation import gettext_lazy as _
 
 from bloomerp.form_behaviors.definition import (
     BehaviorActionDefinition,
@@ -20,16 +22,16 @@ from bloomerp.models.application_field import ApplicationField
 def _set_value_form_field(target: ApplicationField | None) -> forms.Field:
     """Build an optional native value field or reject a non-editable target."""
     if target is None:
-        raise forms.ValidationError("Select a target field first.")
+        raise forms.ValidationError(_("Select a target field first."))
 
     value_field = target.get_form_field()
     if value_field is None:
-        raise forms.ValidationError("The selected target field cannot accept a value.")
+        raise forms.ValidationError(_("The selected target field cannot accept a value."))
     if isinstance(value_field, OneToManyField):
         return forms.JSONField(
             required=False,
             label=value_field.label,
-            help_text="Supply the complete collection row array.",
+            help_text=_("Supply the complete collection row array."),
         )
     value_field.required = False
 
@@ -47,7 +49,7 @@ def _clean_set_value_form(form: forms.Form) -> dict[str, Any]:
         and isinstance(raw_value, (dict, list, tuple, set))
     ):
         raise forms.ValidationError(
-            "The selected target field requires a scalar value."
+            _("The selected target field requires a scalar value.")
         )
     return cleaned_data
 
@@ -83,8 +85,8 @@ def set_value_config_form_factory(
 
 SET_VALUE = BehaviorActionDefinition(
     id="set_value",
-    label="Set value",
-    description="Replace the target field value, including with an empty value.",
+    label=_("Set value"),
+    description=_("Replace the target field value, including with an empty value."),
     requires_target_field=True,
     execute=set_value,
     config_form_factory=set_value_config_form_factory,

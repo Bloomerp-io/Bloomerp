@@ -46,7 +46,7 @@ class BehaviorFilterApi extends FilterApi {
     }
     /** Return only top-level fields supported by the behavior evaluator. */
     override async fields(): Promise<FieldGroup[]> {
-        return [{ name: 'Form fields', fields: this.catalog }];
+        return [{ name: _('Form fields'), fields: this.catalog }];
     }
     /** Return the selected field's Python-evaluable operators. */
     override async lookups(path: string): Promise<LookupDefinition[]> {
@@ -73,12 +73,12 @@ class ActionEditor {
         private host: HTMLElement, private definitions: ActionDefinition[], initial: Action,
         remove: () => void, moveUp: () => void, moveDown: () => void,
     ) {
-        this.action.setAttribute('aria-label', 'Action');
-        this.target.setAttribute('aria-label', 'Target field');
-        this.action.append(new Option('Select action', ''));
+        this.action.setAttribute('aria-label', _('Action'));
+        this.target.setAttribute('aria-label', _('Target field'));
+        this.action.append(new Option(_('Select action'), ''));
         const groups = new Map<string, HTMLOptGroupElement>();
         definitions.forEach((definition: ActionDefinition): void => {
-            const groupName = definition.group || 'Default';
+            const groupName = definition.group || _('Default');
             let group = groups.get(groupName);
             if (!group) {
                 group = document.createElement('optgroup');
@@ -89,7 +89,7 @@ class ActionEditor {
             group.append(new Option(definition.label, definition.id));
         });
         if (initial.action && !definitions.some(definition => definition.id === initial.action)) {
-            this.action.append(new Option(`Unavailable action: ${initial.action}`, initial.action));
+            this.action.append(new Option(_('Unavailable action: {action}').replace('{action}', initial.action), initial.action));
         }
         this.action.value = initial.action;
         this.toolbar.append(
@@ -110,11 +110,11 @@ class ActionEditor {
     /** Rebuild eligible targets and discard configuration only after a selection change. */
     private selectAction(target: string | null, config: Record<string, unknown>): void {
         const definition = this.definitions.find(item => item.id === this.action.value);
-        this.target.replaceChildren(new Option('Select target field', ''));
+        this.target.replaceChildren(new Option(_('Select target field'), ''));
         definition?.targets.forEach(field => this.target.append(new Option(field.label, field.name)));
         this.target.hidden = !definition?.requires_target_field;
         if (target && !definition?.targets.some(field => field.name === target)) {
-            this.target.append(new Option(`Unavailable field: ${target}`, target));
+            this.target.append(new Option(_('Unavailable field: {field}').replace('{field}', target), target));
         }
         this.target.value = target ?? '';
         void this.load(config);
@@ -132,10 +132,10 @@ class ActionEditor {
         this.body.classList.remove('text-sm');
         if (!definition || (definition.requires_target_field && !this.target.value)) {
             this.body.classList.add('text-sm');
-            this.body.textContent = 'Select an action and its required target to configure it.';
+            this.body.textContent = _('Select an action and its required target to configure it.');
             return;
         }
-        this.body.textContent = 'Loading configuration…';
+        this.body.textContent = _('Loading configuration…');
         try {
             const url = new URL(this.host.dataset.actionUrl!, location.href);
             const scope: Record<string, string> = JSON.parse(this.host.dataset.layoutContext ?? '{}');
@@ -148,7 +148,7 @@ class ActionEditor {
             const response = await fetch(url, { signal: this.controller.signal, credentials: 'same-origin' });
             if (!response.ok) {
                 const payload = await response.json().catch(() => null);
-                throw new Error(payload?.error ?? 'Could not load action configuration.');
+                throw new Error(payload?.error ?? _('Could not load action configuration.'));
             }
             const html = await response.text();
             if (revision !== this.revision) return;
@@ -159,7 +159,7 @@ class ActionEditor {
         } catch (error) {
             if (revision === this.revision && (error as Error).name !== 'AbortError') {
                 this.body.replaceChildren(element('p', 'text-danger-dark', (error as Error).message),
-                    button('Retry', (): void => { void this.load(config); }));
+                    button(_('Retry'), (): void => { void this.load(config); }));
             }
         }
     }
@@ -186,7 +186,7 @@ class ActionEditor {
                 }
             } catch (error: unknown) {
                 this.body.append(element('p', 'text-danger-dark',
-                    error instanceof Error ? error.message : 'Could not read configuration.'));
+                    error instanceof Error ? error.message : _('Could not read configuration.')));
             }
         });
     };
@@ -204,7 +204,7 @@ class ActionEditor {
 
     /** Return the completed action only after its latest configuration has loaded. */
     value(): Action {
-        if (!this.ready) throw new Error('Complete every action and wait for its configuration to load.');
+        if (!this.ready) throw new Error(_('Complete every action and wait for its configuration to load.'));
         return { action: this.action.value, target_field: this.target.hidden ? null : this.target.value, config: this.readConfig(true) };
     }
 
@@ -242,10 +242,10 @@ class BehaviorEditor {
         this.name.setAttribute('aria-label', _('Behavior name'));
         this.enabled.type = 'checkbox';
         this.enabled.checked = initial.enabled;
-        const enabledLabel = element('label', 'flex h-10 shrink-0 items-center gap-2 border-l border-gray-200 px-3', 'Enabled');
+        const enabledLabel = element('label', 'flex h-10 shrink-0 items-center gap-2 border-l border-gray-200 px-3', _('Enabled'));
         enabledLabel.prepend(this.enabled);
-        this.event.setAttribute('aria-label', 'Run behavior');
-        this.event.append(new Option('On change', 'change'), new Option('On initial load', 'initial'), new Option('Initial load and change', 'both'));
+        this.event.setAttribute('aria-label', _('Run behavior'));
+        this.event.append(new Option(_('On change'), 'change'), new Option(_('On initial load'), 'initial'), new Option(_('Initial load and change'), 'both'));
         this.event.value = initial.events.length === 2 ? 'both' : initial.events[0];
         Object.assign(this.conditionRoot.dataset, {
             scope: 'model', scopeId: host.dataset.contentTypeId ?? '',
@@ -254,9 +254,9 @@ class BehaviorEditor {
         });
         this.filterEditor = new FilterContainer(this.conditionRoot, this.api);
         this.filterEditor.initialize();
-        const removeControl = iconButton('Remove behavior', 'fa-trash', remove);
+        const removeControl = iconButton(_('Remove behavior'), 'fa-trash', remove);
         removeControl.dataset.removeBehavior = '';
-        this.toggle = iconButton('Show behavior', 'fa-chevron-down', (): void => this.setCollapsed(!this.collapsed));
+        this.toggle = iconButton(_('Show behavior'), 'fa-chevron-down', (): void => this.setCollapsed(!this.collapsed));
         this.header.append(this.name, enabledLabel, this.event, removeControl, this.toggle);
         const conditionsPanel = element('section', 'min-w-0');
         const conditionsHeader = element('div', 'flex h-12 items-center border-b border-gray-200 px-3');
@@ -305,7 +305,7 @@ class BehaviorEditor {
         this.collapsed = collapsed;
         this.content.hidden = collapsed;
         this.root.dataset.collapsed = String(collapsed);
-        const label = collapsed ? 'Show behavior' : 'Hide behavior';
+        const label = collapsed ? _('Show behavior') : _('Hide behavior');
         this.toggle?.setAttribute('aria-label', label);
         if (this.toggle) this.toggle.title = label;
         const glyph = this.toggle?.querySelector('i');
@@ -319,7 +319,7 @@ class BehaviorEditor {
 
     /** Serialize complete controls into the Pydantic-compatible behavior shape. */
     value(): Behavior {
-        if (!this.actions.length) throw new Error('Each behavior needs at least one action.');
+        if (!this.actions.length) throw new Error(_('Each behavior needs at least one action.'));
         return {
             id: this.initial.id, name: this.name.value, enabled: this.enabled.checked,
             events: this.event.value === 'both' ? ['initial', 'change'] : [this.event.value],
@@ -356,7 +356,7 @@ export default class BehaviorBuilder extends BaseComponent {
             if (typeof candidate !== 'object' || Array.isArray(candidate)
                 || !('version' in candidate) || candidate.version !== 1
                 || !('behaviors' in candidate) || !Array.isArray(candidate.behaviors)) {
-                throw new Error('Invalid behavior configuration: expected version 1 with a behaviors list.');
+                throw new Error(_('Invalid behavior configuration: expected version 1 with a behaviors list.'));
             }
             const config = candidate as Config;
             const definitions: ActionDefinition[] = JSON.parse(this.element.dataset.actions ?? '[]');
@@ -375,7 +375,7 @@ export default class BehaviorBuilder extends BaseComponent {
         } catch (error) { this.showError((error as Error).message); }
         this.element.closest('form')?.addEventListener('submit', (event: SubmitEvent): void => {
             try {
-                if (!this.valid) throw new Error('The saved behavior configuration cannot be edited in this format.');
+                if (!this.valid) throw new Error(_('The saved behavior configuration cannot be edited in this format.'));
                 const config: Config = { version: 1, behaviors: this.editors.map(editor => editor.value()) };
                 if (this.input) this.input.value = JSON.stringify(config);
                 this.showError('');
@@ -396,8 +396,8 @@ export default class BehaviorBuilder extends BaseComponent {
             this.refreshBehaviorDividers();
         });
         editor.addControls(
-            iconButton('Move behavior up', 'fa-arrow-up', (): void => this.moveBehavior(editor, -1)),
-            iconButton('Move behavior down', 'fa-arrow-down', (): void => this.moveBehavior(editor, 1)),
+            iconButton(_('Move behavior up'), 'fa-arrow-up', (): void => this.moveBehavior(editor, -1)),
+            iconButton(_('Move behavior down'), 'fa-arrow-down', (): void => this.moveBehavior(editor, 1)),
         );
         this.editors.push(editor);
         this.element.querySelector('[data-behavior-list]')?.append(editor.root);

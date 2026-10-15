@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
+from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_GET
 
 from bloomerp.components.objects.details.field_display_options import (
@@ -32,13 +33,13 @@ def render_action_config_form(request: HttpRequest) -> HttpResponse:
     try:
         scope = _get_layout_config_target(request)
     except (ValidationError, ValueError, TypeError):
-        return JsonResponse({"error": "Invalid layout context."}, status=400)
+        return JsonResponse({"error": _("Invalid layout context.")}, status=400)
     if scope is None:
-        return JsonResponse({"error": "A layout context is required."}, status=400)
+        return JsonResponse({"error": _("A layout context is required.")}, status=400)
     listener_id = request.GET.get("listener_field_id", "")
     if not listener_id.isdigit():
         return JsonResponse(
-            {"error": "A valid listener field is required."}, status=400
+            {"error": _("A valid listener field is required.")}, status=400
         )
     listener = get_object_or_404(
         ApplicationField,
@@ -49,7 +50,7 @@ def render_action_config_form(request: HttpRequest) -> HttpResponse:
         raise PermissionDenied
     action = ACTION_REGISTRY.get(request.GET.get("action_id", ""))
     if action is None:
-        raise Http404("Action does not exist.")
+        raise Http404(_("Action does not exist."))
     available = ApplicationField.objects.filter(content_type=scope.content_type)
     if not action.get_listener_fields(available).filter(pk=listener.pk).exists():
         raise PermissionDenied
@@ -64,10 +65,10 @@ def render_action_config_form(request: HttpRequest) -> HttpResponse:
     try:
         config = json.loads(request.GET.get("config", "{}"))
         if not isinstance(config, dict):
-            raise ValidationError("Configuration must be an object.")
+            raise ValidationError(_("Configuration must be an object."))
         prefix = request.GET.get("prefix", "")
         if not re.fullmatch(r"[a-zA-Z0-9_-]{1,150}", prefix):
-            raise ValidationError("A valid editor prefix is required.")
+            raise ValidationError(_("A valid editor prefix is required."))
         form = action_config_form(
             action,
             listener,

@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Annotated, Literal
 from uuid import uuid4
 
+from django.utils.translation import gettext_lazy as _
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
@@ -142,7 +143,7 @@ class CopyValueFromOneToManyAction(TargetFieldAction):
     def validate_aggregation_column(self) -> "CopyValueFromOneToManyAction":
         """Require a column for aggregations other than row count."""
         if self.aggregation != "count" and not self.column_name:
-            raise ValueError("This aggregation requires a one-to-many column.")
+            raise ValueError(_("This aggregation requires a one-to-many column."))
         return self
 
 
@@ -161,7 +162,7 @@ class PopulateRowsAction(TargetFieldAction):
             self.resolver == BehaviorResolver.COPY_RELATED_ROWS
             and not self.source_field
         ):
-            raise ValueError("Copy-related-rows actions require a source field.")
+            raise ValueError(_("Copy-related-rows actions require a source field."))
         return self
 
 

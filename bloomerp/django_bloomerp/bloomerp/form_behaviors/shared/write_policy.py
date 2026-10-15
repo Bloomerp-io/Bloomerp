@@ -35,12 +35,12 @@ class WritePolicyField(forms.TypedChoiceField):
         """Build strict choices and map omitted legacy values to the action default."""
         allowed_ids = tuple(allowed)
         if not allowed_ids:
-            raise ValueError("WritePolicyField requires at least one allowed policy.")
+            raise ValueError(_("WritePolicyField requires at least one allowed policy."))
         if any(policy not in WRITE_POLICY_LABELS for policy in allowed_ids):
-            raise ValueError("WritePolicyField received an unknown policy ID.")
+            raise ValueError(_("WritePolicyField received an unknown policy ID."))
         if default not in allowed_ids:
             raise ValueError(
-                "WritePolicyField default must be in its allowed policies."
+                _("WritePolicyField default must be in its allowed policies.")
             )
         kwargs.setdefault(
             "choices",
@@ -62,7 +62,7 @@ def write_value_is_empty(
         return value is None or value == ""
     form_field = field.get_form_field()
     if form_field is None:
-        raise forms.ValidationError(f"Field '{field.field}' is not editable.")
+        raise forms.ValidationError(_("Field '%(field)s' is not editable.") % {'field': field.field})
     return value in form_field.empty_values
 
 
@@ -92,4 +92,4 @@ def should_write_value(
         return False
     if write_policy == "if_empty_or_zero":
         return write_value_is_zero(value)
-    raise forms.ValidationError("Unknown scalar write policy.")
+    raise forms.ValidationError(_("Unknown scalar write policy."))

@@ -4,6 +4,7 @@ from typing import Literal, cast
 
 from django import forms
 from django.http import HttpRequest
+from django.utils.translation import gettext_lazy as _
 
 from bloomerp.form_behaviors.definition import (
     BehaviorActionDefinition,
@@ -22,7 +23,8 @@ class SetFieldVisibilityForm(forms.Form):
     """Choose whether the target field is visible or hidden."""
 
     visibility = forms.ChoiceField(
-        choices=(("visible", "Visible"), ("hidden", "Hidden")),
+        label=_('Visibility'),
+        choices=(("visible", _("Visible")), ("hidden", _("Hidden"))),
     )
 
 
@@ -54,10 +56,10 @@ def set_field_visibility(
 
 SET_FIELD_VISIBILITY = BehaviorActionDefinition(
     id="set_field_visibility",
-    label="Set field visibility",
-    description="Show or hide the target field without changing its value or interaction state.",
+    label=_("Set field visibility"),
+    description=_("Show or hide the target field without changing its value or interaction state."),
     requires_target_field=True,
     execute=set_field_visibility,
     config_form_factory=set_field_visibility_config_form_factory,
-    group="Field state",
+    group=_("Field state"),
 )
