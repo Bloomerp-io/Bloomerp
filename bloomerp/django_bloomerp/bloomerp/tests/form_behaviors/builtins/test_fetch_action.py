@@ -324,7 +324,7 @@ class TestFetchAction(BloomerpBehaviorActionTestCase):
     def test_record_executor_updates_draft_without_saving(self) -> None:
         """
         Use case: A saved layout fetches a matching record into a relation field.
-        Expected result: The executor returns a valid identity without saving a draft.
+        Expected result: Changed selections update the draft; the same UUID emits no update.
         """
         # 1. Save a layout with an on-change record-selection action.
         owner = UserObjectLayoutPreference.objects.create(
@@ -354,6 +354,12 @@ class TestFetchAction(BloomerpBehaviorActionTestCase):
         # 3. Verify relation validation succeeded without persisting an invoice.
         self.assertEqual(result.values[0].value, str(self.work_order.pk))
         self.assertEqual(self.invoice_model.objects.count(), 0)
+        # 4. Reevaluate a form that already selects the matching UUID relation.
+        unchanged = BehaviorExecutor(owner, self.admin_user).evaluate(
+            "name", {"name": "Selected", "work_order": str(self.work_order.pk)},
+        )
+        # 5. The executor's native UUID must compare equal to the fetched identity.
+        self.assertEqual(unchanged, BehaviorResult())
 
     def test_anonymous_record_lookup_returns_no_identity(self) -> None:
         """

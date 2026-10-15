@@ -631,9 +631,14 @@ def fetch(
         if use_record
         else _record_value(result[0], fields[0])
     )
+    current_value = (
+        serialize_form_value(context.target_value)
+        if use_record
+        else context.target_value
+    )
     return (
         BehaviorResult()
-        if context.target_value == value
+        if current_value == value
         else BehaviorResult(
             values=(FieldValueUpdate(field=context.target_field, value=value),)
         )
