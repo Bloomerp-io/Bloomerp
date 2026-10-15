@@ -23,6 +23,7 @@ from bloomerp.communication.builtins.instant_messaging.registry import (
 )
 from bloomerp.models.communication.conferencing import (
     ConferenceAttendance,
+    ConferenceRoom,
     ConferenceSession,
     ConferenceWebhookReceipt,
 )
@@ -34,6 +35,35 @@ from .fixtures import CallFixtures
 
 class TestConferenceController(CallFixtures, BaseBloomerpTestCaseWithModels):
     """Verify retries, event ordering, admission and provider-driven projections."""
+
+    def test_solo_meeting_join_and_webhook(self) -> None:
+        """Join a room without a conversation and persist its provider attendance."""
+        self.prepare_call()
+        room = ConferenceRoom.objects.create(
+            title="Solo meeting", created_by=self.normal_user
+        )
+        controller = ConferenceController(self.normal_user)
+        self.session = controller.start(
+            room, [self.normal_user], "video", "solo-meeting"
+        )
+        credentials = controller.join(self.session.pk)
+        self.assertEqual(credentials["driver"], "livekit")
+        self.assertEqual(credentials["can_end"], "true")
+        reconcile_event(
+            self.connection_event(
+                "EV_solo_join", "participant_joined", credentials["identity"]
+            )
+        )
+        self.session.refresh_from_db()
+        self.assertEqual(self.session.status, "active")
+        self.assertEqual(
+            ConferenceAttendance.objects.get().participant.user_id,
+            self.normal_user.pk,
+        )
+        self.assertEqual(
+            ConferenceWebhookReceipt.objects.get(event_id="EV_solo_join").status,
+            "processed",
+        )
 
     def test_projection_failure_does_not_fail_start_response(self) -> None:
         """A failed post-commit projection must not turn a durable call into HTTP 500."""

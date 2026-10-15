@@ -220,7 +220,9 @@ class ConferenceController:
         with transaction.atomic():
             session = (
                 ConferenceSession.objects.select_for_update()
-                .select_related("room__conversation")
+                # Fetch the nullable conversation separately: PostgreSQL cannot
+                # lock the nullable side of its outer join.
+                .select_related("room")
                 .get(pk=session_id)
             )
             participant = require_participant(self.user, session)
