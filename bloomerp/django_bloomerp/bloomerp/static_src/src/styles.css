@@ -1033,6 +1033,29 @@
     @apply rounded-none border-0 bg-transparent p-0 shadow-none outline-none ring-0;
   }
 
+  [data-tile-visualization] > div,
+  [data-tile-visualization] .js-plotly-plot {
+    height: 100% !important;
+  }
+
+  .workspace-tile--expanded {
+    @apply h-full min-h-0 border-0 p-0;
+  }
+
+  .workspace-tile--expanded > [data-layout-item-header],
+  .workspace-tile--expanded > [data-layout-colspan-resize-handle] {
+    @apply hidden;
+  }
+
+  .workspace-tile--expanded > [data-layout-item-body] {
+    @apply flex-1 min-h-0 overflow-auto;
+  }
+
+  .workspace-tile--expanded > [data-layout-item-body] > [data-tile-visualization],
+  .workspace-tile--expanded [bloomerp-component="workspace-tile-canvas"] {
+    height: 100% !important;
+  }
+
   .layout-item--bordered {
     @apply rounded-xl border border-slate-200 bg-white/95 p-3;
   }

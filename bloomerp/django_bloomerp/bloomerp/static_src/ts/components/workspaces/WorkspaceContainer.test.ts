@@ -23,10 +23,12 @@ const bundle = await build({
             return `
                 import htmx from 'htmx.org';
                 import WorkspaceContainer from '${root}/ts/components/workspaces/WorkspaceContainer';
+                import { Modal } from '${root}/ts/components/Modal';
                 import WorkspaceTile from '${root}/ts/components/workspaces/WorkspaceTile';
                 import { registerComponent, setupComponentAutoInit } from '${root}/ts/components/BaseComponent';
                 registerComponent('workspace-container', WorkspaceContainer);
                 registerComponent('workspace-tile', WorkspaceTile);
+                registerComponent('modal', Modal);
                 export { htmx, setupComponentAutoInit };
             `;
         },
@@ -161,7 +163,7 @@ class WorkspaceFixture {
 
 /** Render the minimum production tile structure required by the layout component. */
 function tileMarkup(id: string, loaded: boolean = false): string {
-    return `<div bloomerp-component="workspace-tile" data-layout-item-id="${id}"><div data-layout-item-body>${loaded ? `Loaded ${id}` : 'Placeholder'}</div></div>`;
+    return `<div bloomerp-component="workspace-tile" data-layout-item-id="${id}"><div data-layout-item-header><span data-detail-label>Tile</span><button type="button" data-tile-expand>Expand tile</button></div><div data-layout-item-body>${loaded ? `Loaded ${id}` : 'Placeholder'}</div></div>`;
 }
 
 /** Drain bounded sequential promise continuations without changing response ordering. */
@@ -314,3 +316,86 @@ async function allResponsesSettled(): Promise<void> {
     } finally { fixture.close(); }
 }
 test('all current tiles render after every outstanding response has settled', allResponsesSettled);
+
+/** Exercise expansion using the real modal and HTMX lifecycle without new requests. */
+async function fullscreenTileLifecycle(): Promise<void> {
+    const fixture = new WorkspaceFixture();
+    try {
+        await fixture.ready();
+        await fixture.navigate('current');
+        await fixture.complete('current1');
+        await fixture.complete('current2');
+        const { document } = fixture.window;
+        const declaration = document.createElement('div');
+        declaration.id = 'bloomerp-general-use-modal';
+        document.body.append(declaration);
+        const tile = document.querySelector<HTMLElement>('[data-layout-item-id="current1"]')!;
+        const originalParent = tile.parentElement;
+        const body = tile.querySelector<HTMLElement>('[data-layout-item-body]')!;
+        const input = document.createElement('input');
+        input.value = 'Unsaved tile state';
+        body.append(input);
+        const expand = tile.querySelector<HTMLButtonElement>('[data-tile-expand]')!;
+        for (const closeWith of ['button', 'escape', 'history']) {
+            expand.click();
+            expand.click();
+            assert.equal(document.querySelectorAll('[data-modal-disposable]').length, 1);
+            const modal = tile.closest<HTMLElement>('[data-modal-disposable]')!;
+            assert(modal.querySelector('[data-modal-container]')?.classList.contains('h-full'));
+            const toggle = modal.querySelector<HTMLButtonElement>('[bloomerp-full-screen-modal]')!;
+            toggle.click();
+            assert(modal.querySelector('[data-modal-container]')?.classList.contains('max-w-4xl'));
+            toggle.click();
+            assert(modal.querySelector('[data-modal-container]')?.classList.contains('h-full'));
+            assert.equal(tile.querySelector('input'), input);
+            if (closeWith === 'button') modal.querySelector<HTMLButtonElement>('[bloomerp-close-modal]')!.click();
+            else if (closeWith === 'escape') document.dispatchEvent(new fixture.window.KeyboardEvent('keydown', { key: 'Escape' }));
+            else document.body.dispatchEvent(new fixture.window.CustomEvent('htmx:beforeHistorySave'));
+            await new Promise<void>((resolve: () => void): void => { fixture.window.setTimeout(resolve, 220); });
+            assert.equal(tile.parentElement, originalParent);
+            assert.equal(input.value, 'Unsaved tile state');
+            assert.equal(document.activeElement, expand);
+            assert.equal(document.querySelectorAll('[data-modal-disposable]').length, 0);
+            assert.equal(document.body.style.overflow, '');
+        }
+        assert.equal(fixture.sent.length, 2, 'Expansion must not fetch or duplicate the rendered tile');
+        expand.click();
+        await fixture.navigate('new');
+        assert.equal(document.querySelectorAll('[data-modal-disposable]').length, 0);
+        assert.equal(tile.isConnected, false);
+        await fixture.complete('new1');
+        await fixture.complete('new2');
+        fixture.assertLoaded('new');
+    } finally { fixture.close(); }
+}
+test('fullscreen tile preserves live state across close, Escape, history and workspace replacement', fullscreenTileLifecycle);
+
+/** Keep the live tile in owner bookkeeping when its own or a sibling response finishes. */
+async function fullscreenPendingTileResponse(): Promise<void> {
+    for (const pending of ['current1', 'current2']) {
+        const fixture = new WorkspaceFixture();
+        try {
+            await fixture.ready();
+            await fixture.navigate('current');
+            if (pending === 'current2') await fixture.complete('current1');
+            const { document } = fixture.window;
+            const declaration = document.createElement('div');
+            declaration.id = 'bloomerp-general-use-modal';
+            document.body.append(declaration);
+            document.querySelector<HTMLButtonElement>('[data-tile-expand]')!.click();
+            if (pending === 'current1') await fixture.complete('current1');
+            await fixture.complete('current2');
+            fixture.assertLoaded('current');
+            assert.equal(document.querySelectorAll('[data-modal-disposable]').length, 0);
+            assert.equal(document.body.style.overflow, '');
+            const workspace = document.querySelector('[data-workspace-id]') as Element & {
+                __bloomerp_component: { items: Array<{ getLayoutItemId(): string; setColspan(value: number): void }> };
+            };
+            const items = workspace.__bloomerp_component.items;
+            assert.deepEqual(Array.from(items, (item): string => item.getLayoutItemId()), ['current1', 'current2']);
+            items[0].setColspan(2);
+            assert.equal(workspace.querySelector<HTMLElement>('[data-layout-item-id="current1"]')!.dataset.colspan, '2');
+        } finally { fixture.close(); }
+    }
+}
+test('pending own and sibling tile responses preserve expanded tile bookkeeping', fullscreenPendingTileResponse);
