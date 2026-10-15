@@ -7,7 +7,7 @@ import { parseInitialFilters } from "@/components/filters/definition";
 import { Modal } from "../Modal";
 import type { ForeignFieldSelection } from "@/components/data_view_components/ForeignFieldDataViewContainer";
 import htmx from "htmx.org";
-import { attachObjectPreviewTooltip, hideObjectPreviewTooltip } from "@/utils/objectPreviewTooltip";
+import { attachObjectPreviewTooltip, hideObjectPreviewTooltip, isObjectPreviewTarget } from "@/utils/objectPreviewTooltip";
 import { BaseWidget, type BaseWidgetSerializableState } from "./BaseWidget";
 
 type ForeignFieldWidgetSerializableState = BaseWidgetSerializableState & {
@@ -353,8 +353,10 @@ export default class ForeignFieldWidget extends BaseWidget {
         }
     }
 
-    private handleOutsideClick(e: MouseEvent) {
+    /** Keep portalled previews interactive while preserving ordinary outside-click dismissal. */
+    private handleOutsideClick(e: MouseEvent): void {
         const target = e.target as Node;
+        if (isObjectPreviewTarget(target)) return;
         if (!this.element.contains(target) && !this.dropdown?.contains(target)) {
             this.hideDropdown();
             this.closeOverflowMenus();

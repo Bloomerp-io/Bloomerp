@@ -10,20 +10,23 @@ These DTOs do not depend on Django IM models.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
-from collections.abc import Callable, Iterable
-from typing import Any, Literal, Mapping, Protocol, Required, TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, Protocol, Required, TypedDict
 from uuid import UUID
 
 from django.http import HttpRequest, HttpResponse
 
 if TYPE_CHECKING:
     from bloomerp.models.base_bloomerp_model import BloomerpModel
-    from bloomerp.models.users.user import AbstractBloomerpUser
+    from bloomerp.models.communication.conferencing import ConferenceSession
     from bloomerp.models.communication.instant_messaging import (
-        IMConversation, IMIdentity, IMMessage,
+        IMConversation,
+        IMIdentity,
+        IMMessage,
     )
+    from bloomerp.models.users.user import AbstractBloomerpUser
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -285,7 +288,6 @@ class IMConversationActions(TypedDict, total=False):
     """Describe composer availability and optional calling controls for a conversation."""
 
     can_send: Required[bool]
-    can_call: bool
     business_number: str
 
 
@@ -347,6 +349,37 @@ class IMCreationAction:
 
 
 @dataclass(frozen=True)
+class IMCallCapabilities:
+    """Describe calls currently available to an actor in a conversation."""
+
+    audio: bool = False
+    video: bool = False
+    groups: bool = False
+    screen_share: bool = False
+    share_links: bool = False
+
+
+@dataclass(frozen=True)
+class IMCallingDefinition:
+    """Declare provider-owned call initiation, eligibility and availability hooks."""
+
+    capabilities_resolver: (
+        Callable[[AbstractBloomerpUser, IMConversation], IMCallCapabilities] | str
+    )
+    participants_resolver: (
+        Callable[[AbstractBloomerpUser, IMConversation], Iterable[AbstractBloomerpUser]]
+        | str
+    )
+    start_handler: (
+        Callable[[AbstractBloomerpUser, IMConversation, str, str], dict[str, str]]
+        | str
+    )
+    session_changed_handler: Callable[[ConferenceSession], None] | str = ""
+    browser_driver: str = ""
+    registrations_resolver: Callable[[AbstractBloomerpUser], list[dict[str, str]]] | str = ""
+
+
+@dataclass(frozen=True)
 class IMProviderDefinition:
     """Declare static provider branding, adapter type and setup requirements.
 
@@ -370,6 +403,7 @@ class IMProviderDefinition:
     actions_resolver: IMActionsResolver | str = ""
     identity_label_resolver: IMIdentityLabelResolver | str = ""
     timeline_sources: tuple[IMTimelineSource, ...] = ()
+    calling: IMCallingDefinition | None = None
     internal: bool = False
     transport_ready: bool = False
     config_schema: type[IMConnectionConfiguration] = IMConnectionConfiguration

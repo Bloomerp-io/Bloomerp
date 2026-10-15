@@ -1,12 +1,15 @@
 """Typed carrier contracts, separate from conversation and database persistence."""
 
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Mapping, ClassVar
+from typing import Any, ClassVar
+from uuid import UUID
+
 from django.http import HttpRequest
-from pydantic import BaseModel, ConfigDict, Field
 from django.utils.translation import gettext_lazy as _
+from pydantic import BaseModel, ConfigDict, Field
 
 
 @dataclass(frozen=True)
@@ -121,6 +124,10 @@ class BaseVoIPAdapter(ABC):
     def verify_request(self, request: HttpRequest, kind: str, **kwargs: Any) -> bool:
         """Reject incoming requests unless the carrier implementation authenticates them."""
         return False
+
+    def browser_call_reference(self, call_id: UUID) -> str:
+        """Return the opaque reservation reference expected by this provider's browser driver."""
+        return str(call_id)
 
     def browser_token(self, identity: str) -> str:
         """Issue short-lived credentials for one authorized browser identity."""

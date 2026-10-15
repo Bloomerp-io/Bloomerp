@@ -4,6 +4,7 @@ from typing import Literal, cast
 
 from django import forms
 from django.http import HttpRequest
+from django.utils.translation import gettext_lazy as _
 
 from bloomerp.form_behaviors.definition import (
     BehaviorActionDefinition,
@@ -20,8 +21,9 @@ class MessageConfigForm(forms.Form):
     """Validate message text and the supported presentation tones."""
 
     type = forms.ChoiceField(
+        label=_('Type'),
         choices=[
-            (tone, tone.title()) for tone in ("info", "warning", "danger", "success")
+            ("info", _("Info")), ("warning", _("Warning")), ("danger", _("Danger")), ("success", _("Success"))
         ],
         widget=forms.Select(
             attrs={
@@ -30,10 +32,11 @@ class MessageConfigForm(forms.Form):
         )
     )
     message = forms.CharField(
+        label=_('Message'),
         widget=forms.TextInput(
             attrs={
                 "class" : "input"
-            }            
+            }
         )
     )
 
@@ -67,8 +70,8 @@ def show_message(
 
 SHOW_MESSAGE = BehaviorActionDefinition(
     id="show_message",
-    label="Show message",
-    description="Show a message to the form user.",
+    label=_("Show message"),
+    description=_("Show a message to the form user."),
     requires_target_field=False,
     config_form_factory=message_config_form,
     execute=show_message,

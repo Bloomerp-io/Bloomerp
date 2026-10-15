@@ -13,31 +13,32 @@ class ObjectPreviewTooltipManager {
     private showTimer: number | null = null;
     private hideTimer: number | null = null;
     private activePreviewKey: string | null = null;
+    private activeAnchor: HTMLElement | null = null;
     private loadedPreviewKey: string | null = null;
     private requestToken = 0;
-    private hoveredAnchorKey: string | null = null;
+    private hoveredAnchor: HTMLElement | null = null;
     private isHoveringTooltip = false;
 
+    /** Attach one anchor and release only that anchor's hover ownership during cleanup. */
     public attach({ element, objectId, contentTypeId }: ObjectPreviewTooltipOptions): CleanupFn {
-        const previewKey = this.getPreviewKey(contentTypeId, objectId);
 
-        const onEnter = () => {
-            this.hoveredAnchorKey = previewKey;
+        const onEnter = (): void => {
+            this.hoveredAnchor = element;
             this.scheduleShow(element, objectId, contentTypeId);
         };
-        const onLeave = () => {
-            if (this.hoveredAnchorKey === previewKey) {
-                this.hoveredAnchorKey = null;
+        const onLeave = (): void => {
+            if (this.hoveredAnchor === element) {
+                this.hoveredAnchor = null;
             }
             this.scheduleHide();
         };
-        const onFocus = () => {
-            this.hoveredAnchorKey = previewKey;
+        const onFocus = (): void => {
+            this.hoveredAnchor = element;
             this.scheduleShow(element, objectId, contentTypeId);
         };
-        const onBlur = () => {
-            if (this.hoveredAnchorKey === previewKey) {
-                this.hoveredAnchorKey = null;
+        const onBlur = (): void => {
+            if (this.hoveredAnchor === element) {
+                this.hoveredAnchor = null;
             }
             this.scheduleHide();
         };
@@ -47,23 +48,31 @@ class ObjectPreviewTooltipManager {
         element.addEventListener("focus", onFocus);
         element.addEventListener("blur", onBlur);
 
-        return () => {
+        // Release only this anchor; another value may reference the same record.
+        return (): void => {
             element.removeEventListener("mouseenter", onEnter);
             element.removeEventListener("mouseleave", onLeave);
             element.removeEventListener("focus", onFocus);
             element.removeEventListener("blur", onBlur);
 
-            if (this.hoveredAnchorKey === previewKey) {
-                this.hoveredAnchorKey = null;
+            if (this.hoveredAnchor === element) {
+                this.hoveredAnchor = null;
                 this.scheduleHide();
             }
         };
     }
 
+    /** Identify interactions inside the body-mounted preview, including nested icons and links. */
+    public contains(target: Node): boolean {
+        return !!this.tooltipEl && !this.tooltipEl.classList.contains("hidden") && this.tooltipEl.contains(target);
+    }
+
+    /** Dismiss the active preview and cancel its pending hover timers. */
     public hide(): void {
         this.clearTimers();
         this.activePreviewKey = null;
-        this.hoveredAnchorKey = null;
+        this.activeAnchor = null;
+        this.hoveredAnchor = null;
         this.isHoveringTooltip = false;
         if (this.tooltipEl) {
             this.tooltipEl.classList.add("hidden");
@@ -81,22 +90,28 @@ class ObjectPreviewTooltipManager {
         return `${contentTypeId}:${objectId}`;
     }
 
+    /** Reuse a visible preview while positioning it at the currently hovered value. */
     private scheduleShow(anchor: HTMLElement, objectId: string, contentTypeId: string): void {
         const previewKey = this.getPreviewKey(contentTypeId, objectId);
         const tooltipVisible = !!this.tooltipEl && !this.tooltipEl.classList.contains("hidden");
         if (this.activePreviewKey === previewKey && (this.showTimer !== null || tooltipVisible)) {
+            this.activeAnchor = anchor;
+            if (tooltipVisible) this.positionTooltip(anchor);
             return;
         }
 
         this.clearTimers();
         this.activePreviewKey = previewKey;
-        this.showTimer = window.setTimeout(() => {
+        this.activeAnchor = anchor;
+        this.showTimer = window.setTimeout((): void => {
             this.showTimer = null;
-            this.show(anchor, objectId, contentTypeId);
+            if (this.activeAnchor) this.show(this.activeAnchor, objectId, contentTypeId);
         }, this.previewDelayMs);
     }
 
+    /** Load an attached anchor's preview while ignoring superseded or removed anchors. */
     private async show(anchor: HTMLElement, objectId: string, contentTypeId: string): Promise<void> {
+        if (!anchor.isConnected) return;
         if (this.hideTimer) {
             window.clearTimeout(this.hideTimer);
             this.hideTimer = null;
@@ -105,6 +120,7 @@ class ObjectPreviewTooltipManager {
         const previewKey = this.getPreviewKey(contentTypeId, objectId);
         const tooltip = this.ensureTooltip();
         this.activePreviewKey = previewKey;
+        this.activeAnchor = anchor;
 
         if (!tooltip.classList.contains("hidden") && this.loadedPreviewKey === previewKey) {
             this.positionTooltip(anchor);
@@ -129,7 +145,8 @@ class ObjectPreviewTooltipManager {
             }
 
             const html = await response.text();
-            if (requestToken !== this.requestToken || this.activePreviewKey !== previewKey) {
+            const activeAnchor = this.activeAnchor;
+            if (requestToken !== this.requestToken || this.activePreviewKey !== previewKey || !activeAnchor?.isConnected) {
                 return;
             }
 
@@ -137,20 +154,22 @@ class ObjectPreviewTooltipManager {
                 this.tooltipContentEl.innerHTML = html;
             }
             this.loadedPreviewKey = previewKey;
-            this.positionTooltip(anchor);
+            this.positionTooltip(activeAnchor);
         } catch (error) {
-            if (requestToken !== this.requestToken || this.activePreviewKey !== previewKey) {
+            const activeAnchor = this.activeAnchor;
+            if (requestToken !== this.requestToken || this.activePreviewKey !== previewKey || !activeAnchor?.isConnected) {
                 return;
             }
 
             if (this.tooltipContentEl) {
                 this.tooltipContentEl.innerHTML = '<div class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500 shadow-xl">Preview unavailable</div>';
             }
-            this.positionTooltip(anchor);
+            this.positionTooltip(activeAnchor);
             console.error("Object preview tooltip error", error);
         }
     }
 
+    /** Create the reusable hover panel and bind its preview-only interactions once. */
     private ensureTooltip(): HTMLDivElement {
         if (this.tooltipEl && this.tooltipContentEl) {
             return this.tooltipEl;
@@ -175,13 +194,40 @@ class ObjectPreviewTooltipManager {
             this.scheduleHide();
         });
 
+        tooltip.addEventListener("click", this.copyValue);
+
         document.body.appendChild(tooltip);
         this.tooltipEl = tooltip;
         this.tooltipContentEl = content;
         return tooltip;
     }
 
+    /** Copy only the rendered field value and report clipboard failures without closing the preview. */
+    private copyValue = async (event: MouseEvent): Promise<void> => {
+        if (!(event.target instanceof Element)) return;
+        const button = event.target.closest<HTMLButtonElement>("[data-preview-copy]");
+        if (!button || !this.tooltipEl?.contains(button)) return;
+        const field = button.closest<HTMLElement>("[data-preview-field]");
+        const value = field?.querySelector<HTMLElement>("[data-preview-value]");
+        const status = field?.querySelector<HTMLElement>("[data-preview-copy-status]");
+        if (!value || button.disabled) return;
+
+        event.preventDefault();
+        button.disabled = true;
+        if (status) status.textContent = "";
+        try {
+            await navigator.clipboard.writeText((value.innerText ?? value.textContent ?? "").trim());
+            if (status) status.textContent = "Copied";
+        } catch {
+            if (status) status.textContent = "Could not copy. Select and copy the value manually.";
+        } finally {
+            button.disabled = false;
+        }
+    };
+
+    /** Replace cached content with a spinner and invalidate the corresponding content key. */
     private setLoading(): void {
+        this.loadedPreviewKey = null;
         if (!this.tooltipContentEl) return;
         this.tooltipContentEl.innerHTML = `
             <div class="w-[28rem] max-w-[min(28rem,calc(100vw-2rem))] rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-xl">
@@ -218,6 +264,7 @@ class ObjectPreviewTooltipManager {
         this.tooltipEl.style.top = `${top}px`;
     }
 
+    /** Dismiss after the hover bridge unless an anchor or the preview still owns the pointer. */
     private scheduleHide(): void {
         if (this.showTimer) {
             window.clearTimeout(this.showTimer);
@@ -227,7 +274,7 @@ class ObjectPreviewTooltipManager {
             window.clearTimeout(this.hideTimer);
         }
         this.hideTimer = window.setTimeout(() => {
-            if (this.hoveredAnchorKey || this.isHoveringTooltip) {
+            if (this.hoveredAnchor || this.isHoveringTooltip) {
                 this.hideTimer = null;
                 return;
             }
@@ -255,4 +302,9 @@ export function attachObjectPreviewTooltip(options: ObjectPreviewTooltipOptions)
 
 export function hideObjectPreviewTooltip(): void {
     objectPreviewTooltipManager.hide();
+}
+
+/** Let widgets recognize preview clicks without stopping link or clipboard event propagation. */
+export function isObjectPreviewTarget(target: Node): boolean {
+    return objectPreviewTooltipManager.contains(target);
 }

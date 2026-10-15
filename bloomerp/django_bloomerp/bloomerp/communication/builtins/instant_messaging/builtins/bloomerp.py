@@ -6,6 +6,8 @@ from channels.layers import get_channel_layer
 from ..definition import (
     BaseIMAdapter,
     IMCapabilities,
+    IMCallingDefinition,
+    IMTimelineSource,
     IMConnectionValidation,
     IMDeliveryResult,
     IMIdentityData,
@@ -105,7 +107,27 @@ from ..definition import IMSelectionStep, IMCreationAction
 from django.utils.translation import gettext_lazy as _
 
 INTERNAL_IM_PROVIDER = IMProviderDefinition(
+    calling=IMCallingDefinition(
+        browser_driver="livekit",
+        capabilities_resolver="bloomerp.communication.builtins.conferencing.im.capabilities",
+        participants_resolver="bloomerp.communication.builtins.conferencing.im.participants",
+        start_handler="bloomerp.communication.builtins.conferencing.im.start",
+        session_changed_handler="bloomerp.communication.builtins.conferencing.im.project_session",
+    ),
+    timeline_sources=(
+        IMTimelineSource(
+            "bloomerp.communication.builtins.conferencing.im.timeline",
+            "components/communication/conferencing/session_card.html",
+        ),
+    ),
     creation_actions=(
+        IMCreationAction(
+            key="start_meeting",
+            label=_("Start meeting"),
+            icon="fa-solid fa-video",
+            handler="bloomerp.communication.builtins.conferencing.meetings.start_meeting",
+            permission_resolver="bloomerp.communication.builtins.conferencing.meetings.can_start_meeting",
+        ),
         IMCreationAction(
             key="create_group",
             label=_("New group"),

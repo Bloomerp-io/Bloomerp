@@ -1,5 +1,5 @@
 {% load i18n %}
-<section class="im-conversation-content im-chat-view im-theme" bloomerp-component="bloomerp:im-conversation" data-read-url="{% url 'components_im_read_position' conversation.pk %}" data-load-url="{% url 'components_conversation' conversation.pk %}" data-thread-id="{{ thread_root.pk }}" data-group-url="{% url 'components_im_group_members' conversation.pk %}" data-editor-label="{% translate 'Message' %}" data-conversation-id="{{ conversation.pk }}" aria-label="{{ identity.displayName }}">
+<section class="im-conversation-content im-chat-view im-theme" bloomerp-component="bloomerp:im-conversation" data-read-url="{% url 'components_im_read_position' conversation.pk %}" data-load-url="{% url 'components_conversation' conversation.pk %}" data-thread-id="{{ thread_root.pk }}" data-group-url="{% url 'components_im_group_members' conversation.pk %}" data-editor-label="{% translate 'Message' %}" data-conversation-id="{{ conversation.pk }}" {% if calling.audio or calling.video %}data-call-start-url="{% url 'components_im_start_call' conversation.pk %}" data-call-audio="{{ calling.audio|yesno:'true,false' }}" data-call-video="{{ calling.video|yesno:'true,false' }}"{% endif %} aria-label="{{ identity.displayName }}">
     <header class="im-chat-header">
         {% if conversation.kind == 'group' and conversation.provider_key == 'internal' %}
         <div class="im-chat-identity"><c-features.instant_messaging.identity :identity="identity" :show_provider="False" /></div>
@@ -12,8 +12,11 @@
             <div hx-get="{% url 'components_im_group_members' conversation.pk %}" hx-trigger="load"></div>
         </c-ui.dropdown.body>
         {% else %}<div class="im-chat-identity"><c-features.instant_messaging.identity :identity="identity" /></div>{% endif %}
+        {% if conversation.kind != 'group' or calling.groups %}
+        {% if calling.audio %}<button type="button" class="im-icon-button text-primary-800" data-call-action="start" data-media-mode="audio" data-start-url="{% url 'components_im_start_call' conversation.pk %}" aria-label="{% translate 'Start audio call' %}"><i class="fa-solid fa-phone" aria-hidden="true"></i></button>{% endif %}
+        {% if calling.video %}<button type="button" class="im-icon-button text-primary-800" data-call-action="start" data-media-mode="video" data-start-url="{% url 'components_im_start_call' conversation.pk %}" aria-label="{% translate 'Start video call' %}"><i class="fa-solid fa-video" aria-hidden="true"></i></button>{% endif %}
+        {% endif %}
         {% if business_number %}<small>{{ business_number }}</small>{% endif %}
-        {% if can_call %}<button type="button" class="im-icon-button text-primary-800" data-phone-action="call" data-connection-id="{{ conversation.voip_number.connection_id }}" data-token-url="{% url 'components_voip_token' conversation.voip_number.connection_id %}" data-call-url="{% url 'components_voip_start_call' conversation.pk %}" aria-label="{% translate 'Call' %}"><i class="fa-solid fa-phone" aria-hidden="true"></i></button>{% endif %}
     </header>
     {% if thread_root %}<div class="im-thread-banner bg-base"><span>{% translate 'Thread' %}</span><button type="button" hx-get="{% url 'components_conversation' conversation.pk %}" hx-target="closest .im-conversation-content" hx-swap="outerHTML">{% translate 'Back to conversation' %}</button></div>{% endif %}
     {% include "components/communication/instant_messaging/messages.html" %}

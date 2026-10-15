@@ -1,3 +1,4 @@
+import { t as _ } from "@/utils/i18n";
 import { getCsrfToken } from "@/utils/cookies";
 import showMessage from "@/utils/messages";
 import { getComponent } from "../BaseComponent";
@@ -198,7 +199,7 @@ export default class FormBehaviorRuntime {
             if (evaluation.source === "behavior" && ++cascadedEvaluations > 32) {
                 this.pending.clear();
                 this.failed.set(key, evaluation);
-                this.message("Form behaviors changed each other repeatedly. Check for a cycle in the configured behaviors.", MessageType.ERROR);
+                this.message(_("Form behaviors changed each other repeatedly. Check for a cycle in the configured behaviors."), MessageType.ERROR);
                 break;
             }
             const revision = this.revision;
@@ -233,7 +234,7 @@ export default class FormBehaviorRuntime {
                 }
                 if (!response.ok || response.redirected) {
                     const error = await response.json().catch((): null => null);
-                    throw new Error(error?.detail ?? error?.error ?? `Behavior evaluation failed (${response.status}).`);
+                    throw new Error(error?.detail ?? error?.error ?? _("Behavior evaluation failed ({status}).").replace("{status}", String(response.status)));
                 }
                 const result: BehaviorResponse = await response.json();
                 if (generation !== this.generation || this.destroyed) continue;
@@ -241,7 +242,7 @@ export default class FormBehaviorRuntime {
                     if (!this.pending.has(key)) this.enqueue(evaluation);
                     continue;
                 }
-                if (result.revision !== revision) throw new Error("Behavior response revision does not match the draft.");
+                if (result.revision !== revision) throw new Error(_("Behavior response revision does not match the draft."));
                 this.apply(result, evaluation.event === "change");
                 if (evaluation.event === "initial" && source) {
                     this.initialSignatures.set(source.element, signature);
@@ -250,7 +251,7 @@ export default class FormBehaviorRuntime {
             } catch (error: unknown) {
                 if (generation !== this.generation || this.destroyed) continue;
                 this.failed.set(key, evaluation);
-                this.message(error instanceof Error ? error.message : "Behavior evaluation failed.", MessageType.ERROR);
+                this.message(error instanceof Error ? error.message : _("Behavior evaluation failed."), MessageType.ERROR);
             } finally {
                 if (this.active === evaluation) this.active = null;
             }
@@ -262,11 +263,11 @@ export default class FormBehaviorRuntime {
     private apply(result: BehaviorResponse, trackChanges: boolean): void {
         const fields = new Map(this.fields().map((field: Field): [string, Field] => [field.name, field]));
         for (const update of [...result.values, ...result.states]) {
-            if (!fields.has(update.field)) throw new Error(`Behavior target '${update.field}' is not rendered.`);
+            if (!fields.has(update.field)) throw new Error(_("Behavior target '{field}' is not rendered.").replace("{field}", update.field));
         }
         for (const update of result.values) {
             const field = fields.get(update.field);
-            if (!field) throw new Error(`Behavior target '${update.field}' is not rendered.`);
+            if (!field) throw new Error(_("Behavior target '{field}' is not rendered.").replace("{field}", update.field));
             const value: DetailViewCellValue = field.element.dataset.behaviorValueKind === "json"
                 || (update.value !== null && typeof update.value === "object" && !Array.isArray(update.value))
                 ? JSON.stringify(update.value)
@@ -275,7 +276,7 @@ export default class FormBehaviorRuntime {
         }
         for (const update of result.states) {
             const field = fields.get(update.field);
-            if (!field) throw new Error(`Behavior target '${update.field}' is not rendered.`);
+            if (!field) throw new Error(_("Behavior target '{field}' is not rendered.").replace("{field}", update.field));
             const element = field.element;
             if (trackChanges && !this.fieldStates.has(element)) {
                 this.fieldStates.set(element, captureBehaviorFieldState(element));

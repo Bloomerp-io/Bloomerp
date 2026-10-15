@@ -7,6 +7,7 @@ from django import forms
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import QuerySet
 from django.http import HttpRequest
+from django.utils.translation import gettext_lazy as _
 
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.form_behaviors.builtins.fetch import single_value_fields
@@ -85,7 +86,7 @@ def copy_field_value_config_form_factory(
 ) -> type[forms.Form]:
     """Build direct and related-field source choices for a compatible target."""
     if target is None or listener is None:
-        raise forms.ValidationError("Select a listener and target field first.")
+        raise forms.ValidationError(_("Select a listener and target field first."))
     relation_listener = _is_relation_listener(listener)
     direct_compatible = compatible_columns(
         ApplicationField.objects.filter(pk=listener.pk),
@@ -96,12 +97,12 @@ def copy_field_value_config_form_factory(
         target,
     ).exists()
     if not direct_compatible and not related_compatible:
-        raise forms.ValidationError("The listener has no value compatible with the target.")
+        raise forms.ValidationError(_("The listener has no value compatible with the target."))
     default_source = "listener" if direct_compatible else "related_field"
     source_choices: tuple[tuple[str, str], ...] = tuple(
         choice for enabled, choice in (
-            (direct_compatible, ("listener", "Listener value")),
-            (related_compatible, ("related_field", "Field on selected record")),
+            (direct_compatible, ("listener", _("Listener value"))),
+            (related_compatible, ("related_field", _("Field on selected record"))),
         ) if enabled
     )
 
@@ -109,12 +110,14 @@ def copy_field_value_config_form_factory(
         """Select the direct listener or one compatible related-record field."""
 
         refresh_fields = ("source",)
-        source = forms.ChoiceField(choices=source_choices, initial=default_source)
+        source = forms.ChoiceField(label=_('Source'), choices=source_choices, initial=default_source)
         related_field = forms.ModelChoiceField(
+            label=_('Related field'),
             queryset=ApplicationField.objects.none(),
             required=False,
         )
         write_policy = WritePolicyField(
+            label=_('Write policy'),
             allowed=("always", "if_empty"),
             default="always",
         )
@@ -142,17 +145,17 @@ def copy_field_value_config_form_factory(
                     ApplicationField.objects.filter(pk=listener.pk),
                     target,
                 ).exists():
-                    self.add_error("source", "The listener is incompatible with the target.")
+                    self.add_error("source", _("The listener is incompatible with the target."))
             elif source == "related_field":
                 if not relation_listener:
-                    self.add_error("source", "The listener does not select a related record.")
+                    self.add_error("source", _("The listener does not select a related record."))
                 elif related_field is None:
-                    self.add_error("related_field", "Select a field from the related record.")
+                    self.add_error("related_field", _("Select a field from the related record."))
                 elif not compatible_columns(
                     _related_source_fields(listener).filter(pk=related_field.pk),
                     target,
                 ).exists():
-                    self.add_error("related_field", "The related field is incompatible with the target.")
+                    self.add_error("related_field", _("The related field is incompatible with the target."))
                 else:
                     cleaned["related_field"] = BehaviorFieldReference(
                         field=related_field,
@@ -173,7 +176,7 @@ def _read_related_value(
     """Read one authorized value from the selected related record."""
     related_model = listener.get_related_model()
     if related_model is None or related_field.get_model() is not related_model:
-        raise forms.ValidationError("The configured related field is unavailable.")
+        raise forms.ValidationError(_("The configured related field is unavailable."))
     manager = UserPolicyManager(user)
     try:
         if (
@@ -185,16 +188,16 @@ def _read_related_value(
             pk=identity,
         ).first()
     except (TypeError, ValueError, ValidationError, PermissionDenied):
-        return permission_denied_result("you cannot read the selected related value")
+        return permission_denied_result(_("you cannot read the selected related value"))
     if record is None:
-        return permission_denied_result("you cannot read the selected related value")
+        return permission_denied_result(_("you cannot read the selected related value"))
     if not manager.get_accessible_fields_for_object(record, "view").filter(
         pk=related_field.pk,
     ).exists():
-        return permission_denied_result("you cannot read the selected related value")
+        return permission_denied_result(_("you cannot read the selected related value"))
     model_field = related_model._meta.get_field(related_field.field)
     if not model_field.concrete or model_field.many_to_many:
-        raise forms.ValidationError("The configured related field is not a stored value.")
+        raise forms.ValidationError(_("The configured related field is not a stored value."))
     value = getattr(record, model_field.attname)
     return True, serialize_form_value(value)
 
@@ -233,11 +236,11 @@ def copy_field_value(
 
 COPY_FIELD_VALUE = BehaviorActionDefinition(
     id="copy_field_value",
-    label="Copy field value",
-    description="Copy the listener or one field from its selected related record into the target.",
+    label=_("Copy field value"),
+    description=_("Copy the listener or one field from its selected related record into the target."),
     requires_target_field=True,
     execute=copy_field_value,
     config_form_factory=copy_field_value_config_form_factory,
     get_target_fields=copy_field_targets,
-    group="Field values",
+    group=_("Field values"),
 )

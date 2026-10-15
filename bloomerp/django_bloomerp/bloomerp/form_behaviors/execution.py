@@ -17,6 +17,7 @@ from django import forms
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Model, Q
 from django.http import HttpRequest
+from django.utils.translation import gettext_lazy as _
 
 from bloomerp.field_types.utils.form_field_factories import build_form_field
 from bloomerp.filters.compiler import resolve_condition
@@ -104,7 +105,7 @@ class BehaviorExecutor:
         if form_submission_access:
             if not isinstance(owner, Form) or instance is not None:
                 raise ValidationError(
-                    "Form submission access requires an unsaved Form draft."
+                    _("Form submission access requires an unsaved Form draft.")
                 )
             if owner.requires_authentication and not user.is_authenticated:
                 raise PermissionDenied
@@ -118,10 +119,10 @@ class BehaviorExecutor:
                 if not self.manager.has_access_to_object(owner, "view"):
                     raise PermissionDenied
             else:
-                raise ValidationError("Unsupported layout owner.")
+                raise ValidationError(_("Unsupported layout owner."))
         self.model = owner.content_type.model_class()
         if self.model is None:
-            raise ValidationError("Layout model is unavailable.")
+            raise ValidationError(_("Layout model is unavailable."))
         if instance is not None and (
             not isinstance(instance, self.model)
             or (
@@ -140,7 +141,7 @@ class BehaviorExecutor:
                 field = by_reference.get(str(item.id))
                 if field is not None:
                     if field.field in self.items:
-                        raise ValidationError("Each layout field must occur once.")
+                        raise ValidationError(_("Each layout field must occur once."))
                     self.items[field.field] = item
         available = ApplicationField.objects.filter(
             content_type=owner.content_type,
@@ -160,7 +161,7 @@ class BehaviorExecutor:
         form_field = build_form_field(field, layout_config=layout_config)
         if form_field is None:
             raise ValidationError(
-                f"Field '{field.field}' has no editable value contract."
+                _("Field '%(field)s' has no editable value contract.") % {'field': field.field}
             )
         if field.get_field_type().id == "OneToManyField":
             return self._clean_rows(field, value)
@@ -170,7 +171,7 @@ class BehaviorExecutor:
             and not isinstance(form_field, forms.JSONField)
             and isinstance(value, (dict, list, tuple))
         ):
-            raise ValidationError(f"Field '{field.field}' requires a scalar value.")
+            raise ValidationError(_("Field '%(field)s' requires a scalar value.") % {'field': field.field})
         if isinstance(form_field, forms.BooleanField) and value not in (
             None,
             "",
@@ -185,7 +186,7 @@ class BehaviorExecutor:
             "True",
             "False",
         ):
-            raise ValidationError(f"Field '{field.field}' requires a boolean value.")
+            raise ValidationError(_("Field '%(field)s' requires a boolean value.") % {'field': field.field})
         if isinstance(form_field, forms.JSONField):
             value = json.dumps(value)
         cleaned = form_field.clean(value)
@@ -212,7 +213,7 @@ class BehaviorExecutor:
         if value is None:
             return []
         if not isinstance(value, list) or len(value) > 1000:
-            raise ValidationError("Collections require at most 1000 row objects.")
+            raise ValidationError(_("Collections require at most 1000 row objects."))
         widget = field.get_widget(layout_config=self.items[field.field].config)
         columns = {column.field: column for column in widget.get_columns()}
         related_model = field.get_related_model()
@@ -222,7 +223,7 @@ class BehaviorExecutor:
             if not isinstance(row, dict) or set(row) - (
                 columns.keys() | {"id", "DELETE"}
             ):
-                raise ValidationError("Invalid collection row columns.")
+                raise ValidationError(_("Invalid collection row columns."))
             cleaned = {}
             object_id = row.get("id")
             if object_id not in (None, ""):
@@ -231,11 +232,11 @@ class BehaviorExecutor:
                     or self.instance is None
                     or str(object_id) in seen
                 ):
-                    raise ValidationError("Invalid or duplicate related row identity.")
+                    raise ValidationError(_("Invalid or duplicate related row identity."))
                 if not related_model._default_manager.filter(
                     pk=object_id, **{parent_field: self.instance}
                 ).exists():
-                    raise ValidationError("Related row does not belong to this object.")
+                    raise ValidationError(_("Related row does not belong to this object."))
                 seen.add(str(object_id))
                 cleaned["id"] = str(object_id)
             if "DELETE" in row:
@@ -246,7 +247,7 @@ class BehaviorExecutor:
                 if name in {"id", "DELETE"}:
                     continue
                 if columns[name].get_field_type().id == "OneToManyField":
-                    raise ValidationError("Nested collections are not supported.")
+                    raise ValidationError(_("Nested collections are not supported."))
                 cleaned[name] = self._clean_value(columns[name], raw)
             rows.append(cleaned)
         return rows
@@ -257,11 +258,11 @@ class BehaviorExecutor:
         for condition in group.conditions:
             name = condition.field_path
             if name not in self.fields or name not in values:
-                raise ValidationError("Condition field is unavailable in this draft.")
-            _, _, lookup, expected = resolve_condition(condition, model=self.model)
+                raise ValidationError(_("Condition field is unavailable in this draft."))
+            _resolved_field, _target, lookup, expected = resolve_condition(condition, model=self.model)
             evaluator = lookup.get_python_evaluator()
             if evaluator is None:
-                raise ValidationError("Condition lookup cannot evaluate draft values.")
+                raise ValidationError(_("Condition lookup cannot evaluate draft values."))
             matches.append(evaluator(values[name], expected))
         return all(matches) if group.connector == "AND" else any(matches)
 
@@ -276,7 +277,7 @@ class BehaviorExecutor:
             return
         if field_name not in self.fields or field_name not in values:
             raise ValidationError(
-                f"Field '{field_name}' is unavailable in this draft."
+                _("Field '%(field_name)s' is unavailable in this draft.") % {'field_name': field_name}
             )
         draft[field_name] = self._clean_value(
             self.fields[field_name], deepcopy(values[field_name])
@@ -291,14 +292,14 @@ class BehaviorExecutor:
     ) -> BehaviorResult:
         """Return a complete validated batch, leaving the input and database untouched."""
         if event not in {"initial", "change"}:
-            raise ValidationError("Unknown behavior event.")
+            raise ValidationError(_("Unknown behavior event."))
         if (
             listener_field not in self.fields
             or not set(values) <= self.fields.keys()
         ):
             raise PermissionDenied
         if listener_field not in values:
-            raise ValidationError("Listener field value is missing from the draft.")
+            raise ValidationError(_("Listener field value is missing from the draft."))
         listener = self.fields[listener_field]
         draft: dict[str, Any] = {}
         self._add_draft_value(draft, values, listener_field)
@@ -323,13 +324,13 @@ class BehaviorExecutor:
             for configured in behavior.actions:
                 action = ACTION_REGISTRY.get(configured.action)
                 if action is None:
-                    raise ValidationError(f"Unknown action: {configured.action}.")
+                    raise ValidationError(_('Unknown action: %(action)s.') % {'action': configured.action})
                 if (
                     not action.get_listener_fields(self.layout_fields)
                     .filter(pk=listener.pk)
                     .exists()
                 ):
-                    raise ValidationError("Action is not applicable to this listener.")
+                    raise ValidationError(_("Action is not applicable to this listener."))
                 target = (
                     self.fields.get(configured.target_field)
                     if configured.target_field
@@ -338,7 +339,7 @@ class BehaviorExecutor:
                 if configured.target_field and target is None:
                     raise PermissionDenied
                 if action.requires_target_field and target is None:
-                    raise ValidationError("Action requires a target field.")
+                    raise ValidationError(_("Action requires a target field."))
                 if target is not None:
                     self._add_draft_value(draft, values, target.field)
                     if (
@@ -347,7 +348,7 @@ class BehaviorExecutor:
                         .exists()
                     ):
                         raise ValidationError(
-                            "Action is not applicable to this target."
+                            _("Action is not applicable to this target.")
                         )
                 cleaned = clean_action_config(
                     action,
@@ -373,12 +374,12 @@ class BehaviorExecutor:
                     self.user,
                 )
                 if not isinstance(result, BehaviorResult):
-                    raise ValidationError("Action must return a BehaviorResult.")
+                    raise ValidationError(_("Action must return a BehaviorResult."))
                 if not all(
                     isinstance(items, tuple)
                     for items in (result.values, result.states, result.messages)
                 ):
-                    raise ValidationError("Action result collections must be tuples.")
+                    raise ValidationError(_("Action result collections must be tuples."))
                 declared_update_field = target or self.fields.get(listener.field)
                 for update in result.values:
                     if (
@@ -387,7 +388,7 @@ class BehaviorExecutor:
                         or update.field != declared_update_field.field
                     ):
                         raise ValidationError(
-                            "Action returned an undeclared value target."
+                            _("Action returned an undeclared value target.")
                         )
                     draft[update.field] = self._clean_value(
                         declared_update_field, update.value,
@@ -412,7 +413,7 @@ class BehaviorExecutor:
                         )
                     ):
                         raise ValidationError(
-                            "Action returned an invalid state target."
+                            _("Action returned an invalid state target.")
                         )
                     states.append(state)
                 for message in result.messages:
@@ -421,7 +422,7 @@ class BehaviorExecutor:
                         or message.type not in {"info", "warning", "danger", "success"}
                         or not isinstance(message.message, str)
                     ):
-                        raise ValidationError("Action returned an invalid message.")
+                        raise ValidationError(_("Action returned an invalid message."))
                     messages.append(message)
         return BehaviorResult(
             values=tuple(updates), states=tuple(states), messages=tuple(messages)

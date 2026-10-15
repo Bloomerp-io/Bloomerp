@@ -8,6 +8,8 @@ export interface BrowserCall {
     disconnect(): void;
     /** Set local microphone muting. */
     mute(muted: boolean): void;
+    /** Resume remote audio when the browser blocks automatic playback. */
+    playAudio?(): Promise<void>;
     /** Indicate whether rejection is appropriate for this session. */
     isPending(): boolean;
     /** Subscribe to normalized session lifecycle events. */

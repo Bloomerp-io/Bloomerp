@@ -1,3 +1,4 @@
+{% load i18n %}
 <div
     bloomerp-component="behavior-builder"
     class="rounded-xl border border-gray-200"
@@ -15,11 +16,11 @@
         <div class="ml-auto flex items-stretch">
             <button type="button" class="inline-flex items-center gap-2 border-l border-gray-200 px-3 text-sm font-medium text-primary hover:bg-primary-50" data-add-behavior>
                 <i class="fa-solid fa-plus" aria-hidden="true"></i>
-                Add behavior
+                {% translate "Add behavior" %}
             </button>
             <button type="button" class="inline-flex items-center gap-2 rounded-tr-xl border-l border-gray-200 px-3 text-sm font-medium text-danger-dark hover:bg-danger-light" data-clear-behaviors>
                 <i class="fa-solid fa-trash" aria-hidden="true"></i>
-                Clear all
+                {% translate "Clear all" %}
             </button>
         </div>
     </div>

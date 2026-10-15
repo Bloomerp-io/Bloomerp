@@ -186,7 +186,12 @@ each later action sees earlier value updates. Failure returns no partial batch.
   the user's accessible queryset and verifies field visibility on the record.
 - `FETCH` uses one permission-checked lookup contract with structured `filters`,
   a source `model`, optional `order_by`, and `fetch` selection. A scalar target
-  uses `first` or `last` plus one source `column`. A one-to-many target uses
+  uses `first` or `last` plus one source `column`. With a foreign-key target
+  pointing to the source model, `value_source: record` selects the matching record
+  itself without a source column. Omitted `value_source` defaults to `field`,
+  preserving existing configurations. Record selection retains model/row access
+  and filter/order field authorization; no match leaves the target unchanged.
+  A one-to-many target uses
   `mode: populate` with `fetch: all` and target-to-source `column_mappings`, or
   `mode: per_row` with `first`/`last`, one source `column`, and a rendered
   `target_column`. Only per-row filters may use `{{ row.column }}`; all modes may

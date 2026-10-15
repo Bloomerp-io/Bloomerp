@@ -1,0 +1,4 @@
+webhook:
+  api_key: devkey
+  urls:
+    - http://127.0.0.1:8000/communication/conferencing/webhook/

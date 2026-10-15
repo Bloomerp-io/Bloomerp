@@ -97,7 +97,10 @@ def render_conversation(request: HttpRequest, conversation_id: UUID) -> HttpResp
         IM_PROVIDER_REGISTRY,
     )
 
+    from bloomerp.communication.builtins.instant_messaging.calling import call_capabilities
+
     provider = IM_PROVIDER_REGISTRY.get(chat.provider_key)
+    calling = call_capabilities(request.user, chat)
     actions = {
         "can_send": chat.provider_key == "internal" and chat.status != "archived"
     }
@@ -133,6 +136,7 @@ def render_conversation(request: HttpRequest, conversation_id: UUID) -> HttpResp
         ),
         {
             "conversation": chat,
+            "calling": calling,
             **actions,
             "identity": conversation_identity(chat, request.user.pk),
             "rows": rows,

@@ -1,0 +1,1 @@
+"""Communication service integration tests."""

@@ -1,8 +1,10 @@
 """Carrier definitions resolved independently of IM provider configuration."""
 
 from bloomerp.utils.registry import BaseRegistry
-from .definition import VoIPProviderDefinition
+
+from .builtins.telnyx import TELNYX_PROVIDER
 from .builtins.twilio import TWILIO_PROVIDER
+from .definition import VoIPProviderDefinition
 
 
 class VoIPProviderRegistry(BaseRegistry[VoIPProviderDefinition]):
@@ -17,3 +19,5 @@ class VoIPProviderRegistry(BaseRegistry[VoIPProviderDefinition]):
 
 VOIP_PROVIDER_REGISTRY = VoIPProviderRegistry(VoIPProviderDefinition)
 VOIP_PROVIDER_REGISTRY.register(TWILIO_PROVIDER.key, TWILIO_PROVIDER)
+
+VOIP_PROVIDER_REGISTRY.register(TELNYX_PROVIDER.key, TELNYX_PROVIDER)

@@ -1,19 +1,26 @@
 from importlib import import_module
+from unittest.mock import patch
 
-from django.db import connections, models
-from django.db.migrations.state import ModelState, ProjectState
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
-from unittest.mock import patch
+from django.db import connections, models
+from django.db.migrations.state import ModelState, ProjectState
 
 from bloomerp.dataviews.kanban.config import KanbanDataView
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import BloomerpModelConfig, ModelViewSettings
+from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.models.files.file_node import FileNode
 from bloomerp.models.project_management.todo import Todo
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
-from bloomerp.tests.base import BaseBloomerpTestCaseWithModels, BloomerpModelTestCase, ExpectedModelException, ModelScenario
+from bloomerp.services.preference_services import PreferenceManager
+from bloomerp.tests.base import (
+    BaseBloomerpTestCaseWithModels,
+    BloomerpModelTestCase,
+    ExpectedModelException,
+    ModelScenario,
+)
 from bloomerp.tests.models.default_filters_scenarios import default_filter_scenarios
 
 
@@ -82,6 +89,16 @@ class TestUserListViewPreferenceModel(BloomerpModelTestCase, BaseBloomerpTestCas
                 create_validators=self.file_defaults_are_materialized,
             ),
             ModelScenario(
+                name="DocumentTemplate defaults materialize a concise table once",
+                create_operation=self.get_document_template_preference,
+                create_validators=self.document_template_defaults_are_materialized,
+            ),
+            ModelScenario(
+                name="DocumentTemplate defaults preserve an existing customized view",
+                create_operation=self.create_custom_document_template_preference,
+                create_validators=self.custom_document_template_preference_is_preserved,
+            ),
+            ModelScenario(
                 name="All configured data views are materialized",
                 description=(
                     "UC: A model declares a default Kanban and secondary table view.\n"
@@ -115,6 +132,95 @@ class TestUserListViewPreferenceModel(BloomerpModelTestCase, BaseBloomerpTestCas
                 ],
             ),
         ]
+
+    def get_document_template_preference(self) -> UserListViewPreference:
+        """Open the template list through its ordinary preference lifecycle."""
+        content_type = ContentType.objects.get_for_model(DocumentTemplate)
+        selected = PreferenceManager(self.admin_user).get_or_create_selected(
+            UserListViewPreference,
+            {"content_type_id": content_type.pk},
+        )
+        self.assertIsInstance(selected, UserListViewPreference)
+        return selected
+
+    def document_template_defaults_are_materialized(
+        self, selected: UserListViewPreference
+    ) -> bool:
+        """Check ordered summary columns, sorting, and repeated-open idempotence."""
+        expected_field_ids = [
+            ApplicationField.get_by_field(DocumentTemplate, name).pk
+            for name in (
+                "name",
+                "page_size",
+                "page_orientation",
+                "include_page_numbers",
+                "datetime_updated",
+            )
+        ]
+        reopened = self.get_document_template_preference()
+        return (
+            selected.name == "Document templates"
+            and selected.selected
+            and selected.view_type == "table"
+            and selected.view_mode == "normal"
+            and selected.display_fields["table"] == expected_field_ids
+            and selected.options["table"] == {
+                "page_size": 25,
+                "sort_field": "name",
+                "sort_direction": "asc",
+            }
+            and not selected.default_filters.exists()
+            and reopened.pk == selected.pk
+            and UserListViewPreference.objects.filter(
+                user=self.admin_user,
+                content_type=selected.content_type,
+            ).count() == 1
+        )
+
+    def create_custom_document_template_preference(self) -> UserListViewPreference:
+        """Represent a template-list preference customized before these defaults."""
+        return UserListViewPreference.objects.create(
+            user=self.admin_user,
+            content_type=ContentType.objects.get_for_model(DocumentTemplate),
+            name="My templates",
+            selected=True,
+            view_type="table",
+            view_mode="drawer",
+            display_fields={"table": [
+                ApplicationField.get_by_field(DocumentTemplate, "name").pk,
+            ]},
+            options={"table": {
+                "page_size": 50,
+                "sort_field": "name",
+                "sort_direction": "desc",
+            }},
+        )
+
+    def custom_document_template_preference_is_preserved(
+        self, selected: UserListViewPreference
+    ) -> bool:
+        """Ensure repeated opens leave the user's existing list settings intact."""
+        for _ in range(2):
+            self.assertEqual(self.get_document_template_preference().pk, selected.pk)
+        selected.refresh_from_db()
+        return (
+            selected.name == "My templates"
+            and selected.selected
+            and selected.view_type == "table"
+            and selected.view_mode == "drawer"
+            and selected.display_fields == {"table": [
+                ApplicationField.get_by_field(DocumentTemplate, "name").pk,
+            ]}
+            and selected.options == {"table": {
+                "page_size": 50,
+                "sort_field": "name",
+                "sort_direction": "desc",
+            }}
+            and UserListViewPreference.objects.filter(
+                user=self.admin_user,
+                content_type=selected.content_type,
+            ).count() == 1
+        )
 
     def create_todo_defaults(self):
         self.scenario_content_type = ContentType.objects.get_for_model(Todo)

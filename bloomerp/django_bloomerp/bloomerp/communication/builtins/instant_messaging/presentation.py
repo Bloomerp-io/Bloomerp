@@ -77,3 +77,41 @@ def conversation_identity(conversation: IMConversation, user_id: Any) -> dict[st
         "provider": provider,
         "group": conversation.kind != "direct",
     }
+
+
+def participant_identity(
+    participant: IMConversationParticipant, viewer_id: Any
+) -> dict[str, str]:
+    """Resolve one call member using the same provider identity rules as the IM header."""
+    provider = IM_PROVIDER_REGISTRY.get(participant.conversation.provider_key)
+    name = participant_label(participant)
+    if participant.user_id:
+        avatar = participant.user.avatar.url if participant.user.avatar else ""
+        address = participant.user.email or participant.user.get_username()
+    else:
+        avatar = participant.identity.avatar_url
+        address = participant.identity.address
+        if provider and provider.identity_label_resolver:
+            from bloomerp.utils.callables import resolve_hook
+
+            name = resolve_hook(provider.identity_label_resolver)(
+                participant.identity, viewer_id
+            )
+    if (
+        avatar
+        and not (avatar.startswith("/") and not avatar.startswith("//"))
+        and urlsplit(avatar).scheme not in ("http", "https")
+    ):
+        avatar = ""
+    resolved = (
+        provider.resolve_identity(
+            {"name": name, "avatar": avatar, provider.address_field: address}
+        )
+        if provider
+        else {"displayName": name, "avatar": avatar}
+    )
+    return {
+        "displayName": resolved["displayName"],
+        "avatar": resolved.get("avatar", ""),
+        "initials": "".join(part[0] for part in resolved["displayName"].split()[:2]),
+    }
