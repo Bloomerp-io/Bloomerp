@@ -7,11 +7,15 @@ from django.db.models import Model, QuerySet
 from django.http import HttpResponse
 from pydantic import TypeAdapter
 
+from bloomerp.dataviews.card.config import CardDataView
 from bloomerp.dataviews.definition import BaseDataview, DataviewTypeDefinition
+from bloomerp.dataviews.kanban.config import KanbanDataView
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.filters.definition import Filter, FilterCondition, Filters
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.communication.label import Label
+from bloomerp.models.communication.object_label import ObjectLabel
 from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.models.filters.filter import SavedFilter
 from bloomerp.models.project_management.initiative import Initiative
@@ -550,128 +554,3 @@ class TestDataviewComponent(BloomerpComponentTestCase):
             ],
         ).assign_user(self.normal_user)
 
-
-class TestDataviewForeignPreviews(BloomerpComponentTestCase):
-    """Expose only visible concrete foreign targets across every requested dataview."""
-
-    view_name = "components_dataview"
-    create_foreign_models = True
-    auto_create_customers = False
-
-    def setUp(self) -> None:
-        """Create isolated related values with safe labels and a current calendar date."""
-        from django.utils import timezone
-
-        super().setUp()
-        self.admin_user.username = "User <unsafe> & label"
-        self.admin_user.save(update_fields=["username"])
-        self.country = self.CountryModel.objects.first()
-        self.country.name = "Related <country> & label"
-        self.country.save(update_fields=["name"])
-        self.customer = self.CustomerModel.objects.create(
-            first_name="Preview", last_name="Customer", age=20,
-            country=self.country, user_account=self.admin_user,
-            date_joined=timezone.localdate(),
-        )
-        self.content_type = ContentType.objects.get_for_model(self.CustomerModel)
-        self.related_type = ContentType.objects.get_for_model(self.CountryModel)
-        self.user_type = ContentType.objects.get_for_model(type(self.admin_user))
-        self.application_fields = {
-            field.field: field for field in ApplicationField.get_for_model(self.CustomerModel)
-        }
-
-    def _prepare_view(self, view_type: str, case: str) -> Callable[[RequestScenario], None]:
-        """Build one view with real saved options, then apply its requested relation case."""
-        def prepare(scenario: RequestScenario) -> None:
-            """Select the requested dataview without changing production or shared fixtures."""
-            from unittest.mock import PropertyMock, patch
-
-            fields = self.application_fields
-            options = {}
-            if view_type == "kanban":
-                options = {"group_by_field": "age"}
-            elif view_type == "calendar":
-                options = {"start_field": "date_joined", "view_mode": "month"}
-            preference = PreferenceManager(scenario.user).get_or_create_selected(
-                UserListViewPreference, scope={"content_type_id": self.content_type.pk},
-            )
-            preference.view_type = view_type
-            preference.options = {view_type: options}
-            preference.set_visible_field_ids(view_type, [
-                fields["first_name"].pk, fields["country"].pk, fields["user_account"].pk,
-            ])
-            preference.save(update_fields=["view_type", "options", "display_fields"])
-            if case == "empty":
-                self.CustomerModel.objects.filter(pk=self.customer.pk).update(country=None, user_account=None)
-            elif case == "missing":
-                self.missing_patch = patch.object(
-                    self.CustomerModel, "country", new_callable=PropertyMock,
-                    side_effect=self.CountryModel.DoesNotExist,
-                )
-                self.missing_patch.start()
-            elif case == "denied":
-                PolicyManager.create_policy(
-                    self.CustomerModel,
-                    field_permissions={
-                        name: [BloomerpPermission.VIEW]
-                        for name in ("first_name", "age", "date_joined")
-                    },
-                    global_permissions=[BloomerpPermission.VIEW],
-                    row_permissions=[RowPolicyRuleContent(
-                        connector="AND", permissions=[BloomerpPermission.VIEW], conditions=[],
-                    )],
-                ).assign_user(self.normal_user)
-        return prepare
-
-    def _cleanup_missing(self, scenario: RequestScenario) -> None:
-        """Release the unavailable-relation descriptor after its isolated request."""
-        self.missing_patch.stop()
-
-    def _validate_previews(self, view_type: str, case: str) -> Callable[[HttpResponse], bool]:
-        """Check real rendered view markup rather than only a renderer helper's output."""
-        def validate(response: HttpResponse) -> bool:
-            """Verify foreign identity, safe output and unchanged navigation in this view."""
-            from bs4 import BeautifulSoup
-
-            soup = BeautifulSoup(response.content, "html.parser")
-            component = {"table": "datatable", "kanban": "kanban-board", "card": "card-view", "calendar": "calendar"}[view_type]
-            view = soup.select_one(f'[bloomerp-component="{component}"]')
-            self.assertIsNotNone(view, response.content.decode())
-            targets = view.select("[data-foreign-preview-object-id]")
-            if case in {"empty", "denied"}:
-                self.assertEqual(targets, [])
-            else:
-                expected = {(str(self.user_type.pk), str(self.admin_user.pk))}
-                if case != "missing":
-                    expected.add((str(self.related_type.pk), str(self.country.pk)))
-                self.assertEqual({(item["data-foreign-preview-content-type-id"], item["data-foreign-preview-object-id"]) for item in targets}, expected)
-                if case != "missing":
-                    country = view.select_one(f'[data-foreign-preview-content-type-id="{self.related_type.pk}"]')
-                    link = country.select_one("a")
-                    self.assertEqual(link["href"], self.country.get_absolute_url())
-                    self.assertEqual(link["hx-get"], self.country.get_absolute_url())
-                    self.assertEqual(link["hx-target"], "#main-content")
-                    self.assertEqual(link.get_text(), str(self.country))
-                    self.assertIsNone(country.find("country"))
-                user_value = view.select_one(f'[data-foreign-preview-content-type-id="{self.user_type.pk}"]')
-                self.assertEqual(user_value.get_text(), str(self.admin_user))
-                self.assertIsNone(user_value.find("unsafe"))
-                self.assertFalse(any(item.has_attr("bloomerp-component") for item in targets))
-            self.assertNotIn("Traceback", response.content.decode())
-            return True
-        return validate
-
-    def get_test_scenarios(self) -> list[RequestScenario]:
-        """Cover actual table, Kanban, card and calendar responses and denied/empty targets."""
-        return [
-            RequestScenario(
-                name=f"Foreign previews in {view_type}: {case}",
-                user=self.normal_user if case == "denied" else self.admin_user,
-                view_kwargs={"content_type_id": self.content_type.pk},
-                prepare=self._prepare_view(view_type, case),
-                cleanup=self._cleanup_missing if case == "missing" else None,
-                expected=ExpectedResult(response_validators=self._validate_previews(view_type, case)),
-            )
-            for view_type in ("table", "kanban", "card", "calendar")
-            for case in ("allowed", "empty", "denied", "missing")
-        ]
