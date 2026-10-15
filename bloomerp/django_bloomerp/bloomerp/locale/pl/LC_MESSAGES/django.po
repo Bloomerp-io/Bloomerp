@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-15 11:22+0000\n"
+"POT-Creation-Date: 2026-10-15 13:03+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: pl\n"
@@ -81,6 +81,16 @@ msgstr "%(field)s (%(model)s)"
 #, python-format
 msgid "%(name)s cannot be previewed here."
 msgstr "Nie można tutaj wyświetlić podglądu %(name)s."
+
+#: form_behaviors/shared/calculate.py:98
+#, fuzzy, python-format
+msgid "%(noun)s '%(operand_name)s' does not contain a finite numeric value."
+msgstr "%(noun)s „%(operand_name)s” nie zawiera skończonej wartości liczbowej."
+
+#: form_behaviors/shared/calculate.py:88 form_behaviors/shared/calculate.py:94
+#, fuzzy, python-format
+msgid "%(noun)s '%(operand_name)s' does not contain a numeric value."
+msgstr "%(noun)s „%(operand_name)s” nie zawiera wartości liczbowej."
 
 #: signals/voip_assignment_signals.py:46
 #, python-format
@@ -167,6 +177,13 @@ msgctxt "bloomerp:module:description"
 msgid "A collection of miscellaneous features and tools that don't fit into other specific modules."
 msgstr "Zbiór różnych funkcji i narzędzi, które nie pasują do innych konkretnych modułów."
 
+# | msgid "A name and scope identifier are required."
+# | msgid "A call request identifier is required."
+#: form_behaviors/builtins/calculate.py:191
+#, fuzzy
+msgid "A collection row is required."
+msgstr "Wymagany jest identyfikator żądania połączenia."
+
 #: models/files/file_extraction.py:323
 msgid "A completed extraction needs a manifest."
 msgstr "Zakończona ekstrakcja wymaga manifestu."
@@ -175,6 +192,11 @@ msgstr "Zakończona ekstrakcja wymaga manifestu."
 #: models/communication/instant_messaging/im_identity.py:72
 msgid "A configured connection is required for this identity."
 msgstr "Ta tożsamość wymaga skonfigurowanego połączenia."
+
+#: form_behaviors/builtins/calculate.py:162
+#, fuzzy
+msgid "A date or datetime supports only adding or subtracting a numeric offset."
+msgstr "Data lub data i godzina obsługuje wyłącznie dodawanie lub odejmowanie przesunięcia liczbowego."
 
 #: bloomerp.policy.description models/access_control/policy.py:76
 msgid "A description of the access control policy."
@@ -212,6 +234,12 @@ msgstr ""
 msgid "A human-readable label for this API key."
 msgstr "Zrozumiała dla człowieka etykieta dla tego klucza API."
 
+# | msgid "An item is required."
+#: components/form_behaviors/render_action_config_form.py:38
+#, fuzzy
+msgid "A layout context is required."
+msgstr "Element jest wymagany."
+
 #: models/filters/filter.py:44
 msgid "A name and scope identifier are required."
 msgstr "Wymagana jest nazwa i identyfikator zakresu."
@@ -225,17 +253,46 @@ msgstr "Nie można zmienić rodzaju węzła."
 msgid "A provider number changed its address. Reconcile the line before synchronizing."
 msgstr "Numer u operatora zmienił swój adres. Uzgodnij linię przed synchronizacją."
 
+# | msgid "Detailed run logging is still available."
+# | msgid "Calling is unavailable."
+# | msgid "Conferencing is unavailable."
+#: form_behaviors/builtins/set_o2m_value.py:188
+#, fuzzy
+msgid "A related source record is unavailable."
+msgstr "Konferencje są niedostępne."
+
+# | msgid "Free Variables"
+# | msgid "Browser calling is unavailable."
+#: form_behaviors/builtins/set_o2m_value.py:249
+#, fuzzy
+msgid "A related source value is unavailable."
+msgstr "Połączenia przez przeglądarkę są niedostępne."
+
 # | msgid "A name and scope identifier are required."
 # | msgid "A call request identifier is required."
 #: communication/builtins/conferencing/controller.py:134
 msgid "A valid call mode and request identifier are required."
 msgstr "Wymagane są prawidłowy tryb połączenia i identyfikator żądania."
 
-#: bloomerp.documenttemplate.page_size models/document_templates/document_template.py:25
+# | msgid "A name and scope identifier are required."
+# | msgid "A call request identifier is required."
+#: components/form_behaviors/render_action_config_form.py:71
+#, fuzzy
+msgid "A valid editor prefix is required."
+msgstr "Wymagany jest identyfikator żądania połączenia."
+
+# | msgid "A name and scope identifier are required."
+# | msgid "A call request identifier is required."
+#: components/form_behaviors/render_action_config_form.py:42
+#, fuzzy
+msgid "A valid listener field is required."
+msgstr "Wymagany jest identyfikator żądania połączenia."
+
+#: bloomerp.documenttemplate.page_size models/document_templates/document_template.py:32
 msgid "A3"
 msgstr "A3"
 
-#: bloomerp.documenttemplate.page_size models/document_templates/document_template.py:23
+#: bloomerp.documenttemplate.page_size models/document_templates/document_template.py:30
 msgid "A4"
 msgstr "A4"
 
@@ -362,6 +419,25 @@ msgstr "Token dostępu"
 msgid "Accessible Content Types"
 msgstr "Dostępne typy zawartości"
 
+# | msgid "Access Token"
+# | msgid "Access"
+#: form_behaviors/builtins/set_o2m_value.py:92
+#, fuzzy
+msgid "Accessor"
+msgstr "Token dostępu"
+
+# | msgid "The field used for the pie slice labels."
+# | msgid "The field must belong to the referenced model."
+#: form_behaviors/builtins/set_o2m_value.py:177
+#, fuzzy
+msgid "Accessor must belong to the source relation's model."
+msgstr "Pole musi należeć do wskazanego modelu."
+
+#: form_behaviors/builtins/set_o2m_value.py:191
+#, fuzzy
+msgid "Accessor must expose a single stored value."
+msgstr "Akcesor musi udostępniać jedną zapisaną wartość."
+
 #: bloomerp.apikey.account models/api/api_key.py:88 models/communication/email_account.py:58
 #: models/communication/voip/voip_connection.py:79
 msgid "Account"
@@ -397,6 +473,55 @@ msgstr "Akcja"
 #: bloomerp.workflowrunstep.action_id models/automation/workflow_run_step.py:38
 msgid "Action ID"
 msgstr "Identyfikator akcji"
+
+# | msgid "Operation does not exist"
+#: components/form_behaviors/render_action_config_form.py:53
+#, fuzzy
+msgid "Action does not exist."
+msgstr "Operacja nie istnieje"
+
+# | msgid "Activity logging is not enabled for this model."
+#: form_behaviors/execution.py:333
+#, fuzzy
+msgid "Action is not applicable to this listener."
+msgstr "Rejestrowanie aktywności nie jest włączone dla tego modelu."
+
+# | msgid "Activity logging is not enabled for this model."
+#: form_behaviors/execution.py:351
+#, fuzzy
+msgid "Action is not applicable to this target."
+msgstr "Rejestrowanie aktywności nie jest włączone dla tego modelu."
+
+#: form_behaviors/execution.py:377
+#, fuzzy
+msgid "Action must return a BehaviorResult."
+msgstr "Akcja musi zwracać obiekt BehaviorResult."
+
+# | msgid "Editor occurrences require a field."
+#: form_behaviors/execution.py:342
+#, fuzzy
+msgid "Action requires a target field."
+msgstr "Wystąpienia edytora wymagają pola."
+
+#: form_behaviors/execution.py:382
+#, fuzzy
+msgid "Action result collections must be tuples."
+msgstr "Kolekcje wyników akcji muszą być krotkami."
+
+#: form_behaviors/execution.py:425
+#, fuzzy
+msgid "Action returned an invalid message."
+msgstr "Akcja zwróciła nieprawidłowy komunikat."
+
+#: form_behaviors/execution.py:416
+#, fuzzy
+msgid "Action returned an invalid state target."
+msgstr "Akcja zwróciła nieprawidłowy cel stanu."
+
+#: form_behaviors/execution.py:391
+#, fuzzy
+msgid "Action returned an undeclared value target."
+msgstr "Akcja zwróciła niezadeklarowany cel wartości."
 
 #: templates/dataviews/files.html:42 workspaces/dataview_tile/form.py:42
 msgid "Actions"
@@ -476,6 +601,11 @@ msgstr "Dodaj wiersz sum pod tabelą przestawną."
 msgid "Add at least one recipient."
 msgstr "Dodaj co najmniej jednego odbiorcę."
 
+#: templates/widgets/behavior_builder_widget.html:19
+#, fuzzy
+msgid "Add behavior"
+msgstr "Dodaj zachowanie"
+
 #: templates/cotton/features/agent/body.html:130
 msgid "Add files or modules"
 msgstr "Dodaj pliki lub moduły"
@@ -523,7 +653,7 @@ msgstr "Strona administratora"
 
 # | msgid "Admin page"
 # | msgid "Admin"
-#: templates/components/communication/calling/controls.html:8
+#: templates/components/communication/calling/controls.html:13
 #, fuzzy
 msgid "Admit"
 msgstr "Strona administratora"
@@ -580,7 +710,18 @@ msgstr "Agent, z którego mogą korzystać ci użytkownicy i grupy."
 msgid "Aggregation"
 msgstr "Agregacja"
 
-#: bloomerp.inboxfolder.type
+# | msgid "The session cannot return to an earlier state."
+#: form_behaviors/builtins/calculate.py:173
+#, fuzzy
+msgid "Aggregations cannot return a date or datetime."
+msgstr "Sesja nie może powrócić do wcześniejszego stanu."
+
+#: form_behaviors/builtins/calculate.py:64
+#, fuzzy
+msgid "Aggregations must reference a collection column."
+msgstr "Agregacje muszą odwoływać się do kolumny kolekcji."
+
+#: bloomerp.inboxfolder.type form_behaviors/builtins/fetch.py:300
 #: templates/views/access_control/manage_permissions/wizard_object_access_control.html:56
 msgid "All"
 msgstr "Wszystkie"
@@ -626,6 +767,13 @@ msgstr ""
 "Opcja „Wszystkie” obejmuje również nowo zarejestrowane narzędzia. Wybranie opcji bez narzędzi nie"
 " zezwala na żadne. Nadal obowiązują uprawnienia użytkownika."
 
+# | msgid "Loading filters..."
+# | msgid "No matching items."
+#: form_behaviors/builtins/fetch.py:343
+#, fuzzy
+msgid "All matching records"
+msgstr "Brak pasujących elementów."
+
 #: templates/components/objects/dataview_gant_unscheduled.html:21
 msgid "All visible records are scheduled."
 msgstr "Wszystkie widoczne rekordy są zaplanowane."
@@ -654,7 +802,7 @@ msgstr "Zezwól wszystkim aktywnym pracownikom na korzystanie z tego agenta."
 msgid "Allow permitted users to select this agent for new runs."
 msgstr "Pozwól uprawnionym użytkownikom wybierać tego agenta do nowych uruchomień."
 
-#: form_behaviors/shared/write_policy.py:18
+#: form_behaviors/builtins/fetch.py:356 form_behaviors/shared/write_policy.py:18
 msgid "Always"
 msgstr "Zawsze"
 
@@ -666,10 +814,20 @@ msgstr "Akcja do wykonania"
 msgid "An active or ended call must have a start time."
 msgstr "Aktywne lub zakończone połączenie musi mieć czas rozpoczęcia."
 
+#: form_behaviors/builtins/calculate.py:93
+#, fuzzy
+msgid "An aggregation must reference a collection column."
+msgstr "Agregacja musi odwoływać się do kolumny kolekcji."
+
 # | msgid "An item is required."
 #: models/communication/instant_messaging/im_message_reaction.py:42
 msgid "An emoji is required."
 msgstr "Emoji jest wymagane."
+
+#: form_behaviors/builtins/calculate.py:334
+#, fuzzy
+msgid "An expression may reference only one collection."
+msgstr "Wyrażenie może odwoływać się tylko do jednej kolekcji."
 
 #: models/project_management/initiative.py:257
 msgid "An initiative cannot be its own parent or a descendant."
@@ -712,6 +870,11 @@ msgid ""
 msgstr ""
 "Dotyczy nowych wywołań narzędzi. Oczekujące zatwierdzenia nadal wymagają decyzji. Uprawnienia do "
 "narzędzi mają zawsze zastosowanie."
+
+#: form_behaviors/builtins/transform_text.py:146
+#, fuzzy
+msgid "Apply a deterministic text normalization to the listener value."
+msgstr "Zastosuj deterministyczną normalizację tekstu do wartości nasłuchiwanego pola."
 
 # | msgid "Provider required"
 #: templates/cotton/features/agent/body.html:15
@@ -956,6 +1119,35 @@ msgstr "UDW"
 msgid "Before"
 msgstr "Przed"
 
+#: form_behaviors/definition.py:234
+#, fuzzy
+msgid "Behavior IDs must be unique within a field."
+msgstr "Identyfikatory zachowań w obrębie pola muszą być unikalne."
+
+# | msgid "Mailbox connection failed"
+# | msgid "Email connection failed"
+#: components/form_behaviors/execute.py:120
+#, fuzzy
+msgid "Behavior evaluation failed."
+msgstr "Nie udało się połączyć z pocztą e-mail"
+
+# | msgid "Free Variables"
+# | msgid "Browser calling is unavailable."
+#: form_fields/behavior_field.py:44
+#, fuzzy
+msgid "Behavior listener is unavailable."
+msgstr "Połączenia przez przeglądarkę są niedostępne."
+
+#: field_types/builtins/display.py:153
+#, fuzzy
+msgid "Behaviors"
+msgstr "Zachowania"
+
+#: form_fields/behavior_field.py:25
+#, fuzzy
+msgid "Behaviors must be a structured object."
+msgstr "Zachowania muszą być ustrukturyzowanym obiektem."
+
 #: bloomerp.applicationfield.field_type
 msgid "Big Auto Field"
 msgstr "Duże pole automatyczne"
@@ -1119,6 +1311,20 @@ msgstr "Zajęty"
 msgid "By allowing access, ChatGPT can:"
 msgstr "Po udzieleniu dostępu ChatGPT może:"
 
+#: form_behaviors/builtins/calculate.py:447
+#, fuzzy
+msgid "Calculate"
+msgstr "Oblicz"
+
+#: form_behaviors/builtins/calculate.py:449
+#, fuzzy
+msgid ""
+"Calculate numeric values or scalar date/datetime offsets (days for dates, minutes for datetimes) "
+"from a safe formula."
+msgstr ""
+"Oblicz wartości liczbowe lub skalarne przesunięcia daty lub daty i godziny (w dniach dla dat, w "
+"minutach dla dat i godzin) na podstawie bezpiecznej formuły."
+
 #: dataviews/pivot_table/config.py:93
 msgid "Calculate the totals row from this page or the entire filtered dataset."
 msgstr "Oblicz wiersz sum podsumowujący na podstawie tej strony lub całego przefiltrowanego zbioru danych."
@@ -1130,7 +1336,7 @@ msgstr "Kalendarz"
 # | msgid "Call API"
 #: bloomerp.phonecallevent.call models/communication/voip/phone_call_event.py:13
 #: templates/components/communication/calling/controls.html:2
-#: templates/components/communication/calling/controls.html:25
+#: templates/components/communication/calling/controls.html:30
 msgid "Call"
 msgstr "Połączenie"
 
@@ -1138,7 +1344,7 @@ msgstr "Połączenie"
 msgid "Call API"
 msgstr "Wywołanie API"
 
-#: templates/components/communication/calling/controls.html:34
+#: templates/components/communication/calling/controls.html:39
 msgid "Call controls"
 msgstr "Sterowanie połączeniem"
 
@@ -1157,11 +1363,11 @@ msgstr "Połączenia są niedostępne lub żądanie jest nieprawidłowe."
 msgid "Calling is unavailable."
 msgstr "Dzwonienie jest niedostępne."
 
-#: templates/components/communication/calling/controls.html:16
+#: templates/components/communication/calling/controls.html:21
 msgid "Camera"
 msgstr "Kamera"
 
-#: templates/components/communication/calling/controls.html:42
+#: templates/components/communication/calling/controls.html:47
 msgid "Camera off"
 msgstr "Kamera wyłączona"
 
@@ -1281,6 +1487,11 @@ msgstr "Wybierz kolor dla każdej wartości. Kolory usuniętych opcji są ignoro
 msgid "Choose a configured mapping key."
 msgstr "Wybierz skonfigurowany klucz mapowania."
 
+#: form_behaviors/builtins/populate_week_dates.py:83
+#, fuzzy
+msgid "Choose a date column, not row identity or deletion."
+msgstr "Wybierz kolumnę daty, a nie tożsamość wiersza ani usuwanie."
+
 # | msgid "The label"
 #: templates/cotton/features/instant_messaging/message.html:15
 msgid "Choose a reaction"
@@ -1336,10 +1547,27 @@ msgstr "Wybierz działania wyświetlane na pasku narzędzi."
 msgid "Choose which model-level permissions this policy grants."
 msgstr "Wybierz uprawnienia na poziomie modelu, które przyznaje ta zasada."
 
+#: templates/widgets/behavior_builder_widget.html:23
+#, fuzzy
+msgid "Clear all"
+msgstr "Wyczyść wszystko"
+
 # | msgid "Choice Field"
 #: templates/widgets/mailbox_settings.html:19
 msgid "Clear icon color"
 msgstr "Kolor ikony czyszczenia"
+
+#: form_behaviors/builtins/clear_value.py:73
+#, fuzzy
+msgid "Clear the target using its field type's empty-value semantics."
+msgstr "Wyczyść cel, stosując semantykę wartości pustej właściwą dla typu jego pola."
+
+# | msgid "Copy first value"
+# | msgid "Choose value"
+#: form_behaviors/builtins/clear_value.py:72
+#, fuzzy
+msgid "Clear value"
+msgstr "Wybierz wartość"
 
 #: bloomerp.immessage.client_id bloomerp.oauthaccesstoken.client_id
 #: bloomerp.oauthauthorizationcode.client_id
@@ -1389,7 +1617,7 @@ msgstr "Zamknij wiadomości"
 msgid "Closes At"
 msgstr "Zamyka się o"
 
-#: templates/components/communication/calling/controls.html:35
+#: templates/components/communication/calling/controls.html:40
 msgid "Closing this tab keeps you in the call. Keep your original Bloomerp tab open."
 msgstr "Zamknięcie tej karty nie spowoduje rozłączenia. Pozostaw otwartą pierwotną kartę Bloomerp."
 
@@ -1409,9 +1637,30 @@ msgstr "Pole kodu"
 msgid "Code Hash"
 msgstr "Skrót kodu"
 
+# | msgid "Call controls"
+#: templates/components/communication/calling/controls.html:6
+#, fuzzy
+msgid "Collapse call controls"
+msgstr "Sterowanie połączeniem"
+
+#: form_behaviors/builtins/transform_text.py:45
+#, fuzzy
+msgid "Collapse whitespace"
+msgstr "Zredukuj sekwencje białych znaków"
+
 #: bloomerp.workflownode.sub_type
 msgid "Collect"
 msgstr "Zbieranie"
+
+#: form_behaviors/builtins/calculate.py:70
+#, fuzzy
+msgid "Collection columns must be used inside an aggregation."
+msgstr "Kolumny kolekcji muszą być używane wewnątrz agregacji."
+
+#: form_behaviors/execution.py:216
+#, fuzzy
+msgid "Collections require at most 1000 row objects."
+msgstr "Kolekcje mogą zawierać maksymalnie 1000 obiektów wierszy."
 
 #: bloomerp.label.color bloomerp.sidebaritem.color models/workspaces/sidebar_item.py:83
 #: workspaces/analytics_tile/model.py:105
@@ -1422,8 +1671,20 @@ msgstr "Kolor"
 msgid "Color grouping"
 msgstr "Grupowanie według koloru"
 
+# | msgid "Columns"
+#: form_behaviors/builtins/populate_week_dates.py:53 form_behaviors/shared/calculate.py:19
+#, fuzzy
+msgid "Column"
+msgstr "Kolumny"
+
 #: templates/cotton/ui/inputs/one_to_many/column_actions.html:2
 msgid "Column actions"
+msgstr "Działania kolumny"
+
+# | msgid "Column actions"
+#: form_behaviors/builtins/fetch.py:320
+#, fuzzy
+msgid "Column mappings"
 msgstr "Działania kolumny"
 
 #: templates/cotton/features/dataviews/pivot_table.html:104
@@ -1507,6 +1768,23 @@ msgstr "Procent ukończenia"
 msgid "Compute"
 msgstr "Obliczanie"
 
+#: form_fields/behavior_field.py:53
+#, fuzzy
+msgid "Condition field is not in this layout."
+msgstr "Pole warunku nie znajduje się w tym układzie."
+
+# | msgid "No workflow graph was available for this execution."
+# | msgid "Sending is unavailable for this conversation."
+#: form_behaviors/execution.py:261
+#, fuzzy
+msgid "Condition field is unavailable in this draft."
+msgstr "Wysyłanie jest niedostępne dla tej rozmowy."
+
+#: form_behaviors/execution.py:265
+#, fuzzy
+msgid "Condition lookup cannot evaluate draft values."
+msgstr "Wyszukiwanie warunku nie może oceniać wartości roboczych."
+
 # | msgid "Preference"
 # | msgid "Preference name"
 #: bloomerp.conferenceattendance models/communication/conferencing/conference_attendance.py:41
@@ -1588,6 +1866,12 @@ msgstr "Migawka konfiguracji"
 #: models/communication/voip/voip_connection.py:135
 msgid "Configuration"
 msgstr "Skonfiguruj konto"
+
+# | msgid "Initial query parameters must be a JSON object."
+#: components/form_behaviors/render_action_config_form.py:68
+#, fuzzy
+msgid "Configuration must be an object."
+msgstr "Początkowe parametry zapytania muszą być obiektem JSON."
 
 #: views/communication/create_email_account.py:369
 msgid "Configure account"
@@ -1724,11 +2008,11 @@ msgstr "Bezpieczna zawartość"
 msgid "Content Type"
 msgstr "Typ treści"
 
-#: bloomerp.documenttemplate.content_types models/document_templates/document_template.py:151
+#: bloomerp.documenttemplate.content_types models/document_templates/document_template.py:173
 msgid "Content Types"
 msgstr "Typy treści"
 
-#: bloomerp.documenttemplate.template models/document_templates/document_template.py:139
+#: bloomerp.documenttemplate.template models/document_templates/document_template.py:161
 msgid "Content of the template, including the variables."
 msgstr "Treść szablonu, w tym zmienne."
 
@@ -1817,17 +2101,38 @@ msgstr "Skopiowano"
 msgid "Copy"
 msgstr "Kopiuj"
 
+#: form_behaviors/builtins/set_o2m_value.py:271
+#, fuzzy
+msgid "Copy each active row's source column or related accessor into a compatible column."
+msgstr "Skopiuj kolumnę źródłową każdego aktywnego wiersza lub powiązany akcesor do zgodnej kolumny."
+
+# | msgid "Copy first value"
+#: form_behaviors/builtins/copy_field_value.py:239
+#, fuzzy
+msgid "Copy field value"
+msgstr "Kopiuj pierwszą wartość"
+
 #: templates/cotton/ui/inputs/one_to_many/column_actions.html:30
 msgid "Copy first value"
 msgstr "Kopiuj pierwszą wartość"
 
-#: templates/components/communication/calling/controls.html:15
+#: templates/components/communication/calling/controls.html:20
 #, fuzzy
 msgid "Copy meeting link"
 msgstr "Skopiuj link do spotkania"
 
+#: form_behaviors/builtins/copy_field_value.py:240
+#, fuzzy
+msgid "Copy the listener or one field from its selected related record into the target."
+msgstr "Skopiuj wartość nasłuchiwanego pola lub jednego pola z wybranego powiązanego rekordu do celu."
+
+#: form_fields/behavior.py:165
+#, fuzzy
+msgid "Copy-related-rows actions require a source field."
+msgstr "Akcje kopiowania powiązanych wierszy wymagają pola źródłowego."
+
 # | msgid "Details"
-#: models/document_templates/document_template.py:113 models/forms/form.py:27
+#: models/document_templates/document_template.py:135 models/forms/form.py:27
 msgid "Core Details"
 msgstr "Szczegóły"
 
@@ -1848,6 +2153,11 @@ msgstr "Nie można zapisać zasad"
 #: dataviews/pivot_table/config.py:124
 msgid "Count"
 msgstr "Konto"
+
+#: form_behaviors/builtins/calculate.py:87
+#, fuzzy
+msgid "Count, first, and last require one collection column."
+msgstr "Liczba, pierwszy i ostatni wymagają jednej kolumny kolekcji."
 
 #: bloomerp.applicationfield.field_type
 msgid "Country Field"
@@ -2080,11 +2390,11 @@ msgstr "Bieżący język"
 msgid "Current page"
 msgstr "Bieżący język"
 
-#: bloomerp.documenttemplate.custom_styling models/document_templates/document_template.py:209
+#: bloomerp.documenttemplate.custom_styling models/document_templates/document_template.py:231
 msgid "Custom CSS styling for the document template."
 msgstr "Niestandardowe style CSS szablonu dokumentu."
 
-#: bloomerp.documenttemplate.custom_styling models/document_templates/document_template.py:210
+#: bloomerp.documenttemplate.custom_styling models/document_templates/document_template.py:232
 msgid "Custom Styling"
 msgstr "Niestandardowe style"
 
@@ -2108,6 +2418,12 @@ msgstr "Typ pola bazy danych"
 msgid "DB Table"
 msgstr "Tabela bazy danych"
 
+# | msgid "Change"
+#: form_behaviors/builtins/show_message.py:26
+#, fuzzy
+msgid "Danger"
+msgstr "Zmiana"
+
 #: templates/cotton/app/theme_selector.html:14
 msgid "Dark"
 msgstr "Ciemny"
@@ -2119,6 +2435,11 @@ msgstr "Dane"
 #: bloomerp.tile.type workspaces/registry.py:92
 msgid "Data View"
 msgstr "Widok danych"
+
+#: form_behaviors/builtins/fetch.py:656
+#, fuzzy
+msgid "Data lookup"
+msgstr "Wyszukiwanie danych"
 
 #: workspaces/dataview_tile/model.py:66
 msgid "Data view updated"
@@ -2135,6 +2456,11 @@ msgstr "Pole daty"
 #: bloomerp.user.date_view_preference models/users/user.py:96
 msgid "Date View Preference"
 msgstr "Preferencja wyświetlania daty"
+
+#: form_behaviors/shared/temporal.py:60
+#, fuzzy
+msgid "Date and datetime offsets must be a whole number."
+msgstr "Przesunięcia daty i daty z godziną muszą być liczbami całkowitymi."
 
 #: models/communication/signature_request.py:63
 msgid "Date and time when the document was signed."
@@ -2237,6 +2563,11 @@ msgstr "Dzień-miesiąc-rok (15-08-2000)"
 msgid "Day-Month-Year Hour:Minute (15-08-2000 12:30)"
 msgstr "Dzień-miesiąc-rok godzina:minuta (15-08-2000 12:30)"
 
+#: form_behaviors/builtins/populate_week_dates.py:60
+#, fuzzy
+msgid "Days"
+msgstr "Dni"
+
 #: bloomerp.aiapproval.decided_at
 msgid "Decided At"
 msgstr "Data podjęcia decyzji"
@@ -2252,7 +2583,7 @@ msgstr "Pole dziesiętne"
 # | msgid "Time Field"
 # | msgid "Timeline"
 # | msgid "Declined"
-#: templates/components/communication/calling/controls.html:8
+#: templates/components/communication/calling/controls.html:13
 #, fuzzy
 msgid "Decline"
 msgstr "Odrzucono"
@@ -2269,7 +2600,8 @@ msgid "DeepSeek"
 msgstr "DeepSeek"
 
 # | msgid "Default Filters"
-#: dataviews/table/config.py:72 templates/components/preferences/select.html:24
+#: dataviews/table/config.py:72 form_behaviors/definition.py:139
+#: templates/components/preferences/select.html:24
 msgid "Default"
 msgstr "Filtry domyślne"
 
@@ -2301,9 +2633,21 @@ msgstr "Filtry domyślne"
 msgid "Defaults to email address"
 msgstr "Domyślnie adres e-mail"
 
+#: form_behaviors/builtins/fetch.py:306
+#, fuzzy
+msgid "Defaults to record ID; first/last use this field with ID as a tie-breaker."
+msgstr ""
+"Domyślnie: identyfikator rekordu; w przypadku pierwszego/ostatniego używane jest to pole, a "
+"identyfikator rozstrzyga remisy."
+
 #: templates/components/access_control/row_policy.html:3
 msgid "Define the row policy by selecting a lookup and value for the field."
 msgstr "Zdefiniuj zasady dotyczące wierszy, wybierając odwołanie i wartość dla pola."
+
+#: field_types/builtins/display.py:156
+#, fuzzy
+msgid "Define what this form should do when the field changes."
+msgstr "Określ, co formularz ma zrobić po zmianie pola."
 
 #: bloomerp.activitylog.action components/files/actions/delete_file.py:36
 #: models/audit/activity_log.py:28 models/files/file_node.py:111
@@ -2397,6 +2741,16 @@ msgstr ""
 "Określa, czy tego użytkownika należy traktować jako aktywnego. Zamiast usuwać konta, odznacz tę "
 "opcję."
 
+#: form_behaviors/shared/calculate.py:120
+#, fuzzy, python-format
+msgid "Destination column '%(field)s' is not editable."
+msgstr "Kolumna docelowa „%(field)s” nie jest edytowalna."
+
+#: form_behaviors/shared/calculate.py:132
+#, fuzzy, python-format
+msgid "Destination column '%(field)s' is not numeric."
+msgstr "Kolumna docelowa „%(field)s” nie jest numeryczna."
+
 # | msgid "Create folder"
 #: components/files/actions/move_file.py:42
 msgid "Destination folder"
@@ -2444,7 +2798,8 @@ msgstr "Kierunek"
 
 # | msgid "Db Table"
 # | msgid "DB Table"
-#: bloomerp.imconnection.status bloomerp.voipconnection.status forms/agents/ai_agent.py:138
+#: bloomerp.imconnection.status bloomerp.voipconnection.status
+#: form_behaviors/builtins/set_field_interaction.py:27 forms/agents/ai_agent.py:138
 #: models/communication/instant_messaging/im_connection.py:33
 #: models/communication/voip/voip_connection.py:131
 msgid "Disabled"
@@ -2454,7 +2809,7 @@ msgstr "Wyłączone"
 msgid "Disconnected — waiting for connection"
 msgstr "Rozłączono — oczekiwanie na połączenie"
 
-#: templates/components/communication/calling/controls.html:12
+#: templates/components/communication/calling/controls.html:17
 msgid "Dismiss"
 msgstr "Zamknij"
 
@@ -2559,7 +2914,7 @@ msgstr ""
 
 # | msgctxt "bloomerp:route:name"
 # | msgid "Document Templates"
-#: bloomerp.documenttemplate models/document_templates/document_template.py:101
+#: bloomerp.documenttemplate models/document_templates/document_template.py:108
 msgid "Document Template"
 msgstr "Szablony dokumentów"
 
@@ -2589,8 +2944,15 @@ msgstr "Style szablonów dokumentów"
 
 # | msgctxt "bloomerp:route:name"
 # | msgid "Document Templates"
-#: bloomerp.documenttemplate models/document_templates/document_template.py:102
+#: bloomerp.documenttemplate models/document_templates/document_template.py:109
 msgid "Document Templates"
+msgstr "Szablony dokumentów"
+
+# | msgctxt "bloomerp:route:name"
+# | msgid "Document templates"
+#: models/document_templates/document_template.py:117
+#, fuzzy
+msgid "Document templates"
 msgstr "Szablony dokumentów"
 
 msgctxt "bloomerp:route:name"
@@ -2655,6 +3017,11 @@ msgstr "Pole czasu trwania"
 #: bloomerp.phonecall.duration models/communication/voip/phone_call.py:76
 msgid "Duration in seconds"
 msgstr "Czas trwania w sekundach"
+
+#: form_behaviors/execution.py:144
+#, fuzzy
+msgid "Each layout field must occur once."
+msgstr "Każde pole układu musi występować tylko raz."
 
 #: form_fields/mapping_field.py:92
 msgid "Each mapping key must be unique."
@@ -2790,14 +3157,20 @@ msgstr "Włącz rejestrowanie"
 msgid "Enable incoming calls"
 msgstr "Włącz połączenia przychodzące"
 
+#: form_behaviors/builtins/set_field_interaction.py:60
+#, fuzzy
+msgid "Enable or disable the target field without changing its value or visibility."
+msgstr "Włącz lub wyłącz pole docelowe bez zmiany jego wartości ani widoczności."
+
 # | msgid "Enable Logging"
 # | msgid "Enable phone"
-#: templates/components/communication/calling/controls.html:17
+#: templates/components/communication/calling/controls.html:22
 msgid "Enable sound"
 msgstr "Włącz dźwięk"
 
 # | msgid "Sync Enabled"
-#: bloomerp.aiagent.enabled bloomerp.mcpintegration.enabled models/agents/ai_agent.py:197
+#: bloomerp.aiagent.enabled bloomerp.mcpintegration.enabled
+#: form_behaviors/builtins/set_field_interaction.py:27 models/agents/ai_agent.py:197
 #: models/agents/mcp_server.py:45
 msgid "Enabled"
 msgstr "Włączone"
@@ -2837,7 +3210,7 @@ msgid "End field"
 msgstr "Pole kodu"
 
 # | msgid "For every tool"
-#: templates/components/communication/calling/controls.html:19
+#: templates/components/communication/calling/controls.html:24
 msgid "End for everyone"
 msgstr "Zakończ dla wszystkich"
 
@@ -2877,6 +3250,12 @@ msgstr "Wpisz nazwę o długości do 255 znaków."
 #: communication/builtins/voip/builtins/telnyx.py:141
 msgid "Enter a valid Telnyx Ed25519 public key."
 msgstr "Wprowadź prawidłowy klucz publiczny Telnyx Ed25519."
+
+# | msgid "Enter a valid mapping."
+#: form_behaviors/builtins/calculate.py:123
+#, fuzzy
+msgid "Enter a valid arithmetic expression."
+msgstr "Wprowadź prawidłowe mapowanie."
 
 #: form_fields/mapping_field.py:77
 msgid "Enter a valid mapping row."
@@ -2999,6 +3378,12 @@ msgstr "Czas wykonania"
 msgid "Executor Id"
 msgstr "Identyfikator wykonawcy"
 
+# | msgid "Select a list of MCP tool names."
+#: form_behaviors/builtins/set_o2m_value.py:36
+#, fuzzy
+msgid "Expected a list of row dictionaries."
+msgstr "Wybierz listę nazw narzędzi MCP."
+
 #: models/files/file_reference.py:177
 msgid "Expected an attachment or rich-text field."
 msgstr "Oczekiwano załącznika lub pola tekstu sformatowanego."
@@ -3023,6 +3408,33 @@ msgstr "Odkrywaj swoje dane, znajdź właściwą drogę lub uzyskaj pomoc dotycz
 #: templates/components/objects/dataview_actions/export.html:14
 msgid "Export"
 msgstr "Eksportuj"
+
+# | msgid "Permission"
+# | msgid "Session"
+#: form_behaviors/builtins/calculate.py:294
+#, fuzzy
+msgid "Expression"
+msgstr "Sesja"
+
+#: form_behaviors/builtins/calculate.py:99
+#, fuzzy
+msgid "Expressions may contain only numeric literals."
+msgstr "Wyrażenia mogą zawierać wyłącznie literały numeryczne."
+
+#: form_behaviors/builtins/calculate.py:137
+#, fuzzy
+msgid "Expressions require decimal numeric literals."
+msgstr "Wyrażenia wymagają dziesiętnych literałów numerycznych."
+
+#: form_behaviors/builtins/calculate.py:104
+#, fuzzy
+msgid "Expressions support only +, -, *, and / operators."
+msgstr "Wyrażenia obsługują tylko operatory +, -, * i /."
+
+#: form_behaviors/builtins/calculate.py:110
+#, fuzzy
+msgid "Expressions support only unary + and -."
+msgstr "Wyrażenia obsługują tylko jednoargumentowe + i -."
 
 #: bloomerp.imconnection.external_account_id
 msgid "External Account Id"
@@ -3059,10 +3471,53 @@ msgstr "Wyodrębnij pole"
 msgid "Failed"
 msgstr "Niepowodzenie"
 
-#: bloomerp.applicationfield.field models/application_field.py:40
+#: form_behaviors/builtins/fetch.py:299 form_behaviors/builtins/fetch.py:650
+#, fuzzy
+msgid "Fetch"
+msgstr "Pobierz"
+
+#: form_behaviors/builtins/fetch.py:272
+#, fuzzy
+msgid "Fetch for each existing row"
+msgstr "Pobierz dla każdego istniejącego wiersza"
+
+#: bloomerp.applicationfield.field form_behaviors/builtins/calculate.py:188
+#: form_behaviors/builtins/increment_o2m_value.py:34 models/application_field.py:40
 #: templates/components/forms/initial_data_row.html:10 templates/views/generic/detail/activity.html:55
 msgid "Field"
 msgstr "Pole"
+
+#: form_behaviors/builtins/clear_value.py:27 form_behaviors/execution.py:164
+#, fuzzy, python-format
+msgid "Field '%(field)s' has no editable value contract."
+msgstr "Pole „%(field)s” nie ma kontraktu edytowalnej wartości."
+
+#: form_behaviors/shared/temporal.py:50
+#, fuzzy, python-format
+msgid "Field '%(field)s' is not an editable date or datetime."
+msgstr "Pole „%(field)s” nie jest edytowalną datą ani datą z godziną."
+
+#: form_behaviors/shared/write_policy.py:65
+#, fuzzy, python-format
+msgid "Field '%(field)s' is not editable."
+msgstr "Pole „%(field)s” nie jest edytowalne."
+
+#: form_behaviors/execution.py:189
+#, fuzzy, python-format
+msgid "Field '%(field)s' requires a boolean value."
+msgstr "Pole „%(field)s” wymaga wartości logicznej."
+
+#: form_behaviors/execution.py:174
+#, fuzzy, python-format
+msgid "Field '%(field)s' requires a scalar value."
+msgstr "Pole „%(field)s” wymaga wartości skalarnej."
+
+# | msgid "No workflow graph was available for this execution."
+# | msgid "Sending is unavailable for this conversation."
+#: form_behaviors/execution.py:280
+#, fuzzy, python-format
+msgid "Field '%(field_name)s' is unavailable in this draft."
+msgstr "Wysyłanie jest niedostępne dla tej rozmowy."
 
 #: bloomerp.policy.field_policy models/access_control/policy.py:93
 msgid "Field Policy"
@@ -3079,6 +3534,17 @@ msgstr "Kontrola dostępu oparta na polach"
 #: workspaces/analytics_tile/model.py:612
 msgid "Field does not exist"
 msgstr "Pole nie istnieje"
+
+#: form_behaviors/builtins/fetch.py:286 form_behaviors/builtins/fetch.py:386
+#, fuzzy
+msgid "Field from matching record"
+msgstr "Pole z pasującego rekordu"
+
+# | msgid "No scheduled records."
+#: form_behaviors/builtins/copy_field_value.py:105
+#, fuzzy
+msgid "Field on selected record"
+msgstr "Brak zaplanowanych rekordów."
 
 #: workspaces/analytics_tile/model.py:607
 msgid "Field options updated"
@@ -3103,9 +3569,24 @@ msgstr "Usunięto pole"
 msgid "Field slot does not exist"
 msgstr "Gniazdo pola nie istnieje"
 
+# | msgid "Field updated"
+#: form_behaviors/builtins/set_field_interaction.py:64
+#: form_behaviors/builtins/set_field_visibility.py:64
+#, fuzzy
+msgid "Field state"
+msgstr "Zaktualizowano pole"
+
 #: workspaces/analytics_tile/model.py:659
 msgid "Field updated"
 msgstr "Zaktualizowano pole"
+
+# | msgid "Delete value"
+# | msgid "Select values"
+#: form_behaviors/builtins/copy_field_value.py:245 form_behaviors/builtins/set_relative_date.py:116
+#: form_behaviors/builtins/set_user_field_to_current_user.py:49
+#, fuzzy
+msgid "Field values"
+msgstr "Wybierz wartości"
 
 #: dataviews/pivot_table/config.py:63
 msgid "Fields aggregated into the leaf columns of the pivot table."
@@ -3228,6 +3709,11 @@ msgctxt "bloomerp:route:description"
 msgid "Files for object for {model} model"
 msgstr "Pliki obiektu dla modelu {model}"
 
+#: form_behaviors/builtins/increment_o2m_value.py:101
+#, fuzzy
+msgid "Fill blank integer cells in a collection with sequential values."
+msgstr "Wypełnij puste komórki całkowitoliczbowe w kolekcji kolejnymi wartościami."
+
 #: templates/components/objects/dataview_actions/filter.html:10 workspaces/analytics_tile/model.py:216
 msgid "Filter"
 msgstr "Filtr"
@@ -3248,9 +3734,14 @@ msgstr "Filtr już istnieje"
 msgid "Filter removed"
 msgstr "Usunięto filtr"
 
-#: bloomerp.savedfilter.filters
+#: bloomerp.savedfilter.filters form_behaviors/builtins/fetch.py:293
 msgid "Filters"
 msgstr "Filtry"
+
+#: form_behaviors/builtins/fetch.py:651
+#, fuzzy
+msgid "Find accessible records with filters and copy one value or populate collection rows."
+msgstr "Znajdź dostępne rekordy za pomocą filtrów i skopiuj jedną wartość lub wypełnij wiersze kolekcji."
 
 #: templates/inbox_items/workflow_run.html:34
 msgid "Finished"
@@ -3262,6 +3753,11 @@ msgstr "Zakończono"
 #: models/automation/workflow_run.py:419 models/files/file_extraction.py:197
 msgid "Finished At"
 msgstr "Zakończono"
+
+#: form_behaviors/builtins/fetch.py:300 form_behaviors/builtins/fetch.py:354
+#, fuzzy
+msgid "First"
+msgstr "Pierwszy"
 
 #: bloomerp.aitoolcall.first_dispatch_attempt
 msgid "First Dispatch Attempt"
@@ -3298,11 +3794,11 @@ msgstr "Cykle folderów są niedozwolone."
 msgid "Folder type"
 msgstr "Typ folderu"
 
-#: bloomerp.documenttemplate.footer models/document_templates/document_template.py:170
+#: bloomerp.documenttemplate.footer models/document_templates/document_template.py:192
 msgid "Footer"
 msgstr "Stopka"
 
-#: bloomerp.documenttemplate.footer models/document_templates/document_template.py:167
+#: bloomerp.documenttemplate.footer models/document_templates/document_template.py:189
 msgid "Footer content of the document template."
 msgstr "Zawartość stopki szablonu dokumentu."
 
@@ -3355,6 +3851,11 @@ msgstr "Przesłane formularze"
 msgid "Form Submissions"
 msgstr "Przesłane formularze"
 
+#: form_behaviors/execution.py:108
+#, fuzzy
+msgid "Form submission access requires an unsaved Form draft."
+msgstr "Dostęp do przesłania formularza wymaga niezapisanego szkicu formularza."
+
 #: views/forms/submit.py:102
 msgid "Form successfully filled in."
 msgstr "Formularz został pomyślnie wypełniony."
@@ -3369,7 +3870,7 @@ msgstr "Formater"
 msgid "Forms"
 msgstr "Formularze"
 
-#: bloomerp.documenttemplate.free_variables models/document_templates/document_template.py:156
+#: bloomerp.documenttemplate.free_variables models/document_templates/document_template.py:178
 msgid "Free Variables"
 msgstr "Wolne zmienne"
 
@@ -3388,6 +3889,13 @@ msgstr "Od %(from_email)s"
 msgid "From Node"
 msgstr "Z węzła"
 
+# | msgid "Db Column"
+# | msgid "DB Column"
+#: form_behaviors/builtins/set_o2m_value.py:89
+#, fuzzy
+msgid "From column"
+msgstr "Kolumna bazy danych"
+
 #: bloomerp.userlistviewpreference.view_type dataviews/registry.py:146
 msgid "Gantt"
 msgstr "Wykres Gantta"
@@ -3397,7 +3905,6 @@ msgid "Generate"
 msgstr "Generuj"
 
 #: bloomerp.workflownode.sub_type
-#, fuzzy
 msgid "Generate PDF"
 msgstr "Generuj PDF"
 
@@ -3408,6 +3915,11 @@ msgstr "Generuj PDF"
 #: templates/views/auth/create_api_token.html:22
 msgid "Generate Token"
 msgstr "Wygeneruj token"
+
+#: form_behaviors/builtins/populate_week_dates.py:131
+#, fuzzy
+msgid "Generate five or seven dated rows from the source ISO week."
+msgstr "Utwórz pięć lub siedem wierszy z datami na podstawie źródłowego tygodnia ISO."
 
 msgctxt "bloomerp:route:description"
 msgid "Generate pdf from document template"
@@ -3511,7 +4023,7 @@ msgstr "Zahaszowany sekret klucza API. Surowy token jest wyświetlany tylko podc
 msgid "Header"
 msgstr "Nagłówek"
 
-#: bloomerp.documenttemplate.template_header models/document_templates/document_template.py:163
+#: bloomerp.documenttemplate.template_header models/document_templates/document_template.py:185
 msgid "Header of the document template."
 msgstr "Nagłówek szablonu dokumentu."
 
@@ -3547,6 +4059,11 @@ msgstr "Pomóż mi zrozumieć tę stronę"
 #: bloomerp.sidebaritem.color
 msgid "Hex color code for the sidebar item (e.g. #FF5733)."
 msgstr "Kod koloru szesnastkowego elementu paska bocznego (np. #FF5733)."
+
+#: form_behaviors/builtins/set_field_visibility.py:27
+#, fuzzy
+msgid "Hidden"
+msgstr "Ukryte"
 
 #: bloomerp.todo.priority models/project_management/todo.py:35
 msgid "High"
@@ -3765,7 +4282,7 @@ msgstr "Elementy skrzynki odbiorczej"
 msgid "Inboxes"
 msgstr "Skrzynki odbiorcze"
 
-#: bloomerp.documenttemplate.include_page_numbers models/document_templates/document_template.py:194
+#: bloomerp.documenttemplate.include_page_numbers models/document_templates/document_template.py:216
 msgid "Include Page Numbers"
 msgstr "Uwzględnij numery stron"
 
@@ -3788,6 +4305,12 @@ msgstr "Niekompletna konfiguracja"
 
 #: templates/cotton/ui/inputs/one_to_many/column_actions.html:35
 msgid "Increment first value"
+msgstr "Zwiększ pierwszą wartość"
+
+# | msgid "Increment first value"
+#: form_behaviors/builtins/increment_o2m_value.py:100
+#, fuzzy
+msgid "Increment o2m value"
 msgstr "Zwiększ pierwszą wartość"
 
 #: bloomerp.inbox.selected bloomerp.sidebar.selected bloomerp.userdetailviewtabspreference.selected
@@ -3814,6 +4337,11 @@ msgstr ""
 #: bloomerp.inboxitem.is_read
 msgid "Indicates whether the inbox item has been read by the user."
 msgstr "Wskazuje, czy element skrzynki odbiorczej został przeczytany przez użytkownika."
+
+#: form_behaviors/builtins/show_message.py:26
+#, fuzzy
+msgid "Info"
+msgstr "Informacje"
 
 #: bloomerp.inbox.initial_default bloomerp.sidebar.initial_default
 #: bloomerp.userdetailviewtabspreference.initial_default
@@ -3885,7 +4413,14 @@ msgid "Integer Field"
 msgstr "Pole typu całkowitego"
 
 #: bloomerp.mcpconnection.integration
+#, fuzzy
 msgid "Integration"
+msgstr "Integracja"
+
+# | msgid "Integration"
+#: form_behaviors/builtins/set_field_interaction.py:26
+#, fuzzy
+msgid "Interaction"
 msgstr "Integracja"
 
 # | msgid "Integration"
@@ -3913,6 +4448,25 @@ msgstr "Nieprawidłowy identyfikator załącznika."
 #: views/agents/create_mcp_integration.py:397
 msgid "Invalid authentication values. Reconnect to continue."
 msgstr "Nieprawidłowe wartości uwierzytelniania. Połącz ponownie, aby kontynuować."
+
+# | msgid "Invalid mailbox mapping: %(error)s"
+#: form_fields/behavior_field.py:31
+#, fuzzy, python-format
+msgid "Invalid behavior configuration: %(exc)s"
+msgstr "Nieprawidłowe mapowanie skrzynki pocztowej: %(error)s"
+
+# | msgid "Invalid tool approval rules."
+# | msgid "Invalid email request."
+#: components/form_behaviors/execute.py:64
+#, fuzzy
+msgid "Invalid behavior execution request."
+msgstr "Nieprawidłowe żądanie dotyczące wiadomości e-mail."
+
+# | msgid "Invalid file extraction manifest."
+#: form_behaviors/execution.py:226
+#, fuzzy
+msgid "Invalid collection row columns."
+msgstr "Nieprawidłowy manifest ekstrakcji plików."
 
 #: components/activity/activity_log.py:22
 msgid "Invalid content type ID"
@@ -3966,10 +4520,27 @@ msgstr "Nieprawidłowy manifest ekstrakcji plików."
 msgid "Invalid grouped filters."
 msgstr "Nieprawidłowe filtry grupowane."
 
+# | msgid "Invalid field policy"
+# | msgid "Invalid email object."
+#: components/form_behaviors/render_action_config_form.py:36
+#, fuzzy
+msgid "Invalid layout context."
+msgstr "Nieprawidłowy obiekt wiadomości e-mail."
+
 #: communication/builtins/emails/mailboxes.py:77
 #, python-format
 msgid "Invalid mailbox mapping: %(error)s"
 msgstr "Nieprawidłowe mapowanie skrzynki pocztowej: %(error)s"
+
+#: form_behaviors/execution.py:235
+#, fuzzy
+msgid "Invalid or duplicate related row identity."
+msgstr "Nieprawidłowa lub zduplikowana tożsamość powiązanego wiersza."
+
+#: form_behaviors/builtins/fetch.py:465
+#, fuzzy, python-format
+msgid "Invalid or incompatible mapping: %(target_name)s → %(source_name)s."
+msgstr "Nieprawidłowe lub niezgodne mapowanie: %(target_name)s → %(source_name)s."
 
 #: views/access_control/create_policy.py:281
 msgid "Invalid row policy"
@@ -4082,8 +4653,15 @@ msgstr "Zaktualizowano element"
 msgid "JSON Field"
 msgstr "Pole JSON"
 
+#: form_behaviors/builtins/fetch.py:321
+#, fuzzy
+msgid "JSON object mapping target columns to source columns, for example {\"quantity\": \"quantity\"}."
+msgstr ""
+"Obiekt JSON mapujący kolumny docelowe na kolumny źródłowe, na przykład {\"quantity\": "
+"\"quantity\"}."
+
 # | msgid "Phone call"
-#: templates/components/communication/calling/controls.html:11
+#: templates/components/communication/calling/controls.html:16
 #: templates/components/communication/conferencing/session_card.html:7
 msgid "Join call"
 msgstr "Dołącz do połączenia"
@@ -4094,7 +4672,6 @@ msgstr "Dołącz do połączenia"
 msgid "Join meeting"
 msgstr "Dołącz do spotkania"
 
-#, fuzzy
 msgctxt "bloomerp:route:name"
 msgid "Join meeting"
 msgstr "Dołącz do spotkania"
@@ -4156,7 +4733,7 @@ msgstr "Etykieta"
 msgid "Labels"
 msgstr "Etykiety"
 
-#: bloomerp.documenttemplate.page_orientation models/document_templates/document_template.py:30
+#: bloomerp.documenttemplate.page_orientation models/document_templates/document_template.py:37
 msgid "Landscape"
 msgstr "Pozioma"
 
@@ -4167,6 +4744,11 @@ msgstr "Kolory kolumn"
 #: templates/cotton/app/sidebar/body.html:169
 msgid "Languages"
 msgstr "Języki"
+
+#: form_behaviors/builtins/fetch.py:300 form_behaviors/builtins/fetch.py:354
+#, fuzzy
+msgid "Last"
+msgstr "Ostatni"
 
 #: bloomerp.imconversation.last_activity_at
 msgid "Last Activity At"
@@ -4225,6 +4807,13 @@ msgstr "Układ"
 msgid "Layout Obj"
 msgstr "Obiekt układu"
 
+# | msgid "Detailed run logging is still available."
+# | msgid "Calling is unavailable."
+#: components/form_behaviors/execute.py:100 form_behaviors/execution.py:125
+#, fuzzy
+msgid "Layout model is unavailable."
+msgstr "Dzwonienie jest niedostępne."
+
 #: bloomerp.airunattempt.lease_expires_at
 msgid "Lease Expires At"
 msgstr "Data wygaśnięcia dzierżawy"
@@ -4256,7 +4845,7 @@ msgstr ""
 "chyba że określono adres do odpowiedzi."
 
 # | msgid "Phone call"
-#: templates/components/communication/calling/controls.html:18
+#: templates/components/communication/calling/controls.html:23
 msgid "Leave call"
 msgstr "Opuść połączenie"
 
@@ -4295,7 +4884,7 @@ msgstr "Legenda"
 msgid "Legend position"
 msgstr "Pozycja legendy"
 
-#: bloomerp.documenttemplate.page_size models/document_templates/document_template.py:24
+#: bloomerp.documenttemplate.page_size models/document_templates/document_template.py:31
 msgid "Letter"
 msgstr "Letter"
 
@@ -4371,6 +4960,18 @@ msgstr "Lista Twoich obszarów roboczych"
 #: workspaces/dataview_tile/form.py:35
 msgid "List view preference"
 msgstr "Preferencja widoku listy"
+
+#: form_behaviors/execution.py:302
+#, fuzzy
+msgid "Listener field value is missing from the draft."
+msgstr "Brak wartości pola nasłuchującego w wersji roboczej."
+
+# | msgid "Copy first value"
+# | msgid "Choose value"
+#: form_behaviors/builtins/copy_field_value.py:104
+#, fuzzy
+msgid "Listener value"
+msgstr "Wybierz wartość"
 
 # | msgid "im identity"
 #: bloomerp.conferenceattendance.livekit_identity
@@ -4457,6 +5058,16 @@ msgstr "Zaloguj się na swoje konto"
 #: bloomerp.todo.priority models/project_management/todo.py:37
 msgid "Low"
 msgstr "Niski"
+
+#: form_behaviors/builtins/transform_text.py:47
+#, fuzzy
+msgid "Lower snake case"
+msgstr "Małe litery z podkreśleniami"
+
+#: form_behaviors/builtins/transform_text.py:41
+#, fuzzy
+msgid "Lowercase"
+msgstr "Małe litery"
 
 #: bloomerp.todo.effort models/project_management/todo.py:43
 msgid "M"
@@ -4596,9 +5207,14 @@ msgstr "Margines prawy"
 msgid "Margin Top"
 msgstr "Margines górny"
 
-#: bloomerp.documenttemplate.page_margin models/document_templates/document_template.py:188
+#: bloomerp.documenttemplate.page_margin models/document_templates/document_template.py:210
 msgid "Margin of the document template in inches."
 msgstr "Margines szablonu dokumentu w calach."
+
+#: form_behaviors/builtins/fetch.py:287
+#, fuzzy
+msgid "Matching record itself"
+msgstr "Sam pasujący rekord"
 
 #: bloomerp.form.max_submissions models/forms/form.py:114
 msgid "Max Submissions"
@@ -4700,7 +5316,7 @@ msgstr "Scalanie gałęzi"
 # | msgid "Parent"
 # | msgid "Parent Message"
 #: bloomerp.aimessageartifact.message bloomerp.airun.trigger_type bloomerp.immessageattachment.message
-#: bloomerp.immessagereaction.message
+#: bloomerp.immessagereaction.message form_behaviors/builtins/show_message.py:35
 #: templates/components/communication/instant_messaging/conversation.html:2
 #: templates/cotton/ui/chat/composer.html:8
 msgid "Message"
@@ -4737,7 +5353,7 @@ msgstr "Meta"
 msgid "Metadata"
 msgstr "Metadane"
 
-#: templates/components/communication/calling/controls.html:13
+#: templates/components/communication/calling/controls.html:18
 msgid "Microphone"
 msgstr "Mikrofon"
 
@@ -4762,6 +5378,12 @@ msgstr "Brak identyfikatora obiektu lub identyfikatora typu zawartości"
 #: communication/builtins/voip/builtins/twilio.py:67
 msgid "Mobile"
 msgstr "Komórkowy"
+
+# | msgid "Model"
+#: form_behaviors/builtins/fetch.py:269
+#, fuzzy
+msgid "Mode"
+msgstr "Model"
 
 #: bloomerp.savedfilter.scope models/filters/filter.py:33
 #: templates/components/workspaces/tiles/builders/analytics.html:263
@@ -4793,6 +5415,16 @@ msgstr "Identyfikator modułu"
 msgctxt "bloomerp:route:name"
 msgid "Modules"
 msgstr "Moduły"
+
+#: form_behaviors/builtins/populate_week_dates.py:61
+#, fuzzy
+msgid "Monday–Friday"
+msgstr "Poniedziałek–piątek"
+
+#: form_behaviors/builtins/populate_week_dates.py:61
+#, fuzzy
+msgid "Monday–Sunday"
+msgstr "Poniedziałek–niedziela"
 
 #: dataviews/calendar/config.py:22 templates/cotton/features/dataviews/gant.html:32
 msgid "Month"
@@ -4870,7 +5502,7 @@ msgstr "Moje obszary robocze"
 #: models/automation/workflow.py:189 models/automation/workflow_edge.py:23
 #: models/automation/workflow_node.py:54 models/communication/conferencing/conference_admission.py:31
 #: models/communication/email_account.py:110 models/communication/voip/voip_connection.py:119
-#: models/document_templates/document_template.py:135
+#: models/document_templates/document_template.py:157
 #: models/document_templates/document_template_header.py:23
 #: models/document_templates/document_template_styling.py:24 models/forms/form.py:69
 #: models/project_management/initiative.py:145 models/users/base_preference.py:100
@@ -4893,7 +5525,7 @@ msgstr ""
 msgid "Name of the document template styling."
 msgstr "Nazwa stylu szablonu dokumentu."
 
-#: bloomerp.documenttemplate.name models/document_templates/document_template.py:134
+#: bloomerp.documenttemplate.name models/document_templates/document_template.py:156
 msgid "Name of the document template."
 msgstr "Nazwa szablonu dokumentu."
 
@@ -4921,6 +5553,11 @@ msgstr "Strona główna modułu {module}."
 #: bloomerp.imconversation.needs_reply
 msgid "Needs Reply"
 msgstr "Wymaga odpowiedzi"
+
+#: form_behaviors/execution.py:250
+#, fuzzy
+msgid "Nested collections are not supported."
+msgstr "Zagnieżdżone kolekcje nie są obsługiwane."
 
 #: templates/components/forms/initial_data.html:29
 msgid "New"
@@ -5005,6 +5642,12 @@ msgstr "Brak działań"
 #: templates/views/generic/detail/activity.html:94
 msgid "No activity yet"
 msgstr "Brak aktywności"
+
+# | msgid "Authentication configuration"
+#: templates/components/form_behavior/render_action_config_form.html:9
+#, fuzzy
+msgid "No additional configuration."
+msgstr "Konfiguracja uwierzytelniania"
 
 #: templates/cotton/features/agent/body.html:149
 msgid "No approvals"
@@ -5360,6 +6003,16 @@ msgstr "Data wystąpienia"
 msgid "Occurrence Id"
 msgstr "ID wystąpienia"
 
+#: form_behaviors/builtins/set_relative_date.py:55
+#, fuzzy
+msgid "Offset (days)"
+msgstr "Przesunięcie (dni)"
+
+#: form_behaviors/builtins/set_relative_date.py:55
+#, fuzzy
+msgid "Offset (minutes)"
+msgstr "Przesunięcie (minuty)"
+
 #: bloomerp.initiative.status models/project_management/initiative.py:29
 msgid "On Hold"
 msgstr "Wstrzymano"
@@ -5412,9 +6065,14 @@ msgstr "Tylko zakończone sesje muszą mieć godzinę zakończenia."
 msgid "Only model fields can be used in email templates."
 msgstr "W szablonach wiadomości e-mail można używać tylko pól modelu."
 
-#: form_behaviors/shared/write_policy.py:19
+#: form_behaviors/builtins/fetch.py:357 form_behaviors/shared/write_policy.py:19
 msgid "Only when empty"
 msgstr "Tylko gdy puste"
+
+#: form_behaviors/builtins/fetch.py:345
+#, fuzzy
+msgid "Only when the collection has no active rows"
+msgstr "Tylko gdy kolekcja nie zawiera aktywnych wierszy"
 
 #: bloomerp.aiconversation.status bloomerp.imconversation.status
 #: models/communication/instant_messaging/im_conversation.py:65
@@ -5426,7 +6084,7 @@ msgid "Open URL in a new tab"
 msgstr "Otwórz URL w nowej karcie"
 
 # | msgid "End call"
-#: templates/components/communication/calling/controls.html:10
+#: templates/components/communication/calling/controls.html:15
 msgid "Open call"
 msgstr "Otwórz połączenie"
 
@@ -5488,6 +6146,11 @@ msgstr "Opcjonalny kolor tej serii, na przykład #3b82f6."
 #: dataviews/calendar/config.py:58
 msgid "Optional date field used as the end of an event range."
 msgstr "Opcjonalne pole daty używane jako koniec zakresu wydarzenia."
+
+#: form_behaviors/builtins/set_o2m_value.py:95
+#, fuzzy
+msgid "Optional field on the selected related record, for example sales_price."
+msgstr "Opcjonalne pole wybranego powiązanego rekordu, na przykład sales_price."
 
 #: dataviews/calendar/config.py:74
 msgid "Optional field used to color calendar items and build the legend."
@@ -5551,7 +6214,7 @@ msgstr "Opcje zaktualizowane"
 msgid "Or continue with"
 msgstr "Lub kontynuuj za pomocą"
 
-#: dataviews/gant/config.py:105
+#: dataviews/gant/config.py:105 form_behaviors/builtins/fetch.py:305
 msgid "Order by"
 msgstr "Sortuj według"
 
@@ -5561,7 +6224,7 @@ msgstr "Sortuj według"
 msgid "Order direction"
 msgstr "Kierunek sortowania"
 
-#: bloomerp.documenttemplate.page_orientation models/document_templates/document_template.py:175
+#: bloomerp.documenttemplate.page_orientation models/document_templates/document_template.py:197
 msgid "Orientation of the document template."
 msgstr "Orientacja szablonu dokumentu."
 
@@ -5626,15 +6289,15 @@ msgstr "Przegląd profilu"
 msgid "Owner"
 msgstr "Właściciel"
 
-#: bloomerp.documenttemplate.page_margin models/document_templates/document_template.py:189
+#: bloomerp.documenttemplate.page_margin models/document_templates/document_template.py:211
 msgid "Page Margin"
 msgstr "Margines strony"
 
-#: bloomerp.documenttemplate.page_orientation models/document_templates/document_template.py:177
+#: bloomerp.documenttemplate.page_orientation models/document_templates/document_template.py:199
 msgid "Page Orientation"
 msgstr "Orientacja strony"
 
-#: bloomerp.documenttemplate.page_size models/document_templates/document_template.py:184
+#: bloomerp.documenttemplate.page_size models/document_templates/document_template.py:206
 #: workspaces/analytics_tile/model.py:126
 msgid "Page Size"
 msgstr "Rozmiar strony"
@@ -5678,7 +6341,7 @@ msgstr "Uczestnik"
 # | msgid "Participant"
 #: communication/builtins/instant_messaging/builtins/staff_groups.py:35
 #: communication/builtins/instant_messaging/builtins/staff_groups.py:52
-#: templates/components/communication/calling/controls.html:26
+#: templates/components/communication/calling/controls.html:31
 msgid "Participants"
 msgstr "Uczestnicy"
 
@@ -5715,6 +6378,18 @@ msgstr "Osoby"
 #: bloomerp.rowpolicyrulepermission.permission models/access_control/row_policy_rule.py:221
 msgid "Permission"
 msgstr "Uprawnienie"
+
+# | msgid "Permission required"
+#: form_behaviors/shared/permissions.py:9
+#, fuzzy
+msgid "Permission denied"
+msgstr "Wymagane uprawnienie"
+
+# | msgid "Permission required"
+#: form_behaviors/shared/permissions.py:9
+#, fuzzy, python-format
+msgid "Permission denied: %(message)s"
+msgstr "Wymagane uprawnienie"
 
 #: views/access_control/create_policy.py:258
 msgid "Permission required"
@@ -5944,7 +6619,25 @@ msgstr "Odpytywanie"
 msgid "Polling interval used by providers that synchronize on a schedule."
 msgstr "Interwał odpytywania używany przez dostawców synchronizujących dane według harmonogramu."
 
-#: bloomerp.documenttemplate.page_orientation models/document_templates/document_template.py:29
+# | msgctxt "bloomerp:route:name"
+# | msgid "Agent browser connection"
+# | msgid "Create connection"
+#: form_behaviors/builtins/fetch.py:271
+#, fuzzy
+msgid "Populate collection"
+msgstr "Utwórz połączenie"
+
+#: form_behaviors/builtins/populate_week_dates.py:130
+#, fuzzy
+msgid "Populate dates from week"
+msgstr "Wypełnij daty na podstawie tygodnia"
+
+#: form_behaviors/builtins/fetch.py:435
+#, fuzzy
+msgid "Populating a collection requires all matching records."
+msgstr "Wypełnienie kolekcji wymaga wszystkich pasujących rekordów."
+
+#: bloomerp.documenttemplate.page_orientation models/document_templates/document_template.py:36
 msgid "Portrait"
 msgstr "Pionowa"
 
@@ -6097,6 +6790,11 @@ msgstr "Chronione powiązane obiekty:"
 #: models/communication/instant_messaging/im_identity.py:76
 msgid "Provide both a content type and an object ID."
 msgstr "Podaj zarówno typ zawartości, jak i identyfikator obiektu."
+
+#: form_behaviors/builtins/fetch.py:440
+#, fuzzy
+msgid "Provide target-to-source column mappings."
+msgstr "Podaj mapowania kolumn docelowych na źródłowe."
 
 #: bloomerp.emailaccount.provider bloomerp.imconnection.provider bloomerp.imidentity.provider_key
 #: bloomerp.voipconnection.provider models/communication/email_account.py:121
@@ -6416,6 +7114,13 @@ msgstr "Powiązany obiekt"
 msgid "Related Object ID"
 msgstr "Identyfikator powiązanego obiektu"
 
+# | msgid "Date Field"
+# | msgid "Date field"
+#: form_behaviors/builtins/copy_field_value.py:115
+#, fuzzy
+msgid "Related field"
+msgstr "Pole daty"
+
 #: bloomerp.applicationfield.related_model models/application_field.py:60
 msgid "Related model for ForeignKey, OneToOneField, ManyToManyField"
 msgstr "Powiązany model dla pól ForeignKey, OneToOneField i ManyToManyField"
@@ -6432,6 +7137,12 @@ msgstr "Powiązane obiekty"
 #: templates/views/generic/detail/delete.html:23
 msgid "Related objects that would be deleted:"
 msgstr "Powiązane obiekty, które zostaną usunięte:"
+
+# | msgid "Attachments do not belong to this object and field."
+#: form_behaviors/execution.py:239
+#, fuzzy
+msgid "Related row does not belong to this object."
+msgstr "Załączniki nie należą do tego obiektu i pola."
 
 #: models/users/user_detail_view_tabs_preference.py:364
 msgid "Relationships"
@@ -6492,6 +7203,16 @@ msgstr "Błąd renderowania: %(error)s"
 #: form_behaviors/shared/write_policy.py:21
 msgid "Replace"
 msgstr "Zastąp"
+
+#: form_behaviors/builtins/set_value.py:89
+#, fuzzy
+msgid "Replace the target field value, including with an empty value."
+msgstr "Zastąp wartość pola docelowego, także pustą wartością."
+
+#: form_behaviors/builtins/fetch.py:346
+#, fuzzy
+msgid "Replace unsaved rows only"
+msgstr "Zastąp tylko niezapisane wiersze"
 
 #: components/communication/emails/reply_to_email.py:335
 msgid "Reply"
@@ -6595,6 +7316,16 @@ msgstr "Przywróć"
 msgid "Result"
 msgstr "Wynik"
 
+#: form_behaviors/shared/calculate.py:115
+#, fuzzy, python-format
+msgid "Result does not fit destination column '%(field)s'."
+msgstr "Wynik nie mieści się w kolumnie docelowej '%(field)s'."
+
+#: form_behaviors/shared/calculate.py:127
+#, fuzzy, python-format
+msgid "Result is invalid for destination column '%(field)s': %(details)s"
+msgstr "Wynik jest nieprawidłowy dla kolumny docelowej '%(field)s': %(details)s"
+
 #: bloomerp.airun.resume_after
 msgid "Resume After"
 msgstr "Wznów po"
@@ -6682,7 +7413,7 @@ msgstr "Katalog główny"
 msgid "Root Items"
 msgstr "Elementy główne"
 
-#: bloomerp.documenttemplate.content_types models/document_templates/document_template.py:148
+#: bloomerp.documenttemplate.content_types models/document_templates/document_template.py:170
 msgid "Root object types that can be used as variables in the document template."
 msgstr "Typy obiektów głównych, których można używać jako zmiennych w szablonie dokumentu."
 
@@ -6710,6 +7441,16 @@ msgstr "Uprawnienia reguł polityki wierszy"
 #: templates/widgets/one_to_many_field_widget.html:36
 msgid "Row actions"
 msgstr "Akcje wiersza"
+
+#: form_behaviors/builtins/calculate.py:330
+#, fuzzy
+msgid "Row formulas may only reference the target collection."
+msgstr "Formuły wierszy mogą odwoływać się tylko do kolekcji docelowej."
+
+#: form_behaviors/builtins/fetch.py:511
+#, fuzzy
+msgid "Row placeholders require per-row mode."
+msgstr "Symbole zastępcze wierszy wymagają trybu przetwarzania wiersz po wierszu."
 
 # | msgid "Row policies can only use permissions selected in step 1."
 #: views/access_control/create_policy.py:306
@@ -7031,6 +7772,20 @@ msgstr "Najpierw wybierz dostawcę VoIP."
 msgid "Select a VoIP provider."
 msgstr "Wybierz dostawcę VoIP."
 
+# | msgid "Please select an email provider first."
+# | msgid "Select a VoIP provider first."
+#: form_behaviors/builtins/increment_o2m_value.py:27
+#, fuzzy
+msgid "Select a collection listener first."
+msgstr "Najpierw wybierz dostawcę VoIP."
+
+# | msgid "Please select an email provider first."
+# | msgid "Select a VoIP provider first."
+#: form_behaviors/builtins/populate_week_dates.py:34 form_behaviors/builtins/set_o2m_value.py:79
+#, fuzzy
+msgid "Select a collection target first."
+msgstr "Najpierw wybierz dostawcę VoIP."
+
 # | msgid "Select a field"
 #: dataviews/calendar/config.py:92
 msgid "Select a date field"
@@ -7040,6 +7795,11 @@ msgstr "Wybierz pole"
 msgid "Select a field"
 msgstr "Wybierz pole"
 
+#: form_behaviors/builtins/copy_field_value.py:153
+#, fuzzy
+msgid "Select a field from the related record."
+msgstr "Wybierz pole z powiązanego rekordu."
+
 #: models/agents/ai_agent.py:361
 msgid "Select a list of MCP resource URIs or URI templates."
 msgstr "Wybierz listę identyfikatorów URI zasobów MCP lub szablonów URI."
@@ -7047,6 +7807,12 @@ msgstr "Wybierz listę identyfikatorów URI zasobów MCP lub szablonów URI."
 #: models/agents/ai_agent.py:352
 msgid "Select a list of MCP tool names."
 msgstr "Wybierz listę nazw narzędzi MCP."
+
+# | msgid "Select a start date field in the display options."
+#: form_behaviors/builtins/calculate.py:264 form_behaviors/builtins/copy_field_value.py:89
+#, fuzzy
+msgid "Select a listener and target field first."
+msgstr "Wybierz pole daty rozpoczęcia w opcjach wyświetlania."
 
 # | msgid "Disconnected — waiting for connection"
 #: models/communication/instant_messaging/im_conversation.py:134
@@ -7063,9 +7829,21 @@ msgstr "Wybierz numer telefonu"
 msgid "Select a readable, populated email field."
 msgstr "Wybierz czytelne, wypełnione pole adresu e-mail."
 
+#: form_behaviors/builtins/set_o2m_value.py:152
+#, fuzzy
+msgid "Select a related field compatible with the target column."
+msgstr "Wybierz powiązane pole zgodne z kolumną docelową."
+
 #: models/communication/instant_messaging/im_thread_read_position.py:44
 msgid "Select a root message."
 msgstr "Wybierz wiadomość główną."
+
+# | msgid "Select provider"
+# | msgid "Select a phone number"
+#: form_behaviors/builtins/fetch.py:481
+#, fuzzy
+msgid "Select a source column."
+msgstr "Wybierz numer telefonu"
 
 #: templates/cotton/features/dataviews/calendar.html:23
 msgid "Select a start date field in the display options."
@@ -7074,6 +7852,33 @@ msgstr "Wybierz pole daty rozpoczęcia w opcjach wyświetlania."
 #: templates/cotton/features/dataviews/gant.html:6
 msgid "Select a start field and an end field in the display options to configure the Gantt chart."
 msgstr "Wybierz pole początkowe i końcowe w opcjach wyświetlania, aby skonfigurować wykres Gantta."
+
+# | msgid "Select a root message."
+#: form_behaviors/builtins/fetch.py:479
+#, fuzzy
+msgid "Select a target column."
+msgstr "Wybierz wiadomość główną."
+
+# | msgid "Select a field"
+# | msgid "Select a date field"
+#: form_behaviors/builtins/clear_value.py:39 form_behaviors/builtins/fetch.py:256
+#: form_behaviors/builtins/set_relative_date.py:49 form_behaviors/builtins/set_value.py:25
+#: form_behaviors/utils.py:29
+#, fuzzy
+msgid "Select a target field first."
+msgstr "Wybierz pole"
+
+# | msgid "Select a start date field in the display options."
+#: form_behaviors/definition.py:180
+#, fuzzy
+msgid "Select a target field for this action."
+msgstr "Wybierz pole daty rozpoczęcia w opcjach wyświetlania."
+
+# | msgid "Select an email before replying."
+#: form_behaviors/builtins/fetch.py:85
+#, fuzzy
+msgid "Select a valid source model."
+msgstr "Wybierz wiadomość e-mail przed udzieleniem odpowiedzi."
 
 # | msgid "Delete value"
 #: components/communication/voip/assign.py:39
@@ -7094,6 +7899,20 @@ msgstr "Wybierz dostawcę AI, aby kontynuować."
 #: communication/builtins/instant_messaging/builtins/phone.py:79
 msgid "Select an available phone recipient."
 msgstr "Wybierz dostępnego odbiorcę połączenia telefonicznego."
+
+# | msgid "Select related field"
+# | msgid "Select a readable, populated email field."
+#: form_behaviors/builtins/set_relative_date.py:53
+#, fuzzy
+msgid "Select an editable scalar date or datetime target field."
+msgstr "Wybierz czytelne, wypełnione pole adresu e-mail."
+
+# | msgid "Select a field"
+# | msgid "Select a date field"
+#: form_fields/behavior_field.py:65
+#, fuzzy
+msgid "Select an eligible target field."
+msgstr "Wybierz pole"
 
 #: components/communication/emails/reply_to_email.py:204
 msgid "Select an email before replying."
@@ -7161,6 +7980,13 @@ msgstr "Wybierz typ kafelka, który chcesz utworzyć"
 msgid "Select type"
 msgstr "Wybierz typ"
 
+# | msgid "Select a field"
+# | msgid "Select all filtered"
+#: form_behaviors/builtins/fetch.py:97
+#, fuzzy
+msgid "Select valid matching filters."
+msgstr "Zaznacz wszystkie przefiltrowane"
+
 # | msgid "Delete value"
 #: templates/widgets/mapping_multiple.html:2
 msgid "Select values"
@@ -7197,6 +8023,11 @@ msgstr "Wybrane wbudowane narzędzia Bloomerp"
 #: bloomerp.aiagent.internal_tool_mode models/agents/ai_agent.py:115
 msgid "Selected built-in Bloomerp tools only"
 msgstr "Tylko wybrane wbudowane narzędzia Bloomerp"
+
+#: form_behaviors/builtins/fetch.py:429
+#, fuzzy
+msgid "Selecting the matching record requires a relation target pointing to the source model."
+msgstr "Wybranie pasującego rekordu wymaga, aby cel relacji wskazywał model źródłowy."
 
 #: views/communication/create_email_account.py:176 views/workspaces/create_tile.py:60
 msgid "Selection required"
@@ -7256,6 +8087,11 @@ msgstr "Data wysłania"
 msgid "Sent folder"
 msgstr "Folder wiadomości wysłanych"
 
+#: form_behaviors/builtins/transform_text.py:43
+#, fuzzy
+msgid "Sentence case"
+msgstr "Styl zdaniowy"
+
 #: bloomerp.aimessage.sequence bloomerp.airunevent.sequence bloomerp.immessage.sequence
 #: bloomerp.workflowrunstep.sequence models/automation/workflow_run_step.py:33
 msgid "Sequence"
@@ -7281,6 +8117,55 @@ msgstr "Konfiguracja serwera"
 msgid "Session"
 msgstr "Sesja"
 
+#: form_behaviors/builtins/set_relative_date.py:109
+#, fuzzy
+msgid "Set a date relative to today in whole days, or a datetime relative to now in whole minutes."
+msgstr ""
+"Ustaw datę względem dzisiejszego dnia w całych dniach lub datę i godzinę względem bieżącej chwili"
+" w całych minutach."
+
+# | msgctxt "bloomerp:route:name"
+# | msgid "Review Submission"
+# | msgid "Review integration"
+#: form_behaviors/builtins/set_field_interaction.py:59
+#, fuzzy
+msgid "Set field interaction"
+msgstr "Sprawdź integrację"
+
+#: form_behaviors/builtins/set_field_visibility.py:59
+#, fuzzy
+msgid "Set field visibility"
+msgstr "Ustaw widoczność pola"
+
+# | msgid "Select related field"
+#: form_behaviors/builtins/set_o2m_value.py:270
+#, fuzzy
+msgid "Set related-row value"
+msgstr "Wybierz powiązane pole"
+
+# | msgid "Select related field"
+#: form_behaviors/builtins/set_relative_date.py:107
+#, fuzzy
+msgid "Set relative date"
+msgstr "Wybierz powiązane pole"
+
+#: form_behaviors/builtins/set_user_field_to_current_user.py:45
+#, fuzzy
+msgid "Set the selected user field to the authenticated user evaluating the form."
+msgstr "Ustaw wybrane pole użytkownika na uwierzytelnionego użytkownika obsługującego formularz."
+
+#: form_behaviors/builtins/set_user_field_to_current_user.py:44
+#, fuzzy
+msgid "Set user field to current user"
+msgstr "Ustaw pole użytkownika na bieżącego użytkownika"
+
+# | msgid "Delete value"
+# | msgid "Select values"
+#: form_behaviors/builtins/set_value.py:88
+#, fuzzy
+msgid "Set value"
+msgstr "Wybierz wartości"
+
 #: bloomerp.imconnection.settings models/forms/form.py:37
 #: templates/components/communication/messaging_panel.html:14
 #: templates/cotton/features/document_templates/builder.html:83
@@ -7301,7 +8186,7 @@ msgstr "Preferencja udostępniania"
 # | msgid "Preference"
 # | msgid "Base Preference"
 # | msgid "Share preference"
-#: templates/components/communication/calling/controls.html:14
+#: templates/components/communication/calling/controls.html:19
 #, fuzzy
 msgid "Share screen"
 msgstr "Preferencja udostępniania"
@@ -7369,6 +8254,12 @@ msgstr "Czy wyświetlać opcje pól"
 msgid "Show Required Only"
 msgstr "Pokaż tylko wymagane"
 
+# | msgid "The name of the form"
+#: form_behaviors/builtins/show_message.py:74
+#, fuzzy
+msgid "Show a message to the form user."
+msgstr "Nazwa formularza"
+
 # | msgid "Column totals"
 #: dataviews/pivot_table/config.py:84
 msgid "Show column totals"
@@ -7385,6 +8276,19 @@ msgstr "Pokaż legendę"
 #: templates/cotton/features/agent/body.html:89
 msgid "Show me a revenue overview"
 msgstr "Pokaż podsumowanie przychodów"
+
+# | msgid "Parent"
+# | msgid "Parent Message"
+# | msgid "Send message"
+#: form_behaviors/builtins/show_message.py:73
+#, fuzzy
+msgid "Show message"
+msgstr "Wyślij wiadomość"
+
+#: form_behaviors/builtins/set_field_visibility.py:60
+#, fuzzy
+msgid "Show or hide the target field without changing its value or interaction state."
+msgstr "Pokaż lub ukryj pole docelowe bez zmiany jego wartości ani stanu interakcji."
 
 #: dataviews/pivot_table/config.py:77
 msgid "Show row totals"
@@ -7434,7 +8338,7 @@ msgstr "Wyloguj się"
 msgid "Signed in as"
 msgstr "Zalogowano jako"
 
-#: bloomerp.documenttemplate.include_page_numbers models/document_templates/document_template.py:193
+#: bloomerp.documenttemplate.include_page_numbers models/document_templates/document_template.py:215
 msgid "Signifies whether the page numbers are included or not."
 msgstr "Określa, czy numery stron są uwzględniane."
 
@@ -7442,13 +8346,18 @@ msgstr "Określa, czy numery stron są uwzględniane."
 msgid "Size"
 msgstr "Rozmiar"
 
-#: bloomerp.documenttemplate.page_size models/document_templates/document_template.py:182
+#: bloomerp.documenttemplate.page_size models/document_templates/document_template.py:204
 msgid "Size of the document template."
 msgstr "Rozmiar szablonu dokumentu."
 
 #: bloomerp.imconnection.provider
 msgid "Slack"
 msgstr "Slack"
+
+#: form_behaviors/builtins/transform_text.py:48
+#, fuzzy
+msgid "Slug"
+msgstr "Slug"
 
 #: bloomerp.applicationfield.field_type
 msgid "Slug Field"
@@ -7483,7 +8392,8 @@ msgstr "Sortuj malejąco"
 msgid "Sort on"
 msgstr "Sortuj według"
 
-#: bloomerp.activitylog.source models/audit/activity_log.py:84
+#: bloomerp.activitylog.source form_behaviors/builtins/copy_field_value.py:113
+#: form_behaviors/builtins/populate_week_dates.py:46 models/audit/activity_log.py:84
 msgid "Source"
 msgstr "Źródło"
 
@@ -7497,6 +8407,7 @@ msgid "Source File"
 msgstr "Plik źródłowy"
 
 #: bloomerp.inboxitem.source_model
+#, fuzzy
 msgid "Source Model"
 msgstr "Model źródłowy"
 
@@ -7511,11 +8422,28 @@ msgstr "Obiekt źródłowy"
 msgid "Source Object Id"
 msgstr "Identyfikator obiektu źródłowego"
 
+#: form_behaviors/builtins/fetch.py:489
+#, fuzzy
+msgid "Source and target columns are incompatible."
+msgstr "Kolumny źródłowa i docelowa są niezgodne."
+
+# | msgid "Source Model"
+#: form_behaviors/builtins/fetch.py:311
+#, fuzzy
+msgid "Source column"
+msgstr "Model źródłowy"
+
 # | msgid "Tool Identifier"
 #: bloomerp.imconversationactivity.source_id
 #: models/communication/instant_messaging/im_conversation_activity.py:19
 msgid "Source identifier"
 msgstr "Identyfikator źródła"
+
+# | msgid "Source Model"
+#: form_behaviors/builtins/fetch.py:278
+#, fuzzy
+msgid "Source model"
+msgstr "Model źródłowy"
 
 #: bloomerp.emailaccount.oauth_scopes
 msgid "Space-separated OAuth scopes requested for this account."
@@ -7679,7 +8607,7 @@ msgid "Stop"
 msgstr "Zatrzymaj"
 
 # | msgid "Stopping…"
-#: templates/components/communication/calling/controls.html:14
+#: templates/components/communication/calling/controls.html:19
 #, fuzzy
 msgid "Stop sharing"
 msgstr "Zatrzymywanie…"
@@ -7692,7 +8620,7 @@ msgstr "Zatrzymywanie…"
 msgid "Streaming"
 msgstr "Przesyłanie strumieniowe"
 
-#: bloomerp.documenttemplate.style_sets models/document_templates/document_template.py:203
+#: bloomerp.documenttemplate.style_sets models/document_templates/document_template.py:225
 msgid "Style Sets"
 msgstr "Zestawy stylów"
 
@@ -7701,7 +8629,7 @@ msgstr "Zestawy stylów"
 msgid "Styling"
 msgstr "Stylizacja"
 
-#: bloomerp.documenttemplate.style_sets models/document_templates/document_template.py:201
+#: bloomerp.documenttemplate.style_sets models/document_templates/document_template.py:223
 msgid "Styling sets that can be applied to the document template."
 msgstr "Zestawy stylów, które można zastosować do szablonu dokumentu."
 
@@ -7751,6 +8679,13 @@ msgid "Succeeded"
 msgstr "Powodzenie"
 
 # | msgid "Access Token"
+# | msgid "Access"
+#: form_behaviors/builtins/show_message.py:26
+#, fuzzy
+msgid "Success"
+msgstr "Token dostępu"
+
+# | msgid "Access Token"
 #: bloomerp.form.success_text models/forms/form.py:79
 msgid "Success Text"
 msgstr "Tekst po pomyślnym zakończeniu"
@@ -7772,6 +8707,16 @@ msgstr "Podsumowanie"
 #: bloomerp.activitylog.summary_string
 msgid "Summary String"
 msgstr "Ciąg podsumowania"
+
+#: components/form_behaviors/execute.py:49
+#, fuzzy
+msgid "Supply exactly one preference_id or form_id."
+msgstr "Podaj dokładnie jedno: preference_id lub form_id."
+
+#: form_behaviors/builtins/set_value.py:34
+#, fuzzy
+msgid "Supply the complete collection row array."
+msgstr "Podaj kompletną tablicę wierszy kolekcji."
 
 #: bloomerp.emailaccount.sync_cursor bloomerp.imconnection.sync_cursor
 #: models/communication/email_account.py:254
@@ -7850,6 +8795,12 @@ msgstr "Data docelowa"
 msgid "Target Object Id"
 msgstr "Identyfikator obiektu docelowego"
 
+# | msgid "Cards per column"
+#: form_behaviors/builtins/calculate.py:291 form_behaviors/builtins/fetch.py:316
+#, fuzzy
+msgid "Target column"
+msgstr "Liczba kart w kolumnie"
+
 #: communication/builtins/voip/builtins/telnyx.py:42
 msgid "TeXML SIP subdomain"
 msgstr "Poddomena SIP TeXML"
@@ -7885,11 +8836,11 @@ msgstr "Identyfikator konta Telnyx"
 msgid "Telnyx rejected the request. Check account access and connection settings."
 msgstr "Telnyx odrzucił żądanie. Sprawdź dostęp do konta i ustawienia połączenia."
 
-#: bloomerp.documenttemplate.template models/document_templates/document_template.py:142
+#: bloomerp.documenttemplate.template models/document_templates/document_template.py:164
 msgid "Template"
 msgstr "Szablon"
 
-#: bloomerp.documenttemplate.template_header models/document_templates/document_template.py:164
+#: bloomerp.documenttemplate.template_header models/document_templates/document_template.py:186
 msgid "Template Header"
 msgstr "Nagłówek szablonu"
 
@@ -7965,6 +8916,32 @@ msgstr ""
 msgid "The columns of the table"
 msgstr "Kolumny tabeli"
 
+#: form_behaviors/builtins/copy_field_value.py:200
+#, fuzzy
+msgid "The configured related field is not a stored value."
+msgstr "Skonfigurowane powiązane pole nie jest przechowywaną wartością."
+
+# | msgid "Detailed run logging is still available."
+# | msgid "Calling is unavailable."
+# | msgid "Conferencing is unavailable."
+#: form_behaviors/builtins/copy_field_value.py:179
+#, fuzzy
+msgid "The configured related field is unavailable."
+msgstr "Konferencje są niedostępne."
+
+#: form_behaviors/builtins/fetch.py:244
+#, fuzzy
+msgid "The configured source field is not a stored value."
+msgstr "Skonfigurowane pole źródłowe nie jest przechowywaną wartością."
+
+# | msgid "Detailed run logging is still available."
+# | msgid "Calling is unavailable."
+# | msgid "Conferencing is unavailable."
+#: form_behaviors/builtins/fetch.py:197
+#, fuzzy
+msgid "The configured source model is unavailable."
+msgstr "Konferencje są niedostępne."
+
 # | msgid "The row policy configuration could not be read. Please review step 2 and try again."
 #: views/communication/create_voip_connection.py:174
 msgid "The connection could not be saved. Check its settings."
@@ -8021,6 +8998,11 @@ msgstr "Pole używane na osi X wykresu."
 msgid "The date format to be used in the application"
 msgstr "Format daty używany w aplikacji"
 
+#: form_behaviors/shared/temporal.py:64 form_behaviors/shared/temporal.py:77
+#, fuzzy
+msgid "The date or datetime offset is outside the supported range."
+msgstr "Przesunięcie daty lub daty i godziny wykracza poza obsługiwany zakres."
+
 #: bloomerp.user.datetime_view_preference models/users/user.py:103
 msgid "The datetime format to be used in the application"
 msgstr "Format daty i godziny używany w aplikacji"
@@ -8051,6 +9033,27 @@ msgstr "Wiadomość e-mail odwołuje się do pola, którego nie możesz wyświet
 msgid "The endpoint must belong to this connection."
 msgstr "Punkt końcowy musi należeć do tego połączenia."
 
+# | msgid "The session cannot return to an earlier state."
+#: form_behaviors/builtins/calculate.py:251
+#, fuzzy
+msgid "The expression cannot be calculated."
+msgstr "Sesja nie może powrócić do wcześniejszego stanu."
+
+#: form_behaviors/builtins/calculate.py:247
+#, fuzzy
+msgid "The expression divides by zero."
+msgstr "Wyrażenie powoduje dzielenie przez zero."
+
+#: form_behaviors/builtins/calculate.py:125
+#, fuzzy
+msgid "The expression is too complex."
+msgstr "Wyrażenie jest zbyt złożone."
+
+#: form_behaviors/builtins/calculate.py:375
+#, fuzzy
+msgid "The expression result type must match the date or datetime target."
+msgstr "Typ wyniku wyrażenia musi odpowiadać docelowemu polu daty lub daty i godziny."
+
 # | msgid "The field used for the pie slice labels."
 #: models/files/file_reference.py:151
 msgid "The field must belong to the referenced model."
@@ -8079,6 +9082,16 @@ msgstr "Pole używane do sortowania rekordów osi czasu."
 #: bloomerp.policy.field_policy models/access_control/policy.py:92
 msgid "The field-level policy associated with this access control policy."
 msgstr "Zasady na poziomie pola powiązane z tymi zasadami kontroli dostępu."
+
+#: form_behaviors/builtins/fetch.py:118
+#, fuzzy, python-format
+msgid "The filter references unavailable %(scope)s field '%(field_name)s'."
+msgstr "Filtr odwołuje się do niedostępnego pola %(scope)s '%(field_name)s'."
+
+#: form_behaviors/builtins/fetch.py:159
+#, fuzzy, python-format
+msgid "The filter references unknown %(scope)s field '%(field_name)s'."
+msgstr "Filtr odwołuje się do nieznanego pola %(scope)s '%(field_name)s'."
 
 #: bloomerp.inboxitem.folder
 msgid "The folder to which this inbox item belongs."
@@ -8119,6 +9132,26 @@ msgstr "Nie udało się zapisać integracji. Sprawdź jej ustawienia."
 #: workspaces/analytics_tile/model.py:74
 msgid "The label"
 msgstr "Etykieta"
+
+#: form_behaviors/builtins/copy_field_value.py:151
+#, fuzzy
+msgid "The listener does not select a related record."
+msgstr "Pole nasłuchujące nie wybiera powiązanego rekordu."
+
+#: form_behaviors/builtins/copy_field_value.py:100
+#, fuzzy
+msgid "The listener has no value compatible with the target."
+msgstr "Pole nasłuchujące nie ma wartości zgodnej z polem docelowym."
+
+#: form_behaviors/builtins/copy_field_value.py:148
+#, fuzzy
+msgid "The listener is incompatible with the target."
+msgstr "Pole nasłuchujące jest niezgodne z polem docelowym."
+
+#: form_behaviors/builtins/fetch.py:225
+#, fuzzy
+msgid "The lookup matched more than 1000 rows."
+msgstr "Wyszukiwanie zwróciło ponad 1000 wierszy."
 
 # | msgid "No workflow graph was available for this execution."
 # | msgid "SMS is unavailable or the request identifier is invalid."
@@ -8289,14 +9322,32 @@ msgstr "Wskazany rekord musi istnieć."
 msgid "The registered subtype of the workflow node."
 msgstr "Zarejestrowany podtyp węzła przepływu pracy."
 
+#: form_behaviors/builtins/copy_field_value.py:158
+#, fuzzy
+msgid "The related field is incompatible with the target."
+msgstr "Powiązane pole jest niezgodne z polem docelowym."
+
 #: models/project_management/todo.py:471
 msgid "The related object does not exist"
 msgstr "Powiązany obiekt nie istnieje"
+
+# | msgid "Detailed run logging is still available."
+# | msgid "Calling is unavailable."
+# | msgid "Conferencing is unavailable."
+#: form_behaviors/builtins/set_o2m_value.py:199
+#, fuzzy
+msgid "The related source field is unavailable."
+msgstr "Konferencje są niedostępne."
 
 # | msgid "The row policy configuration could not be read. Please review step 2 and try again."
 #: templates/cotton/features/agent/body.html:38
 msgid "The response could not be completed. Please try again."
 msgstr "Nie udało się wygenerować odpowiedzi. Spróbuj ponownie."
+
+#: form_behaviors/builtins/fetch.py:625
+#, fuzzy
+msgid "The result would exceed 1000 collection rows."
+msgstr "Wynik przekroczyłby 1000 wierszy kolekcji."
 
 #: bloomerp.rowpolicyrule.row_policy models/access_control/row_policy_rule.py:32
 msgid "The row-level access control policy this rule belongs to."
@@ -8322,6 +9373,17 @@ msgstr "Wybrany odnośnik już nie istnieje"
 msgid "The selected output port is not available on the source node."
 msgstr "Wybrany port wyjściowy nie jest dostępny w węźle źródłowym."
 
+# | msgid "The email references a field you cannot view."
+#: form_behaviors/builtins/set_value.py:29
+#, fuzzy
+msgid "The selected target field cannot accept a value."
+msgstr "Wiadomość e-mail odwołuje się do pola, którego nie możesz wyświetlić."
+
+#: form_behaviors/builtins/set_value.py:52
+#, fuzzy
+msgid "The selected target field requires a scalar value."
+msgstr "Wybrane pole docelowe wymaga wartości skalarnej."
+
 #: bloomerp.workflowrunstep.sequence models/automation/workflow_run_step.py:32
 msgid "The sequence number of this step within the workflow run."
 msgstr "Numer kolejny tego kroku w ramach uruchomienia przepływu pracy."
@@ -8334,6 +9396,11 @@ msgstr "Sesja nie może powrócić do wcześniejszego stanu."
 msgid "The size"
 msgstr "Rozmiar"
 
+#: form_behaviors/builtins/populate_week_dates.py:76
+#, fuzzy
+msgid "The source week is missing from the draft."
+msgstr "Tydzień źródłowy nie znajduje się w wersji roboczej."
+
 #: forms/widgets.py:13
 msgid "The sql query (data) to use for the query"
 msgstr "Zapytanie SQL (dane) używane do zapytania"
@@ -8341,6 +9408,18 @@ msgstr "Zapytanie SQL (dane) używane do zapytania"
 #: bloomerp.workflowrunstep.status models/automation/workflow_run_step.py:44
 msgid "The status of this workflow run step."
 msgstr "Stan tego kroku uruchomienia przepływu pracy."
+
+#: form_behaviors/builtins/calculate.py:363
+#, fuzzy
+msgid "The target column cannot reference itself."
+msgstr "Kolumna docelowa nie może odwoływać się do samej siebie."
+
+# | msgid "The field used for the pie slice labels."
+# | msgid "The field must belong to the referenced model."
+#: form_behaviors/builtins/calculate.py:325
+#, fuzzy
+msgid "The target field cannot reference itself."
+msgstr "Pole musi należeć do wskazanego modelu."
 
 #: bloomerp.inboxitem.title
 msgid "The title of the inbox item."
@@ -8399,12 +9478,22 @@ msgstr "Motyw"
 msgid "This account is inactive."
 msgstr "To konto jest nieaktywne."
 
+#: form_fields/behavior.py:146
+#, fuzzy
+msgid "This aggregation requires a one-to-many column."
+msgstr "Ta agregacja wymaga kolumny typu jeden-do-wielu."
+
 # | msgid "No workflow graph was available for this execution."
 # | msgid "Browser calling is unavailable for this line."
 #: communication/builtins/conferencing/controller.py:228
 #: components/communication/conferencing/join.py:28
 msgid "This call is not available to join."
 msgstr "Nie można dołączyć do tego połączenia."
+
+#: form_fields/behavior_field.py:56
+#, fuzzy
+msgid "This condition cannot evaluate draft values."
+msgstr "Ten warunek nie może obliczać wartości wersji roboczej."
 
 #: components/communication/emails/new_email.py:78
 msgid "This email account has an unsupported provider."
@@ -8580,6 +9669,12 @@ msgstr "Znacznik czasu odebrania elementu skrzynki odbiorczej przez jego system 
 msgid "Title"
 msgstr "Tytuł"
 
+# | msgid "Title"
+#: form_behaviors/builtins/transform_text.py:42
+#, fuzzy
+msgid "Title case"
+msgstr "Tytuł"
+
 #: bloomerp.phonecall.to_address models/communication/voip/phone_call.py:73
 #: templates/components/communication/emails/email_editor.html:75
 #: templates/components/communication/emails/email_editor.html:82
@@ -8589,6 +9684,13 @@ msgstr "Do"
 #: bloomerp.workflowedge.to_node models/automation/workflow_edge.py:39
 msgid "To Node"
 msgstr "Do węzła"
+
+# | msgid "Db Column"
+# | msgid "DB Column"
+#: form_behaviors/builtins/set_o2m_value.py:90
+#, fuzzy
+msgid "To column"
+msgstr "Kolumna bazy danych"
 
 #: templates/cotton/features/agent/body.html:7 templates/cotton/features/dataviews/calendar.html:33
 #: templates/cotton/features/dataviews/gant.html:22
@@ -8729,6 +9831,22 @@ msgstr "Śledź odczytanie wątków osobno."
 msgid "Transfer ownership"
 msgstr "Przekaż własność"
 
+#: form_behaviors/builtins/transform_text.py:145
+#, fuzzy
+msgid "Transform text"
+msgstr "Przekształć tekst"
+
+#: form_behaviors/builtins/transform_text.py:126
+#, fuzzy
+msgid "Transform text requires a string listener value."
+msgstr "Przekształcanie tekstu wymaga, aby wartość nasłuchiwanego pola była ciągiem znaków."
+
+# | msgid "Advanced formatting"
+#: form_behaviors/builtins/transform_text.py:55
+#, fuzzy
+msgid "Transformation"
+msgstr "Zaawansowane formatowanie"
+
 #: automation/registry.py:51 bloomerp.workflownode.type
 msgid "Trigger"
 msgstr "Wyzwalacz"
@@ -8744,6 +9862,11 @@ msgstr "Wiadomość wyzwalająca"
 #: bloomerp.airun.trigger_type
 msgid "Trigger Type"
 msgstr "Typ wyzwalacza"
+
+#: form_behaviors/builtins/transform_text.py:44
+#, fuzzy
+msgid "Trim"
+msgstr "Usuń białe znaki"
 
 # | msgid "application field"
 #: communication/builtins/voip/builtins/twilio.py:39
@@ -8768,8 +9891,8 @@ msgid "Two-letter country code, for example BE or US."
 msgstr "Dwuliterowy kod kraju, na przykład BE lub US."
 
 #: bloomerp.inboxfolder.type bloomerp.tile.type bloomerp.workflownode.type
-#: models/automation/workflow_node.py:67 models/communication/inbox/inbox_folder.py:32
-#: models/workspaces/tile.py:46
+#: form_behaviors/builtins/show_message.py:24 models/automation/workflow_node.py:67
+#: models/communication/inbox/inbox_folder.py:32 models/workspaces/tile.py:46
 msgid "Type"
 msgstr "Typ"
 
@@ -8797,6 +9920,11 @@ msgstr "Pole UUID"
 msgid "Unable to start this meeting."
 msgstr "Nie można rozpocząć tego spotkania."
 
+#: form_behaviors/builtins/calculate.py:168
+#, fuzzy
+msgid "Unary operators cannot apply to a date or datetime."
+msgstr "Operatorów jednoargumentowych nie można stosować do dat ani dat i godzin."
+
 # | msgid "Assigned To"
 #: dataviews/file_browser/renderer.py:151 dataviews/file_browser/renderer.py:153
 msgid "Unassigned"
@@ -8806,6 +9934,14 @@ msgstr "Nieprzypisane"
 #: bloomerp.fileextraction.status models/files/file_extraction.py:175
 msgid "Unavailable"
 msgstr "Niedostępne"
+
+# | msgctxt "bloomerp:route:description"
+# | msgid "Available Modules"
+# | msgid "Unavailable tool: %(name)s"
+#: form_fields/behavior_field.py:60
+#, fuzzy, python-format
+msgid "Unavailable action: %(action)s."
+msgstr "Niedostępne narzędzie: %(name)s"
 
 #: forms/agents/ai_agent.py:206
 #, python-format
@@ -8823,14 +9959,55 @@ msgstr "Niedostępne narzędzie: %(name)s"
 msgid "Unicode emoji, including skin tones/ZWJ sequences, or a provider custom emoji key."
 msgstr "Emoji Unicode, w tym odcienie skóry i sekwencje ZWJ, lub klucz niestandardowego emoji dostawcy."
 
+# | msgid "AI conversations"
+# | msgid "Unknown conversation provider."
+#: form_behaviors/utils.py:62
+#, fuzzy
+msgid "Unknown action configuration fields."
+msgstr "Nieznany dostawca rozmów."
+
+# | msgid "Conversation History"
+# | msgid "Conversation actions"
+#: form_behaviors/execution.py:327
+#, fuzzy, python-format
+msgid "Unknown action: %(action)s."
+msgstr "Działania związane z rozmową"
+
+# | msgid "Unknown carrier provider."
+#: form_behaviors/execution.py:295
+#, fuzzy
+msgid "Unknown behavior event."
+msgstr "Nieznany operator."
+
 #: communication/builtins/voip/controller.py:28
 msgid "Unknown carrier provider."
 msgstr "Nieznany operator."
+
+#: form_behaviors/builtins/calculate.py:344
+#, fuzzy, python-format
+msgid "Unknown collection: %(collection_name)s."
+msgstr "Nieznana kolekcja: %(collection_name)s."
 
 # | msgid "AI conversations"
 #: models/communication/instant_messaging/im_conversation.py:126
 msgid "Unknown conversation provider."
 msgstr "Nieznany dostawca rozmów."
+
+#: form_behaviors/builtins/calculate.py:353
+#, fuzzy, python-format
+msgid "Unknown or non-numeric column: %(collection_name)s.%(column_name)s."
+msgstr "Nieznana lub nienumeryczna kolumna: %(collection_name)s.%(column_name)s."
+
+#: form_behaviors/builtins/calculate.py:321
+#, fuzzy, python-format
+msgid "Unknown or unsupported calculation field: %(details)s."
+msgstr "Nieznane lub nieobsługiwane pole obliczeniowe: %(details)s."
+
+# | msgid "Unknown carrier provider."
+#: form_behaviors/shared/write_policy.py:95
+#, fuzzy
+msgid "Unknown scalar write policy."
+msgstr "Nieznany operator."
 
 #: templates/components/communication/messaging_panel.html:37
 msgid "Unread only"
@@ -8844,8 +10021,20 @@ msgstr "Niezaplanowane"
 msgid "Unscheduled records"
 msgstr "Niezaplanowane rekordy"
 
+# | msgid "Unsupported file extension."
+#: form_behaviors/builtins/calculate.py:113 form_behaviors/builtins/calculate.py:253
+#, fuzzy
+msgid "Unsupported expression syntax."
+msgstr "Nieobsługiwane rozszerzenie pliku."
+
 #: form_fields/bloomerp_file_field.py:126
 msgid "Unsupported file extension."
+msgstr "Nieobsługiwane rozszerzenie pliku."
+
+# | msgid "Unsupported file extension."
+#: form_behaviors/execution.py:122
+#, fuzzy
+msgid "Unsupported layout owner."
 msgstr "Nieobsługiwane rozszerzenie pliku."
 
 #: components/workspaces/tiles/preview.py:202
@@ -8933,6 +10122,16 @@ msgstr "Przesłano"
 msgid "Uploading…"
 msgstr "Przesyłanie…"
 
+#: form_behaviors/builtins/transform_text.py:46
+#, fuzzy
+msgid "Upper snake case"
+msgstr "Wielkie litery z podkreśleniami"
+
+#: form_behaviors/builtins/transform_text.py:40
+#, fuzzy
+msgid "Uppercase"
+msgstr "Wielkie litery"
+
 #: bloomerp.todo.priority models/project_management/todo.py:34
 msgid "Urgent"
 msgstr "Pilne"
@@ -9000,6 +10199,17 @@ msgstr "Użyj bieżącego zaznaczenia"
 msgid "Use encrypted credential storage."
 msgstr "Użyj szyfrowanego przechowywania danych uwierzytelniających."
 
+#: form_behaviors/builtins/calculate.py:297
+#, fuzzy
+msgid ""
+"Use numeric fields, collection.column, and sum/count/first/last. For scalar date/datetime "
+"targets, add or subtract whole-number offsets from a date (days) or datetime (minutes). Blank "
+"dates leave the target unchanged."
+msgstr ""
+"Używaj pól liczbowych, collection.column oraz sum/count/first/last. W przypadku skalarnych "
+"wartości docelowych typu date/datetime dodawaj lub odejmuj całkowite przesunięcia od daty (dni) "
+"lub daty i godziny (minuty). Puste daty nie zmieniają wartości docelowej."
+
 #: templates/views/access_control/manage_permissions/wizard_object_access_control.html:151
 msgid "Use rule"
 msgstr "Użyj reguły"
@@ -9008,9 +10218,19 @@ msgstr "Użyj reguły"
 msgid "Use set_credentials() to encrypt secrets."
 msgstr "Użyj set_credentials(), aby zaszyfrować dane poufne."
 
+#: form_behaviors/builtins/calculate.py:83
+#, fuzzy
+msgid "Use sum, count, first, or last with one collection expression."
+msgstr "Użyj sum, count, first lub last z jednym wyrażeniem kolekcji."
+
 #: templates/components/workspaces/tiles/builders/links.html:21
 msgid "Use the arrows to reorder items"
 msgstr "Użyj strzałek, aby zmienić kolejność elementów"
+
+#: form_behaviors/builtins/fetch.py:296
+#, fuzzy
+msgid "Use {{ object.field }} or, in per-row mode, {{ row.column }}."
+msgstr "Użyj {{ object.field }} lub, w trybie dla poszczególnych wierszy, {{ row.column }}."
 
 #: forms/agents/ai_agent.py:157
 msgid ""
@@ -9149,6 +10369,12 @@ msgstr "Wartość"
 msgid "Value on all rows"
 msgstr "Wartość we wszystkich wierszach"
 
+# | msgid "Value on all rows"
+#: form_behaviors/builtins/fetch.py:284
+#, fuzzy
+msgid "Value to copy"
+msgstr "Wartość we wszystkich wierszach"
+
 #: dataviews/pivot_table/config.py:62 workspaces/analytics_tile/model.py:395
 msgid "Values"
 msgstr "Wartości"
@@ -9216,6 +10442,16 @@ msgstr "Wirtualny"
 #: templates/dataviews/files.html:27
 msgid "Virtual folders"
 msgstr "Foldery wirtualne"
+
+#: form_behaviors/builtins/set_field_visibility.py:26
+#, fuzzy
+msgid "Visibility"
+msgstr "Widoczność"
+
+#: form_behaviors/builtins/set_field_visibility.py:27
+#, fuzzy
+msgid "Visible"
+msgstr "Widoczny"
 
 #: bloomerp.apikey.key_prefix
 msgid "Visible token prefix used to identify the API key without storing the raw token."
@@ -9315,7 +10551,7 @@ msgid "Waiting for approval"
 msgstr "Oczekiwanie na zatwierdzenie"
 
 # | msgid "Waiting for a response…"
-#: templates/components/communication/calling/controls.html:30
+#: templates/components/communication/calling/controls.html:35
 msgid "Waiting for participants…"
 msgstr "Oczekiwanie na uczestników…"
 
@@ -9324,8 +10560,8 @@ msgid "Waiting for your approval…"
 msgstr "Oczekiwanie na zatwierdzenie…"
 
 # | msgid "Waiting"
-#: templates/components/communication/calling/controls.html:7
-#: templates/components/communication/calling/controls.html:33
+#: templates/components/communication/calling/controls.html:12
+#: templates/components/communication/calling/controls.html:38
 #, fuzzy
 msgid "Waiting to join"
 msgstr "Oczekiwanie"
@@ -9334,6 +10570,11 @@ msgstr "Oczekiwanie"
 #: templates/cotton/features/agent/body.html:33
 msgid "Waiting to resume…"
 msgstr "Oczekiwanie na wznowienie…"
+
+#: form_behaviors/builtins/show_message.py:26
+#, fuzzy
+msgid "Warning"
+msgstr "Ostrzeżenie"
 
 #: communication/builtins/voip/builtins/telnyx.py:35
 msgid "Webhook Ed25519 public key"
@@ -9402,6 +10643,24 @@ msgid ""
 msgstr ""
 "Czy włączyć rejestrowanie dla tego przepływu pracy. Wyłączenie rejestrowania może poprawić "
 "wydajność, ale spowoduje, że nie będzie przechowywana szczegółowa historia wykonywania."
+
+#: form_behaviors/builtins/set_relative_date.py:57
+#, fuzzy
+msgid ""
+"Whole days relative to today in the current timezone. Use a positive number for later, a negative"
+" number for earlier, or zero for today."
+msgstr ""
+"Liczba pełnych dni względem dzisiejszej daty w bieżącej strefie czasowej. Użyj liczby dodatniej "
+"dla późniejszej daty, ujemnej dla wcześniejszej lub zera dla dzisiejszej daty."
+
+#: form_behaviors/builtins/set_relative_date.py:60
+#, fuzzy
+msgid ""
+"Whole minutes relative to the current time. Use a positive number for later, a negative number "
+"for earlier, or zero for now."
+msgstr ""
+"Liczba pełnych minut względem bieżącej godziny. Użyj liczby dodatniej dla późniejszej godziny, "
+"ujemnej dla wcześniejszej lub zera dla teraz."
 
 msgctxt "bloomerp:module:description"
 msgid "With automation, streamline and optimize your business processes by creating automated workflows."
@@ -9493,9 +10752,33 @@ msgstr ""
 msgid "Write a message…"
 msgstr "Napisz wiadomość…"
 
+# | msgctxt "bloomerp:route:name"
+# | msgid "Create Policy"
+#: form_behaviors/builtins/calculate.py:303 form_behaviors/builtins/copy_field_value.py:120
+#: form_behaviors/builtins/fetch.py:326 form_behaviors/builtins/populate_week_dates.py:40
+#: form_behaviors/builtins/set_o2m_value.py:98 form_behaviors/builtins/set_relative_date.py:73
+#, fuzzy
+msgid "Write policy"
+msgstr "Utwórz politykę"
+
 #: templates/components/communication/emails/email_editor.html:152
 msgid "Write your message"
 msgstr "Wpisz wiadomość"
+
+#: form_behaviors/shared/write_policy.py:43
+#, fuzzy
+msgid "WritePolicyField default must be in its allowed policies."
+msgstr "Wartość domyślna pola WritePolicyField musi należeć do dozwolonych zasad."
+
+#: form_behaviors/shared/write_policy.py:40
+#, fuzzy
+msgid "WritePolicyField received an unknown policy ID."
+msgstr "Pole WritePolicyField otrzymało nieznany identyfikator zasady."
+
+#: form_behaviors/shared/write_policy.py:38
+#, fuzzy
+msgid "WritePolicyField requires at least one allowed policy."
+msgstr "Pole WritePolicyField wymaga co najmniej jednej dozwolonej zasady."
 
 #: templates/cotton/features/agent/body.html:27
 msgid "Writing response…"
@@ -9549,7 +10832,7 @@ msgstr "Tak"
 msgid "Yesterday"
 msgstr "Wczoraj"
 
-#: templates/components/communication/calling/controls.html:42
+#: templates/components/communication/calling/controls.html:47
 #: templates/cotton/features/instant_messaging/message.html:3
 msgid "You"
 msgstr "Ty"
@@ -9662,6 +10945,13 @@ msgstr "wywołanie narzędzia AI"
 #: bloomerp.aitoolcall
 msgid "ai tool calls"
 msgstr "wywołania narzędzia AI"
+
+# | msgid "Authentication Type"
+# | msgid "All Authenticated Users"
+#: form_behaviors/builtins/set_user_field_to_current_user.py:34
+#, fuzzy
+msgid "an authenticated user is required"
+msgstr "Wszyscy uwierzytelnieni użytkownicy"
 
 msgctxt "bloomerp:route:name"
 msgid "call status"
@@ -9919,6 +11209,22 @@ msgstr "webhook"
 msgctxt "bloomerp:route:name"
 msgid "workspace"
 msgstr "obszar roboczy"
+
+#: form_behaviors/builtins/fetch.py:235
+#, fuzzy
+msgid "you cannot read the configured lookup data"
+msgstr "nie możesz odczytać skonfigurowanych danych wyszukiwania"
+
+#: form_behaviors/builtins/set_o2m_value.py:238
+#, fuzzy
+msgid "you cannot read the configured related data"
+msgstr "nie możesz odczytać skonfigurowanych powiązanych danych"
+
+#: form_behaviors/builtins/copy_field_value.py:191 form_behaviors/builtins/copy_field_value.py:193
+#: form_behaviors/builtins/copy_field_value.py:197
+#, fuzzy
+msgid "you cannot read the selected related value"
+msgstr "nie możesz odczytać wybranej powiązanej wartości"
 
 msgctxt "bloomerp:route:name"
 msgid "{model_plural}"

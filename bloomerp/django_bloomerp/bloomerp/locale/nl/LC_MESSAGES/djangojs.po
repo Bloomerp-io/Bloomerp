@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-15 11:22+0000\n"
+"POT-Creation-Date: 2026-10-15 13:03+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: nl\n"
@@ -33,6 +33,11 @@ msgstr "Een rijbeleidsregel vereist precies één voorwaardengroep."
 #: static_src/ts/components/filters/RenderedFilters.ts:136
 msgid "AND"
 msgstr "EN"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:76
+#, fuzzy
+msgid "Action"
+msgstr "Actie"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:268 static_src/ts/utils/contextMenu.ts:157
 msgid "Actions"
@@ -68,7 +73,7 @@ msgstr "Alle objecten"
 msgid "All rows"
 msgstr "Alle rijen"
 
-#: static_src/ts/components/communication/Calling.ts:88
+#: static_src/ts/components/communication/Calling.ts:103
 msgid "Allow pop-ups to open the call tab. Your call controls are available here."
 msgstr "Sta pop-ups toe om het oproeptabblad te openen. Je oproepbediening is hier beschikbaar."
 
@@ -76,21 +81,43 @@ msgstr "Sta pop-ups toe om het oproeptabblad te openen. Je oproepbediening is hi
 msgid "Apply"
 msgstr "Toepassen"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:300
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:299
 msgid "Attachment"
 msgstr "Bijlage"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:393
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:392
 #: static_src/ts/utils/contextMenu.ts:164
 msgid "Back"
 msgstr "Terug"
+
+#: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:237
+#, fuzzy
+msgid "Behavior evaluation failed ({status})."
+msgstr "Gedragsevaluatie mislukt ({status})."
+
+#: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:254
+#, fuzzy
+msgid "Behavior evaluation failed."
+msgstr "Gedragsevaluatie mislukt."
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:241
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:242
 msgid "Behavior name"
 msgstr "Gedragsnaam"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:429
+#: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:245
+#, fuzzy
+msgid "Behavior response revision does not match the draft."
+msgstr "De revisie van het gedragsantwoord komt niet overeen met het concept."
+
+#: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:266
+#: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:270
+#: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:279
+#, fuzzy
+msgid "Behavior target '{field}' is not rendered."
+msgstr "Gedragsdoel '{field}' wordt niet weergegeven."
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
 msgid "Blue"
 msgstr "Blauw"
 
@@ -98,28 +125,28 @@ msgstr "Blauw"
 msgid "Bullet List"
 msgstr "Opsomming"
 
-#: static_src/ts/components/communication/Calling.ts:358
+#: static_src/ts/components/communication/Calling.ts:373
 msgid "Call disconnected"
 msgstr "Oproep verbroken"
 
-#: static_src/ts/components/communication/Calling.ts:136
-#: static_src/ts/components/communication/Calling.ts:346
+#: static_src/ts/components/communication/Calling.ts:151
+#: static_src/ts/components/communication/Calling.ts:361
 msgid "Call ended"
 msgstr "Gesprek beëindigd"
 
-#: static_src/ts/components/communication/Calling.ts:359
+#: static_src/ts/components/communication/Calling.ts:374
 msgid "Call in progress"
 msgstr "Gesprek gaande"
 
-#: static_src/ts/components/communication/Calling.ts:173
+#: static_src/ts/components/communication/Calling.ts:188
 msgid "Call not connected"
 msgstr "Oproep niet verbonden"
 
-#: static_src/ts/components/communication/Calling.ts:369
+#: static_src/ts/components/communication/Calling.ts:384
 msgid "Calling failed. Check your connection and access, then try again."
 msgstr "Bellen is mislukt. Controleer je verbinding en toegang en probeer het opnieuw."
 
-#: static_src/ts/components/communication/Calling.ts:174
+#: static_src/ts/components/communication/Calling.ts:189
 msgid "Calling is unavailable."
 msgstr "Bellen is niet beschikbaar."
 
@@ -143,10 +170,20 @@ msgstr "Sluiten"
 msgid "Code Block"
 msgstr "Codeblok"
 
+#: static_src/ts/components/communication/Calling.ts:74
+#, fuzzy
+msgid "Collapse call controls"
+msgstr "Oproepbediening inklappen"
+
 #: static_src/ts/components/filters/FilterContainer.ts:106
 #: static_src/ts/components/filters/FilterContainer.ts:155
 msgid "Collapse group"
 msgstr "Groep inklappen"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:207
+#, fuzzy
+msgid "Complete every action and wait for its configuration to load."
+msgstr "Voltooi elke actie en wacht tot de configuratie is geladen."
 
 #: static_src/ts/components/filters/ConditionEditor.ts:175
 #: static_src/ts/components/filters/widget.ts:26
@@ -166,6 +203,11 @@ msgstr "Voorwaarden"
 msgid "Connection interrupted. Retrying…"
 msgstr "Verbinding verbroken. Opnieuw proberen…"
 
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:151
+#, fuzzy
+msgid "Could not load action configuration."
+msgstr "Kon de actieconfiguratie niet laden."
+
 #: static_src/ts/components/filters/api.ts:24
 msgid "Could not load filter options. Please try again."
 msgstr "Filteropties laden is niet gelukt. Probeer het opnieuw."
@@ -173,6 +215,11 @@ msgstr "Filteropties laden is niet gelukt. Probeer het opnieuw."
 #: static_src/ts/utils/contextMenu.ts:280
 msgid "Could not load results. Try searching again."
 msgstr "De resultaten konden niet worden geladen. Probeer opnieuw te zoeken."
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:189
+#, fuzzy
+msgid "Could not read configuration."
+msgstr "Kon de configuratie niet lezen."
 
 #: static_src/ts/components/filters/FilterContainer.ts:91
 msgid "Could not restore the initial filters."
@@ -185,6 +232,11 @@ msgstr "De oorspronkelijke filters herstellen is niet gelukt. Wis ze om opnieuw 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:148
 msgid "Create label"
 msgstr "Label aanmaken"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:81
+#, fuzzy
+msgid "Default"
+msgstr "Standaard"
 
 #: static_src/ts/components/SelectPreference.ts:73
 msgid "Delete {preference}"
@@ -202,6 +254,11 @@ msgstr "Concept opgeslagen."
 msgid "Drag row"
 msgstr "Rij verslepen"
 
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:322
+#, fuzzy
+msgid "Each behavior needs at least one action."
+msgstr "Elk gedrag heeft minstens één actie nodig."
+
 #: static_src/ts/components/filters/RenderedFilter.ts:95
 msgid "Edit"
 msgstr "Bewerken"
@@ -209,6 +266,11 @@ msgstr "Bewerken"
 #: static_src/ts/components/inbox/EmailEditor.ts:304
 msgid "Email operation failed. Your edits are still here; please try again."
 msgstr "De e-mailbewerking is mislukt. Je wijzigingen zijn er nog; probeer het opnieuw."
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:245
+#, fuzzy
+msgid "Enabled"
+msgstr "Ingeschakeld"
 
 #: static_src/ts/components/filters/ConditionEditor.ts:94
 msgid "Enter a single field key."
@@ -222,6 +284,11 @@ msgstr "Voer een geldig e-mailadres in of verwijder de ongeldige ontvanger."
 msgid "Enter a valid http, https, mailto, or tel URL."
 msgstr "Voer een geldige http-, https-, mailto- of tel-URL in."
 
+#: static_src/ts/components/communication/Calling.ts:74
+#, fuzzy
+msgid "Expand call controls"
+msgstr "Oproepbediening uitklappen"
+
 #: static_src/ts/components/filters/FilterContainer.ts:155
 msgid "Expand group"
 msgstr "Groep uitklappen"
@@ -230,7 +297,7 @@ msgstr "Groep uitklappen"
 msgid "Field"
 msgstr "Veld"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:300
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:299
 msgid "Field reference"
 msgstr "Veldverwijzing"
 
@@ -238,7 +305,7 @@ msgstr "Veldverwijzing"
 msgid "File upload failed"
 msgstr "Bestand uploaden mislukt"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:351
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:350
 msgid "Files"
 msgstr "Bestanden"
 
@@ -259,11 +326,23 @@ msgstr "Filternaam"
 msgid "Filter scope is missing."
 msgstr "Filterscope ontbreekt."
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:426
+#: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:202
+#, fuzzy
+msgid "Form behaviors changed each other repeatedly. Check for a cycle in the configured behaviors."
+msgstr ""
+"Formuliergedragingen hebben elkaar herhaaldelijk gewijzigd. Controleer of er een cyclus is in de "
+"geconfigureerde gedragingen."
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:49
+#, fuzzy
+msgid "Form fields"
+msgstr "Formuliervelden"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:425
 msgid "Gray"
 msgstr "Grijs"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:427
 msgid "Green"
 msgstr "Groen"
 
@@ -283,6 +362,11 @@ msgstr "Kop 2"
 msgid "Heading 3"
 msgstr "Kop 3"
 
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:308
+#, fuzzy
+msgid "Hide behavior"
+msgstr "Gedrag verbergen"
+
 #: static_src/ts/components/text_editor/BloomerpTextEditor.ts:389
 #: static_src/ts/components/text_editor/BloomerpTextEditor.ts:390
 msgid "Hide formatting toolbar"
@@ -293,25 +377,35 @@ msgstr "Opmaakwerkbalk verbergen"
 msgid "Image"
 msgstr "Afbeelding"
 
-#: static_src/ts/components/communication/Calling.ts:334
-#: static_src/ts/components/communication/Calling.ts:351
+#: static_src/ts/components/communication/Calling.ts:349
+#: static_src/ts/components/communication/Calling.ts:366
 msgid "Incoming call"
 msgstr "Inkomende oproep"
 
-#: static_src/ts/components/communication/Calling.ts:300
+#: static_src/ts/components/communication/Calling.ts:315
 msgid "Incoming calling is unavailable."
 msgstr "Inkomende oproepen zijn niet beschikbaar."
 
-#: static_src/ts/components/communication/Calling.ts:319
+#: static_src/ts/components/communication/Calling.ts:334
 msgid "Incoming calling is unavailable. Check your connection and access."
 msgstr "Inkomende oproepen zijn niet beschikbaar. Controleer je verbinding en toegang."
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:248
+#, fuzzy
+msgid "Initial load and change"
+msgstr "Bij eerste keer laden en bij wijzigingen"
 
 #: static_src/ts/components/text_editor/utils/linkPicker.ts:24
 #: static_src/ts/components/text_editor/utils/linkPicker.ts:55
 msgid "Insert link"
 msgstr "Link invoegen"
 
-#: static_src/ts/components/communication/Calling.ts:365
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:359
+#, fuzzy
+msgid "Invalid behavior configuration: expected version 1 with a behaviors list."
+msgstr "Ongeldige gedragsconfiguratie: versie 1 met een lijst van gedragingen verwacht."
+
+#: static_src/ts/components/communication/Calling.ts:380
 msgid "Invalid call endpoint."
 msgstr "Ongeldig oproepeindpunt."
 
@@ -319,19 +413,19 @@ msgstr "Ongeldig oproepeindpunt."
 msgid "Invalid row policy"
 msgstr "Ongeldig rijbeleid"
 
-#: static_src/ts/components/communication/Calling.ts:182
+#: static_src/ts/components/communication/Calling.ts:197
 msgid "Joining call…"
 msgstr "Deelnemen aan oproep…"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:453
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:452
 msgid "Label could not be created"
 msgstr "Label kon niet worden aangemaakt"
 
-#: static_src/ts/components/communication/Calling.ts:104
+#: static_src/ts/components/communication/Calling.ts:119
 msgid "Leave or dismiss the current call first."
 msgstr "Verlaat of sluit eerst de huidige oproep."
 
-#: static_src/ts/components/communication/Calling.ts:117
+#: static_src/ts/components/communication/Calling.ts:132
 msgid "Leave the current call first."
 msgstr "Verlaat eerst de huidige oproep."
 
@@ -346,6 +440,11 @@ msgstr "Link-URL"
 #: static_src/ts/components/text_editor/utils/linkPicker.ts:39
 msgid "Link name"
 msgstr "Linknaam"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:138
+#, fuzzy
+msgid "Loading configuration…"
+msgstr "Configuratie laden…"
 
 #: static_src/ts/components/filters/SavedFilters.ts:152
 msgid "Loading saved filters…"
@@ -365,7 +464,7 @@ msgstr "Opzoeken"
 msgid "Match conditions"
 msgstr "Voorwaarden overeen laten komen"
 
-#: static_src/ts/components/communication/Calling.ts:166
+#: static_src/ts/components/communication/Calling.ts:181
 #, fuzzy
 msgid "Meeting link copied"
 msgstr "Vergaderlink gekopieerd"
@@ -389,7 +488,17 @@ msgstr "Actie omlaag verplaatsen"
 msgid "Move action up"
 msgstr "Actie omhoog verplaatsen"
 
-#: static_src/ts/components/communication/Calling.ts:306
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:400
+#, fuzzy
+msgid "Move behavior down"
+msgstr "Gedrag omlaag verplaatsen"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:399
+#, fuzzy
+msgid "Move behavior up"
+msgstr "Gedrag omhoog verplaatsen"
+
+#: static_src/ts/components/communication/Calling.ts:321
 msgid "No incoming call accounts are available"
 msgstr "Er zijn geen accounts voor inkomende oproepen beschikbaar"
 
@@ -406,8 +515,8 @@ msgid "No objects"
 msgstr "Geen objecten"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:182
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:446
-#: static_src/ts/components/widgets/ForeignFieldWidget.ts:416
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:445
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:418
 msgid "No results"
 msgstr "Geen resultaten"
 
@@ -441,7 +550,17 @@ msgstr "Object"
 msgid "Objects"
 msgstr "Objecten"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:427
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:248
+#, fuzzy
+msgid "On change"
+msgstr "Bij wijziging"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:248
+#, fuzzy
+msgid "On initial load"
+msgstr "Bij eerste keer laden"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:426
 msgid "Orange"
 msgstr "Oranje"
 
@@ -449,7 +568,7 @@ msgstr "Oranje"
 msgid "Permission required"
 msgstr "Machtiging vereist"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:430
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:429
 msgid "Pink"
 msgstr "Roze"
 
@@ -465,23 +584,23 @@ msgstr "Selecteer ten minste één machtiging voor het rijbeleid."
 msgid "Preference"
 msgstr "Voorkeur"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:429
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
 msgid "Purple"
 msgstr "Paars"
 
-#: static_src/ts/components/communication/Calling.ts:306
+#: static_src/ts/components/communication/Calling.ts:321
 msgid "Ready for incoming calls"
 msgstr "Gereed voor inkomende oproepen"
 
-#: static_src/ts/components/communication/Calling.ts:359
+#: static_src/ts/components/communication/Calling.ts:374
 msgid "Reconnecting…"
 msgstr "Opnieuw verbinden…"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:426
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:425
 msgid "Red"
 msgstr "Rood"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:315
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:314
 #: static_src/ts/components/filters/RenderedFilter.ts:94
 msgid "Remove"
 msgstr "Verwijderen"
@@ -489,6 +608,11 @@ msgstr "Verwijderen"
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:99
 msgid "Remove action"
 msgstr "Actie verwijderen"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:257
+#, fuzzy
+msgid "Remove behavior"
+msgstr "Gedrag verwijderen"
 
 #: static_src/ts/components/filters/ConditionEditor.ts:23
 msgid "Remove condition"
@@ -506,13 +630,23 @@ msgstr "Ontvanger verwijderen"
 msgid "Remove row"
 msgstr "Rij verwijderen"
 
-#: static_src/ts/components/widgets/ForeignFieldWidget.ts:528
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:530
 msgid "Remove {label}"
 msgstr "{label} verwijderen"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:162
+#, fuzzy
+msgid "Retry"
+msgstr "Opnieuw proberen"
 
 #: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:363
 msgid "Row title"
 msgstr "Rijtitel"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:247
+#, fuzzy
+msgid "Run behavior"
+msgstr "Gedrag uitvoeren"
 
 #: static_src/ts/components/filters/SavedFilters.ts:89
 #: static_src/ts/components/filters/SavedFilters.ts:90
@@ -528,11 +662,11 @@ msgstr "Opgeslagen filters"
 msgid "Saving draft…"
 msgstr "Concept opslaan…"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:400
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:399
 msgid "Search colors"
 msgstr "Kleuren zoeken"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:399
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:398
 msgid "Search colors…"
 msgstr "Kleuren zoeken…"
 
@@ -572,6 +706,16 @@ msgstr "Zoeken…"
 msgid "Select"
 msgstr "Selecteren"
 
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:78
+#, fuzzy
+msgid "Select action"
+msgstr "Actie selecteren"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:135
+#, fuzzy
+msgid "Select an action and its required target to configure it."
+msgstr "Selecteer een actie en het vereiste doel om deze te configureren."
+
 #: static_src/ts/components/filters/ConditionEditor.ts:65
 msgid "Select field"
 msgstr "Veld selecteren"
@@ -583,6 +727,11 @@ msgstr "Sleutel selecteren"
 #: static_src/ts/components/filters/ConditionEditor.ts:124
 msgid "Select lookup"
 msgstr "Zoektype selecteren"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:113
+#, fuzzy
+msgid "Select target field"
+msgstr "Doelveld selecteren"
 
 #: static_src/ts/components/inbox/EmailEditor.ts:268
 msgid "Sending email…"
@@ -596,20 +745,26 @@ msgstr "Als standaard instellen"
 msgid "Share {preference}"
 msgstr "{preference} delen"
 
-#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:547
+#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:668
 msgid "Show All Fields"
 msgstr "Alle velden weergeven"
 
-#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:546
+#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:667
 msgid "Show Required Only"
 msgstr "Alleen verplichte velden weergeven"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:259
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:308
+#, fuzzy
+msgid "Show behavior"
+msgstr "Gedrag weergeven"
 
 #: static_src/ts/components/text_editor/BloomerpTextEditor.ts:410
 #: static_src/ts/components/text_editor/BloomerpTextEditor.ts:411
 msgid "Show formatting toolbar"
 msgstr "Opmaakwerkbalk tonen"
 
-#: static_src/ts/components/communication/Calling.ts:109
+#: static_src/ts/components/communication/Calling.ts:124
 msgid "Starting call…"
 msgstr "Oproep starten…"
 
@@ -621,7 +776,12 @@ msgstr "Voorgestelde e-mailadressen"
 msgid "Table"
 msgstr "Tabel"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:77
+#, fuzzy
+msgid "Target field"
+msgstr "Doelveld"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:427
 msgid "Teal"
 msgstr "Blauwgroen"
 
@@ -639,6 +799,11 @@ msgstr "De filtereditor is niet gereed."
 msgid "The host did not admit you."
 msgstr "De host heeft u niet toegelaten."
 
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:378
+#, fuzzy
+msgid "The saved behavior configuration cannot be edited in this format."
+msgstr "De opgeslagen gedragsconfiguratie kan niet in deze indeling worden bewerkt."
+
 #: static_src/ts/components/filters/ConditionEditor.ts:112
 msgid "The saved filter field is unavailable."
 msgstr "Het veld van het opgeslagen filter is niet beschikbaar."
@@ -647,7 +812,7 @@ msgstr "Het veld van het opgeslagen filter is niet beschikbaar."
 msgid "The saved filter lookup could not be restored."
 msgstr "De zoekopdracht van het opgeslagen filter kon niet worden hersteld."
 
-#: static_src/ts/components/communication/Calling.ts:184
+#: static_src/ts/components/communication/Calling.ts:199
 msgid "This call has ended."
 msgstr "Deze oproep is beëindigd."
 
@@ -695,9 +860,24 @@ msgstr "Kan de veldinstellingen niet vernieuwen. Probeer het opnieuw."
 msgid "Unable to request admission."
 msgstr "Kan geen verzoek tot toelating indienen."
 
+#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:292
+#, fuzzy
+msgid "Unable to save changes. Please try again."
+msgstr "Kan wijzigingen niet opslaan. Probeer het opnieuw."
+
 #: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:955
 msgid "Unable to save the layout. Please try again before editing settings."
 msgstr "Kan de lay-out niet opslaan. Probeer het opnieuw voordat je de instellingen bewerkt."
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:92
+#, fuzzy
+msgid "Unavailable action: {action}"
+msgstr "Niet-beschikbare actie: {action}"
+
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:117
+#, fuzzy
+msgid "Unavailable field: {field}"
+msgstr "Niet-beschikbaar veld: {field}"
 
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:164
 msgid "Upload image"
@@ -708,7 +888,7 @@ msgstr "Afbeelding uploaden"
 msgid "Waiting for the host to admit you…"
 msgstr "Wachten tot de host u toelaat…"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:427
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:426
 msgid "Yellow"
 msgstr "Geel"
 
@@ -721,7 +901,7 @@ msgstr "Je hebt geen toestemming om deze kaart te verplaatsen."
 msgid "You have been admitted. You can now join."
 msgstr "U bent toegelaten. U kunt nu deelnemen."
 
-#: static_src/ts/components/communication/Calling.ts:249
+#: static_src/ts/components/communication/Calling.ts:264
 msgid "You left the call"
 msgstr "Je hebt de oproep verlaten"
 

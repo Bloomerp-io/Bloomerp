@@ -53,6 +53,14 @@ class TestConferencingConfiguration(SimpleTestCase):
         self.assertNotIn("api_key", config.model_dump()["conferencing"])
         self.assertNotIn("instance-secret", repr(config))
 
+    def test_preserves_configured_participant_limit(self) -> None:
+        """Preserve installation capacity limits below and above the default."""
+        for limit in (2, 16, 64, 500):
+            config = conferencing_config()
+            config.conferencing.max_participants = limit
+            with self.subTest(limit=limit), override_settings(BLOOMERP_CONFIG=config):
+                self.assertEqual(get_conferencing_settings().max_participants, limit)
+
     def test_rejects_invalid_endpoints_and_token_lifetime(self) -> None:
         """Use case: Invalid deployment settings. Expected result: reject unsafe URLs and TTLs."""
         # 1. Check malformed or credential-bearing endpoint values.

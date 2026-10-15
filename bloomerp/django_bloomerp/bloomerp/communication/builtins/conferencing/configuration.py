@@ -17,6 +17,7 @@ def get_conferencing_settings() -> ConferencingSettings:
         api_secret=configured.api_secret,
         join_token_ttl_seconds=configured.join_token_ttl_seconds,
         api_timeout_seconds=configured.api_timeout_seconds,
+        max_participants=configured.max_participants,
     )
     if not resolved.enabled:
         raise ImproperlyConfigured("Conferencing is disabled for this instance.")
