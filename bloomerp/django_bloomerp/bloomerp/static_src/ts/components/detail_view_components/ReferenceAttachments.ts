@@ -176,7 +176,7 @@ export default class ReferenceAttachments extends BaseComponent {
                     button.append(icon);
                 }
                 button.append(document.createTextNode(target.label));
-                button.addEventListener("click", this.chooseDropdownTarget.bind(this, button, target), { signal: this.lifecycle.signal });
+                button.addEventListener("click", this.chooseDropdownTarget.bind(this, target), { signal: this.lifecycle.signal });
                 results.append(button);
             }
             if (!result.items.length) this.showSearchStatus(results, t("No results"));
@@ -212,10 +212,9 @@ export default class ReferenceAttachments extends BaseComponent {
     private isDirty(): boolean {
         return this.avatarFiles.length > 0 || JSON.stringify(this.entries.filter(this.isManual)) !== JSON.stringify(this.initialManual);
     }
-    /** Attach a selected target and close its owning dropdown and submenus. */
-    private chooseDropdownTarget(button: HTMLButtonElement, target: ReferenceTarget): void {
+    /** Attach a selected target while keeping the dropdown open for more selections. */
+    private chooseDropdownTarget(target: ReferenceTarget): void {
         this.add(target);
-        this.closeDropdown(button);
     }
     /** Use the shared dropdown's dismissal event after an attachment action. */
     private closeDropdown(target: HTMLElement): void {
