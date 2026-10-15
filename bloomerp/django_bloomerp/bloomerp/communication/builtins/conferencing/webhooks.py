@@ -58,7 +58,8 @@ def reconcile_event(event: api.WebhookEvent) -> None:
     when = event_time(event.created_at)
     session = (
         ConferenceSession.objects.select_for_update()
-        .select_related("room__conversation")
+        # Keep nullable conversation reads outside the locking query.
+        .select_related("room")
         .filter(livekit_room_name=event.room.name)
         .first()
     )
