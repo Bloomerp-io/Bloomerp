@@ -1,0 +1,71 @@
+{% load i18n %}
+<form id="calendar-event-create-form" method="post" action="{{ form_url }}"
+      hx-post="{{ form_url }}" hx-target="#calendar-event-create-form" hx-swap="outerHTML" hx-push-url="false"
+      hx-disabled-elt="find button[type='submit']" hx-sync="this:drop"
+      x-data="{ allDay: {{ form.all_day.value|yesno:'true,false' }} }"
+      bloomerp-component="calendar-event-editor" data-availability-url="{{ form_url }}"
+      data-recipient-search-url="{% url 'components_search_email_address' %}?calendar_users=1"
+      class="min-w-0">
+    {% csrf_token %}
+    {% if data_view_create_id %}<input type="hidden" name="data_view_create_id" value="{{ data_view_create_id }}">{% endif %}
+    <div class="flex flex-col xl:flex-row" data-resizable-div-container>
+        <div class="flex min-w-0 flex-1 flex-col">
+        <div class="space-y-5 p-6">
+    {% if form.non_field_errors %}<div role="alert" class="mb-4 text-sm text-danger-dark">{{ form.non_field_errors }}</div>{% endif %}
+
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div><label for="{{ form.inbox.id_for_label }}" class="mb-1 block text-xs text-gray-500">{{ form.inbox.label }}</label>{{ form.inbox }}<div class="text-sm text-danger-dark">{{ form.inbox.errors }}</div></div>
+                <div><label for="{{ form.sender.id_for_label }}" class="mb-1 block text-xs text-gray-500">{{ form.sender.label }}</label>{{ form.sender }}<div class="text-sm text-danger-dark">{{ form.sender.errors }}</div></div>
+            </div>
+            <div><label for="{{ form.title.id_for_label }}" class="mb-1 block text-xs text-gray-500">{{ form.title.label }}</label>{{ form.title }}<div class="text-sm text-danger-dark">{{ form.title.errors }}</div></div>
+            {% if form.attendees %}
+            <div class="flex items-start gap-3 border-b border-gray-200">
+                <i class="fa fa-users mt-3 w-5 text-gray-400" aria-hidden="true"></i>
+                <div class="min-w-0 flex-1">
+                    <label for="{{ form.attendees.id_for_label }}" class="sr-only">{{ form.attendees.label }}</label>{{ form.attendees }}
+                    <input type="hidden" name="attendee_users" value="{{ form.attendee_users.value|default:'[]' }}" data-identities="{{ attendee_identities }}" data-labels="{{ attendee_labels }}">
+                    <p class="pb-2 text-xs text-gray-500">{{ form.attendees.help_text }}</p>
+                    <div class="text-sm text-danger-dark">{{ form.attendees.errors }}{{ form.attendee_users.errors }}</div>
+                </div>
+            </div>
+            {% endif %}
+            <fieldset class="min-w-0 space-y-3">
+                <legend class="mb-1 block text-xs text-gray-500">{% translate 'Timing' %}</legend>
+                    <label class="flex items-center gap-2 text-sm">{{ form.all_day }}{{ form.all_day.label }}</label>
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div><label for="{{ form.start_date.id_for_label }}" class="mb-1 block text-xs text-gray-500">{% translate 'Starts' %}</label><div class="flex gap-2"><div class="min-w-0 flex-1">{{ form.start_date }}</div><div x-show="!allDay" class="w-24 shrink-0">{{ form.start_time }}</div></div><div class="text-sm text-danger-dark">{{ form.start_date.errors }}{{ form.start_time.errors }}</div></div>
+                        <div><label for="{{ form.end_date.id_for_label }}" class="mb-1 block text-xs text-gray-500">{% translate 'Ends' %}</label><div class="flex gap-2"><div class="min-w-0 flex-1">{{ form.end_date }}</div><div x-show="!allDay" class="w-24 shrink-0">{{ form.end_time }}</div></div><div class="text-sm text-danger-dark">{{ form.end_date.errors }}{{ form.end_time.errors }}</div></div>
+                    </div>
+                    <div x-show="!allDay"><label for="{{ form.event_timezone.id_for_label }}" class="mb-1 block text-xs text-gray-500">{{ form.event_timezone.label }}</label>{{ form.event_timezone }}{{ form.event_timezone.errors }}</div>
+                    <div class="text-sm text-danger-dark">{{ form.all_day.errors }}</div>
+            </fieldset>
+            {% if form.location %}
+            <div><label for="{{ form.location.id_for_label }}" class="mb-1 block text-xs text-gray-500">{{ form.location.label }}</label>{{ form.location }}<div class="text-sm text-danger-dark">{{ form.location.errors }}</div></div>
+            {% endif %}
+            {% if form.create_conference %}
+            <div><label class="flex items-center gap-2 text-sm">{{ form.create_conference }}<i class="fa fa-video text-gray-400" aria-hidden="true"></i>{{ form.create_conference.label }}</label><div class="text-sm text-danger-dark">{{ form.create_conference.errors }}</div></div>
+            {% endif %}
+            {% if form.content %}
+            <div><label for="{{ form.content.id_for_label }}" class="mb-1 block text-xs text-gray-500">{{ form.content.label }}</label>{{ form.content }}<div class="text-sm text-danger-dark">{{ form.content.errors }}</div></div>
+            {% endif %}
+            {% if form.attendees %}
+            <label class="flex items-center gap-2 text-sm">{{ form.send_invitations }}{{ form.send_invitations.label }}</label>
+            <p class="text-xs text-gray-500">{% translate 'Selected users receive the event in their calendar. Enable email invitations to also send invites from the selected account.' %}</p>
+            {% endif %}
+        </div>
+    <div class="mt-auto flex items-center justify-end gap-2 border-t border-gray-200 px-6 py-4">
+        {% if data_view_create_id %}<button type="button" class="btn btn-secondary btn-sm" bloomerp-close-modal="create-object-modal">{% translate 'Cancel' %}</button>
+        {% else %}<a class="btn btn-secondary btn-sm" href="{% url 'calendar_events_model' %}">{% translate 'Cancel' %}</a>{% endif %}
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fa fa-check" aria-hidden="true"></i>{% translate 'Save event' %}</button>
+    </div>
+        </div>
+        <aside bloomerp-component="resizable-div" data-id="calendar-event-availability" data-storage="local" data-start-width="340px" data-min-width="240" data-min-remaining-width="440" class="relative min-w-0 shrink-0 xl:border-l xl:border-gray-200">
+            <div data-resizable-div-panel class="space-y-3 p-6">
+                <div class="flex items-center justify-between gap-2"><span class="text-sm font-medium">{% translate 'Availability' %}</span><span data-availability-date class="text-xs text-gray-500"></span></div>
+                <div data-availability-grid class="max-h-[560px] overflow-auto" role="region" aria-label="{% translate 'Attendee availability' %}"></div>
+                <p class="text-xs text-gray-500">{% translate 'Click a time to schedule an hour. Shaded cells are busy; ? means availability is unavailable.' %}</p>
+            </div>
+        </aside>
+    </div>
+
+</form>

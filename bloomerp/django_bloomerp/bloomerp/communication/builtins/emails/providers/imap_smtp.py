@@ -1,29 +1,29 @@
 
-from collections.abc import Iterator
-from datetime import date, datetime, timedelta
-from email import message_from_bytes
-from email.header import decode_header, make_header
-from email.message import Message
-from email.message import EmailMessage
-from email.policy import default, SMTP
-from email.utils import formatdate, getaddresses, make_msgid, parsedate_to_datetime
-from html import escape
 import imaplib
 import logging
 import mimetypes
 import re
 import smtplib
 import socket
+from collections.abc import Iterator
+from datetime import date, datetime, timedelta
+from email import message_from_bytes
+from email.header import decode_header, make_header
+from email.message import EmailMessage, Message
+from email.policy import SMTP, default
+from email.utils import formatdate, getaddresses, make_msgid, parsedate_to_datetime
+from html import escape
 from types import TracebackType
-from typing import TYPE_CHECKING
-from typing import Self
+from typing import TYPE_CHECKING, Self
 
 from django.core.exceptions import ValidationError
 
-from bloomerp.communication.builtins.emails.base_adapter import BloomerpEmail
-from bloomerp.communication.builtins.emails.base_adapter import BaseEmailAdapter
-from bloomerp.communication.builtins.emails.base_adapter import EmailAttachment
-from bloomerp.communication.builtins.emails.base_adapter import EmailAttachmentMetadata
+from bloomerp.communication.builtins.emails.base_adapter import (
+    BaseEmailAdapter,
+    BloomerpEmail,
+    EmailAttachment,
+    EmailAttachmentMetadata,
+)
 
 if TYPE_CHECKING:
     from bloomerp.models.communication.email_account import EmailAccount
@@ -151,7 +151,7 @@ class ImapSmtpAdapter(BaseEmailAdapter):
         in_reply_to: str | None = None,
         references: list[str] | None = None,
     ) -> str:
-        """Send mail and optionally save a read copy without retrying a successful send."""
+        """Send ordinary or calendar scheduling mail and preserve existing Sent-copy behavior."""
         if not self.email_account.smtp_host or not self.email_account.smtp_port:
             raise ValidationError("SMTP host and port are required.")
         if not to:
@@ -182,6 +182,13 @@ class ImapSmtpAdapter(BaseEmailAdapter):
             message.add_alternative(body_html, subtype="html")
 
         for attachment in attachments:
+            if attachment.calendar_method:
+                from bloomerp.communication.calendar.mime import (
+                    add_calendar_alternative,
+                )
+
+                add_calendar_alternative(message, attachment)
+                continue
             content_type = attachment.content_type or mimetypes.guess_type(attachment.filename)[0] or "application/octet-stream"
             maintype, _, subtype = content_type.partition("/")
             message.add_attachment(
@@ -486,6 +493,9 @@ class ImapSmtpAdapter(BaseEmailAdapter):
         return data[0].decode("ascii", errors="ignore").split()
 
     def _fetch_email_index(self, uid: str, *, mailbox: str) -> BloomerpEmail | None:
+        """Index a MIME message with attachments and decoded scheduling parts."""
+        from bloomerp.communication.calendar.mime import extract_calendar_parts
+
         connection = self.connect()
         status, data = connection.uid("FETCH", uid, "(UID FLAGS BODY.PEEK[])")
         if status != "OK":
@@ -525,6 +535,7 @@ class ImapSmtpAdapter(BaseEmailAdapter):
                 "imap_uid": provider_message_id,
             },
             attachments=self._extract_attachment_metadata(message),
+            calendar_parts=extract_calendar_parts(message),
         )
 
     @staticmethod

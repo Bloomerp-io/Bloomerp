@@ -216,7 +216,11 @@ class ConferenceController:
 
     def join(self, session_id: UUID) -> dict[str, str]:
         """Issue a connection identity only after checking current invitation and source access."""
-        authorized_session(self.user, session_id)
+        session = authorized_session(self.user, session_id)
+        if session.status == "pending" and getattr(session, "calendar_event", None) is not None:
+            if require_participant(self.user, session).role != "host":
+                raise ValidationError(_("The host has not started this meeting yet."))
+            self._provision(session_id)
         with transaction.atomic():
             session = (
                 ConferenceSession.objects.select_for_update()

@@ -9,6 +9,7 @@
     title="{{ event.object }}"
     data-calendar-unit="{{ calendar_unit }}"
     data-calendar-event
+    data-calendar-all-day="{{ event.all_day|yesno:'true,false' }}"
     data-calendar-start="{{ event.start_ms }}"
     data-calendar-end="{{ event.end_ms }}"
     data-calendar-can-edit-start="{{ event.can_edit_start|yesno:'true,false' }}"
@@ -28,6 +29,7 @@
     <span class="flex min-w-0 items-center gap-1">
         {% if event.start_time %}<span class="shrink-0 font-medium">{{ event.start_time|time:"H:i" }}</span>{% endif %}
         <span class="truncate font-medium">{{ event.object }}</span>
+        {% include "components/objects/dataview_calendar_group_dots.html" %}
     </span>
     {% if fields %}
     <span class="mt-0.5 block truncate opacity-75">
@@ -46,7 +48,7 @@
     data-calendar-unit="{{ calendar_unit }}"
     data-calendar-load-more
     bloomerp-component="calendar-cell"
-    hx-get="{% url 'components_dataview_renderer_operation' content_type_id=content_type_id preference_id=preference.pk action='unit' %}{% if calendar_page_querystring %}?{{ calendar_page_querystring }}&{% else %}?{% endif %}calendar_view_mode={{ calendar_view_mode }}&calendar_unit={{ calendar_unit|urlencode }}&calendar_unit_offset={{ calendar_next_unit_offset }}"
+    hx-get="{% if calendar_unit_url %}{{ calendar_unit_url }}{% else %}{% url 'components_dataview_renderer_operation' content_type_id=content_type_id preference_id=preference.pk action='unit' %}{% endif %}{% if calendar_page_querystring %}?{{ calendar_page_querystring }}&{% else %}?{% endif %}calendar_view_mode={{ calendar_view_mode }}&calendar_unit={{ calendar_unit|urlencode }}&calendar_unit_offset={{ calendar_next_unit_offset }}"
     hx-target="this"
     hx-swap="outerHTML"
 >

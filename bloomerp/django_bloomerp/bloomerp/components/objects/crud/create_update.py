@@ -1,19 +1,19 @@
 import json
 from typing import Any
 
-from django.contrib.messages import get_messages
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.messages import get_messages
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
-from django.urls import reverse
+from django.urls import resolve, reverse
+from django_htmx.http import HttpResponseClientRedirect
 
-from bloomerp.forms.model_form import bloomerp_modelform_factory
-from bloomerp.forms.model_form import BloomerpModelForm
+from bloomerp.forms.model_form import BloomerpModelForm, bloomerp_modelform_factory
+from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
 from bloomerp.utils.models import get_create_view_url, get_detail_view_url
 from bloomerp.utils.requests import render_blank_form
 from bloomerp.views.generic.model.create import BloomerpCreateView
-from django_htmx.http import HttpResponseClientRedirect
 
 
 def _get_detail_url(obj) -> str:
@@ -33,13 +33,31 @@ def _get_detail_url(obj) -> str:
 class CreateObjectComponentView(BloomerpCreateView):
     htmx_include_addendum = False
 
-    def dispatch(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        """Render model creation in its caller's modal, preserving custom views and initial GET values."""
         self.content_type = get_object_or_404(ContentType, id=kwargs["content_type_id"])
         self.model = self.content_type.model_class()
         if self.model is None:
             return HttpResponse("Invalid content type", status=400)
-        if self._create_view_is_overridden():
-            return HttpResponseClientRedirect(reverse(get_create_view_url(self.model)))
+        if self._create_view_is_overridden() and not getattr(request, "_bloomerp_custom_create", False):
+            url = reverse(get_create_view_url(self.model))
+            if request.GET.get("data_view_create_id") or request.POST.get("data_view_create_id"):
+                if not UserPolicyManager(request.user).has_global_permission(self.model, "add"):
+                    return HttpResponse("Forbidden", status=403)
+                match = resolve(url)
+                callback = match.func
+                view_class = getattr(callback, "view_class", None)
+                if view_class is not None and hasattr(view_class, "htmx_include_addendum"):
+                    callback = view_class.as_view(**{
+                        **callback.view_initkwargs, "htmx_include_addendum": False,
+                    })
+                request._bloomerp_custom_create = True
+                try:
+                    return callback(request, *match.args, **match.kwargs)
+                finally:
+                    del request._bloomerp_custom_create
+            query = request.GET.urlencode()
+            return HttpResponseClientRedirect(f"{url}?{query}" if query else url)
         return super().dispatch(request, *args, **kwargs)
 
     def _create_view_is_overridden(self) -> bool:

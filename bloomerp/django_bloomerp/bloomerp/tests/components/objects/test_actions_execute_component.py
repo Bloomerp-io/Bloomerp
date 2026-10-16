@@ -84,7 +84,33 @@ class TestActionsExecuteComponent(
                 view_kwargs=kwargs,
                 expected=ExpectedResult(status_code=403),
             ),
+            RequestScenario(
+                name="GET executes an explicitly configured GET object action",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                prepare=self.prepare_get_action,
+                expected=ExpectedResult(response_validators=[self.contains_text("<img")]),
+            ),
+            RequestScenario(
+                name="GET object actions reject POST",
+                method="POST",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                prepare=self.prepare_get_action,
+                expected=ExpectedResult(status_code=405, response_validators=[
+                    self.header_equals("Allow", "GET"),
+                ]),
+            ),
         ]
+
+    def prepare_get_action(self, scenario: RequestScenario) -> None:
+        """Configure the read-only file preview action to accept GET for one scenario."""
+        actions = [
+            action.model_copy(update={"method": "GET"})
+            if isinstance(action, ObjectAction) and action.id == "view_file" else action
+            for action in FileNode.bloomerp_config.object_actions
+        ]
+        self.enterContext(patch.object(FileNode.bloomerp_config, "object_actions", actions))
 
     @staticmethod
     def empty_action(request: HttpRequest, object: Model) -> HttpResponse | None:
@@ -103,6 +129,8 @@ class TestActionsExecuteComponent(
         action = ObjectAction(
             id="example", label="Example", execution_func=self.empty_action
         )
+        self.assertEqual(action.method, "POST")
+        self.assertIn('hx-post="', render_object_action(action, object, request))
         self.assertIn(
             'hx-target="#object-actions-target"',
             render_object_action(action, object, request),
@@ -117,6 +145,11 @@ class TestActionsExecuteComponent(
         self.assertIn('hx-target="#drawer-body"', markup)
         self.assertIn('bloomerp-open-drawer="drawer"', markup)
         self.assertIn('title="A &quot;quoted&quot; title"', markup)
+        action.method = "GET"
+        markup = render_object_action(action, object, request)
+        self.assertIn('hx-get="', markup)
+        self.assertNotIn('hx-post="', markup)
+        self.assertNotIn("csrfmiddlewaretoken", markup)
         # 3. The file action uses the preview component directly.
         self.assertIs(
             FileNode.bloomerp_config.object_actions[0].execution_func, preview_file

@@ -1,11 +1,13 @@
 """Cross-model call workflows that exceed a single model lifecycle scenario."""
 
 from dataclasses import replace
+from datetime import timedelta
 from unittest.mock import patch
 from uuid import UUID
 
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import OperationalError
+from django.http import Http404
 from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
@@ -329,3 +331,69 @@ class TestConferenceController(CallFixtures, BaseBloomerpTestCaseWithModels):
         groups = [call.args[0] for call in layer.group_send.call_args_list]
         self.assertNotIn(f"user_{self.normal_user.pk}", groups)
         self.assertIn(f"user_{self.admin_user.pk}", groups)
+
+    def test_calendar_meeting_reserves_a_link_until_the_host_joins(self) -> None:
+        """Keep future links valid without media provisioning, then start once the host explicitly joins."""
+        from bloomerp.communication.builtins.conferencing.sharing import shared_session
+        from bloomerp.models.communication.calendar import CalendarEvent
+        from bloomerp.services.calendar_conferencing import reserve_calendar_conference
+
+        self.prepare_call()
+        start = timezone.now() + timedelta(days=2)
+        event = CalendarEvent.objects.create(
+            title="Future calendar meeting",
+            organizer_email="host@example.com",
+            start=start,
+            end=start + timedelta(hours=1),
+            event_timezone="UTC",
+        )
+        event.participants.create(user=self.admin_user)
+        link = reserve_calendar_conference(
+            event, self.normal_user, [self.admin_user], "https://app.example/"
+        )
+        event.refresh_from_db()
+        session = event.conference_session
+        self.assertEqual(session.status, "pending")
+        self.assertIn(str(session.share_token), link)
+        self.assertEqual(shared_session(session.share_token).pk, session.pk)
+        self.create_room.assert_not_called()
+        host_client = Client()
+        host_client.force_login(self.normal_user)
+        lobby = host_client.get(link.replace("https://app.example", ""))
+        self.assertContains(lobby, "Start meeting")
+        with self.assertRaises(ValidationError):
+            ConferenceController(self.admin_user).join(session.pk)
+        self.create_room.assert_not_called()
+        guest = Client()
+        queued = guest.post(
+            reverse(
+                "components_conferencing_request_admission",
+                kwargs={"token": session.share_token},
+            ),
+            {"name": "Early visitor"},
+        )
+        self.assertEqual(queued.status_code, 200)
+        self.assertEqual(session.admissions.get().status, "waiting")
+        self.create_room.assert_not_called()
+        self.create_room.side_effect = RuntimeError("Media provider unavailable")
+        unavailable = host_client.post(
+            reverse("components_conferencing_join", kwargs={"session_id": session.pk})
+        )
+        self.assertEqual(unavailable.status_code, 503)
+        session.refresh_from_db()
+        self.assertEqual(session.status, "pending")
+        self.create_room.reset_mock(side_effect=True)
+        credentials = ConferenceController(self.normal_user).join(session.pk)
+        session.refresh_from_db()
+        self.assertEqual(session.status, "ringing")
+        self.assertEqual(credentials["can_end"], "true")
+        self.create_room.assert_called_once()
+        ConferenceController(self.normal_user).join(session.pk)
+        self.create_room.assert_called_once()
+        event.participants.all().delete()
+        with self.assertRaises(PermissionDenied):
+            ConferenceController(self.admin_user).join(session.pk)
+        event.cancelled = True
+        event.save()
+        with self.assertRaises(Http404):
+            shared_session(session.share_token)

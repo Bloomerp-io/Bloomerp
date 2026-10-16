@@ -365,7 +365,7 @@ export default class ResizableDiv extends BaseComponent {
             this.resizeFrom === "right" ? "translate-x-1/2" : "-translate-x-1/2",
             "cursor-col-resize",
         ].join(" ");
-        handle.setAttribute("aria-label", "Resize panel");
+        handle.setAttribute("aria-label", t("Resize panel"));
         handle.setAttribute("role", "separator");
         handle.setAttribute("data-resizable-div-handle", "true");
 

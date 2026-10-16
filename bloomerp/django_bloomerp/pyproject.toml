@@ -162,6 +162,7 @@ dependencies = [
     "anthropic>=0.75,<0.76",
     "twilio>=9,<10",
     "livekit-api>=1,<2",
+    "icalendar>=6,<8",
 ]
 
 [project.optional-dependencies]

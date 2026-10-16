@@ -1,3 +1,5 @@
+import InboxCalendarOverlay from "./components/inbox/InboxCalendarOverlay";
+import CalendarEventEditor from "./components/inbox/CalendarEventEditor";
 import MeetingLobby from './components/communication/MeetingLobby';
 import Calling from "./components/communication/Calling";
 import URLWidget from "./components/widgets/URLWidget";
@@ -208,6 +210,8 @@ registerComponent('select-preference', SelectPreference)
 registerComponent('inbox', Inbox)
 registerComponent('inbox-item', InboxItem)
 
+registerComponent('calendar-event-editor', CalendarEventEditor);
+registerComponent('inbox-calendar-overlay', InboxCalendarOverlay);
 registerComponent('email-editor', EmailEditor)
 
 loadTranslations()

@@ -14,7 +14,8 @@ an installed Django application. Bloomerp discovers those modules during
 application startup.
 
 See [Kanban grouping and colours](kanban.md) for built-in lane configuration
-and the reusable mapping field.
+and the reusable mapping field. See [Calendar color grouping](calendar.md) for
+scalar and multi-value event colors and embedding controls.
 
 ## Public API
 

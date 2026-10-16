@@ -1,0 +1,5 @@
+{% if event.additional_color_groups %}
+<span class="inline-flex shrink-0 items-center gap-1" data-calendar-group-memberships>
+    {% for group in event.additional_color_groups %}<span class="inline-block h-2.5 w-2.5 rounded-full border {{ group.color_classes }}" title="{{ group.label }}" role="img" aria-label="{{ group.label }}"></span>{% endfor %}
+</span>
+{% endif %}

@@ -24,6 +24,9 @@ export class EmailRecipients {
     private readonly entry: HTMLInputElement;
     private readonly source: HTMLInputElement;
     private values: string[];
+    private users = new Map<string, string>();
+    private userLabels = new Map<string, string>();
+    private readonly userSource?: HTMLInputElement;
     private readonly suggestions: HTMLDivElement;
     private readonly searchUrl?: string;
     private searchTimer?: ReturnType<typeof setTimeout>;
@@ -31,10 +34,20 @@ export class EmailRecipients {
     private activeSuggestion = -1;
 
     /** Replace a plain input with keyboard-accessible chips and a typing area. */
-    public constructor(source: HTMLInputElement, signal: AbortSignal, searchUrl?: string) {
+    public constructor(source: HTMLInputElement, signal: AbortSignal, searchUrl?: string, userSource?: HTMLInputElement) {
         this.source = source;
+        this.userSource = userSource;
+        if (userSource?.value) {
+            try {
+                const saved = JSON.parse(userSource.dataset.identities || "{}");
+                for (const [email, id] of Object.entries(saved)) this.users.set(email, String(id));
+                const labels = JSON.parse(userSource.dataset.labels || "{}");
+                for (const [key, label] of Object.entries(labels)) this.userLabels.set(key, String(label));
+            } catch { /* Keep manual email input usable when optional identity metadata is absent. */ }
+        }
         this.searchUrl = searchUrl;
         this.values = splitRecipients(source.value);
+        for (const key of this.users.keys()) if (key.startsWith("user:")) this.values.push(key);
         this.container = document.createElement("div");
         this.container.className = "relative flex min-w-0 flex-wrap items-center gap-1.5 py-2";
         this.chips = document.createElement("div");
@@ -74,6 +87,7 @@ export class EmailRecipients {
 
     /** Use browser email validation for each committed mailbox. */
     private valid(value: string): boolean {
+        if (this.userSource && this.users.has(this.address(value).toLowerCase())) return true;
         const probe = document.createElement("input");
         probe.type = "email";
         probe.value = this.address(value);
@@ -82,7 +96,8 @@ export class EmailRecipients {
 
     /** Preserve unfinished text in autosave without requiring a committed chip. */
     private sync(): void {
-        this.source.value = [...this.values, this.entry.value.trim()].filter(Boolean).join(", ");
+        this.source.value = [...this.values, this.entry.value.trim()].filter(this.isMailbox.bind(this)).join(", ");
+        if (this.userSource) this.userSource.value = JSON.stringify([...this.users.entries()].filter(this.isSelectedUser.bind(this)).map(this.userIdentifier));
         this.entry.placeholder = this.values.length ? "" : "name@example.com";
     }
 
@@ -96,7 +111,7 @@ export class EmailRecipients {
                 + (this.valid(value) ? "border-gray-200 bg-base text-gray-950" : "border-danger-dark bg-danger-light/10 text-danger-dark");
             const text = document.createElement("span");
             text.className = "truncate";
-            text.textContent = value;
+            text.textContent = this.users.has(this.address(value).toLowerCase()) ? `${this.userLabels.get(this.address(value).toLowerCase()) || value} · ${_("User")}` : value;
             chip.title = value;
             const remove = document.createElement("button");
             remove.type = "button";
@@ -122,6 +137,21 @@ export class EmailRecipients {
         this.render();
         this.sync();
         this.source.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
+    /** Keep account-only identities out of the email-address submission. */
+    private isMailbox(value: string): boolean {
+        return Boolean(value) && !(this.userSource && this.users.has(value.toLowerCase()) && value.startsWith("user:"));
+    }
+
+    /** Keep only explicit user selections whose mailbox chip remains present. */
+    private isSelectedUser(entry: [string, string]): boolean {
+        return this.values.some(this.matchesAddress.bind(this, entry[0]));
+    }
+
+    /** Serialize stable account IDs separately from free-form mailbox addresses. */
+    private userIdentifier(entry: [string, string]): string {
+        return entry[1];
     }
 
     /** Compare mailbox addresses independently from their display labels. */
@@ -151,6 +181,7 @@ export class EmailRecipients {
     private onRemove = (event: MouseEvent): void => {
         const value = (event.currentTarget as HTMLElement).parentElement!.dataset.recipientChip!;
         this.values = this.values.filter(this.differsFrom.bind(this, value));
+        this.users.delete(this.address(value).toLowerCase());
         this.entry.setCustomValidity("");
         this.render();
         this.sync();
@@ -196,6 +227,7 @@ export class EmailRecipients {
         } else if (event.key === "Backspace" && !this.entry.value && this.values.length) {
             event.preventDefault();
             this.entry.value = this.values.pop()!;
+            this.users.delete(this.address(this.entry.value).toLowerCase());
             this.render();
             this.sync();
             this.source.dispatchEvent(new Event("change", { bubbles: true }));
@@ -257,7 +289,7 @@ export class EmailRecipients {
         const controller = new AbortController();
         this.searchRequest = controller;
         try {
-            const result = await getSdk().client.request<{ suggestions: { email: string; label: string }[] }>(
+            const result = await getSdk().client.request<{ suggestions: { email: string; label: string; user_id?: string; display_name?: string }[] }>(
                 this.searchUrl!, { query: { q: query }, signal: controller.signal },
             );
             if (controller.signal.aborted || this.entry.value.trim() !== query || document.activeElement !== this.entry) return;
@@ -285,8 +317,12 @@ export class EmailRecipients {
                 option.setAttribute("role", "option");
                 option.setAttribute("aria-selected", "false");
                 option.dataset.email = suggestion.email;
+                if (this.userSource && suggestion.user_id) {
+                    option.dataset.userId = suggestion.user_id;
+                    option.dataset.userLabel = suggestion.display_name || suggestion.email;
+                }
                 option.className = "cursor-pointer rounded px-3 py-2 text-sm hover:bg-gray-100";
-                option.textContent = suggestion.email;
+                option.textContent = suggestion.display_name ? `${suggestion.display_name} · ${suggestion.email.startsWith("user:") ? _("User") : suggestion.email}` : suggestion.email;
                 option.classList.add("truncate");
                 option.title = suggestion.email;
                 group.append(option);
@@ -313,6 +349,10 @@ export class EmailRecipients {
     /** Replace the unfinished query with the selected address and commit its chip. */
     private selectSuggestion(option: HTMLElement): void {
         this.entry.value = option.dataset.email!;
+        if (option.dataset.userId && this.userSource) {
+            this.users.set(this.entry.value.toLowerCase(), option.dataset.userId);
+            this.userLabels.set(this.entry.value.toLowerCase(), option.dataset.userLabel!);
+        }
         this.commit();
     }
 

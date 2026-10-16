@@ -277,26 +277,36 @@ export class DataViewContainer extends BaseComponent {
         event.preventDefault();
 
         if (this.onAdd(event)) return;
+        this.openCreateForm({}, event.currentTarget as HTMLElement | null);
+    }
 
-        const addButton = event.currentTarget as HTMLElement | null;
-        const modalId = addButton?.dataset.modalId;
-        const createUrl = addButton?.dataset.createUrl;
-        const targetSelector = addButton?.dataset.target;
+    /** Report whether this dataview exposes an authorized model create endpoint. */
+    public get canCreate(): boolean {
+        return Boolean(this.element?.dataset.createUrl);
+    }
+
+    /** Open the shared create modal with field defaults while retaining its save-and-refresh lifecycle. */
+    public openCreateForm(initialValues: Record<string, string> = {}, opener: HTMLElement | null = null): boolean {
+        if (!this.canCreate) return false;
+        const modalId = opener?.dataset.modalId ?? this.element?.dataset.modalId;
+        const baseUrl = opener?.dataset.createUrl ?? this.element?.dataset.createUrl;
+        const targetSelector = opener?.dataset.target ?? this.element?.dataset.target;
         const target = targetSelector ? document.querySelector<HTMLElement>(targetSelector) : null;
         const modal = modalId ? getModal(modalId) : null;
+        if (!baseUrl || !target || !modal) return false;
+        const requestUrl = new URL(baseUrl, window.location.origin);
+        for (const [field, value] of Object.entries(initialValues)) requestUrl.searchParams.set(field, value);
+        const createUrl = requestUrl.toString();
 
-        if (addButton) modal?.setOpener(addButton);
-        modal?.open();
-
-        if (!createUrl || !target) return;
+        if (opener) modal.setOpener(opener);
+        modal.open();
 
         const existingRequestId = target.querySelector<HTMLInputElement>('[name="data_view_create_id"]')?.value;
-        if (this.createRequestId && existingRequestId === this.createRequestId && this.createFormUrl === createUrl) return;
+        if (this.createRequestId && existingRequestId === this.createRequestId && this.createFormUrl === createUrl) return true;
 
         this.createRequestId = crypto.randomUUID();
         this.createModalId = modalId ?? null;
         this.createFormUrl = createUrl;
-        const requestUrl = new URL(createUrl, window.location.origin);
         requestUrl.searchParams.set('data_view_create_id', this.createRequestId);
 
         insertSkeleton(target);
@@ -307,6 +317,7 @@ export class DataViewContainer extends BaseComponent {
         }).catch((error) => {
             console.error('Failed to load create object modal:', error);
         });
+        return true;
     }
 
     protected onCellClick(_cell: BaseDataViewCell): boolean {

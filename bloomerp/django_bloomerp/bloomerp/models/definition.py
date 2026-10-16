@@ -265,6 +265,7 @@ class ObjectAction(BaseModel):
     label:str
 
     execution_func:Callable[[HttpRequest, Model], HttpResponse | StreamingHttpResponse | None]
+    method: Literal["GET", "POST"] = "POST"
     
     should_render_func:Callable[[HttpRequest, Model], bool] = lambda req, obj : True
     
@@ -317,10 +318,13 @@ class DataviewAction(BaseModel):
     id: str
     label: str
     execution_func: Callable[[DataviewActionContext], HttpResponse]
+    method: Literal["GET", "POST"] = "POST"
     shortcut: str | None = None
     should_render_func: Callable[[DataviewActionContext], bool] = lambda context: True
     icon: str | None = None
     style: Literal["primary", "secondary"] = "secondary"
+    target: str | None = None
+    button_attrs: dict[str, Any] | None = None
 
 
 class DataviewModalAction(BaseModel):
@@ -335,10 +339,16 @@ class DataviewModalAction(BaseModel):
     modal_size: Literal["sm", "md", "lg", "xl", "full"] = "md"
 
 
-def get_default_dataview_actions(skip:Optional[list[str]]=None) -> list[DataviewHTMLAction]:
-    """Return a new copy of the standard Dataview toolbar configuration."""
+def get_default_dataview_actions(
+    skip: list[str] | None = None,
+    include: list[str] | None = None,
+) -> list[DataviewHTMLAction]:
+    """Return standard toolbar actions in order, limited by include and then skip.
+
+    An omitted include selects all defaults; an empty include selects none.
+    Skip takes precedence when an action appears in both lists.
+    """
     template_root = "components/objects/dataview_actions"
-    resolved = []
     
     actions = [
         DataviewHTMLAction(
@@ -372,14 +382,12 @@ def get_default_dataview_actions(skip:Optional[list[str]]=None) -> list[Dataview
             shortcut="mod+6",
         ),
     ]
-    if skip:
-        for action in actions:
-            if action.id not in skip:
-                resolved.append(action)
-                
-        return resolved
-    
-    return actions
+    return [
+        action
+        for action in actions
+        if (include is None or action.id in include)
+        and (not skip or action.id not in skip)
+    ]
     
 
 class DetailViewSettings(BaseModel):

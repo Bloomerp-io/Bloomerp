@@ -1,8 +1,12 @@
-from bloomerp.components.objects.dataviews.dataview import _build_dataview_state, _build_dataview_action_context, _get_configured_dataview_actions
+from django.http import HttpRequest, HttpResponse, HttpResponseNotAllowed
+
+from bloomerp.components.objects.dataviews.dataview import (
+    _build_dataview_action_context,
+    _build_dataview_state,
+    _get_configured_dataview_actions,
+)
 from bloomerp.models.definition import DataviewAction
 from bloomerp.router import router
-
-from django.http import HttpRequest, HttpResponse
 
 
 @router.register(
@@ -15,8 +19,8 @@ def configured_dataview_action(
     action_id: str,
 ) -> HttpResponse:
     """Execute a configured Dataview action against its permission-filtered context."""
-    if request.method != "POST":
-        return HttpResponse("Method not allowed", status=405)
+    if request.method not in {"GET", "POST"}:
+        return HttpResponseNotAllowed(["GET", "POST"])
 
     state = _build_dataview_state(request, content_type_id)
     if isinstance(state, HttpResponse):
@@ -33,6 +37,8 @@ def configured_dataview_action(
     )
     if action is None:
         return HttpResponse("Action not found", status=404)
+    if request.method != action.method:
+        return HttpResponseNotAllowed([action.method])
 
     action_context = _build_dataview_action_context(request, state)
     try:
@@ -42,4 +48,7 @@ def configured_dataview_action(
     if not should_execute:
         return HttpResponse(status=403)
 
-    return action.execution_func(action_context)
+    response = action.execution_func(action_context)
+    if action.target:
+        response["HX-Retarget"] = action.target
+    return response

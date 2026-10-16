@@ -1,14 +1,17 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from django import forms
 from django.db import models
 from django.db.models import QuerySet
 from django.utils.translation import gettext_lazy as _
+from pydantic import model_validator
+from pydantic.fields import FieldInfo
 
 from bloomerp.dataviews.definition import (
     BaseDataview,
+    DataviewState,
     application_field_choices,
 )
 
@@ -30,16 +33,30 @@ class CalendarDataView(BaseDataview):
     view_type: Literal["calendar"] = "calendar"
     start_field: str | None = None
     end_field: str | None = None
+    start_date_field: str | None = None
+    end_date_field: str | None = None
     view_mode: Literal["day", "week", "month", "year", "list"] = "week"
     color_grouping_field: str | None = None
-    application_field_options = {
+    application_field_options: ClassVar[dict[str, Literal["single", "multiple"]]] = {
         "start_field": "single",
         "end_field": "single",
+        "start_date_field": "single",
+        "end_date_field": "single",
         "color_grouping_field": "single",
     }
 
+    @model_validator(mode="after")
+    def validate_date_pair(self) -> CalendarDataView:
+        """Require both boundaries when configuring a separate all-day date range."""
+        if bool(self.start_date_field) != bool(self.end_date_field):
+            raise ValueError("Configure both all-day date fields or neither.")
+        if self.start_date_field and bool(self.start_field) != bool(self.end_field):
+            raise ValueError("Configure both timed fields when combining timed and all-day ranges.")
+        return self
+
     @classmethod
-    def create_form_field(cls, name, field_info, state):
+    def create_form_field(cls, name: str, field_info: FieldInfo, state: DataviewState) -> forms.Field | None:
+        """Offer readable temporal fields for timed and exclusive date-only ranges."""
         application_fields = state.accessible_fields
         field_options = {
             "start_field": (
@@ -75,11 +92,27 @@ class CalendarDataView(BaseDataview):
                 },
             ),
         }
+        if name in {"start_date_field", "end_date_field"}:
+            return forms.TypedChoiceField(
+                required=False,
+                choices=application_field_choices(
+                    application_fields, include_empty=True,
+                    empty_label=_("No all-day date field"), field_types={"DateField"},
+                ),
+                label=_("All-day start date") if name == "start_date_field" else _("All-day end date (exclusive)"),
+                coerce=optional_field_name,
+                empty_value=None,
+            )
         field_definition = field_options.get(name)
         if field_definition is None:
             return super().create_form_field(name, field_info, state)
         field_cls, kwargs = field_definition
         return field_cls(required=False, **kwargs)
+
+
+def optional_field_name(value: str) -> str | None:
+    """Normalize an empty optional field selection to no configured field."""
+    return value or None
 
 
 def date_field_choices(

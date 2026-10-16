@@ -2,6 +2,12 @@
 
 from uuid import UUID, uuid4
 
+from bloomerp.models.communication.conferencing import (
+    ConferenceAdmission,
+    ConferenceParticipant,
+    ConferenceSession,
+)
+from bloomerp.models.users.user import AbstractBloomerpUser
 from django.core import signing
 from django.core.exceptions import (
     ImproperlyConfigured,
@@ -9,17 +15,11 @@ from django.core.exceptions import (
     ValidationError,
 )
 from django.db import transaction
+from django.db.models import Q
 from django.http import Http404, HttpRequest
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext as _
-
-from bloomerp.models.communication.conferencing import (
-    ConferenceAdmission,
-    ConferenceParticipant,
-    ConferenceSession,
-)
-from bloomerp.models.users.user import AbstractBloomerpUser
 
 from .access import authorized_session, require_participant
 from .configuration import get_conferencing_settings
@@ -38,6 +38,9 @@ def sharing_allowed(session: ConferenceSession) -> bool:
         .filter(role="host", user__is_active=True)
         .first()
     )
+    event = getattr(session, "calendar_event", None)
+    if event is not None and event.cancelled:
+        return False
     if host is None:
         return False
     if session.room.conversation_id:
@@ -68,11 +71,14 @@ def sharing_controls(
 
 
 def shared_session(token: UUID) -> ConferenceSession:
-    """Resolve a live meeting link without exposing conversation content or closed calls."""
+    """Resolve live or calendar-reserved links without exposing closed or cancelled meetings."""
     session = (
         ConferenceSession.objects.select_related("room__conversation")
         .filter(
-            share_token=token, status__in=["ringing", "active"], room__archived=False
+            Q(status__in=["ringing", "active"])
+            | Q(status="pending", calendar_event__isnull=False),
+            share_token=token,
+            room__archived=False,
         )
         .first()
     )
@@ -134,7 +140,7 @@ def request_admission(request: HttpRequest, token: UUID) -> ConferenceAdmission:
         raise ValidationError(_("Enter a name of up to 255 characters."))
     with transaction.atomic():
         session = ConferenceSession.objects.select_for_update().get(pk=session.pk)
-        if session.status not in {"ringing", "active"}:
+        if session.status not in {"pending", "ringing", "active"}:
             raise Http404
         existing = browser_admission(request, session)
         if existing:

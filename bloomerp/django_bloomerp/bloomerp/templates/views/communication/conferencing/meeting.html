@@ -2,9 +2,13 @@
 <!doctype html>
 <html><head>{% include 'snippets/head.html' %}<meta name="referrer" content="no-referrer"></head>
 <body class="bg-base text-gray-800 min-h-screen p-6">
-<main class="mx-auto max-w-xl bg-white rounded-xl border border-gray-200 p-6 shadow-sm" bloomerp-component="bloomerp:meeting-lobby" data-status-url="{% url 'components_conferencing_admission_status' token=token %}">
+<main {% if not direct_join %}bloomerp-component="bloomerp:meeting-lobby"{% endif %} class="mx-auto max-w-xl bg-white rounded-xl border border-gray-200 p-6 shadow-sm" data-status-url="{% url 'components_conferencing_admission_status' token=token %}">
     <img src="{% static 'bloomerp/img/bloomerp-background-trans.png' %}" alt="Bloomerp" class="h-12 mb-6">
     <h1 class="text-2xl font-semibold mb-3">{% translate 'Join meeting' %}</h1>
+    {% if direct_join %}
+    <p class="text-gray-500 mb-6">{% translate 'Joining as' %} <strong>{{ joining_name }}</strong></p>
+    <button type="button" class="btn btn-primary" data-call-action="join" data-join-url="{% url 'components_conferencing_join' session_id=conference_session.pk %}"><i class="fa-solid fa-video" aria-hidden="true"></i> {% if starting_meeting %}{% translate 'Start meeting' %}{% else %}{% translate 'Join meeting' %}{% endif %}</button>
+    {% else %}
     <p class="text-gray-500 mb-6">{% translate 'The host will admit you before you can enter the meeting.' %}</p>
     <form data-meeting-request action="{% url 'components_conferencing_request_admission' token=token %}" method="post" class="space-y-4">
         {% csrf_token %}
@@ -17,6 +21,7 @@
     </form>
     <p data-meeting-status role="status" class="my-4"></p>
     <button type="button" hidden class="btn btn-primary" data-meeting-join data-call-action="join" data-join-url="{% url 'components_conferencing_guest_join' token=token %}"><i class="fa-solid fa-video" aria-hidden="true"></i> {% translate 'Join meeting' %}</button>
+    {% endif %}
 </main>
 {% include 'components/communication/calling/controls.html' %}
 {% include 'snippets/vite_bundle.html' %}

@@ -1,5 +1,6 @@
 """Optional recipient suggestions from readable email fields on searchable models."""
 
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
@@ -37,7 +38,11 @@ def search_email_address(request: HttpRequest) -> JsonResponse:
     objects = manager.search_objects(query, models=fields_by_model, per_model_limit=10, total_limit=40)
     suggestions: list[dict[str, str]] = []
     seen: set[str] = set()
-    for obj in objects.items:
+    items = objects.items
+    if request.GET.get("calendar_users") == "1":
+        user_model = get_user_model()
+        items = [obj for obj in items if isinstance(obj, user_model)] + [obj for obj in items if not isinstance(obj, user_model)]
+    for obj in items:
         readable = set(manager.permission_manager.get_accessible_fields_for_object(
             obj, "view",
         ).values_list("field", flat=True))
@@ -48,6 +53,12 @@ def search_email_address(request: HttpRequest) -> JsonResponse:
             if not isinstance(address, str):
                 continue
             address = address.strip()
+            if not address and request.GET.get("calendar_users") == "1" and isinstance(obj, get_user_model()) and obj.is_active:
+                address = f"user:{obj.pk}"
+                suggestions.append({"email": address, "label": str(obj._meta.verbose_name), "user_id": str(obj.pk), "display_name": str(obj)})
+                if len(suggestions) == 10:
+                    return JsonResponse({"suggestions": suggestions})
+                continue
             try:
                 validate_email(address)
             except ValidationError:
@@ -55,7 +66,11 @@ def search_email_address(request: HttpRequest) -> JsonResponse:
             if address.casefold() in seen:
                 continue
             seen.add(address.casefold())
-            suggestions.append({"email": address, "label": str(obj._meta.verbose_name)})
+            suggestion = {"email": address, "label": str(obj._meta.verbose_name)}
+            if request.GET.get("calendar_users") == "1" and isinstance(obj, get_user_model()) and obj.is_active:
+                suggestion["user_id"] = str(obj.pk)
+                suggestion["display_name"] = str(obj)
+            suggestions.append(suggestion)
             if len(suggestions) == 10:
                 return JsonResponse({"suggestions": suggestions})
     return JsonResponse({"suggestions": suggestions})

@@ -1,0 +1,17 @@
+{% load i18n %}
+<div id="calendar-scheduling-{{ calendar_event.pk }}" class="p-4">
+    {% if calendar_error %}<p role="alert">{{ calendar_error }}</p>{% endif %}
+    {% if calendar_success %}<p role="status">{{ calendar_success }}</p>{% endif %}
+    <form method="post" action="{% url 'components_calendar_schedule' event_id=calendar_event.pk %}"
+          hx-post="{% url 'components_calendar_schedule' event_id=calendar_event.pk %}"
+          hx-target="#calendar-scheduling-{{ calendar_event.pk }}" hx-swap="outerHTML">
+        {% csrf_token %}
+        <label>{% translate "Send from" %}
+            <select name="email_account_id" required>
+                {% for account in email_accounts %}<option value="{{ account.pk }}">{{ account.email_address }}</option>{% endfor %}
+            </select>
+        </label>
+        <button type="submit" name="action" value="REQUEST" class="btn btn-primary">{% translate "Send invitation / update" %}</button>
+        <button type="submit" name="action" value="CANCEL" class="btn">{% translate "Cancel meeting" %}</button>
+    </form>
+</div>

@@ -1,0 +1,28 @@
+{% load i18n %}
+<section id="calendar-invitation-{{ calendar_invitation.item_id }}" class="mb-5 border rounded-lg p-4">
+    {% if calendar_error %}<p role="alert">{{ calendar_error }}</p>{% endif %}
+    {% if calendar_invitation %}
+    <p class="font-semibold">{{ calendar_invitation.event.title }}</p>
+    {% if calendar_invitation.event.all_day %}
+    <p>{{ calendar_invitation.event.start_date }} — {{ calendar_invitation.event.end_date }} ({% translate "exclusive end" %})</p>
+    {% else %}
+    <p>{{ calendar_invitation.event.start }} — {{ calendar_invitation.event.end }}</p>
+    {% endif %}
+    {% if calendar_invitation.event.cancelled or calendar_invitation.participant.invitation_cancelled %}
+    <p>{% translate "Invitation cancelled" %}</p>
+    {% else %}
+    <p>{{ calendar_invitation.participant.get_response_status_display }}</p>
+    {% endif %}
+    {% if calendar_invitation.can_respond %}
+    <form method="post" action="{% url 'components_calendar_respond' item_id=calendar_invitation.item_id %}"
+          hx-post="{% url 'components_calendar_respond' item_id=calendar_invitation.item_id %}"
+          hx-target="#calendar-invitation-{{ calendar_invitation.item_id }}" hx-swap="outerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="sequence" value="{{ calendar_invitation.event.sequence }}">
+        <button type="submit" class="btn btn-primary" name="response_status" value="accepted">{% translate "Accept" %}</button>
+        <button type="submit" class="btn" name="response_status" value="tentative">{% translate "Tentative" %}</button>
+        <button type="submit" class="btn" name="response_status" value="declined">{% translate "Decline" %}</button>
+    </form>
+    {% endif %}
+    {% endif %}
+</section>

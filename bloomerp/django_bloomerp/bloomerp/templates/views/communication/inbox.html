@@ -152,6 +152,15 @@
                         <c-ui.dropdown.item text="{% translate "No filters" %}" disabled=True />
                     {% endfor %}
                 </c-ui.dropdown.body>
+                {% if inbox_calendar_url %}
+                <c-ui.tooltip title="{% translate 'Calendar' %}" position="bottom">
+                    <a href="{{ inbox_calendar_url }}" hx-get="{{ inbox_calendar_url }}" hx-target="#main-content" hx-push-url="true"
+                       class="inline-flex items-center justify-center rounded-xl px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200"
+                       aria-label="{% translate 'Calendar' %}" data-inbox-calendar>
+                        <i class="fa fa-calendar" aria-hidden="true"></i>
+                    </a>
+                </c-ui.tooltip>
+                {% endif %}
             </div>
         </header>
 

@@ -485,7 +485,7 @@ def render_object_action(
 
     attrs = {
         "class": f"btn btn-xs btn-{action.style}",
-        "hx-post": reverse(
+        f"hx-{action.method.lower()}": reverse(
             "components_objects_actions",
             kwargs={
                 "content_type_id": content_type_id,
@@ -493,7 +493,8 @@ def render_object_action(
                 "action_id": action.id,
             },
         ),
-        "hx-vals": json.dumps({"csrfmiddlewaretoken": get_token(request)}),
+        "hx-vals": json.dumps({"csrfmiddlewaretoken": get_token(request)})
+        if action.method == "POST" else "{}",
         **(action.button_attrs or {}),
         "hx-target": action.target,
     }

@@ -11,7 +11,14 @@ Permission-filtered calendar dataview with day, week, month, year, and list mode
     data-page-offset="{{ calendar_page_offset|default:0 }}"
     data-calendar-start-field-type="{{ start_field.field_type }}"
     data-calendar-end-field-type="{{ end_field.field_type|default:'' }}"
-    data-calendar-update-url="{% url 'components_dataview_renderer_operation' content_type_id=content_type_id preference_id=preference.pk action='dates' %}{% if renderer_operation_querystring %}?{{ renderer_operation_querystring }}{% endif %}"
+    {% if create_component_url %}
+    data-calendar-create-start-field="{{ start_field.field }}"
+    data-calendar-create-end-field="{{ end_field.field|default:'' }}"
+    data-calendar-create-start-date-field="{{ calendar_start_date_field.field|default:'' }}"
+    data-calendar-create-end-date-field="{{ calendar_end_date_field.field|default:'' }}"
+    {% endif %}
+    {% if not calendar_mode_url %}data-calendar-mode-url="{% url 'components_dataview_renderer_operation' content_type_id=content_type_id preference_id=preference.pk action='view-mode' %}{% if renderer_operation_querystring %}?{{ renderer_operation_querystring }}{% endif %}"{% endif %}
+    data-calendar-update-url="{% if calendar_mode_url %}{{ calendar_mode_url }}{% else %}{% url 'components_dataview_renderer_operation' content_type_id=content_type_id preference_id=preference.pk action='dates' %}{% if renderer_operation_querystring %}?{{ renderer_operation_querystring }}{% endif %}{% endif %}"
     bloomerp-component="calendar"
     tabindex="0"
 >
@@ -65,9 +72,11 @@ Permission-filtered calendar dataview with day, week, month, year, and list mode
                 </div>
             </details>
             {% endif %}
-            <select data-calendar-view-mode class="select select-sm border-gray-200 bg-white" aria-label="Calendar view mode">
+            <select data-calendar-view-mode
+                {% if calendar_mode_url %}name="calendar_view_mode" hx-headers='{"X-Bloomerp-Inbox-Calendar-Mode":"true"}' hx-get="{{ calendar_mode_url }}" hx-target="#data-view-data-section" hx-swap="innerHTML" hx-include="#data-view-search-input-{{ content_type_id }}"{% endif %}
+                class="select select-sm border-gray-200 bg-white" aria-label="{% translate 'Calendar view mode' %}">
                 {% for mode_value, mode_label in calendar_view_modes %}
-                <option value="{{ mode_value }}" {% if mode_value == view_mode %}selected{% endif %}>{{ mode_label }}</option>
+                <option value="{{ mode_value }}" {% if mode_value == view_mode %}selected{% endif %}>{% translate mode_label %}</option>
                 {% endfor %}
             </select>
         </div>
@@ -92,6 +101,8 @@ Permission-filtered calendar dataview with day, week, month, year, and list mode
                     data-calendar-row="{{ forloop.parentloop.counter0 }}"
                     data-calendar-column="{{ forloop.counter0 }}"
                     data-calendar-unit-section
+                    data-calendar-create-start="{{ day.create_start }}"
+                    data-calendar-create-end="{{ day.create_end }}"
                     data-calendar-dropzone
                 >
                     <button type="button" class="mb-1 w-full rounded-xl px-1 text-left text-sm {% if day.is_today %}bg-primary-100 font-bold text-primary{% endif %}" data-calendar-unit="{{ unit_key }}" data-calendar-unit-cell bloomerp-component="calendar-cell">
@@ -108,6 +119,7 @@ Permission-filtered calendar dataview with day, week, month, year, and list mode
                     style="grid-column: {{ event.start_column }} / span {{ event.span }}; grid-row: 1; margin-top: calc(2rem + {{ event.lane }} * 3.25rem);"
                     data-calendar-unit="{{ event.start_date|date:'Y-m-d' }}"
                     data-calendar-event
+                    data-calendar-all-day="{{ event.all_day|yesno:'true,false' }}"
                     data-calendar-start="{{ event.start_ms }}"
                     data-calendar-end="{{ event.end_ms }}"
                     data-calendar-can-edit-start="{{ event.can_edit_start|yesno:'true,false' }}"
@@ -120,7 +132,7 @@ Permission-filtered calendar dataview with day, week, month, year, and list mode
                 >
                     {% if event.can_edit_start %}<span class="absolute inset-y-0 left-0 w-2 cursor-ew-resize" data-calendar-resize-start aria-hidden="true"></span>{% endif %}
                     {% if event.can_edit_end %}<span class="absolute inset-y-0 right-0 w-2 cursor-ew-resize" data-calendar-resize-end aria-hidden="true"></span>{% endif %}
-                    <span class="block truncate font-medium">{{ event.object }}</span>
+                    <span class="flex min-w-0 items-center gap-1"><span class="truncate font-medium">{{ event.object }}</span>{% include "components/objects/dataview_calendar_group_dots.html" %}</span>
                     {% if fields %}
                     <span class="mt-0.5 block truncate opacity-75">
                         {% for field in fields %}
@@ -167,6 +179,7 @@ Permission-filtered calendar dataview with day, week, month, year, and list mode
                     style="grid-column: {{ event.start_column|add:1 }} / span {{ event.span }}; grid-row: 1; margin-top: calc(0.25rem + {{ event.lane }} * 3.25rem);"
                     data-calendar-unit="{{ event.start_date|date:'Y-m-d' }}"
                     data-calendar-event
+                    data-calendar-all-day="{{ event.all_day|yesno:'true,false' }}"
                     data-calendar-start="{{ event.start_ms }}"
                     data-calendar-end="{{ event.end_ms }}"
                     data-calendar-can-edit-start="{{ event.can_edit_start|yesno:'true,false' }}"
@@ -179,7 +192,7 @@ Permission-filtered calendar dataview with day, week, month, year, and list mode
                 >
                     {% if event.can_edit_start %}<span class="absolute inset-y-0 left-0 w-2 cursor-ew-resize" data-calendar-resize-start aria-hidden="true"></span>{% endif %}
                     {% if event.can_edit_end %}<span class="absolute inset-y-0 right-0 w-2 cursor-ew-resize" data-calendar-resize-end aria-hidden="true"></span>{% endif %}
-                    <span class="block truncate font-medium">{{ event.object }}</span>
+                    <span class="flex min-w-0 items-center gap-1"><span class="truncate font-medium">{{ event.object }}</span>{% include "components/objects/dataview_calendar_group_dots.html" %}</span>
                     {% if fields %}
                     <span class="mt-0.5 block truncate opacity-75">
                         {% for field in fields %}
@@ -200,7 +213,7 @@ Permission-filtered calendar dataview with day, week, month, year, and list mode
                     {% for hour_unit in day_column.hours %}
                     {% with unit_key=hour_unit.key %}
                     {% with unit=calendar_events_by_unit|get_item:unit_key %}
-                    <section class="relative h-20 overflow-visible border-b border-gray-200 p-1" data-calendar-unit="{{ unit_key }}" data-calendar-row="{{ forloop.counter0 }}" data-calendar-column="{{ forloop.parentloop.counter0 }}" data-calendar-unit-section data-calendar-dropzone>
+                    <section class="relative h-20 overflow-visible border-b border-gray-200 p-1" data-calendar-unit="{{ unit_key }}" data-calendar-row="{{ forloop.counter0 }}" data-calendar-column="{{ forloop.parentloop.counter0 }}" data-calendar-unit-section data-calendar-dropzone data-calendar-create-start="{{ hour_unit.create_start }}" data-calendar-create-end="{{ hour_unit.create_end }}">
                         <button type="button" class="sr-only" data-calendar-unit="{{ unit_key }}" data-calendar-unit-cell bloomerp-component="calendar-cell">{{ day_column.date|date:"D j" }} {{ hour_unit.hour }}:00</button>
                         <div class="space-y-1" data-calendar-events>
                             {% include "components/objects/dataview_calendar_events.html" with events=unit.events calendar_unit=unit_key calendar_has_more=unit.has_more calendar_next_unit_offset=5 calendar_view_mode=view_mode %}

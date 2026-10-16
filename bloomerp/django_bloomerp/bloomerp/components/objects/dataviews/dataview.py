@@ -1,10 +1,12 @@
 import json
 
 from django import forms
+from django.forms.utils import flatatt
+from django.middleware.csrf import get_token
 from django.core import signing
 from django.shortcuts import render
 from django.template.loader import render_to_string
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 from django.core.exceptions import FieldDoesNotExist
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.filters.manager import ModelFilterManager
@@ -21,7 +23,7 @@ from bloomerp.models.definition import (
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.services.preference_services import PreferenceManager
-from bloomerp.utils.models import get_model_and_content_type_or_404
+from bloomerp.utils.models import get_create_view_url, get_model_and_content_type_or_404
 from bloomerp.router import router
 from django.http import HttpRequest
 from django.http import HttpResponse
@@ -46,6 +48,10 @@ SHELL_RESERVED_QUERY_KEYS = {
     "page",
     "_component_id",
     "_dataview_operation_context",
+    # Calendar decoration controls can survive switching to another renderer.
+    "calendar_color_field",
+    "calendar_color_values",
+    "calendar_color_preferred",
 }
 
 DATAVIEW_OPERATION_CONTEXT_PARAM = "_dataview_operation_context"
@@ -343,6 +349,18 @@ def _render_dataview_body(
     return definition.renderer_cls(state).render(pagination)
 
 
+def _get_create_component_url(state: DataviewState, querystring: str) -> str | None:
+    """Expose modal creation only for models with a create route and user add permission."""
+    if not UserPolicyManager(state.request.user).has_global_permission(state.model, BloomerpPermission.ADD):
+        return None
+    try:
+        reverse(get_create_view_url(state.model))
+    except NoReverseMatch:
+        return None
+    url = reverse("components_create_object", kwargs={"content_type_id": state.content_type.pk})
+    return f"{url}?{querystring}" if querystring else url
+
+
 def _get_configured_dataview_actions(
     model: type[Model],
 ) -> list[DataviewAction | DataviewHTMLAction | DataviewModalAction]:
@@ -372,6 +390,7 @@ def _render_dataview_actions(
     context: dict,
     action_ids: list[str] | None = None,
 ) -> list[str]:
+    """Render permitted toolbar actions with safely escaped, configurable button attributes."""
     action_context = _build_dataview_action_context(request, state)
     rendered_actions: list[str] = []
     allowed_action_ids = set(action_ids) if action_ids is not None else None
@@ -410,6 +429,16 @@ def _render_dataview_actions(
             if action_context.querystring:
                 execution_url = f"{execution_url}?{action_context.querystring}"
             action_template_context["execution_url"] = execution_url
+            action_template_context["button_attributes"] = flatatt({
+                "type": "button",
+                "class": f"btn btn-sm btn-{action.style} w-full justify-center sm:w-auto",
+                f"hx-{action.method.lower()}": execution_url,
+                "hx-vals": json.dumps({"csrfmiddlewaretoken": get_token(request)})
+                if action.method == "POST" else "{}",
+                "hx-swap": "innerHTML",
+                **(action.button_attrs or {}),
+                "hx-target": action.target or "#data-view-data-section",
+            })
 
         rendered_actions.append(
             render_to_string(
@@ -552,6 +581,7 @@ def dataview(
         'search_query': state.query or '',
         'search_querystring': search_querystring.urlencode(),
         'create_querystring': create_querystring.urlencode(),
+        'create_component_url': _get_create_component_url(state, create_querystring.urlencode()),
         'export_querystring': export_querystring.urlencode(),
         'sync_url': sync_url,
         'page_querystring': page_querystring.urlencode(),
