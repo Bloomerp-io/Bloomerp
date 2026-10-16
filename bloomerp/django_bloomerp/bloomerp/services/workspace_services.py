@@ -270,13 +270,9 @@ def build_workspace_layout_item(
         ),
         search_keywords=tile.get_type_display(),
         label_content_right=render_to_string(
-            "cotton/ui/tooltip.html",
-            {
-                "text": _tile_description or "",
-                "position": "top",
-                "slot": format_html('<i class="fa fa-info text-xs"></i>'),
-            },
-        ) if _tile_description else None
+            "cotton/features/workspaces/tile_controls.html",
+            {"description": _tile_description or ""},
+        ),
     )
 
 
