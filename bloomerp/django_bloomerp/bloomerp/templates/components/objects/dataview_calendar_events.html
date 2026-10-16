@@ -15,7 +15,7 @@
     data-calendar-can-edit-start="{{ event.can_edit_start|yesno:'true,false' }}"
     data-calendar-can-edit-end="{{ event.can_edit_end|yesno:'true,false' }}"
     draggable="{{ event.can_move|yesno:'true,false' }}"
-    data-detail-url="{{ event.object.get_absolute_url }}"
+    data-detail-url="{{ event.object.get_absolute_url|with_permission_token:request }}"
     data-object-id="{{ event.object.pk }}"
     data-object-string="{{ event.object }}"
     bloomerp-component="calendar-cell"

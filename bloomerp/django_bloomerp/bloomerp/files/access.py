@@ -209,10 +209,20 @@ class FileAccessManager:
         readable = Q(pk__in=references.filter(readable_references).values("file_id"))
         if self.user.is_authenticated:
             unreferenced = ~Exists(FileReference.objects.filter(file_id=OuterRef("pk")))
-            if resolver.permission_manager.has_global_permission(queryset.model, BloomerpPermission.VIEW):
+            permission_manager = resolver.permission_manager
+            library_manager = (
+                UserPolicyManager(self.user, use_request_token=False)
+                if permission_manager.token is not None else permission_manager
+            )
+            if library_manager.has_global_permission(queryset.model, BloomerpPermission.VIEW):
                 readable |= Q(unreferenced)
             else:
                 readable |= Q(unreferenced) & Q(created_by_id=self.user.pk)
+                if resolver.permission_manager.has_global_permission(queryset.model, BloomerpPermission.VIEW):
+                    scoped_files = resolver.permission_manager.get_accessible_queryset(
+                        queryset.model, BloomerpPermission.VIEW,
+                    )
+                    readable |= Q(unreferenced) & Q(pk__in=scoped_files.values("pk"))
         return files.filter(readable)
 
 

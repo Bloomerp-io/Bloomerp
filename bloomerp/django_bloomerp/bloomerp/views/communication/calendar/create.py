@@ -11,12 +11,15 @@ from bloomerp.forms.communication.calendar_event import (
     CalendarEventCreateForm,
     can_create_calendar_event,
 )
+from bloomerp.models import FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.communication.calendar import CalendarEvent
 from bloomerp.models.communication.inbox.inbox import Inbox
+from bloomerp.permissions.access_tokens import request_permission_token
 from bloomerp.router import router
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.utils.models import get_create_view_url, get_list_view_url
 from bloomerp.views.base import BaseBloomerpView
+from bloomerp.views.mixins.layout_form_mixin import LayoutFormMixin
 from django import forms
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Q
@@ -36,13 +39,79 @@ from django.views.generic.edit import FormView
     override=True,
     models=[CalendarEvent],
 )
-class CreateCalendarEventView(BaseBloomerpView, FormView):
+class CreateCalendarEventView(LayoutFormMixin, BaseBloomerpView, FormView):
     """Create events with the same modal completion event as generic dataview creation."""
 
     model = CalendarEvent
     template_name = "views/communication/calendar/create.html"
     form_class = CalendarEventCreateForm
     htmx_include_addendum = False
+
+    ts_item_component = "detail-view-value"
+
+    def get_form(
+        self, form_class: type[CalendarEventCreateForm] | None = None
+    ) -> CalendarEventCreateForm:
+        """Reuse one bound form for layout rendering, validation, and recipient identities."""
+        if not hasattr(self, "_calendar_form"):
+            self._calendar_form = super().get_form(form_class)
+        return self._calendar_form
+
+    def get_layout(self) -> FieldLayout:
+        """Arrange permitted composer fields using the regular CRUD field layout."""
+        form = self.get_form()
+        sections = [
+            (None, 2, [("inbox", 1), ("sender", 1)]),
+            (None, 1, [("title", 1), ("attendees", 1)]),
+            (
+                _("Timing"),
+                6,
+                [
+                    ("all_day", 6),
+                    ("start_date", 2),
+                    ("start_time", 1),
+                    ("end_date", 2),
+                    ("end_time", 1),
+                    ("event_timezone", 6),
+                ],
+            ),
+            (
+                None,
+                1,
+                [
+                    ("location", 1),
+                    ("create_conference", 1),
+                    ("content", 1),
+                    ("send_invitations", 1),
+                ],
+            ),
+        ]
+        return FieldLayout(
+            rows=[
+                LayoutRow(
+                    columns=columns,
+                    title=title,
+                    items=[
+                        LayoutItem(id=name, colspan=span)
+                        for name, span in fields
+                        if name in form.fields
+                        and (name != "send_invitations" or "attendees" in form.fields)
+                    ],
+                )
+                for title, columns, fields in sections
+            ]
+        )
+
+    def resolve_form_label(self, item: LayoutItem) -> str:
+        """Resolve translated form labels before serializing layout metadata."""
+        return str(self.get_form()[str(item.id)].label)
+
+    def render_extra_attrs(self, item: LayoutItem) -> dict[str, Any]:
+        """Keep timed controls conditional without customizing shared layout templates."""
+        attrs = {**super().render_extra_attrs(item), "data-max-cols": "6"}
+        if item.id in {"start_time", "end_time", "event_timezone"}:
+            attrs["x-show"] = "!allDay"
+        return attrs
 
     def has_permission(self) -> bool:
         """Require writable composition fields and one supported temporal representation."""
@@ -121,7 +190,8 @@ class CreateCalendarEventView(BaseBloomerpView, FormView):
                 pass
         available = PreferenceManager(self.request.user).get_available(Inbox)
         inbox_id = (
-            query.get("inboxes")
+            query.get("calendar_inbox")
+            or query.get("inboxes")
             or (
                 query.get("calendar_color_preferred")
                 if query.get("inboxes__in")
@@ -162,6 +232,7 @@ class CreateCalendarEventView(BaseBloomerpView, FormView):
             data_view_create_id=self.request.POST.get("data_view_create_id")
             or self.request.GET.get("data_view_create_id", ""),
             calendar_timezone=timezone.get_current_timezone_name(),
+            permission_token=request_permission_token(self.request.user),
         )
         form = context["form"]
         identities = {

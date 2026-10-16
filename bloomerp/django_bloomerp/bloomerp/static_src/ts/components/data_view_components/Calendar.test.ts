@@ -63,7 +63,7 @@ function fixture(mode: string, create: boolean = true, datePair: boolean = true,
             data-base-url="/components/dataview/1/" data-url="/components/dataview/1/?inboxes=1"
             data-create-url="${create ? '/components/create-object/1/?inboxes=1' : ''}"
             data-modal-id="create-object-modal" data-target="#create-object-modal-body">
-            <details bloomerp-component="inbox-calendar-overlay" data-preferred-group="1" open>
+            <details bloomerp-component="inbox-calendar-overlay" data-preferred-group="1" data-save-url="/inbox/1/calendar/" open>
                 <input type="checkbox" data-overlay-inbox value="1" checked>
                 <input type="checkbox" data-overlay-inbox value="2" checked>
                 <span data-overlay-error hidden>Select at least one calendar.</span>
@@ -75,6 +75,7 @@ function fixture(mode: string, create: boolean = true, datePair: boolean = true,
                     data-calendar-create-end-field="${endField ? 'ends_at' : ''}"
                     data-calendar-create-start-date-field="${datePair ? 'starts_on' : ''}"
                     data-calendar-create-end-date-field="${datePair ? 'ends_on' : ''}">
+                    <div data-calendar-grid>
                     <section data-calendar-unit-section data-calendar-unit="2026-10-15${month ? '' : 'T09'}"
                         data-calendar-create-start="2026-10-15T${month ? '00' : '09'}:00:00+02:00"
                         data-calendar-create-end="2026-10-${month ? '16T00' : '15T10'}:00:00+02:00">
@@ -82,17 +83,23 @@ function fixture(mode: string, create: boolean = true, datePair: boolean = true,
                         <button data-calendar-event bloomerp-component="calendar-cell" data-object-id="event"
                             data-detail-url="/events/event/" data-object-string="Existing event">Existing event</button>
                     </section>
+                    </div>
                 </div>
             </div>
         </div>
         <div id="create-object-modal" bloomerp-component="modal"></div>`,
         { runScripts: 'outside-only', pretendToBeVisual: true, url: 'https://app.example/inbox/1/calendar/' });
     const w = dom.window as FixtureWindow;
+    const evaluate = w.XPathExpression.prototype.evaluate;
+    /** Match browser XPath defaults when asynchronous SDK requests let HTMX initialize. */
+    w.XPathExpression.prototype.evaluate = function evaluateWithDefault(context: Node, type: number = 0, result: XPathResult | null = null): XPathResult {
+        return evaluate.call(this, context, type, result);
+    };
     w.eval(scriptCode);
     const requests: URL[] = [];
     /** Capture real modal/detail requests without making network calls. */
     w.CalendarFixture.htmx.ajax = function capture(method: string, url: string, options: Record<string, unknown>): Promise<HTMLElement> {
-        assert.equal(method.toLowerCase(), 'get');
+
         requests.push(new URL(url, w.location.origin));
         return Promise.resolve(w.document.createElement('div'));
     };
@@ -168,24 +175,30 @@ function existingEventsAndUnavailableCreation(): void {
 }
 test('event double-clicks navigate and unavailable creation does nothing', existingEventsAndUnavailableCreation);
 
-/** Use the actual dataview filter path to overlay inboxes without retaining the old AND constraint. */
-function overlayFilters(): void {
+/** Applying alignment submits only preferences and replaces the dataview with its normal loader. */
+async function saveAlignment(): Promise<void> {
     const f = fixture('month');
     try {
+        let posted: Record<string, unknown> | null = null;
+        /** Inspect the preference save request without mocking calendar rendering. */
+        f.w.CalendarFixture.htmx.ajax = function captureSave(method: string, url: string, options: Record<string, unknown>): Promise<HTMLElement> {
+            assert.equal(method, 'post');
+            assert.equal(url, '/inbox/1/calendar/');
+            assert.equal(options.swap, 'outerHTML');
+            assert.equal(options.target, f.w.document.querySelector('[bloomerp-component="dataview-container"]'));
+            posted = options.values as Record<string, unknown>;
+            return Promise.resolve(f.w.document.createElement('div'));
+        };
         f.w.document.querySelector<HTMLButtonElement>('[data-apply-overlay]')!.click();
-        assert.equal(f.requests.length, 1);
-        const query = f.requests[0].searchParams;
-        assert.equal(query.get('inboxes'), null);
-        assert.equal(query.get('inboxes__in'), null);
-        assert.deepEqual(JSON.parse(query.get('filter')!), [{ connector: 'AND', conditions: [{ field_path: 'inboxes', lookup_id: 'values_in', value: ['1', '2'] }] }]);
-        assert.equal(query.get('calendar_color_values'), '1,2');
-        assert.equal(query.get('calendar_color_preferred'), '1');
-        assert.equal(query.get('calendar_color_field'), 'inboxes');
+        assert.deepEqual(JSON.parse(String(posted!.selection)), { inboxes: ['1', '2'], users: [] });
+        assert.deepEqual(Object.keys(posted!), ['selection', 'csrfmiddlewaretoken']);
+        await Promise.resolve();
+        assert.equal(f.requests.length, 0);
     } finally { f.dom.window.close(); }
 }
 
-/** An empty selection must not remove the scope and accidentally show every event. */
-function emptyOverlaySelection(): void {
+/** Empty selection cannot accidentally widen the calendar membership filter. */
+function emptyAlignment(): void {
     const f = fixture('month');
     try {
         for (const checkbox of f.w.document.querySelectorAll<HTMLInputElement>('[data-overlay-inbox]')) checkbox.checked = false;
@@ -195,24 +208,5 @@ function emptyOverlaySelection(): void {
     } finally { f.dom.window.close(); }
 }
 
-test('calendar overlays apply a union filter through the shared dataview', overlayFilters);
-test('empty calendar overlays do not widen the event scope', emptyOverlaySelection);
-
-/** Retain search and period while replacing only the dropdown's dedicated inbox condition. */
-function preserveOverlayConstraints(): void {
-    const titleFilter = { connector: 'AND', conditions: [{ field_path: 'title', lookup_id: 'contains', value: 'planning' }] };
-    const oldInboxFilter = { connector: 'AND', conditions: [{ field_path: 'inboxes', lookup_id: 'values_in', value: ['1'] }] };
-    const f = fixture('month', true, true, true, { filter: JSON.stringify([titleFilter, oldInboxFilter]), q: 'planning', calendar_page: '2' });
-    try {
-        f.w.document.querySelector<HTMLButtonElement>('[data-apply-overlay]')!.click();
-        const query = f.requests[0].searchParams;
-        assert.equal(query.get('q'), 'planning');
-        assert.equal(query.get('calendar_page'), '2');
-        const filters = JSON.parse(query.get('filter')!);
-        assert.equal(filters.length, 2);
-        assert.deepEqual(filters[0], titleFilter);
-        assert.deepEqual(filters[1].conditions[0].value, ['1', '2']);
-    } finally { f.dom.window.close(); }
-}
-
-test('calendar overlays preserve search, period, and other filter constraints', preserveOverlayConstraints);
+test('align calendars only saves the preference and reloads the dataview', saveAlignment);
+test('empty calendar alignment does not widen access', emptyAlignment);

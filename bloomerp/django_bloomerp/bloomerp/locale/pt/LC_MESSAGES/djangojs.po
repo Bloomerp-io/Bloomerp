@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-15 13:03+0000\n"
+"POT-Creation-Date: 2026-10-16 13:19+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: pt\n"
@@ -87,6 +87,15 @@ msgstr "Aplicar"
 msgid "Attachment"
 msgstr "Anexo"
 
+#: static_src/ts/components/inbox/CalendarEventEditor.ts:128
+msgid "Availability could not be loaded."
+msgstr "Não foi possível carregar a disponibilidade."
+
+#: static_src/ts/components/inbox/CalendarEventEditor.ts:158
+#: static_src/ts/components/inbox/CalendarEventEditor.ts:183
+msgid "Availability unavailable"
+msgstr "Disponibilidade indisponível"
+
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:392
 #: static_src/ts/utils/contextMenu.ts:164
 msgid "Back"
@@ -126,6 +135,15 @@ msgstr "Azul"
 #: static_src/ts/components/text_editor/actions.ts:222
 msgid "Bullet List"
 msgstr "Lista com marcadores"
+
+#: static_src/ts/components/inbox/CalendarEventEditor.ts:182
+#: static_src/ts/components/inbox/CalendarEventEditor.ts:183
+msgid "Busy"
+msgstr "Ocupado"
+
+#: static_src/ts/components/inbox/InboxCalendarOverlay.ts:66
+msgid "Calendar selections could not be saved. Please try again."
+msgstr "Não foi possível guardar as seleções do calendário. Tente novamente."
 
 #: static_src/ts/components/communication/Calling.ts:373
 msgid "Call disconnected"
@@ -278,7 +296,7 @@ msgstr "Ativado"
 msgid "Enter a single field key."
 msgstr "Introduza uma única chave de campo."
 
-#: static_src/ts/components/inbox/EmailRecipients.ts:136
+#: static_src/ts/components/inbox/EmailRecipients.ts:166
 msgid "Enter a valid email address or remove the invalid recipient."
 msgstr "Digite um endereço de e-mail válido ou remova o destinatário inválido."
 
@@ -516,6 +534,10 @@ msgstr "Nenhum filtro correspondente."
 msgid "No objects"
 msgstr "Nenhum objeto"
 
+#: static_src/ts/components/inbox/CalendarEventEditor.ts:143
+msgid "No readable attendee calendars."
+msgstr "Nenhum calendário legível dos participantes."
+
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:182
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:445
 #: static_src/ts/components/widgets/ForeignFieldWidget.ts:418
@@ -534,6 +556,10 @@ msgstr "Nenhuma linha"
 #: static_src/ts/components/filters/SavedFilters.ts:127
 msgid "No saved filters yet."
 msgstr "Ainda não há filtros guardados."
+
+#: static_src/ts/components/inbox/CalendarEventEditor.ts:183
+msgid "No visible conflicts"
+msgstr "Nenhum conflito visível"
 
 #: static_src/ts/components/text_editor/actions.ts:228
 msgid "Numbered List"
@@ -624,7 +650,7 @@ msgstr "Remover condição"
 msgid "Remove group"
 msgstr "Remover grupo"
 
-#: static_src/ts/components/inbox/EmailRecipients.ts:104
+#: static_src/ts/components/inbox/EmailRecipients.ts:119
 msgid "Remove recipient"
 msgstr "Remover destinatário"
 
@@ -635,6 +661,10 @@ msgstr "Remover linha"
 #: static_src/ts/components/widgets/ForeignFieldWidget.ts:530
 msgid "Remove {label}"
 msgstr "Remover {label}"
+
+#: static_src/ts/components/ResizableDiv.ts:368
+msgid "Resize panel"
+msgstr "Redimensionar painel"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:162
 #, fuzzy
@@ -649,6 +679,10 @@ msgstr "Título da linha"
 #, fuzzy
 msgid "Run behavior"
 msgstr "Executar comportamento"
+
+#: static_src/ts/components/inbox/CalendarEventEditor.ts:65
+msgid "Save"
+msgstr "Guardar"
 
 #: static_src/ts/components/filters/SavedFilters.ts:89
 #: static_src/ts/components/filters/SavedFilters.ts:90
@@ -692,7 +726,7 @@ msgstr "Pesquisar modelos"
 msgid "Search unavailable"
 msgstr "Pesquisa indisponível"
 
-#: static_src/ts/components/inbox/EmailRecipients.ts:234
+#: static_src/ts/components/inbox/EmailRecipients.ts:266
 msgid "Searching email addresses…"
 msgstr "Pesquisando endereços de e-mail…"
 
@@ -735,6 +769,10 @@ msgstr "Selecionar consulta"
 msgid "Select target field"
 msgstr "Selecionar campo de destino"
 
+#: static_src/ts/components/inbox/CalendarEventEditor.ts:65
+msgid "Send"
+msgstr "Enviar"
+
 #: static_src/ts/components/inbox/EmailEditor.ts:268
 msgid "Sending email…"
 msgstr "Enviando e-mail…"
@@ -766,11 +804,15 @@ msgstr "Mostrar comportamento"
 msgid "Show formatting toolbar"
 msgstr "Mostrar barra de ferramentas de formatação"
 
+#: static_src/ts/components/inbox/CalendarEventEditor.ts:176
+msgid "Start event at"
+msgstr "Iniciar evento às"
+
 #: static_src/ts/components/communication/Calling.ts:124
 msgid "Starting call…"
 msgstr "Iniciando chamada…"
 
-#: static_src/ts/components/inbox/EmailRecipients.ts:52
+#: static_src/ts/components/inbox/EmailRecipients.ts:65
 msgid "Suggested email addresses"
 msgstr "Endereços de e-mail sugeridos"
 
@@ -826,6 +868,10 @@ msgstr "Este editor aceita um grupo de condições por regra."
 #, fuzzy
 msgid "This meeting is no longer available."
 msgstr "Esta reunião não está mais disponível."
+
+#: static_src/ts/components/inbox/CalendarEventEditor.ts:151
+msgid "Time"
+msgstr "Hora"
 
 #: static_src/ts/utils/modals.ts:43
 msgid "Toggle fullscreen"
@@ -884,6 +930,11 @@ msgstr "Campo indisponível: {field}"
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:164
 msgid "Upload image"
 msgstr "Carregar imagem"
+
+#: static_src/ts/components/inbox/EmailRecipients.ts:114
+#: static_src/ts/components/inbox/EmailRecipients.ts:325
+msgid "User"
+msgstr "Utilizador"
 
 #: static_src/ts/components/communication/MeetingLobby.ts:52
 #, fuzzy

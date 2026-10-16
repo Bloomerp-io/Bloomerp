@@ -161,7 +161,7 @@ class TestCreateCalendarEventView(InboxCalendarFixtures, BloomerpModelViewTestCa
                 ),
             ),
             RequestScenario(
-                name="Availability does not disclose inaccessible attendee calendars",
+                name="Readable users expose availability across all their accessible inboxes",
                 user=self.actor,
                 query_params={
                     "action": "availability",
@@ -378,10 +378,15 @@ class TestCreateCalendarEventView(InboxCalendarFixtures, BloomerpModelViewTestCa
         return event.content == "" and event.location == ""
 
     def composer_controls(self, response: HttpResponse) -> bool:
-        """Require reused editor and splitter markup without the redundant inner header."""
+        """Require shared CRUD field layouts alongside the custom editor and availability pane."""
         html = response.content.decode()
         return (
             'bloomerp-component="bloomerp-text-editor"' in html
+            and 'bloomerp-component="detail-view-value"' in html
+            and 'data-layout-item-id="title"' in html
+            and 'data-layout-item-id="attendees"' in html
+            and 'data-layout-row' in html
+            and 'x-show="!allDay"' in html
             and 'bloomerp-component="resizable-div"' in html
             and 'name="event_timezone"' in html
             and "Add an event to your calendar." not in html
@@ -435,13 +440,13 @@ class TestCreateCalendarEventView(InboxCalendarFixtures, BloomerpModelViewTestCa
         )
 
     def availability_scoped(self, response: HttpResponse) -> bool:
-        """Expose shared-calendar busy times and explicitly mark an unshared calendar unknown."""
+        """Expose busy times for readable people even when their calendars are not shared with the actor."""
         users = {item["id"]: item for item in response.json()["users"]}
         return (
             users[str(self.actor.pk)]["available"]
             and bool(users[str(self.actor.pk)]["busy"])
-            and not users[str(self.owner.pk)]["available"]
-            and users[str(self.owner.pk)]["busy"] == []
+            and users[str(self.owner.pk)]["available"]
+            and bool(users[str(self.owner.pk)]["busy"])
             and "Placed timed meeting" not in response.content.decode()
         )
 
@@ -489,3 +494,94 @@ class TestCreateCalendarEventView(InboxCalendarFixtures, BloomerpModelViewTestCa
             event.invitation_sent_at is None
             and detail["messages"][0]["type"] == "warning"
         )
+
+    def test_inbox_token_survives_dataview_create_and_post(self) -> None:
+        """An Inbox owner without event policies can render, compose, and save only in that Inbox."""
+        import html
+        import re
+        from urllib.parse import parse_qs, urlsplit
+
+        from django.urls import reverse
+
+        from bloomerp.permissions.manager import UserPolicyManager
+
+        self.assertFalse(UserPolicyManager(self.owner).has_global_permission(CalendarEvent, "add"))
+        self.client.force_login(self.owner)
+        page = self.client.get(reverse("inbox_calendar", kwargs={"inbox_id": self.source.pk}))
+        self.assertEqual(page.status_code, 200)
+        embedded = re.search(r'hx-get="([^"]*components/dataview/[^"]*)"', page.content.decode())
+        self.assertIsNotNone(embedded)
+        dataview = self.client.get(html.unescape(embedded.group(1)))
+        self.assertEqual(dataview.status_code, 200)
+        self.assertContains(dataview, self.timed.title)
+        self.assertNotContains(dataview, self.unplaced.title)
+        create_url = dataview.context["create_component_url"]
+        self.assertIsNotNone(create_url)
+        composer = self.client.get(create_url + "&data_view_create_id=calendar-draft")
+        self.assertContains(composer, 'name="_permission_token"')
+        token = parse_qs(urlsplit(create_url).query)["_permission_token"][0]
+        unfiltered = self.client.get(urlsplit(html.unescape(embedded.group(1))).path, {"_permission_token": token})
+        self.assertNotContains(unfiltered, self.unplaced.title)
+        self.assertContains(unfiltered, self.timed.title)
+        action = composer.context["form_url"]
+        response = self.client.post(action, self.event_data(_permission_token=token))
+        self.assertEqual(response.status_code, 204)
+        event = CalendarEvent.objects.get(title="Composer test event")
+        self.assertEqual(event.organizing_inbox_id, self.source.pk)
+        # A different owned Inbox passes normal choice validation but not the signed add predicate.
+        denied = self.client.post(action, self.event_data(
+            _permission_token=token, inbox=self.owner_calendar.pk, title="Outside signed inbox",
+        ))
+        self.assertEqual(denied.status_code, 200)
+        self.assertContains(denied, "You cannot create events in this calendar.")
+        self.assertFalse(CalendarEvent.objects.filter(title="Outside signed inbox").exists())
+
+    def test_availability_uses_readable_users_instead_of_actor_inbox_permissions(self) -> None:
+        """Readable people expose deduplicated busy intervals across owned and shared inboxes only."""
+        from django.contrib.auth import get_user_model
+
+        from bloomerp.communication.utils.permissions import accessible_inboxes
+        from bloomerp.permissions.definition import RowPolicyRuleContent
+        from bloomerp.permissions.manager import PolicyManager, UserPolicyManager
+        from bloomerp.services.calendar_availability import calendar_availability
+
+        model = get_user_model()
+        PolicyManager.create_policy(
+            model, global_permissions=["view"], field_permissions={"username": ["view"]},
+            row_permissions=[RowPolicyRuleContent(permissions=["view"], conditions=[
+                {"field_path": "id", "lookup_id": "equals", "value": str(self.outsider.pk)},
+            ])],
+        ).assign_user(self.owner)
+        shared = Inbox.objects.create(user=self.actor, name="Private shared calendar")
+        shared.shared_with_users.add(self.outsider)
+        private = self.create_event("Private participant meeting")
+        private.inboxes.add(self.outsider_calendar, shared)
+        shared_only = self.create_event(
+            "Private shared meeting", start=self.start + timedelta(hours=4),
+            end=self.start + timedelta(hours=5),
+        )
+        shared_only.inboxes.add(shared)
+        self.assertFalse(accessible_inboxes(self.owner).filter(pk__in=[shared.pk, self.outsider_calendar.pk]).exists())
+        self.assertFalse(UserPolicyManager(self.owner).has_global_permission(CalendarEvent, "view"))
+        results = calendar_availability(
+            self.owner, [str(self.outsider.pk), str(self.actor.pk)], self.today, ZoneInfo("UTC"),
+        )
+        users = {item["id"]: item for item in results}
+        self.assertNotIn(str(self.actor.pk), users)
+        participant = users[str(self.outsider.pk)]
+        self.assertTrue(participant["available"])
+        self.assertEqual(len(participant["busy"]), 2)
+        self.assertEqual(set(participant), {"id", "label", "available", "busy"})
+        self.assertNotIn(private.title, json.dumps(results))
+        self.assertNotIn(shared.name, json.dumps(results))
+
+    def test_availability_hides_users_without_a_user_view_grant(self) -> None:
+        """Knowing a user's ID does not reveal their availability without access to that user."""
+        from bloomerp.services.calendar_availability import calendar_availability
+
+        result = calendar_availability(
+            self.owner, [str(self.outsider.pk)], self.today, ZoneInfo("UTC"),
+        )
+        self.assertEqual([item["id"] for item in result], [str(self.owner.pk)])
+        self.assertTrue(result[0]["available"])
+        self.assertTrue(result[0]["busy"])

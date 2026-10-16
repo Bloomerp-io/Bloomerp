@@ -29,6 +29,42 @@ class TestInboxCalendarView(InboxCalendarFixtures, BloomerpViewTestCase):
         kwargs = {"inbox_id": self.source.pk}
         return [
             RequestScenario(
+                name="Apply persists private selections per inbox",
+                method="POST",
+                user=self.actor,
+                view_kwargs=kwargs,
+                data={
+                    "selection": json.dumps(
+                        {
+                            "inboxes": [str(self.source.pk)],
+                            "users": [str(self.owner.pk)],
+                        }
+                    )
+                },
+                expected=ExpectedResult(response_validators=self.selection_saved),
+            ),
+            RequestScenario(
+                name="Forged calendar selections are denied",
+                method="POST",
+                user=self.actor,
+                view_kwargs=kwargs,
+                content_type="application/json",
+                data={"inboxes": [str(self.other_inbox.pk)], "users": []},
+                expected=ExpectedResult(status_code=403),
+            ),
+            RequestScenario(
+                name="Unreadable users cannot be selected for calendars",
+                method="POST",
+                user=self.owner,
+                view_kwargs=kwargs,
+                content_type="application/json",
+                data={
+                    "inboxes": [str(self.source.pk)],
+                    "users": [str(self.outsider.pk)],
+                },
+                expected=ExpectedResult(status_code=403),
+            ),
+            RequestScenario(
                 name="Standard calendar overlays deduplicate events and show readable selected memberships",
                 view_name="components_dataview",
                 user=self.actor,
@@ -56,10 +92,10 @@ class TestInboxCalendarView(InboxCalendarFixtures, BloomerpViewTestCase):
                 expected=ExpectedResult(status_code=404),
             ),
             RequestScenario(
-                name="Inbox access does not grant calendar permission",
+                name="Inbox ownership issues a scoped calendar grant",
                 user=self.owner,
                 view_kwargs=kwargs,
-                expected=ExpectedResult(status_code=403),
+                expected=ExpectedResult(status_code=200),
             ),
             RequestScenario(
                 name="Shared selection opens effective calendar and preserves preferences",
@@ -68,6 +104,36 @@ class TestInboxCalendarView(InboxCalendarFixtures, BloomerpViewTestCase):
                 expected=ExpectedResult(response_validators=self.correct_navigation),
             ),
         ]
+
+    def selection_saved(self, response: HttpResponse) -> bool:
+        """Resolve readable users to inboxes, persist the selection, and return the ordinary loader."""
+        from bloomerp.services.calendar_overlays import calendar_overlay_selection
+        from bloomerp.permissions.definition import PermissionToken
+
+        saved = calendar_overlay_selection(self.actor, self.source.pk)
+        grant = PermissionToken.verify(
+            response.context["token"], audience=str(self.actor.pk)
+        )
+        restored = self.client.get(
+            reverse("inbox_calendar", kwargs={"inbox_id": self.source.pk})
+        )
+        filters = json.loads(restored.context["calendar_filters"]["filter"])
+        self.assertEqual(
+            saved, {"inboxes": [str(self.source.pk)], "users": [str(self.owner.pk)]}
+        )
+        from bloomerp.communication.utils.permissions import accessible_inboxes
+
+        expected = {str(self.source.pk)} | {
+            str(pk)
+            for pk in accessible_inboxes(self.owner).values_list("pk", flat=True)
+        }
+        self.assertEqual(
+            set(grant.rule.row_permissions[0].conditions[0].value), expected
+        )
+        self.assertEqual(set(filters[0]["conditions"][0]["value"]), expected)
+        self.assertIn('hx-trigger="load"', response.content.decode())
+        self.assertNotIn("calendar_overlay_url", response.content.decode())
+        return True
 
     def correct_navigation(self, response: HttpResponse) -> bool:
         """Confirm shared dataview loading, hidden Inbox scope, and unchanged preferences."""
@@ -80,7 +146,7 @@ class TestInboxCalendarView(InboxCalendarFixtures, BloomerpViewTestCase):
                 kwargs={"content_type_id": content_type.pk},
             )
             in body
-            and f"inboxes={self.source.pk}" in body
+            and f"calendar_color_values={self.source.pk}" in body
             and "_arg_hide_filters=inboxes%2Cinboxes__in%2Ccancelled" in body
             and "cancelled=false" in body
             and '<header class="mb-4 flex flex-wrap items-center justify-between gap-3">'
@@ -131,6 +197,7 @@ class TestInboxCalendarView(InboxCalendarFixtures, BloomerpViewTestCase):
                     }
                 ]
             ),
+            "calendar_inbox": str(self.source.pk),
             "calendar_color_field": "inboxes",
             "cancelled": "false",
             "calendar_color_values": f"{self.source.pk},{self.other_inbox.pk}",

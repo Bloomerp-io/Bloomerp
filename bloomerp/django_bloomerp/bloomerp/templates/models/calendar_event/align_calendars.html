@@ -1,9 +1,10 @@
 {% load i18n calendar_tags %}
 {% inbox_calendar_overlay request as overlay %}
-<details class="relative" bloomerp-component="inbox-calendar-overlay" data-preferred-group="{{ overlay.preferred }}">
+{% if overlay.save_url %}
+<details class="relative" bloomerp-component="inbox-calendar-overlay" data-preferred-group="{{ overlay.preferred }}" data-save-url="{{ overlay.save_url }}">
     <summary class="btn btn-secondary btn-sm cursor-pointer list-none"><i class="fa fa-layer-group" aria-hidden="true"></i>{% translate 'Align calendars' %}<i class="fa fa-chevron-down text-xs" aria-hidden="true"></i></summary>
     <div class="absolute right-0 z-50 mt-2 w-72 rounded-xl border border-gray-200 bg-white p-3 shadow-lg">
-        <p class="mb-2 text-xs text-gray-500">{% translate 'Show events from these calendars' %}</p>
+        <p class="mb-2 text-xs text-gray-500">{% translate 'My calendars' %}</p>
         <div class="max-h-64 space-y-1 overflow-y-auto">
             {% for inbox in overlay.inboxes %}
             <label class="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm hover:bg-gray-50">
@@ -12,7 +13,16 @@
             </label>
             {% empty %}<p class="text-sm text-gray-500">{% translate 'No calendars available.' %}</p>{% endfor %}
         </div>
-        <p data-overlay-error role="status" class="mt-2 text-xs text-danger-dark" hidden>{% translate 'Select at least one calendar.' %}</p>
+        {% if overlay.save_url %}
+        <div class="mt-4">
+            <c-ui.text.label class="block">{% translate 'Other users' %}</c-ui.text.label>
+            {{ overlay.users_widget }}
+            <p class="mt-1 text-xs text-gray-500">{% translate 'Include calendars these users can access.' %}</p>
+        </div>
+        {% endif %}
+        <p data-overlay-error role="status" class="mt-2 text-xs text-danger-dark" hidden>{% translate 'Select at least one calendar or user.' %}</p>
         <button type="button" data-apply-overlay class="btn btn-primary btn-sm mt-3 w-full">{% translate 'Apply' %}</button>
     </div>
 </details>
+
+{% endif %}

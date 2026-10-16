@@ -438,6 +438,8 @@ def render_object_action(
     content_type_id:int|None=None,
 ) -> str:
     """Render an authorized action with its response target and escaped button attributes."""
+    from bloomerp.permissions.access_tokens import permission_token_url
+
     try:
         should_render_action = action.should_render_func(request, object)
     except:
@@ -474,7 +476,7 @@ def render_object_action(
                 '</button>'
             ),
             style=action.style,
-            url=action.endpoint(object),
+            url=permission_token_url(request, action.endpoint(object)),
             label=gettext(action.label),
             title=gettext(action.modal_title) if action.modal_title else "",
             size=action.modal_size,
@@ -485,14 +487,14 @@ def render_object_action(
 
     attrs = {
         "class": f"btn btn-xs btn-{action.style}",
-        f"hx-{action.method.lower()}": reverse(
+        f"hx-{action.method.lower()}": permission_token_url(request, reverse(
             "components_objects_actions",
             kwargs={
                 "content_type_id": content_type_id,
                 "object_id": object.pk,
                 "action_id": action.id,
             },
-        ),
+        )),
         "hx-vals": json.dumps({"csrfmiddlewaretoken": get_token(request)})
         if action.method == "POST" else "{}",
         **(action.button_attrs or {}),
@@ -518,3 +520,11 @@ def can_manage_preference_object(user:AbstractBloomerpUser, object:BasePreferenc
         return manager.can_manage(object)
     except:
         return False
+
+
+@register.filter
+def with_permission_token(url: str, request: HttpRequest) -> str:
+    """Preserve the current capability on same-origin object navigation links."""
+    from bloomerp.permissions.access_tokens import permission_token_url
+
+    return permission_token_url(request, url)

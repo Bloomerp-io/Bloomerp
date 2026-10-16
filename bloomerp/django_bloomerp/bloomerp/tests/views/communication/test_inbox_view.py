@@ -15,7 +15,7 @@ class TestInboxView(InboxCalendarFixtures, BloomerpViewTestCase):
         self.prepare_calendar()
 
     def get_test_scenarios(self) -> list[RequestScenario]:
-        """Expose the Calendar link only when event dates and placements are readable."""
+        """Expose calendar navigation through the selected Inbox access authority."""
         return [
             RequestScenario(
                 name="Calendar toolbar button uses the effective shared Inbox",
@@ -32,10 +32,10 @@ class TestInboxView(InboxCalendarFixtures, BloomerpViewTestCase):
                 ),
             ),
             RequestScenario(
-                name="Inbox access without calendar permission hides the button",
+                name="Inbox ownership enables the scoped calendar button",
                 user=self.owner,
                 expected=ExpectedResult(
-                    response_validators=self.does_not_contain_text(
+                    response_validators=self.contains_text(
                         "data-inbox-calendar"
                     )
                 ),

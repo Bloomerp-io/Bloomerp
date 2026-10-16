@@ -91,7 +91,13 @@ class CalendarEventCreateForm(forms.Form):
         label=_("Send from"),
         empty_label=_("No email invitation"),
     )
-    send_invitations = forms.BooleanField(required=False, label=_("Email invitations"))
+    send_invitations = forms.BooleanField(
+        required=False,
+        label=_("Email invitations"),
+        help_text=_(
+            "Selected users receive the event in their calendar. Enable email invitations to also send invites from the selected account."
+        ),
+    )
     attendee_users = forms.CharField(required=False, widget=forms.HiddenInput)
     event_timezone = forms.ChoiceField(label=_("Timezone"), required=False)
     create_conference = forms.BooleanField(
@@ -99,7 +105,7 @@ class CalendarEventCreateForm(forms.Form):
     )
     attendees = forms.CharField(
         required=False,
-        label=_("Guests"),
+        label=_("Participants"),
         help_text=_(
             "Select users to add this event to their calendar, or enter email addresses."
         ),
@@ -382,6 +388,9 @@ class CalendarEventCreateForm(forms.Form):
         """Save the event, calendar placement, and permitted guests in one transaction."""
         if not self.is_valid() or self.instance is None:
             raise ValueError("Validate the event form before saving")
+        manager = UserPolicyManager(self.user)
+        if not manager.candidate_matches_row_policies(self.instance, "add"):
+            raise PermissionDenied(_("You cannot create events in this calendar."))
         with transaction.atomic():
             self.instance.save()
             self.instance.inboxes.set(

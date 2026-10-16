@@ -38,6 +38,7 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
         "calendar_view_mode",
         "calendar_unit",
         "calendar_unit_offset",
+        "calendar_inbox",
         "calendar_color_field",
         "calendar_color_values",
         "calendar_color_preferred",

@@ -47,6 +47,7 @@ SHELL_RESERVED_QUERY_KEYS = {
     "q",
     "page",
     "_component_id",
+    "_permission_token",
     "_dataview_operation_context",
     # Calendar decoration controls can survive switching to another renderer.
     "calendar_color_field",
@@ -391,6 +392,8 @@ def _render_dataview_actions(
     action_ids: list[str] | None = None,
 ) -> list[str]:
     """Render permitted toolbar actions with safely escaped, configurable button attributes."""
+    from bloomerp.permissions.access_tokens import permission_token_url
+
     action_context = _build_dataview_action_context(request, state)
     rendered_actions: list[str] = []
     allowed_action_ids = set(action_ids) if action_ids is not None else None
@@ -416,7 +419,7 @@ def _render_dataview_actions(
             template_name = action.template_name
         elif isinstance(action, DataviewModalAction):
             template_name = "components/objects/dataview_actions/modal_action.html"
-            action_template_context["endpoint"] = action.endpoint(action_context)
+            action_template_context["endpoint"] = permission_token_url(request, action.endpoint(action_context))
         else:
             template_name = "components/objects/dataview_actions/action.html"
             execution_url = reverse(

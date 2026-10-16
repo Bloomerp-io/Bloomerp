@@ -1,5 +1,4 @@
-import BaseComponent, { getComponent } from "../BaseComponent";
-import type { Modal } from "../Modal";
+import ObjectCRUDViewContainer from "../detail_view_components/ObjectCRUDViewContainer";
 import { EmailRecipients } from "./EmailRecipients";
 import { getSdk } from "../../sdk/getSdk";
 import { t } from "../../utils/i18n";
@@ -12,34 +11,53 @@ interface AvailabilityUser {
 }
 
 /** Coordinate shared recipient chips, date controls, and a compact availability calendar. */
-export default class CalendarEventEditor extends BaseComponent {
+export default class CalendarEventEditor extends ObjectCRUDViewContainer {
     private lifecycle = new AbortController();
     private recipients: EmailRecipients | null = null;
     private request: AbortController | null = null;
     private timer?: ReturnType<typeof setTimeout>;
-    private modal: Modal | null = null;
-    private previousModalPadding = "p-3";
     private timeFormatter: Intl.DateTimeFormat | null = null;
 
     /** Attach existing composer controls without owning the nested rich-text editor or splitter. */
-    public initialize(): void {
-        const modalElement = this.element.closest<HTMLElement>('[bloomerp-component="modal"]');
-        if (modalElement) {
-            this.modal = getComponent(modalElement) as Modal;
-            this.previousModalPadding = modalElement.dataset.modalPadding || "p-3";
-            this.modal?.setPadding("p-0");
-        }
+    public override initialize(): void {
+        super.initialize();
         const source = this.element.querySelector<HTMLInputElement>('[name="attendees"]');
         const users = this.element.querySelector<HTMLInputElement>('[name="attendee_users"]');
-        if (source && users) this.recipients = new EmailRecipients(source, this.lifecycle.signal, this.element.dataset.recipientSearchUrl, users);
+        if (source && users) {
+            const searchUrl = new URL(this.element.dataset.recipientSearchUrl!, location.origin);
+            const token = this.value("_permission_token");
+            if (token) searchUrl.searchParams.set("_permission_token", token);
+            this.recipients = new EmailRecipients(source, this.lifecycle.signal, searchUrl.toString(), users);
+        }
         this.element.addEventListener("change", this.onChange, { signal: this.lifecycle.signal });
+        this.element.addEventListener("input", this.onParticipantInput, { signal: this.lifecycle.signal });
         this.element.addEventListener("submit", this.onSubmit, { capture: true, signal: this.lifecycle.signal });
-        this.element.addEventListener("click", this.onClick, { signal: this.lifecycle.signal });
+        this.element.addEventListener("click", this.onCalendarClick, { signal: this.lifecycle.signal });
+        this.updateSubmitLabel();
         void this.refresh();
+    }
+
+    /** Refresh shared layout state and participant-dependent controls after child swaps. */
+    public override onAfterSwap(): void {
+        super.onAfterSwap();
+        this.updateSubmitLabel();
+    }
+
+    /** Choose Save or Send from committed recipients and unfinished participant input. */
+    private updateSubmitLabel(): void {
+        const label = this.element.querySelector<HTMLElement>("[data-calendar-submit-label]");
+        if (!label) return;
+        const hasParticipants = Boolean(
+            this.value("attendees").trim()
+            || this.selectedUsers().length
+            || this.element.querySelector<HTMLInputElement>('[role="combobox"]')?.value.trim(),
+        );
+        label.textContent = hasParticipants ? t("Send") : t("Save");
     }
 
     /** Flush unfinished guest input before HTMX serializes the form. */
     private onSubmit = (event: Event): void => {
+        if (event.defaultPrevented) return;
         if (this.recipients && !this.recipients.validate()) {
             event.preventDefault();
             event.stopImmediatePropagation();
@@ -48,14 +66,34 @@ export default class CalendarEventEditor extends BaseComponent {
 
     /** Debounce availability updates while keeping local date controls responsive. */
     private onChange = (): void => {
+        this.updateSubmitLabel();
         clearTimeout(this.timer);
         this.request?.abort();
         this.timer = setTimeout(this.refresh.bind(this), 150);
     };
 
+    /** Update the action while a participant address is being typed, before committing its chip. */
+    private onParticipantInput = (event: Event): void => {
+        if (event.target instanceof HTMLInputElement && (
+            event.target.name === "attendees" || event.target.getAttribute("role") === "combobox"
+        )) this.updateSubmitLabel();
+    };
+
     /** Read named form values without selecting fields from neighboring modals. */
     private value(name: string): string {
         return this.element.querySelector<HTMLInputElement | HTMLSelectElement>(`[name="${name}"]`)?.value ?? "";
+    }
+
+    /** Read internal participant IDs safely when a validation response retains malformed input. */
+    private selectedUsers(): string[] {
+        const selected: string[] = [];
+        try {
+            const values: unknown = JSON.parse(this.value("attendee_users") || "[]");
+            if (Array.isArray(values)) {
+                for (const value of values) if (typeof value === "string") selected.push(value);
+            }
+        } catch { /* Field validation reports invalid input; keep the rest of the form interactive. */ }
+        return selected;
     }
 
     /** Fetch free/busy intervals in the event's selected timezone and ignore stale responses. */
@@ -67,9 +105,12 @@ export default class CalendarEventEditor extends BaseComponent {
         this.request = controller;
         pane.setAttribute("aria-busy", "true");
         try {
-            const users: string[] = JSON.parse(this.value("attendee_users") || "[]");
+            const users = this.selectedUsers();
             const result = await getSdk().client.request<{ users: AvailabilityUser[] }>(this.element.dataset.availabilityUrl!, {
-                query: { action: "availability", day: this.value("start_date"), timezone: this.value("event_timezone"), users }, signal: controller.signal,
+                query: {
+                    action: "availability", day: this.value("start_date"), timezone: this.value("event_timezone"), users,
+                    ...(this.value("_permission_token") ? { _permission_token: this.value("_permission_token") } : {}),
+                }, signal: controller.signal,
             });
             if (controller.signal.aborted) return;
             this.render(pane, result.users);
@@ -159,7 +200,7 @@ export default class CalendarEventEditor extends BaseComponent {
     }
 
     /** Select an hour from the availability calendar without submitting the event. */
-    private onClick = (event: MouseEvent): void => {
+    private onCalendarClick = (event: MouseEvent): void => {
         const target = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-availability-time]") : null;
         if (!target) return;
         const start = this.element.querySelector<HTMLInputElement>('[name="start_time"]');
@@ -182,8 +223,6 @@ export default class CalendarEventEditor extends BaseComponent {
         this.lifecycle.abort();
         this.request?.abort();
         clearTimeout(this.timer);
-        this.modal?.setPadding(this.previousModalPadding);
-        this.modal = null;
         super.destroy();
     }
 }

@@ -1,5 +1,6 @@
 """Render or page a server-scoped Inbox calendar with the existing dataview."""
 
+from django.core.exceptions import PermissionDenied
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpRequest, HttpResponse
@@ -29,6 +30,11 @@ def inbox_calendar(request: HttpRequest, inbox_id: int) -> HttpResponse:
     """Recheck Inbox and event policies on every period, search, and load-more request."""
     inbox = resolve_calendar_inbox(request.user, inbox_id)
     manager = UserPolicyManager(request.user)
+    readable = set(manager.get_accessible_fields(CalendarEvent, "view").values_list("field", flat=True))
+    if not {"inboxes", "all_day", "cancelled"} <= readable or not (
+        {"start", "end"} <= readable or {"start_date", "end_date"} <= readable
+    ):
+        raise PermissionDenied("Calendar date and placement permissions are required")
     content_type = ContentType.objects.get_for_model(CalendarEvent)
     queryset = (
         manager.get_accessible_queryset(CalendarEvent, "view")
