@@ -14,13 +14,20 @@ export class Inbox extends BaseComponent {
     private subfolderClickHandler: ((event: Event) => void) | null = null;
     private activeMailboxFilters = new Map<string, string>();
     private keyboardController: AbortController | null = null;
+    private selectingFolder = false;
     private filterClickHandler: ((event: Event) => void) | null = null;
 
     /** Load the inbox and attach its local interaction handlers. */
     public initialize(): void {
         if (!this.element) return;
 
-        // Initialy load inbox items
+        try {
+            const filters: Record<string, string> = JSON.parse(this.getDataAttribute('inboxMailboxFilters') || '{}');
+            this.activeMailboxFilters = new Map(Object.entries(filters));
+        } catch {
+            this.activeMailboxFilters = new Map();
+        }
+        // Initially load inbox items
         this.queryInbox();
 
         // Setup event listeners
@@ -31,6 +38,9 @@ export class Inbox extends BaseComponent {
         this.setupSearchInputListener();
         this.setupInboxActionListener();
         this.setupKeyboardNavigation();
+        this.element.addEventListener('htmx:beforeCleanupElement', this.handleCleanup, {
+            signal: this.keyboardController!.signal,
+        });
         document.body.addEventListener("im:unread-changed", this.refreshConversationItems, { signal: this.keyboardController!.signal });
         this.searchInput?.focus();
         
@@ -178,32 +188,44 @@ export class Inbox extends BaseComponent {
         }
     }
 
-    private setupSelectFolderListener() {
-        if (!this.element) return;
-
-        // Get the select folder dropdown element
-        const selectFolderDropdown = this.element.querySelector('#select-folder-dropdown');
-
-        // Get all the items in the dropdown that start with select-folder-<folder_id>
-        const folderItems = selectFolderDropdown?.querySelectorAll('[id^="select-folder-"]');
-
-        // Add click event listeners to each folder item
-        folderItems?.forEach((item) => {
-            item.addEventListener('click', () => {
-                const folderId = item.id.replace('select-folder-', '');
-                const url = (this.getDataAttribute('selectInboxFolderUrl') || '')
-                    .replace('REPLACE_WITH_ID', encodeURIComponent(folderId));
-                if (!url) return;
-
-                const values: Record<string, string> = {};
-                const csrfToken = getCsrfToken();
-                if (csrfToken) {
-                    values.csrfmiddlewaretoken = csrfToken;
-                }
-                htmx.ajax('post', url, { values });
+    /** Route account-folder choices through the inbox fragment endpoint. */
+    private setupSelectFolderListener(): void {
+        const folderItems = this.element?.querySelectorAll<HTMLElement>('[id^="select-folder-"]');
+        folderItems?.forEach((item: HTMLElement): void => {
+            if (item.id === 'select-folder-dropdown') return;
+            item.addEventListener('click', (event: Event): void => {
+                event.preventDefault();
+                this.selectFolder(item.id.replace('select-folder-', ''));
             });
         });
     }
+
+    /** Persist the chosen folder and replace only this inbox, including its header and actions. */
+    private selectFolder(folderId: string, subfolderKey?: string): void {
+        if (!this.element || this.selectingFolder) return;
+        const url = (this.getDataAttribute('selectInboxFolderUrl') || '')
+            .replace('REPLACE_WITH_ID', encodeURIComponent(folderId));
+        if (!url) return;
+
+        const values: Record<string, string> = {};
+        const csrfToken = getCsrfToken();
+        if (csrfToken) values.csrfmiddlewaretoken = csrfToken;
+        if (subfolderKey) values.subfolder = subfolderKey;
+        this.selectingFolder = true;
+        htmx.ajax('post', url, {
+            source: this.element,
+            target: this.element,
+            swap: 'outerHTML',
+            values,
+        }).finally((): void => {
+            this.selectingFolder = false;
+        });
+    }
+
+    /** Release body listeners and pending search timers when this inbox is replaced. */
+    private handleCleanup = (event: Event): void => {
+        if (event.target === this.element) this.destroy();
+    };
 
     private setupSearchInputListener() {
         if (!this.element) return;
@@ -267,18 +289,8 @@ export class Inbox extends BaseComponent {
             if (!trigger || !this.element?.contains(trigger)) return;
 
             event.preventDefault();
-            const rawFilters = trigger.dataset.inboxSubfolderFilters || '{}';
-            let filters: Record<string, string> = {};
-            try {
-                filters = JSON.parse(rawFilters);
-            } catch {
-                filters = {};
-            }
-
-            this.activeMailboxFilters = new Map(Object.entries(filters));
             const folderId = trigger.dataset.inboxSubfolderFolderId;
-            if (folderId && this.element) this.element.dataset.inboxFolderId = folderId;
-            this.queryInbox(this.activeMailboxFilters, folderId);
+            if (folderId) this.selectFolder(folderId, trigger.dataset.inboxSubfolderKey);
         };
 
         this.element.addEventListener('click', this.subfolderClickHandler);
