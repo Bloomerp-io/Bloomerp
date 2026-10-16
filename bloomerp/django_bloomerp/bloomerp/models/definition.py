@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 from django.http import HttpRequest, HttpResponse, StreamingHttpResponse
 from bloomerp.config.definition import BloomerpConfig
 from bloomerp.dataviews.definition import BaseDataview
-from bloomerp.permissions.definition import AccessRule
+from bloomerp.permissions.definition import AccessRule, BloomerpPermission
 from bloomerp.workspaces.base import BaseTileConfig
 from pydantic import (
     BaseModel,
@@ -465,6 +465,42 @@ class ActivityLogSettings(BaseModel):
 
     enabled : bool = True
 
+
+class DefaultPolicy(BaseModel):
+    """A named policy with optional scoped and explicit global grants."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(min_length=1, max_length=255)
+    name: str = Field(min_length=1, max_length=255)
+    description: str = ""
+    access_rule: AccessRule = Field(default_factory=AccessRule)
+    global_permissions: list[BloomerpPermission | str] | None = None
+
+    @field_validator("id", "name")
+    @classmethod
+    def strip_required_text(cls, value: str) -> str:
+        """Reject blank identifiers and names while storing trimmed text."""
+        value = value.strip()
+        if not value:
+            raise ValueError("Value must not be blank")
+        return value
+
+
+class PermissionSettings(BaseModel):
+    """Default database policies declared by a model."""
+
+    default_policies: list[DefaultPolicy] = Field(default_factory=list)
+
+    @field_validator("default_policies")
+    @classmethod
+    def validate_unique_ids(cls, value: list[DefaultPolicy]) -> list[DefaultPolicy]:
+        """Keep policy IDs unique within a model configuration."""
+        identifiers = [policy.id for policy in value]
+        if len(identifiers) != len(set(identifiers)):
+            raise ValueError("Default policy IDs must be unique within a model")
+        return value
+
 class BloomerpModelConfig(BaseModel):
     """
     Used to define certain bloomerp related meta data on a model. 
@@ -473,6 +509,7 @@ class BloomerpModelConfig(BaseModel):
         - module: the canonical module to which this model belongs.
         - detail_view_settings: detail tabs and named object layouts.
         - tiles: reusable tile configurations associated with this model.
+        - permission_settings: default stored policies created by sync_defaults.
         - string_search_fields: optional field paths used by the shared string search service.
 
     Usage
@@ -499,6 +536,7 @@ class BloomerpModelConfig(BaseModel):
     is_internal: bool = False
 
     api_settings: Optional[ApiSettings] = None
+    permission_settings: PermissionSettings = Field(default_factory=PermissionSettings)
     
     create_redirect_url_func : Optional[Callable[[Model], str]] = None
     

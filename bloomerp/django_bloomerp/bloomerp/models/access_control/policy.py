@@ -76,6 +76,14 @@ class Policy(
         help_text=_("A description of the access control policy."),
         verbose_name=_("Description"),
     )
+
+    system_created = models.BooleanField(default=False, editable=False)
+    default_policy_key = models.CharField(
+        max_length=512, unique=True, null=True, blank=True, editable=False,
+    )
+    default_policy_hash = models.CharField(
+        max_length=64, blank=True, default="", editable=False,
+    )
     
     row_policy = models.ForeignKey(
         to=RowPolicy,
