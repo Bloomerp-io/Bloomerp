@@ -95,7 +95,7 @@ export default class Calling extends BaseComponent {
     /** Route presentation-tab actions through the same serialized owner controls. */
     private async onWindowAction(button: HTMLElement, context: CallActionContext = {}): Promise<void> { await this.perform(button, context); }
 
-    /** Open the presentation before awaiting network requests to preserve browser activation. */
+    /** Open the presentation after capture settles, with inline controls if pop-ups are blocked. */
     private openCallWindow(): void {
         const opened = this.callWindow.open();
         this.element.querySelector<HTMLElement>('[data-call-media]')!.hidden = opened;
@@ -117,7 +117,6 @@ export default class Calling extends BaseComponent {
                 await this.enable();
             } else if (action === 'start') {
                 if (this.transport || this.session) throw new Error(_('Leave or dismiss the current call first.'));
-                this.openCallWindow();
                 const key = `${button.dataset.startUrl}:${button.dataset.mediaMode}`;
                 const clientId = this.attempts.get(key) || crypto.randomUUID();
                 this.attempts.set(key, clientId);
@@ -130,7 +129,6 @@ export default class Calling extends BaseComponent {
                 await this.join(this.session.join_url);
             } else if (action === 'join' || action === 'answer') {
                 if (this.transport) throw new Error(_('Leave the current call first.'));
-                this.openCallWindow();
                 if (this.pendingCall) await this.connect(this.pendingCall.credentials, this.pendingCall.transport);
                 else await this.join(button.dataset.joinUrl || this.session!.join_url);
             } else if (action === 'leave' || action === 'dismiss') {
@@ -217,7 +215,11 @@ export default class Calling extends BaseComponent {
             connected = true;
             if (this.transport !== transport || this.lifecycle.signal.aborted) { await transport.disconnect(); return; }
             this.controls(credentials);
-            await transport.playAudio();
+            try { await transport.playAudio(); }
+            catch (error: unknown) {
+                // Playback can be retried with Enable sound; it must not bypass capture consent.
+                this.error(error instanceof Error ? error.message : _('Enable sound to hear the call.'));
+            }
             await transport.microphone(true);
             if (this.transport !== transport) return;
             this.microphone = true;
@@ -240,6 +242,9 @@ export default class Calling extends BaseComponent {
                 this.control('end', credentials.can_end === 'true');
             }
             throw error;
+        } finally {
+            // Keep the permission prompt visible in its owning tab until it settles.
+            if (this.transport === transport && !this.lifecycle.signal.aborted) this.openCallWindow();
         }
     }
 

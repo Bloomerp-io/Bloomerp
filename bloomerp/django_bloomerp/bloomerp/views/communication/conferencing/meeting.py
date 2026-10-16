@@ -29,15 +29,17 @@ from bloomerp.router import router
 def meeting(
     request: HttpRequest, token: UUID, model: type[ConferenceSession], **kwargs: Any
 ) -> HttpResponse:
-    """Show account identity or a guest name form before browser-bound admission."""
-    session = shared_session(token)
+    """Present a live lobby or a terminal notice without granting admission."""
+    session = shared_session(token, allow_ended=True)
+    ended = session.status not in {"ringing", "active"}
     response = render(
         request,
         "views/communication/conferencing/meeting.html",
         {
             "token": token,
+            "ended": ended,
             "joining_name": account_presentation(request.user, session)["displayName"]
-            if request.user.is_authenticated
+            if request.user.is_authenticated and not ended
             else "",
         },
     )

@@ -67,12 +67,15 @@ def sharing_controls(
     return result
 
 
-def shared_session(token: UUID) -> ConferenceSession:
-    """Resolve a live meeting link without exposing conversation content or closed calls."""
+def shared_session(token: UUID, *, allow_ended: bool = False) -> ConferenceSession:
+    """Resolve a shareable link; only public presentation may include terminal calls."""
+    statuses = ["ringing", "active"]
+    if allow_ended:
+        statuses.extend(["ended", "cancelled", "failed"])
     session = (
         ConferenceSession.objects.select_related("room__conversation")
         .filter(
-            share_token=token, status__in=["ringing", "active"], room__archived=False
+            share_token=token, status__in=statuses, room__archived=False
         )
         .first()
     )
