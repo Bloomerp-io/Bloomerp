@@ -21,6 +21,7 @@ const result = await build({
                 import { Calendar, CalendarCell } from '${root}/ts/components/data_view_components/Calendar';
                 import { DataViewContainer } from '${root}/ts/components/data_view_components/DataViewContainer';
                 import { Modal } from '${root}/ts/components/Modal';
+                import { Drawer } from '${root}/ts/components/Drawer';
                 import InboxCalendarOverlay from '${root}/ts/components/inbox/InboxCalendarOverlay';
                 import { registerComponent, initComponents } from '${root}/ts/components/BaseComponent';
                 import htmx from 'htmx.org';
@@ -29,6 +30,7 @@ const result = await build({
                 registerComponent('calendar-cell', CalendarCell);
                 registerComponent('dataview-container', DataViewContainer);
                 registerComponent('modal', Modal);
+                registerComponent('drawer', Drawer);
                 export { initComponents, htmx };
             `;
         },
@@ -63,14 +65,14 @@ function fixture(mode: string, create: boolean = true, datePair: boolean = true,
             data-base-url="/components/dataview/1/" data-url="/components/dataview/1/?inboxes=1"
             data-create-url="${create ? '/components/create-object/1/?inboxes=1' : ''}"
             data-modal-id="create-object-modal" data-target="#create-object-modal-body">
-            <details bloomerp-component="inbox-calendar-overlay" data-preferred-group="1" data-save-url="/inbox/1/calendar/" open>
+            <details bloomerp-component="inbox-calendar-overlay" data-preferred-group="1" data-save-url="/components/communication/calendar/1/align/" open>
                 <input type="checkbox" data-overlay-inbox value="1" checked>
                 <input type="checkbox" data-overlay-inbox value="2" checked>
                 <span data-overlay-error hidden>Select at least one calendar.</span>
                 <button type="button" data-apply-overlay>Apply</button>
             </details>
             <div id="data-view-data-section">
-                <div bloomerp-component="calendar" data-content-type-id="1" data-view-mode="${mode}"
+                <div bloomerp-component="calendar" data-content-type-id="1" data-calendar-view-mode="${mode}"
                     data-calendar-start-field-type="DateTimeField" data-calendar-create-start-field="starts_at"
                     data-calendar-create-end-field="${endField ? 'ends_at' : ''}"
                     data-calendar-create-start-date-field="${datePair ? 'starts_on' : ''}"
@@ -81,7 +83,7 @@ function fixture(mode: string, create: boolean = true, datePair: boolean = true,
                         data-calendar-create-end="2026-10-${month ? '16T00' : '15T10'}:00:00+02:00">
                         <button data-calendar-unit-cell bloomerp-component="calendar-cell">Empty cell</button>
                         <button data-calendar-event bloomerp-component="calendar-cell" data-object-id="event"
-                            data-detail-url="/events/event/" data-object-string="Existing event">Existing event</button>
+                            data-detail-url="/events/event/update/" data-object-string="Existing event">Existing event</button>
                     </section>
                     </div>
                 </div>
@@ -168,7 +170,7 @@ function existingEventsAndUnavailableCreation(): void {
     try {
         doubleClick(existing, existing.cell.querySelector<HTMLElement>('[data-calendar-event]')!);
         assert.equal(existing.requests.length, 1);
-        assert.equal(existing.requests[0].pathname, '/events/event/');
+        assert.equal(existing.requests[0].pathname, '/events/event/update/');
         doubleClick(unavailable, unavailable.cell);
         assert.equal(unavailable.requests.length, 0);
     } finally { existing.dom.window.close(); unavailable.dom.window.close(); }
@@ -183,7 +185,7 @@ async function saveAlignment(): Promise<void> {
         /** Inspect the preference save request without mocking calendar rendering. */
         f.w.CalendarFixture.htmx.ajax = function captureSave(method: string, url: string, options: Record<string, unknown>): Promise<HTMLElement> {
             assert.equal(method, 'post');
-            assert.equal(url, '/inbox/1/calendar/');
+            assert.equal(url, '/components/communication/calendar/1/align/');
             assert.equal(options.swap, 'outerHTML');
             assert.equal(options.target, f.w.document.querySelector('[bloomerp-component="dataview-container"]'));
             posted = options.values as Record<string, unknown>;
@@ -210,3 +212,23 @@ function emptyAlignment(): void {
 
 test('align calendars only saves the preference and reloads the dataview', saveAlignment);
 test('empty calendar alignment does not widen access', emptyAlignment);
+
+/** Calendar periods must not shadow the shared dataview's detail-navigation mode. */
+test('double-clicking an event opens its update URL inside the shared drawer', (): void => {
+    const f = fixture('month');
+    const container = f.w.document.getElementById('data-view-1')!;
+    container.dataset.viewMode = 'drawer';
+    container.insertAdjacentHTML('beforeend', `<div id="calendar-detail-drawer" class="hidden" bloomerp-component="drawer" data-dataview-detail-drawer><div data-drawer-panel><div data-drawer-detail-pane></div></div></div>`);
+    const event = container.querySelector<HTMLElement>('[data-calendar-event]')!;
+    let target: unknown;
+    f.w.CalendarFixture.htmx.ajax = function captureUpdate(method: string, url: string, options: Record<string, unknown>): Promise<HTMLElement> {
+        target = options.target;
+        assert.equal(url, '/events/event/update/');
+        assert.equal(options.push, 'false');
+        return Promise.resolve(f.w.document.createElement('div'));
+    };
+    event.dispatchEvent(new f.w.MouseEvent('dblclick', { bubbles: true }));
+    assert.equal(target, container.querySelector('[data-drawer-detail-pane]'));
+    assert.equal(container.querySelector('[data-dataview-detail-drawer]')!.classList.contains('hidden'), false);
+    f.dom.window.close();
+});

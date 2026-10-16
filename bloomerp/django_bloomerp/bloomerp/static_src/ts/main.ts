@@ -1,3 +1,4 @@
+import CalendarAvailability from "./components/inbox/CalendarAvailability";
 import InboxCalendarOverlay from "./components/inbox/InboxCalendarOverlay";
 import CalendarEventEditor from "./components/inbox/CalendarEventEditor";
 import MeetingLobby from './components/communication/MeetingLobby';
@@ -211,6 +212,7 @@ registerComponent('inbox', Inbox)
 registerComponent('inbox-item', InboxItem)
 
 registerComponent('calendar-event-editor', CalendarEventEditor);
+registerComponent('calendar-availability', CalendarAvailability);
 registerComponent('inbox-calendar-overlay', InboxCalendarOverlay);
 registerComponent('email-editor', EmailEditor)
 

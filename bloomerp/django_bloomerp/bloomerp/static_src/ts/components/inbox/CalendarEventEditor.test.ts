@@ -18,13 +18,15 @@ const built = await build({
         load(id: string): string | null {
             return id === entry ? `
                 import { Modal } from '${root}/ts/components/Modal';
+                import CalendarAvailability from '${root}/ts/components/inbox/CalendarAvailability';
                 import CalendarEventEditor from '${root}/ts/components/inbox/CalendarEventEditor';
                 import { DetailViewCell } from '${root}/ts/components/detail_view_components/DetailViewCell';
-                import { registerComponent, initComponents } from '${root}/ts/components/BaseComponent';
+                import { registerComponent, initComponents, getComponent } from '${root}/ts/components/BaseComponent';
                 registerComponent('modal', Modal);
                 registerComponent('calendar-event-editor', CalendarEventEditor);
+                registerComponent('calendar-availability', CalendarAvailability);
                 registerComponent('detail-view-value', DetailViewCell);
-                export { initComponents };
+                export { initComponents, getComponent };
             ` : null;
         },
     }],
@@ -36,12 +38,12 @@ assert("output" in output);
 const chunk = output.output.find((item: OutputAsset | OutputChunk): boolean => item.type === "chunk");
 assert(chunk?.type === "chunk");
 const code = chunk.code;
-interface ComposerWindow extends DOMWindow { ComposerFixture: { initComponents(element: HTMLElement): void } }
+interface ComposerWindow extends DOMWindow { ComposerFixture: { initComponents(element: HTMLElement): void; getComponent(element: HTMLElement): { setSelection(selection: { users: string[]; day: string; timezone: string; startTime: string; endTime: string; endDate: string; allDay: boolean }): void } } }
 interface Fixture { dom: JSDOM; w: ComposerWindow; requests: URL[]; form: HTMLFormElement }
 
 /** Initialize a composer with real chip controls and a fake network boundary. */
 function fixture(noEmail: boolean = false, modal: boolean = false): Fixture {
-    const dom = new JSDOM(`<!doctype html><form id="calendar-event-create-form" bloomerp-component="calendar-event-editor" data-availability-url="/events/create/" data-recipient-search-url="/recipients/?calendar_users=1">
+    const dom = new JSDOM(`<!doctype html><form id="calendar-event-create-form" bloomerp-component="calendar-event-editor" data-recipient-search-url="/recipients/?calendar_users=1">
         <div data-layout-root><div data-layout-row data-row-columns="1"><div data-layout-grid><div bloomerp-component="detail-view-value" data-layout-item-id="attendees" data-colspan="1" data-required="False"><div data-layout-item-body>
         <input name="attendees" value="person@example.com"><input name="attendee_users" value='["u1"]' data-identities='{"person@example.com":"u1"}'>
         <input name="start_date" value="2026-10-15"><input name="end_date" value="2026-10-15">
@@ -49,7 +51,7 @@ function fixture(noEmail: boolean = false, modal: boolean = false): Fixture {
         <input name="all_day" type="checkbox"><select name="event_timezone"><option>Europe/Brussels</option></select>
         <input type="hidden" name="_permission_token" value="scoped-calendar-token">
         </div></div></div></div></div>
-        <span data-availability-date></span><div data-availability-grid></div>
+        <div bloomerp-component="calendar-availability" data-url="/components/calendar/availability/"><span data-availability-date></span><div data-availability-grid></div></div>
         <button type="submit" id="object-crud-container-save-button"><i class="fa fa-save"></i><span data-calendar-submit-label>Save</span></button></form>`,
         { runScripts: "outside-only", pretendToBeVisual: true, url: "https://app.example/events/create/" });
     const w = dom.window as ComposerWindow;
@@ -92,7 +94,7 @@ function fixture(noEmail: boolean = false, modal: boolean = false): Fixture {
 }
 
 /** Let initialization settle without relying on a network server. */
-async function settle(): Promise<void> { await new Promise<void>(function wait(resolve: () => void): void { setTimeout(resolve, 20); }); }
+async function settle(): Promise<void> { await new Promise<void>(function wait(resolve: () => void): void { setTimeout(resolve, 180); }); }
 
 /** Require timezone-aware busy cells and distinguish unavailable information from free time. */
 async function availability(): Promise<void> {
@@ -248,3 +250,27 @@ function modalPaddingIsolation(): void {
 }
 
 test("calendar spacing does not leak into a normal add modal", modalPaddingIsolation);
+
+/** The sidebar renders and emits a selected range even when no event form exists. */
+async function standaloneAvailability(): Promise<void> {
+    const f = fixture();
+    try {
+        const panel = f.form.querySelector<HTMLElement>('[bloomerp-component="calendar-availability"]')!;
+        panel.remove();
+        f.form.remove();
+        f.w.document.body.append(panel);
+        const component = f.w.ComposerFixture.getComponent(panel);
+        component.setSelection({ users: ['u1'], day: '2026-10-15', timezone: 'Europe/Brussels', startTime: '10:00', endTime: '11:00', endDate: '2026-10-15', allDay: false });
+        await settle();
+        assert.equal(panel.querySelectorAll('tbody tr').length, 48);
+        let range: unknown;
+        /** Capture the standalone component's selected range without supplying form controls. */
+        function captureSelection(event: Event): void { range = (event as CustomEvent).detail; }
+        panel.addEventListener('bloomerp:availability-time-selected', captureSelection);
+        panel.querySelector<HTMLButtonElement>('[data-availability-time="23:30"]')!.click();
+        assert.equal(JSON.stringify(range), JSON.stringify({ startTime: '23:30', endTime: '00:30', endDate: '2026-10-16' }));
+        assert.equal(f.w.document.querySelector('form'), null);
+    } finally { f.dom.window.close(); }
+}
+
+test('availability sidebar works independently of an event form', standaloneAvailability);

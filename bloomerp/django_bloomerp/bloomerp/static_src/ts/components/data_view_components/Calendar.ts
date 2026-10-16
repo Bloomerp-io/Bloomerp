@@ -67,7 +67,7 @@ export class Calendar extends BaseDataViewComponent {
         if (!this.element) return;
         super.initialize();
 
-        this.viewMode = this.element.dataset.viewMode || "week";
+        this.viewMode = this.element.dataset.calendarViewMode || "week";
         this.pageOffset = Number.parseInt(this.element.dataset.pageOffset || "0", 10) || 0;
         const controller = this.ensureAbortController();
         if (["day", "week", "month"].includes(this.viewMode) && this.dataViewContainer?.canCreate) {
@@ -200,7 +200,7 @@ export class Calendar extends BaseDataViewComponent {
             });
             if (!response.ok) throw new Error("Unable to save the calendar view mode.");
             const optionsSelect = this.dataViewContainer?.element?.querySelector<HTMLSelectElement>(
-                '[data-display-options-form] [name="view_mode"]',
+                '[data-display-options-form] [name="calendar_view_mode"]',
             );
             if (optionsSelect) optionsSelect.value = select.value;
             this.dataViewContainer?.filter({ calendar_page: null, calendar_view_mode: null });

@@ -16,7 +16,12 @@ from .base import CalendarModel
 
 
 class CalendarSchedulingCancellation(CalendarModel):
-    """Keep whole-event or attendee cancellation revisions without creating meetings."""
+    """Prevent delayed invitations from resurrecting previously cancelled revisions.
+
+    Cancellations may arrive before any invitation, including attendee-specific
+    cancellations. CalendarEvent requires a valid date range, so these protocol
+    identities cannot safely be stored as placeholder events.
+    """
 
     bloomerp_config = BloomerpModelConfig(
         module="communication",

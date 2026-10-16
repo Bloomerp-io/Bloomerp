@@ -39,6 +39,14 @@ several Inbox calendars. Existing row and field permissions still apply.
 
 The Inbox-specific dropdown lives in
 `templates/models/calendar_event/align_calendars.html` and
-`static_src/ts/components/inbox/InboxCalendarOverlay.ts`. It supplies the filter
-and presentation parameters; the generic calendar renderer has no dependency
-on the Inbox model.
+`static_src/ts/components/inbox/InboxCalendarOverlay.ts`. Its component endpoint saves the preference and reloads the ordinary dataview
+loader with an Inbox membership filter. The generic calendar renderer has no
+dependency on the Inbox model. A related model may provide
+`get_calendar_group_queryset(user)` to resolve its own scoped grouping authority.
+
+The event form includes a separate `calendar-availability` component with its
+own template and endpoint. The editor passes participant IDs, date, timezone,
+and the current selection through `setSelection()`. The sidebar emits
+`bloomerp:availability-time-selected` with the chosen range; only the event
+editor updates form fields. No availability action is attached to the create
+view, and neither component changes shared modal padding.

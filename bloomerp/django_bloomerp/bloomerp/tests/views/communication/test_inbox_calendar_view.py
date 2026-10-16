@@ -29,42 +29,6 @@ class TestInboxCalendarView(InboxCalendarFixtures, BloomerpViewTestCase):
         kwargs = {"inbox_id": self.source.pk}
         return [
             RequestScenario(
-                name="Apply persists private selections per inbox",
-                method="POST",
-                user=self.actor,
-                view_kwargs=kwargs,
-                data={
-                    "selection": json.dumps(
-                        {
-                            "inboxes": [str(self.source.pk)],
-                            "users": [str(self.owner.pk)],
-                        }
-                    )
-                },
-                expected=ExpectedResult(response_validators=self.selection_saved),
-            ),
-            RequestScenario(
-                name="Forged calendar selections are denied",
-                method="POST",
-                user=self.actor,
-                view_kwargs=kwargs,
-                content_type="application/json",
-                data={"inboxes": [str(self.other_inbox.pk)], "users": []},
-                expected=ExpectedResult(status_code=403),
-            ),
-            RequestScenario(
-                name="Unreadable users cannot be selected for calendars",
-                method="POST",
-                user=self.owner,
-                view_kwargs=kwargs,
-                content_type="application/json",
-                data={
-                    "inboxes": [str(self.source.pk)],
-                    "users": [str(self.outsider.pk)],
-                },
-                expected=ExpectedResult(status_code=403),
-            ),
-            RequestScenario(
                 name="Standard calendar overlays deduplicate events and show readable selected memberships",
                 view_name="components_dataview",
                 user=self.actor,
@@ -104,36 +68,6 @@ class TestInboxCalendarView(InboxCalendarFixtures, BloomerpViewTestCase):
                 expected=ExpectedResult(response_validators=self.correct_navigation),
             ),
         ]
-
-    def selection_saved(self, response: HttpResponse) -> bool:
-        """Resolve readable users to inboxes, persist the selection, and return the ordinary loader."""
-        from bloomerp.services.calendar_overlays import calendar_overlay_selection
-        from bloomerp.permissions.definition import PermissionToken
-
-        saved = calendar_overlay_selection(self.actor, self.source.pk)
-        grant = PermissionToken.verify(
-            response.context["token"], audience=str(self.actor.pk)
-        )
-        restored = self.client.get(
-            reverse("inbox_calendar", kwargs={"inbox_id": self.source.pk})
-        )
-        filters = json.loads(restored.context["calendar_filters"]["filter"])
-        self.assertEqual(
-            saved, {"inboxes": [str(self.source.pk)], "users": [str(self.owner.pk)]}
-        )
-        from bloomerp.communication.utils.permissions import accessible_inboxes
-
-        expected = {str(self.source.pk)} | {
-            str(pk)
-            for pk in accessible_inboxes(self.owner).values_list("pk", flat=True)
-        }
-        self.assertEqual(
-            set(grant.rule.row_permissions[0].conditions[0].value), expected
-        )
-        self.assertEqual(set(filters[0]["conditions"][0]["value"]), expected)
-        self.assertIn('hx-trigger="load"', response.content.decode())
-        self.assertNotIn("calendar_overlay_url", response.content.decode())
-        return True
 
     def correct_navigation(self, response: HttpResponse) -> bool:
         """Confirm shared dataview loading, hidden Inbox scope, and unchanged preferences."""
@@ -197,7 +131,7 @@ class TestInboxCalendarView(InboxCalendarFixtures, BloomerpViewTestCase):
                     }
                 ]
             ),
-            "calendar_inbox": str(self.source.pk),
+            "_arg_calendar_inbox": str(self.source.pk),
             "calendar_color_field": "inboxes",
             "cancelled": "false",
             "calendar_color_values": f"{self.source.pk},{self.other_inbox.pk}",
@@ -228,16 +162,15 @@ class TestInboxCalendarView(InboxCalendarFixtures, BloomerpViewTestCase):
         from bloomerp.dataviews.calendar.grouping import calendar_group_color
 
         body = response.content.decode()
-        return (
-            self.calendar_button_count(body, str(self.timed.pk)) == 1
-            and self.unplaced.title in body
-            and "data-calendar-group-memberships" in body
-            and "inbox-calendar-overlay" in body
-            and self.source.name in body
-            and self.other_inbox.name in body
-            and "Hidden calendar membership" not in body
-            and calendar_group_color(str(self.source.pk), relation=True) in body
-        )
+        self.assertEqual(self.calendar_button_count(body, str(self.timed.pk)), 1)
+        self.assertIn(self.unplaced.title, body)
+        self.assertIn("data-calendar-group-memberships", body)
+        self.assertIn("inbox-calendar-overlay", body)
+        self.assertIn(self.source.name, body)
+        self.assertIn(self.other_inbox.name, body)
+        self.assertNotIn("Hidden calendar membership", body)
+        self.assertIn(calendar_group_color(str(self.source.pk), relation=True), body)
+        return True
 
     def single_calendar_rendered(self, response: HttpResponse) -> bool:
         """Do not draw duplicate rows or membership dots for unselected calendars."""

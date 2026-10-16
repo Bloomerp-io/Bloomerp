@@ -4,7 +4,16 @@ import json
 import logging
 from datetime import timedelta
 from typing import Any
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from django import forms
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import Q
+from django.http import Http404, HttpResponse
+from django.shortcuts import redirect
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.translation import gettext as _
+from django.views.generic.edit import FormView
 
 from bloomerp.communication.utils.permissions import accessible_inboxes
 from bloomerp.forms.communication.calendar_event import (
@@ -20,15 +29,6 @@ from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.utils.models import get_create_view_url, get_list_view_url
 from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.layout_form_mixin import LayoutFormMixin
-from django import forms
-from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import Q
-from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import redirect
-from django.urls import reverse
-from django.utils import timezone
-from django.utils.translation import gettext as _
-from django.views.generic.edit import FormView
 
 
 @router.register(
@@ -117,31 +117,6 @@ class CreateCalendarEventView(LayoutFormMixin, BaseBloomerpView, FormView):
         """Require writable composition fields and one supported temporal representation."""
         return can_create_calendar_event(self.request.user)
 
-    def get(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
-        """Serve the composer or bounded, permission-scoped availability for selected users."""
-        if request.GET.get("action") == "availability":
-            from bloomerp.services.calendar_availability import calendar_availability
-
-            try:
-                day = forms.DateField().clean(request.GET.get("day"))
-                zone = ZoneInfo(
-                    request.GET.get("timezone") or timezone.get_current_timezone_name()
-                )
-                identifiers = list(
-                    dict.fromkeys([str(request.user.pk), *request.GET.getlist("users")])
-                )
-                if len(identifiers) > 100:
-                    raise ValueError
-                result = calendar_availability(request.user, identifiers, day, zone)
-            except (ValidationError, ValueError, ZoneInfoNotFoundError):
-                return JsonResponse(
-                    {"error": _("Invalid availability request.")}, status=400
-                )
-            response = JsonResponse({"users": result})
-            response["Cache-Control"] = "private, no-store"
-            return response
-        return super().get(request, *args, **kwargs)
-
     def get_form_kwargs(self) -> dict[str, Any]:
         """Provide the current user to calendar and field-permission validation."""
         return {
@@ -190,7 +165,7 @@ class CreateCalendarEventView(LayoutFormMixin, BaseBloomerpView, FormView):
                 pass
         available = PreferenceManager(self.request.user).get_available(Inbox)
         inbox_id = (
-            query.get("calendar_inbox")
+            query.get("_arg_calendar_inbox")
             or query.get("inboxes")
             or (
                 query.get("calendar_color_preferred")
@@ -260,7 +235,7 @@ class CreateCalendarEventView(LayoutFormMixin, BaseBloomerpView, FormView):
             ):
                 form.add_error(None, message)
             return self.form_invalid(form)
-        notice = {"text": _("Event created."), "type": "success"}
+        notice = {"text": _("Event updated.") if form.original is not None else _("Event created."), "type": "success"}
         if form.cleaned_data.get("send_invitations"):
             from bloomerp.communication.calendar.outgoing import send_calendar_request
 
@@ -302,4 +277,8 @@ class CreateCalendarEventView(LayoutFormMixin, BaseBloomerpView, FormView):
             messages.WARNING if notice["type"] == "warning" else messages.SUCCESS,
             notice["text"],
         )
+        if form.original is not None and self.request.htmx:
+            response = HttpResponse(status=204)
+            response["HX-Refresh"] = "true"
+            return response
         return redirect(get_list_view_url(CalendarEvent))

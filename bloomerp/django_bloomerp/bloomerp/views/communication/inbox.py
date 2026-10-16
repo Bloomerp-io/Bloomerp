@@ -40,7 +40,7 @@ class InboxView(BaseBloomerpView, TemplateView):
             for folder_type in INBOX_FOLDER_REGISTRY.values()
             if not folder_type.source_model
         ]
-        from bloomerp.communication.calendar.calendar_access import can_view_inbox_calendar
+        from bloomerp.communication.calendar.access import can_view_inbox_calendar
 
         ctx["inbox_calendar_url"] = (
             reverse("inbox_calendar", kwargs={"inbox_id": inbox.pk})

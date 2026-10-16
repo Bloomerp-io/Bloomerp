@@ -301,3 +301,9 @@ class CalendarEvent(CalendarModel):
     def __str__(self) -> str:
         """Return the shared meeting's title independently of its placements."""
         return self.title
+
+    def get_absolute_url(self) -> str:
+        """
+        Returns the absolute URL of the model instance.
+        """
+        return reverse("calendar_events_detail_update", kwargs={'pk': self.pk})

@@ -1,44 +1,45 @@
 import json
+import uuid
 
 from django import forms
-from django.forms.utils import flatatt
-from django.middleware.csrf import get_token
 from django.core import signing
+from django.core.exceptions import FieldDoesNotExist
+from django.db.models import Model, QuerySet
+from django.forms.utils import flatatt
+from django.http import HttpRequest, HttpResponse
+from django.middleware.csrf import get_token
 from django.shortcuts import render
 from django.template.loader import render_to_string
-from django.urls import NoReverseMatch, reverse
-from django.core.exceptions import FieldDoesNotExist
+from django.urls import reverse
+from pydantic import ValidationError as PydanticValidationError
+
+from bloomerp.dataviews.definition import (
+    BaseDataview,
+    DataviewPagination,
+    DataviewState,
+)
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.filters.manager import ModelFilterManager
 from bloomerp.filters.parser import parse_filters
+from bloomerp.models import ApplicationField
 from bloomerp.models.definition import (
     DataviewAction,
     DataviewActionContext,
     DataviewHTMLAction,
     DataviewModalAction,
     ObjectAction,
+    can_create_dataview_object,
     get_default_dataview_actions,
     get_model_config,
 )
+from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
-from bloomerp.services.preference_services import PreferenceManager
-from bloomerp.utils.models import get_create_view_url, get_model_and_content_type_or_404
 from bloomerp.router import router
-from django.http import HttpRequest
-from django.http import HttpResponse
-from bloomerp.services.user_services import get_data_view_fields
 from bloomerp.services.object_services import string_search_on_queryset
-from bloomerp.models.users.user_list_view_preference import UserListViewPreference
-from bloomerp.models import ApplicationField
-from django.db.models import Model, QuerySet
-import uuid
-from pydantic import ValidationError as PydanticValidationError
-from bloomerp.dataviews.definition import (
-    DataviewPagination,
-    DataviewState,
-    DataviewTypeDefinition,
-)
+from bloomerp.services.preference_services import PreferenceManager
+from bloomerp.services.user_services import get_data_view_fields
+from bloomerp.utils.models import get_model_and_content_type_or_404
 
 # -----------------------------------
 # Filter helpers
@@ -49,10 +50,6 @@ SHELL_RESERVED_QUERY_KEYS = {
     "_component_id",
     "_permission_token",
     "_dataview_operation_context",
-    # Calendar decoration controls can survive switching to another renderer.
-    "calendar_color_field",
-    "calendar_color_values",
-    "calendar_color_preferred",
 }
 
 DATAVIEW_OPERATION_CONTEXT_PARAM = "_dataview_operation_context"
@@ -167,7 +164,10 @@ def _build_dataview_state(
 
     reserved_query_keys = (
         SHELL_RESERVED_QUERY_KEYS
-        | definition.renderer_cls.get_reserved_query_params()
+        | set().union(*(
+            entry.renderer_cls.get_reserved_query_params()
+            for entry in DATAVIEW_REGISTRY.values()
+        ))
         | (additional_reserved_query_keys or set())
     )
     filter_querydict = request.GET.copy()
@@ -301,7 +301,9 @@ def _get_dataview_options_initial(preference: UserListViewPreference, view_type:
     return dataview_options.dump_options()
 
 
-def _get_dataview_options(preference: UserListViewPreference, view_type: str | None = None):
+def _get_dataview_options(
+    preference: UserListViewPreference, view_type: str | None = None
+) -> BaseDataview | None:
     """Returns the data view options for a specific preference type
     """
     view_type = view_type or preference.view_type
@@ -312,7 +314,10 @@ def _get_dataview_options(preference: UserListViewPreference, view_type: str | N
     raw_options = (preference.options or {}).get(view_type, {})
     options_model = definition.config_cls
     try:
-        return options_model.model_validate(raw_options or {})
+        options = options_model.model_validate(raw_options or {})
+        if view_type == preference.view_type and preference.view_mode not in {"normal", "split", "drawer"}:
+            preference.view_mode = options.view_mode
+        return options
     except PydanticValidationError:
         try:
             return options_model.model_validate({})
@@ -348,18 +353,6 @@ def _render_dataview_body(
     state.object_actions = context.get("object_actions", [])
     state.context = context
     return definition.renderer_cls(state).render(pagination)
-
-
-def _get_create_component_url(state: DataviewState, querystring: str) -> str | None:
-    """Expose modal creation only for models with a create route and user add permission."""
-    if not UserPolicyManager(state.request.user).has_global_permission(state.model, BloomerpPermission.ADD):
-        return None
-    try:
-        reverse(get_create_view_url(state.model))
-    except NoReverseMatch:
-        return None
-    url = reverse("components_create_object", kwargs={"content_type_id": state.content_type.pk})
-    return f"{url}?{querystring}" if querystring else url
 
 
 def _get_configured_dataview_actions(
@@ -544,6 +537,13 @@ def dataview(
         search_querystring.pop(key, None)
         create_querystring.pop(key, None)
         export_querystring.pop(key, None)
+    create_component_url = None
+    if can_create_dataview_object(_build_dataview_action_context(request, state)):
+        create_component_url = reverse(
+            "components_create_object", kwargs={"content_type_id": state.content_type.pk}
+        )
+        if create_querystring:
+            create_component_url += f"?{create_querystring.urlencode()}"
     sync_url = (
         request.headers.get("X-Bloomerp-Sync-Url", "false").lower() == "true"
         or definition.key == "file_browser"
@@ -584,7 +584,7 @@ def dataview(
         'search_query': state.query or '',
         'search_querystring': search_querystring.urlencode(),
         'create_querystring': create_querystring.urlencode(),
-        'create_component_url': _get_create_component_url(state, create_querystring.urlencode()),
+        'create_component_url': create_component_url,
         'export_querystring': export_querystring.urlencode(),
         'sync_url': sync_url,
         'page_querystring': page_querystring.urlencode(),

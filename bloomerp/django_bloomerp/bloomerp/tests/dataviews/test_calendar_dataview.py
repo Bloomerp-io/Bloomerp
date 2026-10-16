@@ -9,9 +9,9 @@ from django.urls import NoReverseMatch
 from django.utils import timezone
 from pydantic import ValidationError
 
-from bloomerp.components.objects.dataviews.dataview import _get_create_component_url
 from bloomerp.dataviews.calendar.config import CalendarDataView
 from bloomerp.dataviews.calendar.renderer import CalendarDataviewRenderer
+from bloomerp.models.definition import can_create_dataview_object
 from bloomerp.tests.base import BloomerpDataviewTestCase
 
 
@@ -21,20 +21,20 @@ class TestCalendarDataview(BloomerpDataviewTestCase):
     def test_creation_requires_a_route_and_add_permission(self) -> None:
         """Avoid exposing cell creation when either the model route or user add access is absent."""
         state = SimpleNamespace(model=Mock(), request=SimpleNamespace(user=Mock()), content_type=SimpleNamespace(pk=10))
-        with patch("bloomerp.components.objects.dataviews.dataview.UserPolicyManager") as manager:
+        with patch("bloomerp.permissions.manager.UserPolicyManager") as manager:
             manager.return_value.has_global_permission.return_value = False
-            self.assertIsNone(_get_create_component_url(state, "inboxes=1"))
+            self.assertFalse(can_create_dataview_object(state))
             manager.return_value.has_global_permission.return_value = True
-            with patch("bloomerp.components.objects.dataviews.dataview.get_create_view_url", return_value="items_add"), patch(
-                "bloomerp.components.objects.dataviews.dataview.reverse", side_effect=NoReverseMatch,
+            with patch("bloomerp.utils.models.get_create_view_url", return_value="items_add"), patch(
+                "django.urls.reverse", side_effect=NoReverseMatch,
             ):
-                self.assertIsNone(_get_create_component_url(state, "inboxes=1"))
+                self.assertFalse(can_create_dataview_object(state))
 
     def mixed_renderer(self, mode: str = "month") -> CalendarDataviewRenderer:
         """Build a real renderer with readable independent datetime and date-only fields."""
         options = CalendarDataView(
             start_field="start", end_field="end", start_date_field="start_date",
-            end_date_field="end_date", view_mode=mode,
+            end_date_field="end_date", calendar_view_mode=mode,
         )
         fields = [SimpleNamespace(field=name, field_type=kind) for name, kind in (
             ("start", "DateTimeField"), ("end", "DateTimeField"),
@@ -46,8 +46,20 @@ class TestCalendarDataview(BloomerpDataviewTestCase):
             preference=SimpleNamespace(pk=1, name="Calendar", options={"calendar": options.dump_options()}),
         )
         renderer = CalendarDataviewRenderer(state)
+        self.enterContext(patch("bloomerp.dataviews.calendar.renderer.UserPolicyManager"))
         self.enterContext(patch.object(renderer, "_edit_permissions_for_object", return_value=(False, False)))
         return renderer
+
+    def test_detail_mode_is_independent_of_calendar_period(self) -> None:
+        """Default to drawer navigation while retaining legacy and new period settings."""
+        self.assertEqual(CalendarDataView().view_mode, "drawer")
+        legacy = CalendarDataView.model_validate({"view_mode": "month"})
+        self.assertEqual(legacy.calendar_view_mode, "month")
+        self.assertEqual(legacy.view_mode, "drawer")
+        configured = CalendarDataView(view_mode="split", calendar_view_mode="day")
+        self.assertEqual(configured.view_mode, "split")
+        self.assertEqual(configured.dump_options()["calendar_view_mode"], "day")
+        self.assertNotIn("view_mode", configured.dump_options())
 
     def test_independent_date_pair_is_required(self) -> None:
         """Keep legacy calendars valid and require both new all-day date boundaries."""
@@ -142,7 +154,7 @@ class TestCalendarDataview(BloomerpDataviewTestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(json.loads(response.content)["view_mode"], mode)
                 self.assertEqual(preference.options["calendar"], {
-                    "start_field": "start", "end_field": "end", "view_mode": mode,
+                    "start_field": "start", "end_field": "end", "calendar_view_mode": mode,
                 })
                 self.assertEqual(preference.options["table"], {"page_size": 20})
                 preference.save.assert_called_with(update_fields=["options"])

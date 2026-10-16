@@ -35,7 +35,8 @@ class CalendarDataView(BaseDataview):
     end_field: str | None = None
     start_date_field: str | None = None
     end_date_field: str | None = None
-    view_mode: Literal["day", "week", "month", "year", "list"] = "week"
+    view_mode: Literal["normal", "split", "drawer"] = "drawer"
+    calendar_view_mode: Literal["day", "week", "month", "year", "list"] = "week"
     color_grouping_field: str | None = None
     application_field_options: ClassVar[dict[str, Literal["single", "multiple"]]] = {
         "start_field": "single",
@@ -44,6 +45,15 @@ class CalendarDataView(BaseDataview):
         "end_date_field": "single",
         "color_grouping_field": "single",
     }
+
+    @model_validator(mode="before")
+    @classmethod
+    def read_legacy_period(cls, value: Any) -> Any:
+        """Keep saved calendar periods readable after separating detail navigation mode."""
+        if isinstance(value, dict) and value.get("view_mode") in ("day", "week", "month", "year", "list"):
+            value = dict(value)
+            value.setdefault("calendar_view_mode", value.pop("view_mode"))
+        return value
 
     @model_validator(mode="after")
     def validate_date_pair(self) -> CalendarDataView:
@@ -75,11 +85,11 @@ class CalendarDataView(BaseDataview):
                     "help_text": _("Optional date field used as the end of an event range."),
                 },
             ),
-            "view_mode": (
+            "calendar_view_mode": (
                 forms.ChoiceField,
                 {
                     **view_mode_choices(application_fields),
-                    "label": _("View mode"),
+                    "label": _("Calendar period"),
                     "help_text": _("The calendar period to show."),
                 },
             ),

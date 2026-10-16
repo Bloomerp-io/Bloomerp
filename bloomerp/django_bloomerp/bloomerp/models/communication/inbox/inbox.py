@@ -96,6 +96,29 @@ class Inbox(BasePreference):
             )
         return inbox
 
+    @classmethod
+    def get_calendar_group_queryset(
+        cls, user: AbstractBloomerpUser
+    ) -> QuerySet["Inbox"]:
+        """Expose Inbox labels for owned/shared calendars and explicitly selected readable users."""
+        from bloomerp.communication.calendar.access import (
+            calendar_overlay_inboxes,
+            calendar_overlay_selection,
+            resolve_calendar_inbox,
+        )
+        from bloomerp.communication.utils.permissions import accessible_inboxes
+        from bloomerp.middleware import current_request
+
+        request = current_request()
+        inbox_id = request.GET.get("_arg_calendar_inbox", "") if request else ""
+        if not inbox_id.isdigit():
+            return accessible_inboxes(user)
+        inbox = resolve_calendar_inbox(user, int(inbox_id))
+        return cls.objects.filter(
+            models.Q(pk__in=accessible_inboxes(user).values("pk"))
+            | models.Q(pk__in=calendar_overlay_inboxes(user, calendar_overlay_selection(user, inbox.pk)).values("pk"))
+        )
+
     def get_unread_count(self):
         """
         Returns the count of unread items in the inbox.

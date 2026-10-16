@@ -161,23 +161,6 @@ class TestCreateCalendarEventView(InboxCalendarFixtures, BloomerpModelViewTestCa
                 ),
             ),
             RequestScenario(
-                name="Readable users expose availability across all their accessible inboxes",
-                user=self.actor,
-                query_params={
-                    "action": "availability",
-                    "day": self.today.isoformat(),
-                    "timezone": "Europe/Brussels",
-                    "users": str(self.owner.pk),
-                },
-                expected=ExpectedResult(response_validators=self.availability_scoped),
-            ),
-            RequestScenario(
-                name="Invalid availability requests are rejected",
-                user=self.actor,
-                query_params={"action": "availability", "day": "invalid"},
-                expected=ExpectedResult(status_code=400),
-            ),
-            RequestScenario(
                 name="Login required", expected=ExpectedResult(status_code=302)
             ),
             RequestScenario(
@@ -439,17 +422,6 @@ class TestCreateCalendarEventView(InboxCalendarFixtures, BloomerpModelViewTestCa
             and self.delivery.call_args.args[4] == ["guest@example.com"]
         )
 
-    def availability_scoped(self, response: HttpResponse) -> bool:
-        """Expose busy times for readable people even when their calendars are not shared with the actor."""
-        users = {item["id"]: item for item in response.json()["users"]}
-        return (
-            users[str(self.actor.pk)]["available"]
-            and bool(users[str(self.actor.pk)]["busy"])
-            and users[str(self.owner.pk)]["available"]
-            and bool(users[str(self.owner.pk)]["busy"])
-            and "Placed timed meeting" not in response.content.decode()
-        )
-
     def configure_conferencing(self, scenario: RequestScenario) -> None:
         """Enable validated test conferencing without configuring a real external provider."""
         self.conferencing_override = override_settings(
@@ -535,53 +507,3 @@ class TestCreateCalendarEventView(InboxCalendarFixtures, BloomerpModelViewTestCa
         self.assertEqual(denied.status_code, 200)
         self.assertContains(denied, "You cannot create events in this calendar.")
         self.assertFalse(CalendarEvent.objects.filter(title="Outside signed inbox").exists())
-
-    def test_availability_uses_readable_users_instead_of_actor_inbox_permissions(self) -> None:
-        """Readable people expose deduplicated busy intervals across owned and shared inboxes only."""
-        from django.contrib.auth import get_user_model
-
-        from bloomerp.communication.utils.permissions import accessible_inboxes
-        from bloomerp.permissions.definition import RowPolicyRuleContent
-        from bloomerp.permissions.manager import PolicyManager, UserPolicyManager
-        from bloomerp.services.calendar_availability import calendar_availability
-
-        model = get_user_model()
-        PolicyManager.create_policy(
-            model, global_permissions=["view"], field_permissions={"username": ["view"]},
-            row_permissions=[RowPolicyRuleContent(permissions=["view"], conditions=[
-                {"field_path": "id", "lookup_id": "equals", "value": str(self.outsider.pk)},
-            ])],
-        ).assign_user(self.owner)
-        shared = Inbox.objects.create(user=self.actor, name="Private shared calendar")
-        shared.shared_with_users.add(self.outsider)
-        private = self.create_event("Private participant meeting")
-        private.inboxes.add(self.outsider_calendar, shared)
-        shared_only = self.create_event(
-            "Private shared meeting", start=self.start + timedelta(hours=4),
-            end=self.start + timedelta(hours=5),
-        )
-        shared_only.inboxes.add(shared)
-        self.assertFalse(accessible_inboxes(self.owner).filter(pk__in=[shared.pk, self.outsider_calendar.pk]).exists())
-        self.assertFalse(UserPolicyManager(self.owner).has_global_permission(CalendarEvent, "view"))
-        results = calendar_availability(
-            self.owner, [str(self.outsider.pk), str(self.actor.pk)], self.today, ZoneInfo("UTC"),
-        )
-        users = {item["id"]: item for item in results}
-        self.assertNotIn(str(self.actor.pk), users)
-        participant = users[str(self.outsider.pk)]
-        self.assertTrue(participant["available"])
-        self.assertEqual(len(participant["busy"]), 2)
-        self.assertEqual(set(participant), {"id", "label", "available", "busy"})
-        self.assertNotIn(private.title, json.dumps(results))
-        self.assertNotIn(shared.name, json.dumps(results))
-
-    def test_availability_hides_users_without_a_user_view_grant(self) -> None:
-        """Knowing a user's ID does not reveal their availability without access to that user."""
-        from bloomerp.services.calendar_availability import calendar_availability
-
-        result = calendar_availability(
-            self.owner, [str(self.outsider.pk)], self.today, ZoneInfo("UTC"),
-        )
-        self.assertEqual([item["id"] for item in result], [str(self.owner.pk)])
-        self.assertTrue(result[0]["available"])
-        self.assertTrue(result[0]["busy"])

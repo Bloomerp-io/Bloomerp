@@ -1,15 +1,13 @@
-import json
 import inspect
+import json
 import re
 from dataclasses import dataclass
 from typing import Any, Callable, Literal, Optional, Type
 from urllib.parse import urlsplit
 
+from django.conf import settings
+from django.db.models import Model, QuerySet
 from django.http import HttpRequest, HttpResponse, StreamingHttpResponse
-from bloomerp.config.definition import BloomerpConfig
-from bloomerp.dataviews.definition import BaseDataview
-from bloomerp.permissions.definition import AccessRule, BloomerpPermission
-from bloomerp.workspaces.base import BaseTileConfig
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -18,8 +16,12 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from django.conf import settings
-from django.db.models import Model, QuerySet
+
+from bloomerp.config.definition import BloomerpConfig
+from bloomerp.dataviews.definition import BaseDataview
+from bloomerp.permissions.definition import AccessRule, BloomerpPermission
+from bloomerp.workspaces.base import BaseTileConfig
+
 
 class LayoutItem(BaseModel):
     id: int | str
@@ -339,6 +341,22 @@ class DataviewModalAction(BaseModel):
     modal_size: Literal["sm", "md", "lg", "xl", "full"] = "md"
 
 
+def can_create_dataview_object(context: DataviewActionContext) -> bool:
+    """Enable Add only when the model exposes a create route and the user has add permission."""
+    from django.urls import NoReverseMatch, reverse
+
+    from bloomerp.permissions.manager import UserPolicyManager
+    from bloomerp.utils.models import get_create_view_url
+
+    if not UserPolicyManager(context.request.user).has_global_permission(context.model, BloomerpPermission.ADD):
+        return False
+    try:
+        reverse(get_create_view_url(context.model))
+    except NoReverseMatch:
+        return False
+    return True
+
+
 def get_default_dataview_actions(
     skip: list[str] | None = None,
     include: list[str] | None = None,
@@ -358,6 +376,7 @@ def get_default_dataview_actions(
         ),
         DataviewHTMLAction(
             id="add",
+            should_render_func=can_create_dataview_object,
             template_name=f"{template_root}/add.html",
             shortcut="mod+2",
         ),

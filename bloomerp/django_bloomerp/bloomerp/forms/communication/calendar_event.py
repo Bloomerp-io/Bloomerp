@@ -1,10 +1,23 @@
 """Permission-aware event composition with effective Inbox calendar placement."""
 
 import json
+from copy import copy
 from datetime import datetime, timedelta
 from email.utils import getaddresses
 from typing import Any
 from zoneinfo import ZoneInfo, available_timezones
+
+from django import forms
+from django.contrib.auth import get_user_model
+from django.core.exceptions import (
+    ImproperlyConfigured,
+    PermissionDenied,
+    ValidationError,
+)
+from django.core.validators import validate_email
+from django.db import transaction
+from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from bloomerp.communication.utils.permissions import accessible_inboxes
 from bloomerp.form_fields.text_editor_field import TextEditorFormField
@@ -19,17 +32,6 @@ from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.services.email_composer_services import accessible_email_accounts
 from bloomerp.services.sectioned_layout_services import get_layout_widget_attrs
-from django import forms
-from django.contrib.auth import get_user_model
-from django.core.exceptions import (
-    ImproperlyConfigured,
-    PermissionDenied,
-    ValidationError,
-)
-from django.core.validators import validate_email
-from django.db import transaction
-from django.utils import timezone
-from django.utils.translation import gettext_lazy as _
 
 COMMON_CREATE_FIELDS = {
     "title",
@@ -56,9 +58,18 @@ def calendar_timezone_choices(reference: datetime) -> list[tuple[str, str]]:
     return choices
 
 
-def calendar_create_fields(user: AbstractBloomerpUser) -> set[str]:
-    """Return writable composition fields when the user has model-level add access."""
+def calendar_create_fields(
+    user: AbstractBloomerpUser, instance: CalendarEvent | None = None
+) -> set[str]:
+    """Return writable composition fields for creation or a readable existing event."""
     manager = UserPolicyManager(user)
+    if instance is not None:
+        if not manager.has_access_to_object(instance, "view") or not manager.has_access_to_object(instance, "change"):
+            return set()
+        readable = manager.get_accessible_fields_for_object(instance, "view")
+        return set(manager.get_accessible_fields_for_object(instance, "change").filter(
+            pk__in=readable.values("pk")
+        ).values_list("field", flat=True))
     if not manager.has_global_permission(CalendarEvent, "add"):
         return set()
     return set(
@@ -68,9 +79,14 @@ def calendar_create_fields(user: AbstractBloomerpUser) -> set[str]:
     )
 
 
-def can_create_calendar_event(user: AbstractBloomerpUser) -> bool:
-    """Require common event fields and one complete writable temporal representation."""
-    fields = calendar_create_fields(user)
+def can_create_calendar_event(
+    user: AbstractBloomerpUser, instance: CalendarEvent | None = None
+) -> bool:
+    """Require the common composer fields and the existing event's writable date representation."""
+    fields = calendar_create_fields(user, instance)
+    if instance is not None:
+        required = DATE_CREATE_FIELDS if instance.all_day else TIMED_CREATE_FIELDS
+        return (COMMON_CREATE_FIELDS | required) <= fields
     return COMMON_CREATE_FIELDS <= fields and (
         TIMED_CREATE_FIELDS <= fields or DATE_CREATE_FIELDS <= fields
     )
@@ -137,15 +153,18 @@ class CalendarEventCreateForm(forms.Form):
         *args: Any,
         user: AbstractBloomerpUser,
         meeting_base_url: str = "",
+        instance: CalendarEvent | None = None,
         **kwargs: Any,
     ) -> None:
-        """Scope calendars, optional fields, and date modes to the user's current add permissions."""
+        """Reuse the composer with object-specific read/write permissions when editing."""
         super().__init__(*args, **kwargs)
         self.user = user
         self.meeting_base_url = meeting_base_url
+        self.original = instance
         self.instance: CalendarEvent | None = None
-        self.writable_fields = calendar_create_fields(user)
-        if not can_create_calendar_event(user):
+        self.permission = "change" if instance is not None else "add"
+        self.writable_fields = calendar_create_fields(user, instance)
+        if not can_create_calendar_event(user, instance):
             raise PermissionDenied
         self.can_create_timed = TIMED_CREATE_FIELDS <= self.writable_fields
         self.can_create_all_day = DATE_CREATE_FIELDS <= self.writable_fields
@@ -175,6 +194,28 @@ class CalendarEventCreateForm(forms.Form):
             or not {"event", "email"} <= participant_fields
         ):
             del self.fields["attendees"]
+        if instance is not None and "attendees" in self.fields and any(
+            not manager.has_access_to_object(participant, "view", fields=["email", "user"])
+            for participant in instance.participants.all()
+        ):
+            del self.fields["attendees"]
+        if instance is not None and "attendees" in self.fields:
+            participants = list(instance.participants.select_related("user"))
+            if any(
+                person.user_id and not manager.has_access_to_object(person.user, "view", fields=["email"])
+                for person in participants
+            ):
+                del self.fields["attendees"]
+            else:
+                self.internal_attendees = [person.user for person in participants if person.user_id]
+                self.initial["attendees"] = ", ".join(person.email for person in participants if person.email)
+                self.initial["attendee_users"] = json.dumps([str(person.pk) for person in self.internal_attendees])
+        if instance is not None:
+            self.initial["sender"] = self.fields["sender"].queryset.filter(
+                email_address__iexact=instance.organizer_email
+            ).values_list("pk", flat=True).first()
+            if instance.conference_session_id:
+                self.fields.pop("create_conference", None)
         if not self.can_create_timed or not self.can_create_all_day:
             self.fields["all_day"].disabled = True
             self.initial["all_day"] = not self.can_create_timed
@@ -311,14 +352,16 @@ class CalendarEventCreateForm(forms.Form):
                 )
                 return data
         first, last = data["start_date"], data["end_date"]
+        organizer_email = self.original.organizer_email if self.original is not None else (
+            self.user.email or f"user-{self.user.pk}@calendar.invalid"
+        )
+        if data.get("sender"):
+            organizer_email = data["sender"].email_address
         values: dict[str, Any] = {
             "title": data["title"],
-            "organizer_email": data["sender"].email_address
-            if data.get("sender")
-            else self.user.email or f"user-{self.user.pk}@calendar.invalid",
+            "organizer_email": organizer_email,
             "organizing_inbox": data["inbox"],
             "all_day": all_day,
-            "created_by": self.user,
             "updated_by": self.user,
         }
         for name in ("content", "location"):
@@ -376,7 +419,17 @@ class CalendarEventCreateForm(forms.Form):
                 end=end,
                 event_timezone=zone,
             )
-        self.instance = CalendarEvent(**values)
+        if self.original is None:
+            self.instance = CalendarEvent(created_by=self.user, **values)
+        else:
+            self.instance = copy(self.original)
+            for name, value in values.items():
+                setattr(self.instance, name, value)
+            self.instance.start = values.get("start")
+            self.instance.end = values.get("end")
+            self.instance.start_date = values.get("start_date")
+            self.instance.end_date = values.get("end_date")
+            self.instance.event_timezone = values.get("event_timezone")
         try:
             self.instance.full_clean()
         except ValidationError as error:
@@ -389,27 +442,42 @@ class CalendarEventCreateForm(forms.Form):
         if not self.is_valid() or self.instance is None:
             raise ValueError("Validate the event form before saving")
         manager = UserPolicyManager(self.user)
-        if not manager.candidate_matches_row_policies(self.instance, "add"):
-            raise PermissionDenied(_("You cannot create events in this calendar."))
+        if not manager.candidate_matches_row_policies(self.instance, self.permission):
+            raise PermissionDenied(
+                _("You cannot update events in this calendar.") if self.original is not None
+                else _("You cannot create events in this calendar.")
+            )
         with transaction.atomic():
             self.instance.save()
-            self.instance.inboxes.set(
-                [self.cleaned_data["inbox"], *self.attendee_calendars]
-            )
+            if "attendees" in self.fields or self.original is None:
+                self.instance.inboxes.set(
+                    [self.cleaned_data["inbox"], *self.attendee_calendars]
+                )
+            else:
+                self.instance.inboxes.add(self.cleaned_data["inbox"])
             internal_emails = {
                 person.email.lower()
                 for person in self.internal_attendees
                 if person.email
             }
+            retained: list[Any] = []
             for person in self.internal_attendees:
-                CalendarEventParticipant.objects.create(
-                    event=self.instance, user=person, email=person.email
+                participant, _created = CalendarEventParticipant.objects.get_or_create(
+                    event=self.instance, user=person, defaults={"email": person.email}
                 )
+                retained.append(participant.pk)
             for email in self.cleaned_data.get("attendees", []):
                 if email not in internal_emails:
-                    CalendarEventParticipant.objects.create(
-                        event=self.instance, email=email
+                    participant, _created = CalendarEventParticipant.objects.get_or_create(
+                        event=self.instance, email=email, defaults={"user": None}
                     )
+                    retained.append(participant.pk)
+            if self.original is not None and "attendees" in self.fields:
+                removed = self.instance.participants.exclude(pk__in=retained)
+                for participant in removed:
+                    if not manager.has_access_to_object(participant, "delete"):
+                        raise PermissionDenied(_("You cannot remove these participants."))
+                removed.delete()
             if self.cleaned_data.get("create_conference"):
                 from bloomerp.services.calendar_conferencing import (
                     reserve_calendar_conference,

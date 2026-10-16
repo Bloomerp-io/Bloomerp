@@ -1,15 +1,22 @@
 """Independent Inbox, event-row, and event-date permissions for calendar rendering."""
 
+import json
+
 from django.contrib.auth.models import Group
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.core.management import call_command
+from django.http import HttpRequest, HttpResponse
 from django.test import RequestFactory, TestCase
 
-from bloomerp.components.communication.calendar.inbox_calendar import inbox_calendar
+from bloomerp.components.objects.dataviews.dataview import dataview
 from bloomerp.filters.definition import FilterCondition
 from bloomerp.models.communication.calendar import CalendarEvent
+from bloomerp.models.communication.inbox.inbox import Inbox
+from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.permissions.definition import RowPolicyRuleContent
 from bloomerp.permissions.manager import PolicyManager
+from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.tests.communication.inbox_calendar_fixtures import InboxCalendarFixtures
 
 
@@ -25,6 +32,52 @@ class InboxCalendarPolicyTests(InboxCalendarFixtures, TestCase):
         """Create placed meetings and a normal Inbox owner without event grants."""
         super().setUp()
         self.prepare_calendar()
+        PolicyManager.create_policy(
+            Inbox,
+            global_permissions=["view"],
+            field_permissions={"__all__": ["view"]},
+            row_permissions=[
+                RowPolicyRuleContent(
+                    permissions=["view"], connector="AND", conditions=[]
+                )
+            ],
+        ).assign_user(self.owner)
+
+    def render_calendar(self, request: HttpRequest) -> HttpResponse:
+        """Exercise the normal dataview endpoint with a real calendar preference and Inbox filter."""
+        content_type = ContentType.objects.get_for_model(CalendarEvent)
+        preference = PreferenceManager(request.user).get_or_create_selected(
+            UserListViewPreference, {"content_type_id": content_type.pk}
+        )
+        preference.view_type = "calendar"
+        preference.options = {
+            "calendar": {
+                "start_field": "start",
+                "end_field": "end",
+                "start_date_field": "start_date",
+                "end_date_field": "end_date",
+                "view_mode": "month",
+            }
+        }
+        preference.save()
+        query = request.GET.copy()
+        query["filter"] = json.dumps(
+            [
+                {
+                    "connector": "AND",
+                    "conditions": [
+                        {
+                            "field_path": "inboxes",
+                            "lookup_id": "values_in",
+                            "value": [str(self.source.pk)],
+                        }
+                    ],
+                }
+            ]
+        )
+        query["cancelled"] = "false"
+        request.GET = query
+        return dataview(request, content_type_id=content_type.pk)
 
     def test_row_specific_date_denial_does_not_expose_events_or_counts(self) -> None:
         """Only rows whose corresponding date representation is readable enter the grid."""
@@ -62,7 +115,7 @@ class InboxCalendarPolicyTests(InboxCalendarFixtures, TestCase):
         hidden.inboxes.add(self.source)
         request = RequestFactory().get("/calendar/")
         request.user = self.owner
-        response = inbox_calendar(request, inbox_id=self.source.pk)
+        response = self.render_calendar(request)
         self.assertContains(response, self.timed.title)
         self.assertNotContains(response, self.all_day.title)
         self.assertNotContains(response, hidden.title)
@@ -84,7 +137,7 @@ class InboxCalendarPolicyTests(InboxCalendarFixtures, TestCase):
         PolicyManager.assign(policy, group)
         request = RequestFactory().get("/calendar/")
         request.user = self.owner
-        response = inbox_calendar(request, inbox_id=self.source.pk)
+        response = self.render_calendar(request)
         self.assertContains(response, self.timed.title)
         self.assertNotContains(response, self.unplaced.title)
         self.assertNotContains(response, self.cancelled.title)
@@ -106,7 +159,7 @@ class InboxCalendarPolicyTests(InboxCalendarFixtures, TestCase):
         request = RequestFactory().get("/calendar/")
         request.user = self.owner
         with self.assertRaises(PermissionDenied):
-            inbox_calendar(request, inbox_id=self.source.pk)
+            self.render_calendar(request)
 
     def test_date_only_readers_can_view_all_day_events_without_timed_fields(
         self,
@@ -133,6 +186,6 @@ class InboxCalendarPolicyTests(InboxCalendarFixtures, TestCase):
         PolicyManager.assign(policy, self.owner)
         request = RequestFactory().get("/calendar/")
         request.user = self.owner
-        response = inbox_calendar(request, inbox_id=self.source.pk)
+        response = self.render_calendar(request)
         self.assertContains(response, self.all_day.title)
         self.assertNotContains(response, self.timed.title)

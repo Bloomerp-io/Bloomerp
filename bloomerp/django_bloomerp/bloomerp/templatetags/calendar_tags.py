@@ -10,7 +10,7 @@ from django.utils.translation import gettext as _
 
 from bloomerp.communication.utils.permissions import accessible_inboxes
 from bloomerp.dataviews.calendar.grouping import calendar_group_color
-from bloomerp.services.calendar_overlays import calendar_overlay_selection
+from bloomerp.communication.calendar.access import calendar_overlay_selection
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 
 register = template.Library()
@@ -21,7 +21,7 @@ def inbox_calendar_overlay(request: HttpRequest) -> dict[str, Any]:
     """Offer only effective inboxes available to this user and restore the applied selection."""
     inboxes = list(accessible_inboxes(request.user).order_by("name", "pk"))
     query = request.GET
-    inbox_id = query.get("calendar_inbox")
+    inbox_id = query.get("_arg_calendar_inbox")
     selection = (
         calendar_overlay_selection(request.user, int(inbox_id))
         if inbox_id and inbox_id.isdigit()
@@ -40,7 +40,7 @@ def inbox_calendar_overlay(request: HttpRequest) -> dict[str, Any]:
     preferred = query.get("calendar_color_preferred") or query.get("inboxes", "")
     return {
         "preferred": preferred,
-        "save_url": reverse("inbox_calendar", kwargs={"inbox_id": int(inbox_id)})
+        "save_url": reverse("components_calendar_align", kwargs={"inbox_id": int(inbox_id)})
         if selection
         else "",
         "users_widget": ForeignFieldWidget(

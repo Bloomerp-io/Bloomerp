@@ -2,15 +2,49 @@
 
 from datetime import date, datetime, time, timedelta
 from typing import Any
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from django import forms
 from django.contrib.auth import get_user_model
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.db.models import Q
+from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.utils import timezone
+from django.utils.translation import gettext as _
+from django.views.decorators.http import require_GET
 
 from bloomerp.communication.utils.permissions import accessible_inboxes
 from bloomerp.models.communication.calendar import CalendarEvent
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.permissions.manager import UserPolicyManager
+from bloomerp.router import router
+
+
+@router.register(
+    path="components/communication/calendar/availability/",
+    url_name="components_calendar_availability",
+)
+@login_required
+@require_GET
+def availability(request: HttpRequest) -> HttpResponse:
+    """Return private free/busy intervals for readable users in one bounded day."""
+    try:
+        day = forms.DateField().clean(request.GET.get("day"))
+        zone = ZoneInfo(
+            request.GET.get("timezone") or timezone.get_current_timezone_name()
+        )
+        identifiers = list(
+            dict.fromkeys([str(request.user.pk), *request.GET.getlist("users")])
+        )
+        if len(identifiers) > 100:
+            raise ValueError
+        result = calendar_availability(request.user, identifiers, day, zone)
+    except (ValidationError, ValueError, ZoneInfoNotFoundError):
+        return JsonResponse({"error": _("Invalid availability request.")}, status=400)
+    response = JsonResponse({"users": result})
+    response["Cache-Control"] = "private, no-store"
+    return response
 
 
 def calendar_availability(

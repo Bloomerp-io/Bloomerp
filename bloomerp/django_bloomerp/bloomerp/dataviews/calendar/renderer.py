@@ -38,7 +38,6 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
         "calendar_view_mode",
         "calendar_unit",
         "calendar_unit_offset",
-        "calendar_inbox",
         "calendar_color_field",
         "calendar_color_values",
         "calendar_color_preferred",
@@ -55,7 +54,7 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
         start_field = self.get_start_field(self.state.fields, self.options) or date_start
         end_field = self.get_end_field(self.state.fields, self.options) or date_end
         color_field = self._color_field()
-        configured_mode = str(getattr(self.options, "view_mode", "week"))
+        configured_mode = str(getattr(self.options, "calendar_view_mode", "week"))
         view_mode = configured_mode
         if view_mode not in CALENDAR_VIEW_MODES:
             view_mode = "week"
@@ -161,10 +160,12 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
                 [event for event in events if event["all_day"]],
                 [[{"date": day} for day in calendar_days]],
             ).get(0, [])
-        context["calendar_unscheduled_events"] = self._build_unscheduled_events(
-            start_field,
-            end_field,
-        )
+        # A date-only fallback cannot distinguish unscheduled rows from hidden timed ranges.
+        if self.get_start_field(self.state.fields, self.options):
+            context["calendar_unscheduled_events"] = self._build_unscheduled_events(
+                start_field,
+                end_field,
+            )
         return context
 
     @staticmethod
@@ -193,7 +194,7 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
         color_field = renderer._color_field()
         unit = request.GET.get("calendar_unit", "")
         view_mode = request.GET.get("calendar_view_mode") or str(
-            getattr(state.options, "view_mode", "week")
+            getattr(state.options, "calendar_view_mode", "week")
         )
         try:
             offset = max(0, int(request.GET.get("calendar_unit_offset", CALENDAR_PAGE_SIZE)))
@@ -253,7 +254,9 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
         if not isinstance(mode, str) or mode not in CALENDAR_VIEW_MODES:
             return HttpResponse("Invalid calendar view mode", status=400)
         options = dict(state.preference.options or {})
-        options["calendar"] = {**options.get("calendar", {}), "view_mode": mode}
+        calendar_options = dict(options.get("calendar", {}))
+        calendar_options.pop("view_mode", None)
+        options["calendar"] = {**calendar_options, "calendar_view_mode": mode}
         state.preference.options = options
         state.preference.save(update_fields=["options"])
         return JsonResponse({"view_mode": mode})
@@ -613,8 +616,9 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
             if fields is None:
                 continue
             event_start, event_end, exclusive = fields
-            if exclusive and not UserPolicyManager(self.state.request.user).has_access_to_object(
-                obj, BloomerpPermission.VIEW, fields=[event_start.field, event_end.field]
+            if not UserPolicyManager(self.state.request.user).has_access_to_object(
+                obj, BloomerpPermission.VIEW,
+                fields=[event_start.field] + ([event_end.field] if event_end else []),
             ):
                 continue
             start_value = getattr(obj, event_start.field, None)
@@ -675,7 +679,7 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
                 "can_move": can_edit_start and (event_end is None or can_edit_end),
             })
         legend = list(legend_groups.values())
-        if self.options.view_mode in {"day", "week"}:
+        if self.options.calendar_view_mode in {"day", "week"}:
             events = self._split_timed_events(events)
         return events, legend
 
@@ -719,6 +723,10 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
         objects = queryset[:25]
         result = []
         for obj in objects:
+            if not UserPolicyManager(self.state.request.user).has_access_to_object(
+                obj, BloomerpPermission.VIEW, fields=[start_field.field],
+            ):
+                continue
             can_edit_start, can_edit_end = self._edit_permissions_for_object(
                 obj,
                 start_field,

@@ -3,7 +3,7 @@
       hx-post="{{ form_url }}" hx-target="#calendar-event-create-form" hx-swap="outerHTML" hx-push-url="false"
       hx-sync="this:drop"
       x-data="{ allDay: {{ form.all_day.value|yesno:'true,false' }} }"
-      bloomerp-component="calendar-event-editor" data-availability-url="{{ form_url }}"
+      bloomerp-component="calendar-event-editor"
       data-recipient-search-url="{% url 'components_search_email_address' %}?calendar_users=1"
       data-layout="{{ layout|dump_layout_json }}" class="min-w-0{% if data_view_create_id %} -m-3{% endif %}">
     {% csrf_token %}
@@ -30,13 +30,7 @@
         <button type="submit" class="btn btn-primary btn-sm" id="object-crud-container-save-button"><i class="fa fa-save" aria-hidden="true"></i><span data-calendar-submit-label>{% if form.attendees.value or form.attendee_users.value and form.attendee_users.value != '[]' %}{% translate 'Send' %}{% else %}{% translate 'Save' %}{% endif %}</span></button>
     </div>
         </div>
-        <aside bloomerp-component="resizable-div" data-id="calendar-event-availability" data-storage="local" data-start-width="340px" data-min-width="240" data-min-remaining-width="440" class="relative min-w-0 shrink-0 xl:border-l xl:border-gray-200">
-            <div data-resizable-div-panel class="space-y-3 p-6">
-                <div class="flex items-center justify-between gap-2"><span class="text-sm font-medium">{% translate 'Availability' %}</span><span data-availability-date class="text-xs text-gray-500"></span></div>
-                <div data-availability-grid class="max-h-[560px] overflow-auto" role="region" aria-label="{% translate 'Attendee availability' %}"></div>
-                <p class="text-xs text-gray-500">{% translate 'Click a time to schedule an hour. Shaded cells are busy; ? means availability is unavailable.' %}</p>
-            </div>
-        </aside>
+        <c-features.calendar.availability />
     </div>
 
 </form>

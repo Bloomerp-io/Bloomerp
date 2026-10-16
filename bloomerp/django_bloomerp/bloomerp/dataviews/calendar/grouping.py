@@ -32,29 +32,12 @@ def readable_calendar_groups(
     user: AbstractBloomerpUser, model: type[Model]
 ) -> QuerySet:
     """Scope relation labels through the model's normal policy or preference-sharing authority."""
+    resolver = getattr(model, "get_calendar_group_queryset", None)
+    if callable(resolver):
+        return resolver(user)
     if issubclass(model, BasePreference):
         available = PreferenceManager(user).get_available(model)
         identifiers = {item.source_object_id or item.pk for item in available}
-        if model._meta.label_lower == "bloomerp.inbox":
-            from bloomerp.communication.calendar.calendar_access import (
-                resolve_calendar_inbox,
-            )
-            from bloomerp.middleware import current_request
-            from bloomerp.services.calendar_overlays import (
-                calendar_overlay_inboxes,
-                calendar_overlay_selection,
-            )
-
-            request = current_request()
-            inbox_id = request.GET.get("calendar_inbox", "") if request else ""
-            if inbox_id.isdigit():
-                inbox = resolve_calendar_inbox(user, int(inbox_id))
-                selection = calendar_overlay_selection(user, inbox.pk)
-                identifiers.update(
-                    calendar_overlay_inboxes(user, selection).values_list(
-                        "pk", flat=True
-                    )
-                )
         return model.objects.filter(pk__in=identifiers)
     manager = UserPolicyManager(user)
     if not manager.has_global_permission(model, "view"):

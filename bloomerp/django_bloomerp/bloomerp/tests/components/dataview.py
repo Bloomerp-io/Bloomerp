@@ -1531,7 +1531,7 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
         self.assertContains(response, 'draggable="true"', html=False)
         self.assertContains(response, "height: max(", html=False)
 
-    def test_calendar_week_renders_multiday_event_as_one_draggable_range(self):
+    def test_calendar_week_renders_multiday_event_as_one_draggable_range(self) -> None:
         """
         Use case: An all-day event spans several dates in week view.
         Expected result: One draggable bar spans the relevant day columns without duplicate entries.
@@ -1555,7 +1555,7 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
         self.assertContains(response, 'class="calendar-event', count=1, html=False)
         self.assertContains(
             response,
-            '<span class="block truncate font-medium">Release window</span>',
+            '<span class="truncate font-medium">Release window</span>',
             count=1,
             html=True,
         )
