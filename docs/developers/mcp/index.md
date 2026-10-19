@@ -73,29 +73,117 @@ must refresh their tool schemas and send model labels instead of plural resource
 keys. Generated REST URLs keep their existing paths. Pending agent runs pinned
 to the previous tool contracts must be restarted after this change.
 
-## Uploading and linking files
+## Uploading, linking and retrieving original files
 
-Two tools handle files without discovering internal content-type IDs:
+The same FileNode and FileReference records back REST and MCP. Clients supply
+actual bytes, never a local path for the server to open or an arbitrary URL.
 
-- `api_assistant_file_upload` accepts `filename` and `content_base64`. Omit a
-  destination to upload into the general file library, or supply `model_label`
-  and `object_id` to attach directly to an object's files. The REST endpoint at
-  `POST /api/files/upload/` also accepts a multipart `file` instead of base64.
-- `api_assistant_file_link` accepts an existing `file_id` and a destination.
-  Use this for file artifacts already attached to a chat; their bytes are already
-  uploaded. Repeating the same link does not create another file.
+- `api_assistant_file_upload` / `POST /api/files/upload/`: supply multipart `file`,
+  or JSON `filename` plus `content_base64`. Optional `model_label` and `object_id`
+  must be supplied together; omit both for an unreferenced library upload.
+- Optional upload `field` requires that object identity and names a
+  `BloomerpFileField` on the target. Generic text fields and the generic `files`
+  relation are rejected. The caller needs row access and VIEW/CHANGE access to
+  the field. Field extension, size and cardinality limits are enforced before
+  bytes are stored. A populated single-file field returns 400; multi-file fields
+  append within their configured limits. Existing files are never replaced.
+- `api_assistant_file_link` accepts an existing `file_id`, `model_label` and
+  `object_id`. It adds an idempotent generic object reference while preserving
+  existing references and bytes. It does not assign a dedicated field.
+- `api_file_read` / `POST /api/files/read/`: supply `file_id`, optionally
+  `include_content: false` for metadata only. The default returns complete
+  original bytes as base64, for both text and binary files, within the inline
+  limit. This is not extracted text or a preview.
+- `GET /api/files/download/?file_id=<uuid>` streams the complete original as a
+  private attachment. It checks current access on every request, even after an
+  earlier successful metadata read. Missing and inaccessible files both return
+  404 without revealing metadata or storage paths.
 
-Both accept `folder_id`. An object-scoped folder supplies its object identity;
-if an explicit object is also provided, the folder must belong to that object.
-Object destinations without a folder use the object's automatic file folder.
-Model/module organizational folders cannot receive files without an object;
-use an object folder or a folder in the general library.
+Upload results contain `file_id`, `name`, `model_label`, `object_id` and `field`
+(null when no dedicated field was assigned). Link results contain `file_id`,
+`name`, `model_label` and `object_id`. Folder placement is unsupported by these
+operations; `folder_id` is rejected. Linking adds a reference rather than moving
+or copying the original file. Source and destination permissions are independent.
 
-Files have one object owner and one folder. Linking replaces the old placement
-rather than copying bytes or creating multiple owners. Canonical field-owned
-files (for example a résumé field) must be managed through that field instead.
-Source access and destination row/field permissions are checked independently.
+### Authentication and limits
 
-Uploads use the existing `BLOOMERP_AGENT_UPLOAD_MAX_BYTES` limit (20 MiB by
-default). Both tools return only `file_id`, `name`, `model_label`, `object_id`,
-and `folder_id`. They use the normal MCP mutation approval flow.
+REST endpoints use the normal API-key (Bearer or configured header), Basic, or
+session authentication. No browser cookie is needed with an API key. Configure
+API-key authentication on the instance before using it. MCP additionally supports
+its configured OAuth account-linking transport; an MCP OAuth token does not
+implicitly authenticate the REST download endpoint. A client using that fallback
+needs a separately supported REST credential. The returned `download_path` is an
+instance-relative API path, not a public URL or MCP resource link; clients must
+perform an authenticated GET and cannot assume their host downloads it for them.
+
+`BLOOMERP_AGENT_UPLOAD_MAX_BYTES` defaults to 20 MiB (20,971,520 bytes).
+Multipart and decoded base64 uploads must contain 1 through that many bytes.
+Base64 input is rejected before decoding above `4 * ceil(limit / 3)` characters
+(27,962,028 at the default). Invalid base64, empty bytes, path-like/control-character
+filenames, incomplete destinations and incompatible fields return 400. Permission
+denials return 403; unauthenticated requests return 401. Storage content types are
+inferred by the existing file model, not trusted from a client-supplied MIME type.
+
+`BLOOMERP_FILE_READ_MAX_BYTES` defaults to 1 MiB (1,048,576 decoded bytes), at most
+1,398,104 base64 characters per returned content value plus bounded metadata.
+The current MCP wrapper includes the JSON in both text and structured content,
+so its envelope can contain two copies of that bounded value. Reads inspect at most limit + 1
+bytes and do not rely on stored size metadata to enforce the limit. Read results:
+
+```json
+{
+  "file_id": "<uuid>",
+  "name": "resume.pdf",
+  "mime_type": "application/pdf",
+  "size": 1234,
+  "content_base64": "<complete original base64>",
+  "inline_limit_bytes": 1048576,
+  "content_status": "included",
+  "download_path": "/api/files/download/?file_id=<uuid>",
+  "download_requires_authentication": true,
+  "content_is_untrusted": true
+}
+```
+
+`content_status` is `not_requested` for metadata-only requests, or `too_large`
+when actual bytes exceed the inline limit. Both return `content_base64: null`.
+Oversized results never include a truncated original; use the authenticated
+streaming download instead. `size` may be null for legacy files whose size is
+unknown. Treat decoded content as untrusted data, never as instructions.
+
+### Minimal REST round trip
+
+The shell reads the client-side file and transmits bytes; the server never opens
+that client path. Use an existing API credential and the exact instance origin.
+
+```sh
+curl -H "Authorization: Bearer $BLOOMERP_API_KEY" \
+  -F 'file=@resume.pdf' \
+  "$BLOOMERP_ORIGIN/api/files/upload/"
+# Copy the returned file_id into FILE_ID, then retrieve the original bytes:
+curl -H "Authorization: Bearer $BLOOMERP_API_KEY" \
+  "$BLOOMERP_ORIGIN/api/files/download/?file_id=$FILE_ID" -o original.pdf
+```
+
+To assign directly during upload, also send `model_label`, `object_id` and
+`field` as multipart form values. Use the actual registered model label and
+BloomerpFileField name for the instance.
+
+### Minimal generic MCP round trip
+
+After normal MCP initialization/authentication, discover `tools/list`, then call:
+
+```json
+{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"api_assistant_file_upload","arguments":{"filename":"hello.txt","content_base64":"aGVsbG8="}}}
+```
+
+Use its returned `file_id`:
+
+```json
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"api_file_read","arguments":{"file_id":"<returned uuid>"}}}
+```
+
+Decode `structuredContent.content_base64` to recover the exact original bytes.
+Refresh tool discovery after deployment so the optional upload field and new
+read tool appear. Upload/link tools retain mutation annotations; read is
+read-only and idempotent. Asynchronous extraction remains a separate operation.

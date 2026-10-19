@@ -14,7 +14,7 @@ class FileDestinationSerializer(serializers.Serializer):
     """Accept an optional, complete object identity."""
 
     model_label = serializers.CharField(required=False, max_length=255)
-    object_id = serializers.CharField(required=False, max_length=36)
+    object_id = serializers.CharField(required=False, max_length=100)
 
     def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
         """Require complete object identities before any upload or database mutation."""
@@ -28,6 +28,7 @@ class FileDestinationSerializer(serializers.Serializer):
 class UploadFileSerializer(FileDestinationSerializer):
     """Accept multipart bytes or explicitly named base64 content for JSON MCP clients."""
 
+    field = serializers.CharField(required=False, max_length=255)
     file = serializers.FileField(required=False, max_length=100)
     filename = serializers.CharField(required=False, max_length=100)
     content_base64 = serializers.CharField(required=False, trim_whitespace=False)
@@ -39,10 +40,25 @@ class UploadFileSerializer(FileDestinationSerializer):
                 {"folder_id": "Folder placement is no longer supported for uploads"}
             )
         attrs = super().validate(attrs)
+        if attrs.get("field") and not attrs.get("model_label"):
+            raise serializers.ValidationError(
+                "field requires model_label and object_id"
+            )
         if ("file" in attrs) == ("content_base64" in attrs):
             raise serializers.ValidationError("Provide either file or content_base64")
         limit = getattr(settings, "BLOOMERP_AGENT_UPLOAD_MAX_BYTES", 20 * 1024 * 1024)
         name = attrs.pop("filename", None)
+        if name is None and "file" in attrs:
+            name = attrs["file"].name
+        if name and (
+            name in {".", ".."}
+            or PurePosixPath(name).name != name
+            or "\\" in name
+            or any(ord(character) < 32 or ord(character) == 127 for character in name)
+        ):
+            raise serializers.ValidationError(
+                "filename must be a basename without directory components or control characters"
+            )
         if "content_base64" in attrs:
             encoded = attrs.pop("content_base64")
             if not name:
@@ -60,10 +76,6 @@ class UploadFileSerializer(FileDestinationSerializer):
             attrs["file"] = SimpleUploadedFile(name, data)
         upload = attrs["file"]
         name = name or upload.name
-        if name in {".", ".."} or PurePosixPath(name).name != name or "\\" in name:
-            raise serializers.ValidationError(
-                "filename must be a basename without directory components"
-            )
         if not upload.size or upload.size > limit:
             raise serializers.ValidationError(
                 f"File must be between 1 and {limit} bytes"
@@ -95,6 +107,7 @@ class UploadedFilePlacementSerializer(serializers.Serializer):
     name = serializers.CharField()
     model_label = serializers.CharField(allow_null=True)
     object_id = serializers.CharField(allow_null=True)
+    field = serializers.CharField(allow_null=True)
 
 
 class FilePlacementSerializer(serializers.Serializer):
