@@ -1,4 +1,5 @@
 import json
+from copy import copy
 from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
@@ -34,7 +35,7 @@ class CreateObjectComponentView(BloomerpCreateView):
     htmx_include_addendum = False
 
     def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
-        """Render model creation in its caller's modal, preserving custom views and initial GET values."""
+        """Render creation in its caller's modal, using custom views' canonical paths and initial values."""
         self.content_type = get_object_or_404(ContentType, id=kwargs["content_type_id"])
         self.model = self.content_type.model_class()
         if self.model is None:
@@ -51,11 +52,12 @@ class CreateObjectComponentView(BloomerpCreateView):
                     callback = view_class.as_view(**{
                         **callback.view_initkwargs, "htmx_include_addendum": False,
                     })
-                request._bloomerp_custom_create = True
-                try:
-                    return callback(request, *match.args, **match.kwargs)
-                finally:
-                    del request._bloomerp_custom_create
+                custom_request = copy(request)
+                custom_request.path = url
+                custom_request.path_info = url
+                custom_request.resolver_match = match
+                custom_request._bloomerp_custom_create = True
+                return callback(custom_request, *match.args, **match.kwargs)
             query = request.GET.urlencode()
             return HttpResponseClientRedirect(f"{url}?{query}" if query else url)
         return super().dispatch(request, *args, **kwargs)

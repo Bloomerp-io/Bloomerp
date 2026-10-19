@@ -7,8 +7,6 @@ from uuid import UUID
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import models
-from django.http import HttpRequest
-from django.urls import reverse
 
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.permissions.manager import UserPolicyManager
@@ -16,35 +14,6 @@ from bloomerp.permissions.manager import UserPolicyManager
 if TYPE_CHECKING:
     from bloomerp.models.communication.inbox.inbox import Inbox
     from bloomerp.models.communication.inbox.inbox_item import InboxItem
-
-
-def scheduling_action_url(event: models.Model) -> str:
-    """Resolve the modal endpoint for an existing calendar event."""
-    return reverse("components_calendar_schedule", kwargs={"event_id": event.pk})
-
-
-def can_schedule_event(request: HttpRequest, event: models.Model) -> bool:
-    """Show the organizer action only when event read and scheduling writes are allowed."""
-    from bloomerp.models.communication.calendar import CalendarEvent
-
-    from .outgoing import require_event_access
-
-    if not isinstance(event, CalendarEvent) or not event.organizing_inbox_id:
-        return False
-    try:
-        require_event_access(
-            request.user,
-            event,
-            write_fields=[
-                "sequence",
-                "scheduling_dtstamp",
-                "cancelled",
-                "invitation_sent_at",
-            ],
-        )
-    except PermissionDenied:
-        return False
-    return True
 
 
 def invitation_context(

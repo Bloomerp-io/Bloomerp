@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 @router.register(
     path="delete",
-    name="Delete {model}",
+    name="Delete",
     url_name="delete",
     description="Delete an object from {model}",
     route_type="detail",

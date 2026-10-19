@@ -28,17 +28,20 @@ from bloomerp.models.communication.calendar import CalendarEvent
 from bloomerp.permissions.access_tokens import request_permission_token
 from bloomerp.router import router
 from bloomerp.views.base import BaseBloomerpView
-from bloomerp.views.communication.calendar.create import CreateCalendarEventView
+from bloomerp.views.communication.calendar.create import CalendarEventMixin
+from bloomerp.views.generic.detail.base import BaseBloomerpDetailView
 
 
 @router.register(
     path="update/",
     url_name="update",
+    name="Update",
+    description="Update a calendar invite",
     route_type="detail",
     models=[CalendarEvent],
     override=True,
 )
-class CalendarEventUpdateView(CreateCalendarEventView):
+class CalendarEventUpdateView(CalendarEventMixin, BaseBloomerpDetailView, FormView):
     """Reuse creation's layout, validation, availability, and submission handling for edits."""
 
     def get_object(self) -> CalendarEvent:

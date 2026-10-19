@@ -1,1 +1,1 @@
-"""Secured calendar scheduling and attendee response components."""
+"""Calendar attendee response components."""

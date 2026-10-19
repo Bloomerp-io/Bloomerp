@@ -31,17 +31,8 @@ from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.layout_form_mixin import LayoutFormMixin
 
 
-@router.register(
-    path="create/",
-    route_type="model",
-    url_name="add",
-    name="Create event",
-    override=True,
-    models=[CalendarEvent],
-)
-class CreateCalendarEventView(LayoutFormMixin, BaseBloomerpView, FormView):
-    """Create events with the same modal completion event as generic dataview creation."""
-
+class CalendarEventMixin(LayoutFormMixin):
+    
     model = CalendarEvent
     template_name = "views/communication/calendar/create.html"
     form_class = CalendarEventCreateForm
@@ -251,7 +242,7 @@ class CreateCalendarEventView(LayoutFormMixin, BaseBloomerpView, FormView):
                 )
                 notice = {
                     "text": _(
-                        "Event saved, but invitations could not be sent. Retry from the event's scheduling action."
+                        "Event saved, but invitations could not be sent. Edit the event to retry sending."
                     ),
                     "type": "warning",
                 }
@@ -282,3 +273,16 @@ class CreateCalendarEventView(LayoutFormMixin, BaseBloomerpView, FormView):
             response["HX-Refresh"] = "true"
             return response
         return redirect(get_list_view_url(CalendarEvent))
+    
+
+@router.register(
+    path="create/",
+    route_type="model",
+    url_name="add",
+    name="Create event",
+    override=True,
+    models=[CalendarEvent],
+)
+class CreateCalendarEventView(CalendarEventMixin, BaseBloomerpView, FormView):
+    """Create events with the same modal completion event as generic dataview creation."""
+    pass

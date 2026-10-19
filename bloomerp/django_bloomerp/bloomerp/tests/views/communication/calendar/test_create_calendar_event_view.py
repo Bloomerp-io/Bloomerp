@@ -7,6 +7,7 @@ from typing import Any
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
+from django.contrib.auth import get_user_model
 from django.http import HttpResponse
 from django.test import override_settings
 from django.utils import timezone
@@ -15,6 +16,8 @@ from bloomerp.models.communication.calendar import CalendarEvent
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.models.communication.inbox.inbox import Inbox
 from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
+from bloomerp.permissions.definition import RowPolicyRuleContent
+from bloomerp.permissions.manager import PolicyManager
 from bloomerp.tests.base import (
     BloomerpModelViewTestCase,
     ExpectedResult,
@@ -53,6 +56,17 @@ class TestCreateCalendarEventView(InboxCalendarFixtures, BloomerpModelViewTestCa
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Describe default initialization, denied access, timed/all-day creation, and invalid input."""
         return [
+            RequestScenario(
+                name="Event creators can add email and internal guests without participant add grants",
+                method="POST",
+                user=self.owner,
+                prepare=self.grant_event_and_user_access,
+                data=self.event_data(
+                    attendees="internal@example.com, external@example.com",
+                    attendee_users=json.dumps([str(self.owner.pk)]),
+                ),
+                expected=ExpectedResult(status_code=204, response_validators=self.internal_saved),
+            ),
             RequestScenario(
                 name="Delivery failure keeps the event and reports a retryable warning",
                 method="POST",
@@ -384,6 +398,21 @@ class TestCreateCalendarEventView(InboxCalendarFixtures, BloomerpModelViewTestCa
             and event.start.astimezone(ZoneInfo("Europe/Brussels")).hour == 10
         )
 
+    def grant_event_and_user_access(self, scenario: RequestScenario) -> None:
+        """Grant event creation and user discovery without any participant model grants."""
+        PolicyManager.create_policy(
+            CalendarEvent,
+            global_permissions=["add"],
+            field_permissions={"__all__": ["add"]},
+            row_permissions=[RowPolicyRuleContent(permissions=["add"], conditions=[])],
+        ).assign_user(self.owner)
+        PolicyManager.create_policy(
+            get_user_model(),
+            global_permissions=["view"],
+            field_permissions={"__all__": ["view"]},
+            row_permissions=[RowPolicyRuleContent(permissions=["view"], conditions=[])],
+        ).assign_user(self.owner)
+
     def internal_saved(self, response: HttpResponse) -> bool:
         """Place one shared event in the recipient calendar and preserve user identity without emailing."""
         event = CalendarEvent.objects.get(title="Composer test event")
@@ -465,6 +494,7 @@ class TestCreateCalendarEventView(InboxCalendarFixtures, BloomerpModelViewTestCa
         return (
             event.invitation_sent_at is None
             and detail["messages"][0]["type"] == "warning"
+            and "Edit the event to retry sending." in detail["messages"][0]["text"]
         )
 
     def test_inbox_token_survives_dataview_create_and_post(self) -> None:

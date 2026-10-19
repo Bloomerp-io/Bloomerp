@@ -184,16 +184,6 @@ class CalendarEventCreateForm(forms.Form):
         if not {"conference_session", "location"} <= self.writable_fields:
             del self.fields["create_conference"]
         manager = UserPolicyManager(user)
-        participant_fields = set(
-            manager.get_accessible_fields(CalendarEventParticipant, "add").values_list(
-                "field", flat=True
-            )
-        )
-        if (
-            not manager.has_global_permission(CalendarEventParticipant, "add")
-            or not {"event", "email"} <= participant_fields
-        ):
-            del self.fields["attendees"]
         if instance is not None and "attendees" in self.fields and any(
             not manager.has_access_to_object(participant, "view", fields=["email", "user"])
             for participant in instance.participants.all()
@@ -285,14 +275,7 @@ class CalendarEventCreateForm(forms.Form):
         except (ValueError, TypeError):
             raise ValidationError(_("Invalid selected users.")) from None
         manager = UserPolicyManager(self.user)
-        participant_fields = set(
-            manager.get_accessible_fields(CalendarEventParticipant, "add").values_list(
-                "field", flat=True
-            )
-        )
-        if identifiers and (
-            "attendees" not in self.fields or "user" not in participant_fields
-        ):
+        if identifiers and "attendees" not in self.fields:
             raise ValidationError(_("You cannot add internal attendees."))
         model = get_user_model()
         try:

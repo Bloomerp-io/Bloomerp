@@ -41,8 +41,8 @@ class CalendarCreationPolicyTests(TestCase):
         PolicyManager.assign(policy, self.user)
         self.assertFalse(can_create_calendar_event(self.user))
 
-    def test_timed_field_grants_do_not_grant_all_day_or_guest_creation(self) -> None:
-        """Offer only the permitted representation and omit unrelated optional and guest writes."""
+    def test_timed_field_grants_allow_guests_without_participant_grants(self) -> None:
+        """Keep participants available while respecting event date and optional field grants."""
         policy = PolicyManager.create_policy(
             CalendarEvent,
             global_permissions=["add"],
@@ -57,6 +57,6 @@ class CalendarCreationPolicyTests(TestCase):
         self.assertTrue(form.can_create_timed)
         self.assertFalse(form.can_create_all_day)
         self.assertTrue(form.fields["all_day"].disabled)
-        self.assertNotIn("attendees", form.fields)
+        self.assertIn("attendees", form.fields)
         self.assertNotIn("content", form.fields)
         self.assertNotIn("location", form.fields)

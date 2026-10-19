@@ -3,9 +3,12 @@ import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from bs4 import BeautifulSoup
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.urls import reverse
 
+from bloomerp.models.access_control.policy import Policy
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.communication.calendar import CalendarEvent
 from bloomerp.models.communication.inbox.inbox import Inbox
@@ -14,6 +17,7 @@ from bloomerp.models.users.user_object_layout_preference import (
     UserObjectLayoutPreference,
 )
 from bloomerp.services.preference_services import PreferenceManager
+from bloomerp.utils.models import get_create_view_url
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
@@ -25,6 +29,37 @@ class TestCreateObjectComponentViewComponent(BloomerpComponentTestCase):
     """Tests class `CreateObjectComponentView` from `bloomerp/components/objects/crud/create_update.py`."""
 
     view_name = 'components_create_object'
+
+    def test_policy_wizard_advances_after_opening_from_add(self) -> None:
+        """Follow the modal wizard's rendered form URLs without restarting at its component entrypoint."""
+        self.client.force_login(self.admin_user)
+        policy_type = ContentType.objects.get_for_model(Policy)
+        target_type = ContentType.objects.get_for_model(Initiative)
+        response = self.client.get(
+            reverse("components_create_object", kwargs={"content_type_id": policy_type.pk}),
+            {"data_view_create_id": "policy-list"},
+            HTTP_HX_REQUEST="true", HTTP_HX_TARGET="create-object-modal-body",
+        )
+        self.assertEqual(response.status_code, 200)
+        form = BeautifulSoup(response.content, "html.parser").select_one("#wizard-root form")
+        self.assertIsNotNone(form)
+        self.assertEqual(form["hx-post"], reverse(get_create_view_url(Policy)) + "?step=0")
+        response = self.client.post(
+            form["hx-post"], {"content_type": target_type.pk, "_wizard_action": "next"},
+            HTTP_HX_REQUEST="true", HTTP_HX_TARGET="wizard-root",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("HX-Redirect", response)
+        self.assertEqual(response.context["step_index"], 1)
+        form = BeautifulSoup(response.content, "html.parser").select_one("#wizard-root form")
+        response = self.client.post(
+            form["hx-post"], {"global_permissions": ["view_initiative"], "_wizard_action": "next"},
+            HTTP_HX_REQUEST="true", HTTP_HX_TARGET="wizard-root",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("HX-Redirect", response)
+        self.assertEqual(response.context["step_index"], 2)
+        self.assertContains(response, 'bloomerp-component="unified-filter-container"')
 
     def test_calendar_custom_composer_uses_the_shared_modal_component(self) -> None:
         """Dispatch a real clicked calendar cell to the composer without losing GET values or caller ID."""

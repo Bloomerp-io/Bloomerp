@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -20,7 +20,6 @@ from bloomerp.models.definition import (
     DataviewActionContext,
     DataviewHTMLAction,
     ModelViewSettings,
-    ObjectModalAction,
     get_default_dataview_actions,
 )
 from bloomerp.modules.communication import CommunicationModule
@@ -50,20 +49,6 @@ def back_to_inbox_visible(context: DataviewActionContext) -> bool:
             and context.request.GET.get("calendar_color_values")
         )
     )
-
-
-def calendar_scheduling_url(event: models.Model) -> str:
-    """Resolve the scheduling modal after model discovery has completed."""
-    from bloomerp.communication.calendar.access import scheduling_action_url
-
-    return scheduling_action_url(event)
-
-
-def calendar_scheduling_visible(request: HttpRequest, event: models.Model) -> bool:
-    """Apply calendar permissions before rendering the scheduling action."""
-    from bloomerp.communication.calendar.access import can_schedule_event
-
-    return can_schedule_event(request, event)
 
 
 def calendar_overlay_visible(context: DataviewActionContext) -> bool:
@@ -141,15 +126,7 @@ class CalendarEvent(CalendarModel):
             ],
             dataview_actions=calendar_event_dataview_actions(),
         ),
-        object_actions=[
-            ObjectModalAction(
-                id="calendar-scheduling",
-                label="Send invitation / update or cancel",
-                endpoint=calendar_scheduling_url,
-                should_render_func=calendar_scheduling_visible,
-                modal_title="Calendar scheduling",
-            ),
-        ],
+        object_actions=[],
     )
 
     calendar_uid = models.CharField(
