@@ -58,6 +58,11 @@ class TestCalendarEventUpdateView(InboxCalendarFixtures, BloomerpDetailViewTestC
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Cover prefilled fields, successful updates, invalid input, and denied edits."""
         return [
+            RequestScenario(name="Staff event editors can add guests without participant read grants", user=self.owner,
+                method="POST", prepare=self.prepare_external_guests,
+                data=self.event_data(attendees="guest@example.com, member@example.com, invitee@example.com, new@example.com", attendee_users="[]"),
+                headers={"HX-Request": "true"},
+                expected=ExpectedResult(status_code=204, response_validators=self.guest_added)),
             RequestScenario(name="Calendar editor starts with the object sidebar collapsed", user=self.actor,
                 expected=ExpectedResult(response_validators=self.sidebar_starts_collapsed)),
             RequestScenario(name="Invited attendees cannot open the event editor without edit grants", user=self.outsider,
@@ -94,6 +99,15 @@ class TestCalendarEventUpdateView(InboxCalendarFixtures, BloomerpDetailViewTestC
             and panel.get("data-toggle-shortcut") == "mod+shift+y"
         )
 
+    def prepare_external_guests(self, scenario: RequestScenario) -> None:
+        """Grant event editing while keeping participant permissions absent and user coupling out of scope."""
+        self.grant_change(scenario)
+        self.timed.participants.update(user=None)
+
+    def guest_added(self, response: HttpResponse) -> bool:
+        """Persist a new guest and retain every existing participant under a regular staff account."""
+        return self.timed.participants.count() == 4 and self.timed.participants.filter(email="new@example.com").exists()
+
     def grant_change(self, scenario: RequestScenario) -> None:
         """Grant readable editable event fields without granting event or participant creation."""
         PolicyManager.create_policy(
@@ -113,10 +127,12 @@ class TestCalendarEventUpdateView(InboxCalendarFixtures, BloomerpDetailViewTestC
             and response.context["form_url"] == self.timed.get_absolute_url()
             and b'calendar-event-editor' in response.content
             and b'calendar-availability' in response.content
+            and b'id="object-crud-container-buttons"' in response.content
+            and b'bloomerp-close-modal="create-object-modal"' not in response.content
         )
 
     def prefilled_without_guests(self, response: HttpResponse) -> bool:
-        """Keep unreadable participants out of the update form without requiring add access."""
+        """Keep unreadable linked users out of the update form without requiring add access."""
         return response.context["form"].initial["title"] == "Placed timed meeting" and "attendees" not in response.context["form"].fields
 
     def updated(self, response: HttpResponse) -> bool:

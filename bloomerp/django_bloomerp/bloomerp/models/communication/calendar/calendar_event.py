@@ -20,6 +20,9 @@ from bloomerp.models.definition import (
     DataviewActionContext,
     DataviewHTMLAction,
     DataviewModalAction,
+    DetailTab,
+    DetailTabsConfiguration,
+    DetailViewSettings,
     ModelViewSettings,
     ObjectModalAction,
     get_default_dataview_actions,
@@ -129,6 +132,16 @@ class CalendarEvent(CalendarModel):
 
     bloomerp_config = BloomerpModelConfig(
         module=CommunicationModule,
+        detail_view_settings=DetailViewSettings(
+            tab_configurations=[
+                DetailTabsConfiguration(
+                    tabs=[
+                        DetailTab(name="Update", url_name="calendar_events_detail_update"),
+                        DetailTab(name="Delete", url_name="calendar_events_detail_delete"),
+                    ],
+                ),
+            ],
+        ),
         model_view_settings=ModelViewSettings(
             default_dataviews=[
                 CalendarDataView(

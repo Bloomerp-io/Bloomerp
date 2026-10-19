@@ -53,6 +53,7 @@ class CalendarEventMixin(LayoutFormMixin):
         form = self.get_form()
         sections = [
             (None, 2, [("inbox", 1), ("sender", 1)]),
+            (None, 1, [("send_invitations", 1)]),
             (None, 1, [("title", 1), ("attendees", 1)]),
             (
                 _("Timing"),
@@ -73,7 +74,6 @@ class CalendarEventMixin(LayoutFormMixin):
                     ("location", 1),
                     ("create_conference", 1),
                     ("content", 1),
-                    ("send_invitations", 1),
                 ],
             ),
         ]
@@ -98,10 +98,13 @@ class CalendarEventMixin(LayoutFormMixin):
         return str(self.get_form()[str(item.id)].label)
 
     def render_extra_attrs(self, item: LayoutItem) -> dict[str, Any]:
-        """Keep timed controls conditional without customizing shared layout templates."""
+        """Condition timing and email invitation controls on the composer's current selections."""
         attrs = {**super().render_extra_attrs(item), "data-max-cols": "6"}
         if item.id in {"start_time", "end_time", "event_timezone"}:
             attrs["x-show"] = "!allDay"
+        if item.id == "send_invitations":
+            attrs["x-show"] = "Boolean(senderSelected)"
+            attrs["x-cloak"] = ""
         return attrs
 
     def has_permission(self) -> bool:

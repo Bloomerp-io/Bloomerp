@@ -184,11 +184,6 @@ class CalendarEventCreateForm(forms.Form):
         if not {"conference_session", "location"} <= self.writable_fields:
             del self.fields["create_conference"]
         manager = UserPolicyManager(user)
-        if instance is not None and "attendees" in self.fields and any(
-            not manager.has_access_to_object(participant, "view", fields=["email", "user"])
-            for participant in instance.participants.all()
-        ):
-            del self.fields["attendees"]
         if instance is not None and "attendees" in self.fields:
             participants = list(instance.participants.select_related("user"))
             if any(
@@ -233,6 +228,8 @@ class CalendarEventCreateForm(forms.Form):
             }
         )
         self.fields["all_day"].widget.attrs["x-model"] = "allDay"
+        self.fields["sender"].widget.attrs["x-model"] = "senderSelected"
+        self.fields["send_invitations"].widget.attrs["x-bind:disabled"] = "!senderSelected"
         for name in ("start_time", "end_time"):
             self.fields[name].widget.attrs[":disabled"] = "allDay"
         for name, placeholder in (

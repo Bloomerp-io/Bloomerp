@@ -52,7 +52,7 @@ function fixture(noEmail: boolean = false, modal: boolean = false): Fixture {
         <input type="hidden" name="_permission_token" value="scoped-calendar-token">
         </div></div></div></div></div>
         <div bloomerp-component="calendar-availability" data-url="/components/calendar/availability/"><span data-availability-date></span><div data-availability-grid></div></div>
-        <button type="submit" id="object-crud-container-save-button"><i class="fa fa-save"></i><span data-calendar-submit-label>Save</span></button></form>`,
+        <div id="object-crud-container-buttons" class="hidden"><button type="submit" id="object-crud-container-save-button"><i class="fa fa-save"></i><span data-calendar-submit-label>Save</span></button></div></form>`,
         { runScripts: "outside-only", pretendToBeVisual: true, url: "https://app.example/events/create/" });
     const w = dom.window as ComposerWindow;
     if (modal) {
@@ -214,6 +214,19 @@ async function participantRefresh(): Promise<void> {
 }
 
 test("participant changes select Save or Send", submitLabel);
+
+/** Reveal the standard top save controls when recipient chips modify the form. */
+function saveAppearsAfterChanges(): void {
+    const f = fixture();
+    try {
+        const controls = f.form.querySelector<HTMLElement>("#object-crud-container-buttons")!;
+        assert.equal(controls.classList.contains("hidden"), true);
+        f.form.querySelector<HTMLButtonElement>('[data-recipient-chip] button')!.click();
+        assert.equal(controls.classList.contains("hidden"), false);
+    } finally { f.dom.window.close(); }
+}
+
+test("calendar save controls appear after form changes", saveAppearsAfterChanges);
 test("calendar saves reuse CRUD spinner and duplicate-submit protection", saveFeedback);
 test("participant changes refresh availability with the scoped token", participantRefresh);
 

@@ -5,9 +5,12 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from django.core.exceptions import ValidationError
+from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError
+from django.urls import reverse
 
 from bloomerp.models.communication.calendar import CalendarEvent
+from bloomerp.models.users.user_detail_view_tabs_preference import UserDetailViewTabsPreference
 from bloomerp.tests.base import (
     BloomerpModelTestCase,
     ExpectedModelException,
@@ -20,9 +23,28 @@ from .fixtures import CalendarFixtures
 class TestCalendarEventModel(CalendarFixtures, BloomerpModelTestCase):
     model = CalendarEvent
 
+    def has_default_editor_tabs(self, event: CalendarEvent) -> bool:
+        """Materialize the model's default tabs and resolve both configured detail routes."""
+        preference = UserDetailViewTabsPreference.create_default_for_user(
+            self.user, content_type_id=ContentType.objects.get_for_model(CalendarEvent).pk,
+        )
+        items = list(preference.items.order_by("position"))
+        return [item.name for item in items] == ["Update", "Delete"] and [
+            item.url.replace("{{pk}}", str(event.pk)) for item in items
+        ] == [
+            reverse("calendar_events_detail_update", kwargs={"pk": event.pk}),
+            reverse("calendar_events_detail_delete", kwargs={"pk": event.pk}),
+        ]
+
     def get_test_scenarios(self) -> list[ModelScenario[CalendarEvent]]:
         """Cover shared calendars and invalid date or booking-origin combinations."""
         scenarios = [
+            ModelScenario(
+                name="Calendar event defaults contain only Update and Delete tabs",
+                preparation=self.prepare,
+                create_args=self.event_args,
+                create_validators=self.has_default_editor_tabs,
+            ),
             ModelScenario(
                 name="Only linked users make an event internal",
                 preparation=self.prepare,

@@ -7,6 +7,7 @@ from typing import Any
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
+from bs4 import BeautifulSoup
 from django.contrib.auth import get_user_model
 from django.http import HttpResponse
 from django.test import override_settings
@@ -375,8 +376,9 @@ class TestCreateCalendarEventView(InboxCalendarFixtures, BloomerpModelViewTestCa
         return event.content == "" and event.location == ""
 
     def composer_controls(self, response: HttpResponse) -> bool:
-        """Require shared CRUD field layouts alongside the custom editor and availability pane."""
+        """Require shared composer controls and sender-dependent invitations in the second row."""
         html = response.content.decode()
+        rows = BeautifulSoup(html, "html.parser").select("#calendar-event-create-form [data-layout-row]")
         return (
             'bloomerp-component="bloomerp-text-editor"' in html
             and 'bloomerp-component="detail-view-value"' in html
@@ -388,6 +390,10 @@ class TestCreateCalendarEventView(InboxCalendarFixtures, BloomerpModelViewTestCa
             and 'name="event_timezone"' in html
             and "Add an event to your calendar." not in html
             and 'name="organizer_email"' not in html
+            and len(rows) > 1
+            and rows[1].select_one('[data-layout-item-id="send_invitations"][x-show="Boolean(senderSelected)"]') is not None
+            and 'x-model="senderSelected"' in html
+            and 'x-bind:disabled="!senderSelected"' in html
         )
 
     def timezone_saved(self, response: HttpResponse) -> bool:
