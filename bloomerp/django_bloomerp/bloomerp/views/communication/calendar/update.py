@@ -62,4 +62,5 @@ class CalendarEventUpdateView(CalendarEventMixin, BaseBloomerpDetailView, FormVi
         context = super().get_context_data(**kwargs)
         context["form_url"] = self.get_object().get_absolute_url()
         context["detail_sidebar_force_close"] = True
+        context["can_cancel_calendar_event"] = bool(self.get_object().organizing_inbox_id and not self.get_object().cancelled)
         return context

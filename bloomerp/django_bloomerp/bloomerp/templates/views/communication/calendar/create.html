@@ -11,6 +11,11 @@
     {% if data_view_create_id %}<input type="hidden" name="data_view_create_id" value="{{ data_view_create_id }}">{% endif %}
     <div class="flex flex-col xl:flex-row" data-resizable-div-container>
         <div class="flex min-w-0 flex-1 flex-col">
+        {% if can_cancel_calendar_event %}
+        <div class="flex justify-end px-6 pt-4">
+            <button type="button" hx-post="{% url 'calendar_events_detail_cancel' pk=object.pk %}" hx-include="closest form" hx-sync="closest form:drop" hx-disabled-elt="this" class="btn btn-danger btn-sm">{% translate 'Cancel event' %}</button>
+        </div>
+        {% endif %}
         <div class="hidden flex items-center justify-end gap-2 px-6 py-4" id="object-crud-container-buttons">
             <c-ui.shortcut_tooltip shortcut="mod+s" action="click" position="bottom">
             <button type="submit" class="btn btn-primary btn-sm" id="object-crud-container-save-button"><i class="fa fa-save" aria-hidden="true"></i><span data-calendar-submit-label>{% if form.attendees.value or form.attendee_users.value and form.attendee_users.value != '[]' %}{% translate 'Send' %}{% else %}{% translate 'Save' %}{% endif %}</span></button>

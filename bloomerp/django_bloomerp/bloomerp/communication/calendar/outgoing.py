@@ -109,13 +109,31 @@ def _send(
             close()
 
 
+def calendar_sender(user: AbstractBloomerpUser, event: CalendarEvent) -> EmailAccount:
+    """Resolve the original sending identity without trusting changed composer values."""
+    accounts = accessible_email_accounts(user).filter(email_address__iexact=event.organizer_email, status="active")
+    for account in accounts:
+        if InboxFolder.objects.filter(
+            inbox_id=event.organizing_inbox_id, type="email", related_object_id=str(account.pk),
+        ).exists():
+            return account
+    raise ValidationError("The original sending account is required to cancel this invitation.")
+
+
+def send_removed_calendar_cancellations(*, user: AbstractBloomerpUser, event_id: UUID) -> None:
+    """Deliver pending guest removals independently of general invitation-update emails."""
+    event = CalendarEvent.objects.get(pk=event_id)
+    account = calendar_sender(user, event)
+    send_calendar_request(user=user, event_id=event.pk, email_account_id=account.pk, cancel_removed_only=True)
+
+
 def _attendees(
-    user: AbstractBloomerpUser, event: CalendarEvent
+    user: AbstractBloomerpUser, event: CalendarEvent, *, include_cancelled: bool = False,
 ) -> list[CalendarEventParticipant]:
-    """Read only explicitly invited attendees and preserve their invited email identity."""
+    """Read invited identities, optionally including removed guests awaiting cancellation delivery."""
     manager = UserPolicyManager(user)
     attendees = list(
-        event.participants.filter(invitation_cancelled=False).select_related("user")
+        (event.participants.all() if include_cancelled else event.participants.filter(invitation_cancelled=False)).select_related("user")
     )
     for participant in attendees:
         if not manager.has_access_to_object(
@@ -151,12 +169,14 @@ def send_calendar_request(
     event_id: UUID,
     email_account_id: UUID,
     cancel: bool = False,
+    cancel_removed_only: bool = False,
 ) -> str:
     """Send an explicit iTIP revision through ordinary email sending.
 
     Call outside an enclosing transaction or after its commit. Each successful
     send after the initial invitation advances SEQUENCE; email delivery outcomes
-    and retries belong to the email infrastructure.
+    and retries belong to the email infrastructure. Removed guests receive a
+    targeted cancellation first; cancel_removed_only skips the remaining guests' update.
     """
     event = CalendarEvent.objects.select_for_update().get(pk=event_id)
     require_event_access(
@@ -182,7 +202,11 @@ def send_calendar_request(
         raise ValidationError("This meeting is already cancelled.")
     if cancel and event.invitation_sent_at is None:
         raise ValidationError("Send an invitation before sending a cancellation.")
-    attendees = _attendees(user, event)
+    all_attendees = _attendees(user, event, include_cancelled=True)
+    removed = [participant for participant in all_attendees if participant.invitation_cancelled]
+    if cancel_removed_only and not removed:
+        return ""
+    attendees = all_attendees if cancel else [participant for participant in all_attendees if not participant.invitation_cancelled]
     recipients = list(
         dict.fromkeys(
             participant.email
@@ -190,7 +214,7 @@ def send_calendar_request(
             if participant.email.lower() != event.organizer_email.lower()
         )
     )
-    if not recipients:
+    if not recipients and not removed:
         raise ValidationError(
             "At least one explicitly invited email recipient is required."
         )
@@ -198,7 +222,7 @@ def send_calendar_request(
     updating = event.invitation_sent_at is not None
     if updating:
         event.sequence += 1
-        if not cancel:
+        if not cancel and not cancel_removed_only:
             for participant in attendees:
                 if not manager.has_access_to_object(
                     participant,
@@ -220,12 +244,20 @@ def send_calendar_request(
         stamp = event.scheduling_dtstamp.replace(microsecond=0) + timedelta(seconds=1)
     event.scheduling_dtstamp = stamp
     method = "CANCEL" if cancel else "REQUEST"
-    payload = build_scheduling_calendar(event, method, attendees, stamp=stamp)
-    message_id = _send(account, event, method, payload, recipients)
+    message_id = ""
+    if removed and not cancel:
+        payload = build_scheduling_calendar(event, "CANCEL", removed, stamp=stamp, cancel_entire_event=False)
+        removed_recipients = list(dict.fromkeys(person.email for person in removed if person.email.lower() != event.organizer_email.lower()))
+        if removed_recipients:
+            message_id = _send(account, event, "CANCEL", payload, removed_recipients)
+        event.participants.filter(pk__in=[person.pk for person in removed]).delete()
+    if recipients and not cancel_removed_only:
+        payload = build_scheduling_calendar(event, method, attendees, stamp=stamp)
+        message_id = _send(account, event, method, payload, recipients)
     event.cancelled = cancel
     event.invitation_sent_at = stamp
     event.save()
-    if updating and not cancel:
+    if updating and not cancel and not cancel_removed_only:
         for participant in attendees:
             participant.save()
     return message_id

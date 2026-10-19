@@ -339,7 +339,7 @@ class CalendarEvent(CalendarModel):
             return None
         participants = self.participants.filter(invitation_cancelled=False)
         participant = participants.filter(user=user).first()
-        if participant is not None or self.organizing_inbox_id:
+        if participant is not None or self.is_host(user):
             return participant
         from bloomerp.communication.utils.permissions import accessible_inboxes
         from bloomerp.models.communication.inbox.inbox_folder import InboxFolder

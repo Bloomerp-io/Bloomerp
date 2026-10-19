@@ -230,6 +230,7 @@ class CalendarEventMixin(LayoutFormMixin):
                 form.add_error(None, message)
             return self.form_invalid(form)
         notice = {"text": _("Event updated.") if form.original is not None else _("Event created."), "type": "success"}
+        cancellations_pending = bool(event.invitation_sent_at and event.participants.filter(invitation_cancelled=True).exists())
         if form.cleaned_data.get("send_invitations"):
             from bloomerp.communication.calendar.outgoing import send_calendar_request
 
@@ -247,6 +248,17 @@ class CalendarEventMixin(LayoutFormMixin):
                     "text": _(
                         "Event saved, but invitations could not be sent. Edit the event to retry sending."
                     ),
+                    "type": "warning",
+                }
+        elif cancellations_pending:
+            from bloomerp.communication.calendar.outgoing import send_removed_calendar_cancellations
+
+            try:
+                send_removed_calendar_cancellations(user=self.request.user, event_id=event.pk)
+            except Exception:
+                logging.getLogger(__name__).exception("Removed attendee cancellation failed: %s", event.pk)
+                notice = {
+                    "text": _("Event saved, but guest cancellations could not be sent. Edit the event to retry sending."),
                     "type": "warning",
                 }
         caller = self.request.POST.get("data_view_create_id") or self.request.GET.get(

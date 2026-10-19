@@ -27,6 +27,8 @@ from bloomerp.models.communication.calendar import (
 )
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
+from bloomerp.communication.calendar.outgoing import send_removed_calendar_cancellations
+from bloomerp.views.communication.calendar.cancel import cancel_calendar_event
 
 from .calendar_fixtures import STAMP, UID, SchedulingFixtures
 
@@ -122,6 +124,135 @@ class CalendarSchedulingIntegrationTests(SchedulingFixtures, TestCase):
         """Create connected email identities and isolated inbox destinations."""
         super().setUp()
         self.prepare_calendar()
+
+    def test_removed_guest_cancellation_is_sent_before_remaining_guest_update(self) -> None:
+        """Retain removed recipients until their targeted cancellation succeeds without cancelling everyone."""
+        event = self.local_event()
+        event.invitation_sent_at = STAMP
+        event.save()
+        removed = event.participants.get(email="first@example.com")
+        removed.invitation_cancelled = True
+        removed.save()
+        with patch("bloomerp.communication.calendar.outgoing._send", return_value="sent") as send:
+            send_calendar_request(user=self.actor, event_id=event.pk, email_account_id=self.account.pk)
+        self.assertEqual([call.args[2] for call in send.call_args_list], ["CANCEL", "REQUEST"])
+        self.assertEqual(send.call_args_list[0].args[4], ["first@example.com"])
+        self.assertEqual(send.call_args_list[1].args[4], ["second@example.com"])
+        cancellation = parse_scheduling_message(send.call_args_list[0].args[3].decode())
+        self.assertNotIn("STATUS", cancellation.event)
+        self.assertEqual(cancellation.sequence, 1)
+        self.assertFalse(event.participants.filter(pk=removed.pk).exists())
+        event.refresh_from_db()
+        self.assertFalse(event.cancelled)
+
+    def test_failed_guest_cancellation_preserves_pending_identity_and_revision(self) -> None:
+        """A failed cancellation remains retryable without deleting its recipient or advancing revision."""
+        event = self.local_event()
+        event.invitation_sent_at = STAMP
+        event.save()
+        event.participants.filter(email="first@example.com").update(invitation_cancelled=True)
+        with patch("bloomerp.communication.calendar.outgoing._send", side_effect=RuntimeError("offline")):
+            with self.assertRaises(RuntimeError):
+                send_calendar_request(user=self.actor, event_id=event.pk, email_account_id=self.account.pk)
+        event.refresh_from_db()
+        self.assertEqual(event.sequence, 0)
+        self.assertTrue(event.participants.filter(email="first@example.com", invitation_cancelled=True).exists())
+
+    def test_guest_removal_delivery_does_not_require_a_general_update_email(self) -> None:
+        """The automatic removal path sends cancellation only, leaving retained guests' responses intact."""
+        event = self.local_event()
+        event.invitation_sent_at = STAMP
+        event.save()
+        event.participants.update(response_status="accepted")
+        event.participants.filter(email="first@example.com").update(invitation_cancelled=True)
+        with patch("bloomerp.communication.calendar.outgoing._send", return_value="sent") as send:
+            send_removed_calendar_cancellations(user=self.actor, event_id=event.pk)
+        send.assert_called_once()
+        self.assertEqual(send.call_args.args[2], "CANCEL")
+        self.assertEqual(send.call_args.args[4], ["first@example.com"])
+        self.assertEqual(event.participants.get(email="second@example.com").response_status, "accepted")
+
+    def test_cancelling_last_guest_sends_only_a_targeted_cancellation(self) -> None:
+        """An organizer left alone can cancel all removed guests without attempting an empty REQUEST."""
+        event = self.local_event()
+        event.invitation_sent_at = STAMP
+        event.save()
+        event.participants.update(invitation_cancelled=True)
+        with patch("bloomerp.communication.calendar.outgoing._send", return_value="sent") as send:
+            send_calendar_request(user=self.actor, event_id=event.pk, email_account_id=self.account.pk)
+        send.assert_called_once()
+        self.assertEqual(send.call_args.args[2], "CANCEL")
+        self.assertFalse(event.participants.exists())
+
+    def test_cancel_event_delivers_before_marking_cancelled_and_is_idempotent(self) -> None:
+        """Cancellation uses the original connected sender and preserves the event on provider failure."""
+        event = self.local_event()
+        event.invitation_sent_at = STAMP
+        event.save()
+        with patch("bloomerp.communication.calendar.outgoing._send", side_effect=RuntimeError("offline")):
+            with self.assertRaises(RuntimeError):
+                cancel_calendar_event(user=self.actor, event_id=event.pk)
+        event.refresh_from_db()
+        self.assertFalse(event.cancelled)
+        with patch("bloomerp.communication.calendar.outgoing._send", return_value="sent") as send:
+            cancel_calendar_event(user=self.actor, event_id=event.pk)
+            cancel_calendar_event(user=self.actor, event_id=event.pk)
+        send.assert_called_once()
+        self.assertEqual(send.call_args.args[2], "CANCEL")
+        cancellation = parse_scheduling_message(send.call_args.args[3].decode())
+        self.assertEqual(str(cancellation.event["STATUS"]), "CANCELLED")
+        event.refresh_from_db()
+        self.assertTrue(event.cancelled)
+
+    def test_local_email_only_invitee_can_resolve_their_connected_mailbox(self) -> None:
+        """Local organization must not bypass connected-mailbox identity checks for non-hosts."""
+        event = self.local_event()
+        participant = event.participants.create(email=self.account.email_address)
+        self.assertEqual(event.get_participant(self.actor).pk, participant.pk)
+        self.assertIsNone(event.get_participant(self.outsider))
+        self.assertIsNone(event.get_participant(self.owner))
+
+    def test_event_can_be_cancelled_after_all_guest_removals_were_delivered(self) -> None:
+        """Cancel the remaining local record when all formerly emailed guests have already been removed."""
+        event = self.local_event()
+        event.invitation_sent_at = STAMP
+        event.save()
+        event.participants.all().delete()
+        with patch("bloomerp.communication.calendar.outgoing._send") as send:
+            cancel_calendar_event(user=self.actor, event_id=event.pk)
+        send.assert_not_called()
+        event.refresh_from_db()
+        self.assertTrue(event.cancelled)
+
+    def test_attendee_cancellation_removes_only_cancelled_recipient_placements(self) -> None:
+        """Remove a cancelled mailbox's Inbox placement while retaining another invited mailbox's placement."""
+        self.index_email(self.make_email())
+        event = CalendarEvent.objects.get(calendar_uid=UID)
+        other_account = EmailAccount.objects.create(email_address="other@example.com", status="active")
+        self.second_folder.related_object_id = str(other_account.pk)
+        self.second_folder.save()
+        event.inboxes.add(self.team)
+        self.index_email(self.make_email("CANCEL", sequence=1, attendees=(self.account.email_address,)))
+        event.refresh_from_db()
+        self.assertFalse(event.cancelled)
+        self.assertFalse(event.inboxes.filter(pk=self.inbox.pk).exists())
+        self.assertTrue(event.inboxes.filter(pk=self.team.pk).exists())
+
+    def test_attendee_cancellation_does_not_consume_a_shared_event_update_revision(self) -> None:
+        """A removed guest's CANCEL arriving first must not suppress the same revision's remaining-guest REQUEST."""
+        self.index_email(self.make_email())
+        event = CalendarEvent.objects.get(calendar_uid=UID)
+        self.index_email(self.make_email("CANCEL", sequence=1, attendees=(self.account.email_address,)))
+        other_account = EmailAccount.objects.create(email_address="other@example.com", status="active")
+        self.second_folder.related_object_id = str(other_account.pk)
+        self.second_folder.save()
+        self.account = other_account
+        self.index_email(self.make_email(sequence=1, attendees=("other@example.com",)), self.second_folder)
+        event.refresh_from_db()
+        self.assertEqual(event.sequence, 1)
+        self.assertEqual(event.start.hour, 13)
+        self.assertTrue(event.participants.get(email="owner@example.com").invitation_cancelled)
+        self.assertFalse(event.cancelled)
 
     def test_account_sync_creates_one_pending_event_in_multiple_inboxes(self) -> None:
         """Use the account sync path to create one shared event and explicit attendees."""

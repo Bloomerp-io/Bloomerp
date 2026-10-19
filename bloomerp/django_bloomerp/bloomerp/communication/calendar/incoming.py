@@ -3,6 +3,7 @@
 import hashlib
 import logging
 from email.utils import getaddresses
+from uuid import UUID
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -129,8 +130,34 @@ def _apply_request(
     return "requested"
 
 
+def _remove_cancelled_calendar_placements(event: CalendarEvent) -> None:
+    """Remove cancelled recipients' placements while preserving calendars of other active invitees."""
+    participants = list(event.participants.all())
+    folders = list(InboxFolder.objects.filter(inbox__in=event.inboxes.all(), type="email"))
+    account_ids: list[UUID] = []
+    for folder in folders:
+        try:
+            account_ids.append(UUID(str(folder.related_object_id)))
+        except (ValueError, TypeError):
+            continue
+    accounts = {str(account.pk): account.email_address.lower() for account in EmailAccount.objects.filter(
+        pk__in=account_ids,
+    )}
+    for inbox in event.inboxes.exclude(pk=event.organizing_inbox_id):
+        addresses = {
+            accounts[folder.related_object_id]
+            for folder in folders if folder.inbox_id == inbox.pk
+            if folder.related_object_id in accounts
+        }
+        relevant = [person for person in participants if (
+            person.email.lower() in addresses or (person.user_id is not None and person.user_id == inbox.user_id)
+        )]
+        if relevant and all(person.invitation_cancelled for person in relevant):
+            event.inboxes.remove(inbox)
+
+
 def _apply_cancel(message: SchedulingMessage, event: CalendarEvent) -> str:
-    """Cancel a whole meeting or the listed attendees without inventing a new event."""
+    """Cancel attendees independently, advancing the shared event revision only for whole-event cancellation."""
     addresses = {attendee[0] for attendee in message.attendees}
     if not addresses or str(message.event.get("STATUS", "")).upper() == "CANCELLED":
         event.cancelled = True
@@ -138,11 +165,14 @@ def _apply_cancel(message: SchedulingMessage, event: CalendarEvent) -> str:
         if not addresses or participant.email.lower() in addresses:
             participant.invitation_cancelled = True
             participant.save()
-    event._applying_scheduling_message = True
-    event.sequence = message.sequence
-    event.scheduling_dtstamp = message.stamp
-    event.source_calendar = message.source
-    event.save()
+    if event.cancelled:
+        event._applying_scheduling_message = True
+        event.sequence = message.sequence
+        event.scheduling_dtstamp = message.stamp
+        event.source_calendar = message.source
+        event.save()
+    if not event.cancelled:
+        _remove_cancelled_calendar_placements(event)
     return "cancelled"
 
 

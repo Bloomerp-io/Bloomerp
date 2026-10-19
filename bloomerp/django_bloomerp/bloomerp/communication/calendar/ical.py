@@ -183,8 +183,9 @@ def build_scheduling_calendar(
     *,
     stamp: datetime,
     response_status: str | None = None,
+    cancel_entire_event: bool = True,
 ) -> bytes:
-    """Emit RFC scheduling properties while preserving date-only all-day semantics."""
+    """Emit scheduling properties, distinguishing attendee removal from whole-event cancellation."""
     calendar = Calendar()
     calendar.add("PRODID", "-//Bloomerp//Calendar scheduling//EN")
     calendar.add("VERSION", "2.0")
@@ -203,7 +204,7 @@ def build_scheduling_calendar(
     component.add(
         "DTEND", event.end_date if event.all_day else event.end.astimezone(UTC)
     )
-    if method == "CANCEL":
+    if method == "CANCEL" and cancel_entire_event:
         component.add("STATUS", "CANCELLED")
     for participant in attendees:
         if not participant.email:

@@ -185,7 +185,7 @@ class CalendarEventCreateForm(forms.Form):
             del self.fields["create_conference"]
         manager = UserPolicyManager(user)
         if instance is not None and "attendees" in self.fields:
-            participants = list(instance.participants.select_related("user"))
+            participants = list(instance.participants.filter(invitation_cancelled=False).select_related("user"))
             if any(
                 person.user_id and not manager.has_access_to_object(person.user, "view", fields=["email"])
                 for person in participants
@@ -442,22 +442,38 @@ class CalendarEventCreateForm(forms.Form):
             }
             retained: list[Any] = []
             for person in self.internal_attendees:
-                participant, _created = CalendarEventParticipant.objects.get_or_create(
-                    event=self.instance, user=person, defaults={"email": person.email}
-                )
+                participant = self.instance.participants.filter(user=person).first()
+                if participant is None and person.email:
+                    participant = self.instance.participants.filter(email__iexact=person.email).first()
+                if participant is not None:
+                    if participant.user_id is not None and participant.user_id != person.pk:
+                        raise ValidationError(_("This email address belongs to another invited user."))
+                    participant.user = person
+                    participant.invitation_cancelled = False
+                    participant.save()
+                else:
+                    participant = CalendarEventParticipant.objects.create(
+                        event=self.instance, user=person, email=person.email,
+                    )
                 retained.append(participant.pk)
             for email in self.cleaned_data.get("attendees", []):
                 if email not in internal_emails:
                     participant, _created = CalendarEventParticipant.objects.get_or_create(
                         event=self.instance, email=email, defaults={"user": None}
                     )
+                    if participant.invitation_cancelled:
+                        participant.invitation_cancelled = False
+                        participant.save()
                     retained.append(participant.pk)
             if self.original is not None and "attendees" in self.fields:
                 removed = self.instance.participants.exclude(pk__in=retained)
                 for participant in removed:
                     if not manager.has_access_to_object(participant, "delete"):
                         raise PermissionDenied(_("You cannot remove these participants."))
-                removed.delete()
+                if self.instance.invitation_sent_at is not None:
+                    removed.update(invitation_cancelled=True)
+                else:
+                    removed.delete()
             if self.cleaned_data.get("create_conference"):
                 from bloomerp.services.calendar_conferencing import (
                     reserve_calendar_conference,

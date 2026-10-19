@@ -6,6 +6,8 @@ from typing import Any
 
 from bs4 import BeautifulSoup
 from django.http import HttpResponse
+from django.utils import timezone
+from django.urls import reverse
 
 from bloomerp.models.communication.calendar import CalendarEvent
 from bloomerp.permissions.definition import RowPolicyRuleContent
@@ -58,6 +60,15 @@ class TestCalendarEventUpdateView(InboxCalendarFixtures, BloomerpDetailViewTestC
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Cover prefilled fields, successful updates, invalid input, and denied edits."""
         return [
+            RequestScenario(name="Linking an email guest reuses its existing participant", user=self.actor,
+                prepare=self.prepare_email_guest_link, method="POST",
+                data=self.event_data(attendees="member@example.com, invitee@example.com"),
+                headers={"HX-Request": "true"},
+                expected=ExpectedResult(status_code=204, response_validators=self.guest_linked)),
+            RequestScenario(name="Removing a sent guest retains its cancellation identity", user=self.actor,
+                prepare=self.mark_sent, method="POST", data=self.event_data(),
+                headers={"HX-Request": "true"},
+                expected=ExpectedResult(status_code=204, response_validators=self.removed_guest_retained)),
             RequestScenario(name="Staff event editors can add guests without participant read grants", user=self.owner,
                 method="POST", prepare=self.prepare_external_guests,
                 data=self.event_data(attendees="guest@example.com, member@example.com, invitee@example.com, new@example.com", attendee_users="[]"),
@@ -91,13 +102,35 @@ class TestCalendarEventUpdateView(InboxCalendarFixtures, BloomerpDetailViewTestC
         ]
 
     def sidebar_starts_collapsed(self, response: HttpResponse) -> bool:
-        """Keep the standard sidebar toggle while requesting an initially collapsed editor panel."""
-        panel = BeautifulSoup(response.content, "html.parser").select_one("#resizable-div-detail-aside")
+        """Keep the sidebar toggle and route the cancel button independently of composer submission."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        panel = soup.select_one("#resizable-div-detail-aside")
+        cancel = soup.select_one('button[hx-post="' + reverse("calendar_events_detail_cancel", kwargs={"pk": self.timed.pk}) + '"]')
         return (
             panel is not None
             and panel.get("data-force-close") == "true"
             and panel.get("data-toggle-shortcut") == "mod+shift+y"
+            and cancel is not None and cancel.get("type") == "button"
         )
+
+    def mark_sent(self, scenario: RequestScenario) -> None:
+        """Mark an existing invitation as delivered without fabricating a connected sender."""
+        CalendarEvent.objects.filter(pk=self.timed.pk).update(invitation_sent_at=timezone.now())
+
+    def prepare_email_guest_link(self, scenario: RequestScenario) -> None:
+        """Represent an internal user's invited mailbox using an existing email-only participant."""
+        self.timed.participants.filter(pk=self.member.pk).delete()
+        self.timed.participants.filter(pk=self.guest.pk).update(email=self.owner.email)
+
+    def guest_linked(self, response: HttpResponse) -> bool:
+        """Attach the selected user without changing the guest identity or inserting a duplicate email."""
+        self.guest.refresh_from_db()
+        return self.guest.user_id == self.owner.pk and self.timed.participants.count() == 2
+
+    def removed_guest_retained(self, response: HttpResponse) -> bool:
+        """Retain removed sent recipients for the next cancellation delivery instead of hard deletion."""
+        self.attendance.refresh_from_db()
+        return self.attendance.invitation_cancelled and self.timed.participants.filter(pk=self.attendance.pk).exists()
 
     def prepare_external_guests(self, scenario: RequestScenario) -> None:
         """Grant event editing while keeping participant permissions absent and user coupling out of scope."""
