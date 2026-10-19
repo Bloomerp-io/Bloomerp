@@ -6,6 +6,7 @@ import { build } from 'vite';
 import type { OutputAsset, OutputChunk } from 'rollup';
 import { JSDOM, type DOMWindow } from 'jsdom';
 import type renderDataview from '../../utils/dataview.ts';
+import type { Calendar, CalendarCell } from './Calendar.ts';
 
 const root = fileURLToPath(new URL('../../..', import.meta.url)).replace(/\/$/, '');
 const entry = `${root}/calendar-regression-entry.ts`;
@@ -25,7 +26,7 @@ const result = await build({
                 import { Drawer } from '${root}/ts/components/Drawer';
                 import InboxCalendarOverlay from '${root}/ts/components/inbox/InboxCalendarOverlay';
                 import renderDataview from '${root}/ts/utils/dataview';
-                import { registerComponent, initComponents } from '${root}/ts/components/BaseComponent';
+                import { registerComponent, initComponents, getComponent } from '${root}/ts/components/BaseComponent';
                 import htmx from 'htmx.org';
                 registerComponent('calendar', Calendar);
                 registerComponent('inbox-calendar-overlay', InboxCalendarOverlay);
@@ -33,7 +34,7 @@ const result = await build({
                 registerComponent('dataview-container', DataViewContainer);
                 registerComponent('modal', Modal);
                 registerComponent('drawer', Drawer);
-                export { initComponents, htmx, renderDataview };
+                export { initComponents, getComponent, htmx, renderDataview };
             `;
         },
     }],
@@ -49,6 +50,7 @@ const scriptCode = script.code;
 interface FixtureWindow extends DOMWindow {
     CalendarFixture: {
         initComponents(element: HTMLElement): void;
+        getComponent(element: HTMLElement): Calendar | CalendarCell | null;
         renderDataview: typeof renderDataview;
         htmx: { ajax(method: string, url: string, options: Record<string, unknown>): Promise<HTMLElement> };
     };
@@ -138,6 +140,38 @@ function hourlyCreation(): void {
     }
 }
 test('day and week double-clicks open the shared modal with one-hour defaults', hourlyCreation);
+
+/** Cycle overlapping event cards horizontally and keep directly focused cards tied to their own details. */
+test('day and week keyboard navigation selects and opens individual events in the same slot', (): void => {
+    for (const mode of ['day', 'week']) {
+        const f = fixture(mode);
+        try {
+            /** Provide browser scrolling for selection changes in the DOM fixture. */
+            f.w.HTMLElement.prototype.scrollIntoView = function scrollCell(): void {};
+            const calendar = f.w.document.querySelector<HTMLElement>('[bloomerp-component="calendar"]')!;
+            const first = calendar.querySelector<HTMLElement>('[data-calendar-event]')!;
+            const unit = f.cell.dataset.calendarUnit!;
+            first.dataset.calendarUnit = unit;
+            f.cell.querySelector<HTMLElement>('[data-calendar-unit-cell]')!.dataset.calendarUnit = unit;
+            first.insertAdjacentHTML('afterend', `<div role="button" tabindex="0" data-calendar-event data-calendar-unit="${unit}"
+                data-object-id="second" data-detail-url="/events/second/update/" bloomerp-component="calendar-cell">Second event</div>`);
+            const second = first.nextElementSibling as HTMLElement;
+            f.w.CalendarFixture.initComponents(second);
+            const component = f.w.CalendarFixture.getComponent(calendar) as Calendar;
+            second.focus();
+            assert.equal(component.currentCell?.element, second);
+            calendar.dispatchEvent(new f.w.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+            assert.equal(component.currentCell?.element, first);
+            assert.equal(calendar.querySelectorAll('[data-calendar-event].cell-selected').length, 1);
+            calendar.dispatchEvent(new f.w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+            assert.equal(f.requests[0].pathname, '/events/event/update/');
+            calendar.dispatchEvent(new f.w.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+            assert.equal(component.currentCell?.element, second);
+            calendar.dispatchEvent(new f.w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+            assert.equal(f.requests[1].pathname, '/events/second/update/');
+        } finally { f.dom.window.close(); }
+    }
+});
 
 /** Embedded action controls must retain focus and avoid the calendar's event gestures. */
 test('object action controls do not navigate, focus the event, or begin a calendar drag', (): void => {

@@ -61,6 +61,7 @@ export class Calendar extends BaseDataViewComponent {
     private mutationInFlight = false;
     private activeGestureController: AbortController | null = null;
     private activeGestureCleanup: (() => void) | null = null;
+    private currentTimeTimer: number | null = null;
 
     /** Bind calendar navigation, preference changes, and event editing to this instance. */
     public override initialize(): void {
@@ -91,6 +92,7 @@ export class Calendar extends BaseDataViewComponent {
         this.element.addEventListener("pointerdown", this.onEventPointerDown, {
             signal: controller.signal,
         });
+        this.element.addEventListener("focusin", this.onCellFocus, { signal: controller.signal });
         this.element.addEventListener("dragstart", this.onCalendarDragStart, {
             signal: controller.signal,
         });
@@ -118,9 +120,41 @@ export class Calendar extends BaseDataViewComponent {
         }, { capture: true, signal: controller.signal });
 
         this.restorePendingFocus();
+        this.updateCurrentTime();
+        if (this.element.querySelector("[data-calendar-current-time]")) {
+            if (this.currentTimeTimer !== null) window.clearInterval(this.currentTimeTimer);
+            this.currentTimeTimer = window.setInterval(this.updateCurrentTime, 30_000);
+        }
     }
 
+    /** Position the current-time indicator across today or the entire current week. */
+    private updateCurrentTime = (): void => {
+        if (!this.element?.isConnected) {
+            if (this.currentTimeTimer !== null) window.clearInterval(this.currentTimeTimer);
+            this.currentTimeTimer = null;
+            return;
+        }
+        const parts = new Intl.DateTimeFormat("en-CA", {
+            timeZone: this.element.dataset.calendarTimezone || undefined,
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+        }).formatToParts(new Date());
+        const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+        const today = `${values.year}-${values.month}-${values.day}`;
+        const minutes = Number(values.hour) * 60 + Number(values.minute);
+        const markers = Array.from(this.element.querySelectorAll<HTMLElement>("[data-calendar-current-time]"));
+        const showAcrossWeek = this.viewMode === "week"
+            && markers.some((marker) => marker.dataset.calendarCurrentTime === today);
+        for (const marker of markers) {
+            marker.classList.toggle("hidden", !showAcrossWeek && marker.dataset.calendarCurrentTime !== today);
+            marker.style.top = `${minutes / 1440 * 100}%`;
+        }
+    };
+
+    /** Release event gestures and the live current-time indicator timer. */
     public override destroy(): void {
+        if (this.currentTimeTimer !== null) window.clearInterval(this.currentTimeTimer);
+        this.currentTimeTimer = null;
         this.activeGestureController?.abort();
         this.activeGestureController = null;
         this.activeGestureCleanup?.();
@@ -329,6 +363,19 @@ export class Calendar extends BaseDataViewComponent {
         return true;
     }
 
+    /** Synchronize keyboard selection when Tab or an assistive control focuses an event directly. */
+    private onCellFocus = (event: FocusEvent): void => {
+        const target = event.target as HTMLElement | null;
+        if (target?.closest("[data-calendar-object-actions]")) return;
+        const element = target?.closest<HTMLElement>('[bloomerp-component="calendar-cell"]');
+        const cell = element ? getComponent(element) : null;
+        if (cell instanceof CalendarCell) {
+            this.focus(cell);
+            this.collapseSelectionToActive();
+        }
+    };
+
+    /** Walk individual records within a slot before moving to a neighboring calendar unit. */
     private move(direction: CalendarDirection): BaseDataViewCell {
         if (!this.currentCell) this.initFocus();
         if (!this.currentCell) throw new Error("Calendar has no cells to navigate");
@@ -340,13 +387,10 @@ export class Calendar extends BaseDataViewComponent {
         const unitCells = this.cellsForUnit(unit);
         const itemIndex = unitCells.indexOf(current);
         const forward = direction === "down" || direction === "right";
-        const cyclesItems = direction === "up"
-            || direction === "down"
-            || (this.viewMode !== "week" && this.viewMode !== "day");
-        if (cyclesItems && forward && itemIndex >= 0 && itemIndex < unitCells.length - 1) {
+        if (forward && itemIndex >= 0 && itemIndex < unitCells.length - 1) {
             return unitCells[itemIndex + 1];
         }
-        if (cyclesItems && !forward && itemIndex > 0) {
+        if (!forward && itemIndex > 0) {
             return unitCells[itemIndex - 1];
         }
 

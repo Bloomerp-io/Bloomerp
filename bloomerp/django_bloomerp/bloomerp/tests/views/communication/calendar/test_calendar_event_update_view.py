@@ -3,14 +3,11 @@
 
 from datetime import timedelta
 from typing import Any
-from unittest.mock import patch
 
+from bs4 import BeautifulSoup
 from django.http import HttpResponse
 
 from bloomerp.models.communication.calendar import CalendarEvent
-from bloomerp.models.communication.email_account import EmailAccount
-from bloomerp.models.communication.inbox.inbox import Inbox
-from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
 from bloomerp.permissions.definition import RowPolicyRuleContent
 from bloomerp.permissions.manager import PolicyManager
 from bloomerp.tests.base import (
@@ -61,41 +58,13 @@ class TestCalendarEventUpdateView(InboxCalendarFixtures, BloomerpDetailViewTestC
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Cover prefilled fields, successful updates, invalid input, and denied edits."""
         return [
-            RequestScenario(name="A linked participant can open attendance without model grants", user=self.outsider,
-                headers={"HX-Request": "true", "HX-Target": "drawer-detail-pane-91"},
-                expected=ExpectedResult(response_validators=self.attendance_form)),
-            RequestScenario(name="Participants can change only their own attendance", user=self.outsider, method="POST",
-                data={"response_status": "accepted", "sequence": 0, "title": "Forged title", "participant_id": str(self.member.pk)},
-                headers={"HX-Request": "true"}, prepare=self.mock_reply, cleanup=self.stop_reply,
-                expected=ExpectedResult(status_code=204, response_validators=self.attendance_saved)),
-            RequestScenario(name="Stale participant responses are rejected", user=self.outsider, method="POST",
-                data={"response_status": "accepted", "sequence": 1},
-                expected=ExpectedResult(response_validators=self.attendance_unchanged)),
-            RequestScenario(name="Cancelled events cannot receive attendance changes", user=self.outsider, method="POST",
-                data={"response_status": "accepted", "sequence": 0}, prepare=self.cancel_invitation,
-                expected=ExpectedResult(response_validators=self.attendance_unchanged)),
-            RequestScenario(name="Awaiting response is not a selectable reply", user=self.outsider, method="POST",
-                data={"response_status": "awaiting_response", "sequence": 0},
-                expected=ExpectedResult(response_validators=self.attendance_unchanged)),
-            RequestScenario(name="Uninvited users cannot open the response form", user=self.normal_user,
+            RequestScenario(name="Calendar editor starts with the object sidebar collapsed", user=self.actor,
+                expected=ExpectedResult(response_validators=self.sidebar_starts_collapsed)),
+            RequestScenario(name="Invited attendees cannot open the event editor without edit grants", user=self.outsider,
                 expected=ExpectedResult(status_code=403)),
-            RequestScenario(name="Uninvited users cannot submit another participant's response", user=self.normal_user, method="POST",
-                data={"response_status": "accepted", "sequence": 0, "participant_id": str(self.attendance.pk)},
-                expected=ExpectedResult(status_code=403, response_validators=self.attendance_unchanged)),
-            RequestScenario(name="Imported invitations send a reply even when all participants are users", user=self.outsider, method="POST",
-                data={"response_status": "accepted", "sequence": 0}, headers={"HX-Request": "true"},
-                prepare=self.external_invitation, cleanup=self.stop_reply,
-                expected=ExpectedResult(status_code=204, response_validators=self.external_replied)),
-            RequestScenario(name="An invited connected mailbox can differ from the user's profile email", user=self.outsider, method="POST",
-                data={"response_status": "accepted", "sequence": 0}, headers={"HX-Request": "true"},
-                prepare=self.external_mailbox_alias, cleanup=self.stop_reply,
-                expected=ExpectedResult(status_code=204, response_validators=self.mailbox_replied)),
-            RequestScenario(name="Failed external reply does not accept the invitation", user=self.outsider, method="POST",
-                data={"response_status": "accepted", "sequence": 0}, prepare=self.failed_external_reply, cleanup=self.stop_reply,
-                expected=ExpectedResult(response_validators=self.attendance_unchanged)),
-            RequestScenario(name="An unavailable invited account does not silently accept", user=self.outsider, method="POST",
-                data={"response_status": "accepted", "sequence": 0}, prepare=self.unavailable_account, cleanup=self.stop_reply,
-                expected=ExpectedResult(response_validators=self.attendance_unchanged)),
+            RequestScenario(name="The event editor does not accept attendance replies", user=self.outsider, method="POST",
+                data={"response_status": "accepted", "sequence": 0},
+                expected=ExpectedResult(status_code=403, response_validators=self.unchanged)),
             RequestScenario(name="Drawer GET reuses the prefilled composer", user=self.actor,
                 headers={"HX-Request": "true", "HX-Target": "drawer-detail-pane-91"},
                 expected=ExpectedResult(response_validators=self.prefilled)),
@@ -115,6 +84,15 @@ class TestCalendarEventUpdateView(InboxCalendarFixtures, BloomerpDetailViewTestC
             RequestScenario(name="Denied POST cannot mutate an event", user=self.owner, method="POST", data=self.event_data(),
                 expected=ExpectedResult(status_code=403, response_validators=self.unchanged)),
         ]
+
+    def sidebar_starts_collapsed(self, response: HttpResponse) -> bool:
+        """Keep the standard sidebar toggle while requesting an initially collapsed editor panel."""
+        panel = BeautifulSoup(response.content, "html.parser").select_one("#resizable-div-detail-aside")
+        return (
+            panel is not None
+            and panel.get("data-force-close") == "true"
+            and panel.get("data-toggle-shortcut") == "mod+shift+y"
+        )
 
     def grant_change(self, scenario: RequestScenario) -> None:
         """Grant readable editable event fields without granting event or participant creation."""
@@ -166,112 +144,4 @@ class TestCalendarEventUpdateView(InboxCalendarFixtures, BloomerpDetailViewTestC
             and self.timed.start_date == self.today
             and self.timed.end_date == self.today + timedelta(days=3)
             and self.timed.calendar_uid == self.uid
-        )
-
-    def attendance_form(self, response: HttpResponse) -> bool:
-        """Keep attendance controls inside the layout required by the live CRUD component."""
-        return (
-            set(response.context["form"].fields) == {"response_status", "sequence"}
-            and b'calendar-event-response-form' in response.content
-            and b'data-layout-root' in response.content
-            and b'data-layout-row' in response.content
-            and b'data-layout-item-id="response_status"' in response.content
-            and b'bloomerp-component="detail-view-value"' in response.content
-            and b'name="response_status"' in response.content
-            and b'csrfmiddlewaretoken' in response.content
-            and b'object-crud-container-save-button' in response.content
-            and b'name="title"' not in response.content
-        )
-
-    def mock_reply(self, scenario: RequestScenario) -> None:
-        """Observe protocol replies without sending real email."""
-        self.reply_patch = patch("bloomerp.communication.calendar.outgoing._send", return_value="reply@test")
-        self.reply_send = self.reply_patch.start()
-
-    def stop_reply(self, scenario: RequestScenario) -> None:
-        """Release the mail boundary mock after each isolated request scenario."""
-        self.reply_patch.stop()
-
-    def cancel_invitation(self, scenario: RequestScenario) -> None:
-        """Cancel the displayed meeting before attempting a response."""
-        CalendarEvent.objects.filter(pk=self.timed.pk).update(cancelled=True)
-
-    def external_invitation(self, scenario: RequestScenario) -> None:
-        """Place an externally hosted event in the invited user's connected email calendar."""
-        self.mock_reply(scenario)
-        self.timed.refresh_from_db()
-        self.timed.organizing_inbox = None
-        self.timed.source_calendar = "Imported invitation"
-        self.timed.save()
-        self.timed.participants.filter(user__isnull=True).delete()
-        inbox = Inbox.objects.create(user=self.outsider, name="Invited email calendar")
-        self.invited_account = EmailAccount.objects.create(email_address=self.outsider.email, status="active")
-        InboxFolder.objects.create(inbox=inbox, type="email", related_object_id=str(self.invited_account.pk))
-        self.timed.inboxes.set([inbox])
-
-    def failed_external_reply(self, scenario: RequestScenario) -> None:
-        """Simulate mail delivery rejecting the participant's response."""
-        self.external_invitation(scenario)
-        self.reply_send.side_effect = RuntimeError("Mail delivery unavailable")
-
-    def unavailable_account(self, scenario: RequestScenario) -> None:
-        """Leave the participant invited while preventing use of the disconnected sender."""
-        self.external_invitation(scenario)
-        self.invited_account.status = "inactive"
-        self.invited_account.save()
-
-    def attendance_saved(self, response: HttpResponse) -> bool:
-        """Persist only the linked user's response, without sending email for a local event."""
-        self.attendance.refresh_from_db()
-        self.member.refresh_from_db()
-        event = CalendarEvent.objects.get(pk=self.timed.pk)
-        return (
-            self.attendance.response_status == "accepted"
-            and self.attendance.responded_at is not None
-            and self.member.response_status == "awaiting_response"
-            and event.title == "Placed timed meeting"
-            and self.reply_send.call_count == 0
-        )
-
-    def attendance_unchanged(self, response: HttpResponse) -> bool:
-        """Keep attendance unchanged when authentication, revision, validation, or delivery fails."""
-        self.attendance.refresh_from_db()
-        return self.attendance.response_status == "awaiting_response" and self.attendance.responded_at is None
-
-    def external_replied(self, response: HttpResponse) -> bool:
-        """Send one standards-based reply from the actual invited mailbox before marking success."""
-        from bloomerp.communication.calendar.ical import parse_scheduling_message
-
-        self.attendance.refresh_from_db()
-        self.timed.refresh_from_db()
-        args = self.reply_send.call_args.args
-        reply = parse_scheduling_message(args[3].decode(), "REPLY")
-        return (
-            self.timed.is_internal()
-            and self.attendance.response_status == "accepted"
-            and self.reply_send.call_count == 1
-            and args[0].pk == self.invited_account.pk and args[2] == "REPLY"
-            and args[4] == [self.timed.organizer_email]
-            and reply.attendees[0][:2] == (self.outsider.email, "accepted")
-        )
-
-    def external_mailbox_alias(self, scenario: RequestScenario) -> None:
-        """Represent a real imported attendee whose connected mailbox has no matching user record."""
-        self.external_invitation(scenario)
-        self.attendance.refresh_from_db()
-        self.attendance.user = None
-        self.attendance.email = "invited-mailbox@example.com"
-        self.attendance.save()
-        self.invited_account.email_address = self.attendance.email
-        self.invited_account.save()
-
-    def mailbox_replied(self, response: HttpResponse) -> bool:
-        """Resolve the invited mailbox through inbox/account access, preserving its email-only identity."""
-        self.attendance.refresh_from_db()
-        self.timed.refresh_from_db()
-        return (
-            self.attendance.response_status == "accepted" and self.attendance.user_id is None
-            and self.timed.get_participant(self.outsider).pk == self.attendance.pk
-            and self.reply_send.call_count == 1
-            and self.reply_send.call_args.args[0].email_address == "invited-mailbox@example.com"
         )

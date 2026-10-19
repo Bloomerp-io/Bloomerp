@@ -1677,7 +1677,7 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
         self.assertEqual((scheduled.starts_on, scheduled.ends_on), (date(2026, 9, 2), date(2026, 9, 5)))
         self.assertEqual((unscheduled.starts_on, unscheduled.ends_on), (date(2026, 9, 10), date(2026, 9, 11)))
 
-    def test_calendar_unit_loads_five_events_at_a_time(self):
+    def test_calendar_unit_loads_five_events_at_a_time(self) -> None:
         """
         Use case: More than five timed events start in the same calendar hour.
         Expected result: The unit renders five events and loads the next page on demand.
@@ -1697,6 +1697,11 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
             )
         url = reverse("components_dataview", kwargs={"content_type_id": content_type.id})
 
+        self.CalendarEventModel.objects.create(
+            name="Earlier overlapping session", starts_at=start - timedelta(minutes=25),
+            ends_at=start + timedelta(minutes=15),
+        )
+
         # 2. Render the current day and verify only the first five unit records are present.
         response = self.client.get(url, HTTP_HX_REQUEST="true")
         self.assertEqual(response.status_code, 200)
@@ -1704,6 +1709,10 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
             self.assertContains(response, f"Session {index}", html=False)
         self.assertNotContains(response, "Session 5", html=False)
         self.assertContains(response, "calendar_unit_offset=5", html=False)
+        initial_cards = BeautifulSoup(response.content, "html.parser").select('[data-calendar-event][title^="Session "]')
+        self.assertEqual(len(initial_cards), 5)
+        self.assertEqual({card["data-calendar-overlap-columns"] for card in initial_cards}, {"8"})
+        self.assertEqual({card["data-calendar-overlap-column"] for card in initial_cards}, {"1", "2", "3", "4", "5"})
 
         # 3. Request the next page through the permission-filtered renderer action.
         page_url = reverse(
@@ -1729,6 +1738,10 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
         self.assertContains(page_response, "Session 5", html=False)
         self.assertContains(page_response, "Session 6", html=False)
         self.assertNotContains(page_response, "Load more", html=False)
+        paged_cards = BeautifulSoup(page_response.content, "html.parser").select('[data-calendar-event]')
+        self.assertEqual({card["data-calendar-overlap-columns"] for card in paged_cards}, {"8"})
+        self.assertEqual({card["data-calendar-overlap-column"] for card in paged_cards}, {"6", "7"})
+        self.assertTrue(all("width: calc(100% / 8 - 0.5rem)" in card["style"] for card in paged_cards))
 
 
 class TestGantDataView(BaseBloomerpTestCaseWithModels):

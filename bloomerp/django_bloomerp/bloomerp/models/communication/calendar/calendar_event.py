@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -21,7 +21,7 @@ from bloomerp.models.definition import (
     DataviewHTMLAction,
     DataviewModalAction,
     ModelViewSettings,
-    ObjectAction,
+    ObjectModalAction,
     get_default_dataview_actions,
 )
 from bloomerp.modules.communication import CommunicationModule
@@ -109,6 +109,21 @@ def calendar_event_dataview_actions() -> list[DataviewAction | DataviewHTMLActio
     return actions
 
 
+def calendar_invitation_reply_url(event: models.Model) -> str:
+    """Resolve the dedicated attendance modal without using the event editor."""
+    return reverse("components_calendar_reply", kwargs={"event_id": event.pk})
+
+
+def calendar_invitation_reply_visible(request: HttpRequest, event: models.Model) -> bool:
+    """Offer replies only to an active invitation's non-host participant identity."""
+    return bool(
+        isinstance(event, CalendarEvent)
+        and not event.cancelled
+        and event.get_participant(request.user) is not None
+        and not event.is_host(request.user)
+    )
+
+
 class CalendarEvent(CalendarModel):
     """Store one meeting displayed in multiple Inbox calendars without copies."""
 
@@ -129,11 +144,13 @@ class CalendarEvent(CalendarModel):
             dataview_actions=calendar_event_dataview_actions(),
         ),
         object_actions=[
-            ObjectAction(
-                id="accept_invite",
-                label="Accept invite",
-                execution_func=lambda _,__:HttpResponse("Hey")
-            )    
+            ObjectModalAction(
+                id="reply_invitation",
+                label="Reply to invitation",
+                endpoint=calendar_invitation_reply_url,
+                should_render_func=calendar_invitation_reply_visible,
+                modal_title="Reply to invitation",
+            ),
         ],
     )
 

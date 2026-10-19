@@ -120,6 +120,37 @@ class TestCalendarDataview(BloomerpDataviewTestCase):
             "2026-10-15T23", "2026-10-16T00",
         })
 
+    def test_timed_overlap_columns_span_hours_and_reset_between_groups(self) -> None:
+        """Keep cross-hour collisions separate, reuse available columns, and isolate different days."""
+        renderer = self.mixed_renderer("week")
+        base = datetime(2026, 10, 15, 9, tzinfo=timezone.get_current_timezone())
+
+        def event(identifier: int, offset: int, duration: int) -> SimpleNamespace:
+            """Build a timed fixture with independent start/end date fields left empty."""
+            start = base + timedelta(minutes=offset)
+            return SimpleNamespace(pk=identifier, start=start, end=start + timedelta(minutes=duration), start_date=None, end_date=None)
+
+        events, _legend = renderer._build_events(
+            [event(1, 0, 120), event(2, 0, 30), event(3, 15, 30), event(4, 60, 30), event(5, 120, 60), event(6, 1440, 60)],
+            renderer.get_start_field(renderer.state.fields, renderer.options),
+            renderer.get_end_field(renderer.state.fields, renderer.options), None,
+        )
+        self.assertEqual(
+            {item["object"].pk: (item["timed_column"], item["timed_columns"]) for item in events},
+            {1: (0, 3), 2: (1, 3), 3: (2, 3), 4: (1, 3), 5: (0, 1), 6: (0, 1)},
+        )
+
+    def test_short_events_respect_the_minimum_rendered_height(self) -> None:
+        """Avoid visually overlapping cards even when consecutive short events do not overlap in time."""
+        base = datetime(2026, 10, 15, 9, tzinfo=timezone.get_current_timezone())
+        events = [
+            {"object": SimpleNamespace(pk=index), "start_date": base.date(), "start_time": (base + timedelta(minutes=offset)).time(),
+             "duration_minutes": 15, "all_day": False}
+            for index, offset in enumerate((0, 15, 36))
+        ]
+        positioned = CalendarDataviewRenderer._position_timed_events(events)
+        self.assertEqual([(event["timed_column"], event["timed_columns"]) for event in positioned], [(0, 2), (1, 2), (0, 1)])
+
     def test_unreadable_or_ambiguous_date_ranges_are_not_rendered(self) -> None:
         """Suppress incomplete or mixed pairs and dates denied by row-specific field access."""
         renderer = self.mixed_renderer()

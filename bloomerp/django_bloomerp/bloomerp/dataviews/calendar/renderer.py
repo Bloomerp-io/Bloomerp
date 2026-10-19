@@ -204,7 +204,8 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
             return HttpResponse("Calendar is not configured", status=400)
 
         unit_queryset = renderer._filter_unit_queryset(state.queryset, start_field, unit, view_mode)
-        if date_start and date_end:
+        group_period = bool(date_start and date_end) or view_mode in {"day", "week"}
+        if group_period:
             try:
                 unit_day = date.fromisoformat(unit + "-01" if view_mode == "year" else unit.split("T")[0])
                 if view_mode == "year":
@@ -219,8 +220,8 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
                 return HttpResponse("Invalid calendar unit", status=400)
         if unit_queryset is None:
             return HttpResponse("Invalid calendar unit", status=400)
-        events, _legend = renderer._build_events(unit_queryset, start_field, end_field, color_field)
-        if date_start and date_end:
+        events, _legend = renderer._build_events(unit_queryset, start_field, end_field, color_field, view_mode=view_mode)
+        if group_period:
             events = renderer._group_events(events, view_mode, unit_day, last_day).get(unit, [])
         page = events[offset:offset + CALENDAR_PAGE_SIZE]
         config = get_model_config(state.model)
@@ -596,6 +597,8 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
         start_field: ApplicationField,
         end_field: ApplicationField | None,
         color_field: ApplicationField | None,
+        *,
+        view_mode: str | None = None,
     ) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
         """Render each record once with readable color memberships and inferred temporal ranges."""
         raw_events = []
@@ -681,9 +684,48 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
                 "can_move": can_edit_start and (event_end is None or can_edit_end),
             })
         legend = list(legend_groups.values())
-        if self.options.calendar_view_mode in {"day", "week"}:
-            events = self._split_timed_events(events)
+        if (view_mode or self.options.calendar_view_mode) in {"day", "week"}:
+            events = self._position_timed_events(self._split_timed_events(events))
         return events, legend
+
+    @staticmethod
+    def _position_timed_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Allocate columns per daily overlap group, including each card's minimum visible height."""
+        positioned = [dict(event) for event in events]
+        by_day: defaultdict[date, list[dict[str, Any]]] = defaultdict(list)
+        for event in positioned:
+            if not event["all_day"]:
+                by_day[event["start_date"]].append(event)
+
+        def event_order(event: dict[str, Any]) -> tuple[int, int, str]:
+            """Order simultaneous starts deterministically, placing longer ranges first."""
+            start = event["start_time"]
+            return start.hour * 60 + start.minute, -event["duration_minutes"], str(event["object"].pk)
+
+        for day_events in by_day.values():
+            lane_ends: list[int] = []
+            cluster: list[dict[str, Any]] = []
+            cluster_end = 0
+            for event in sorted(day_events, key=event_order):
+                start = event["start_time"].hour * 60 + event["start_time"].minute
+                # The grid uses 5rem per hour and a minimum card height of 1.75rem.
+                end = start + max(21, event["duration_minutes"])
+                if cluster and start >= cluster_end:
+                    for member in cluster:
+                        member["timed_columns"] = len(lane_ends)
+                    lane_ends = []
+                    cluster = []
+                lane = next((index for index, occupied_until in enumerate(lane_ends) if occupied_until <= start), len(lane_ends))
+                if lane == len(lane_ends):
+                    lane_ends.append(end)
+                else:
+                    lane_ends[lane] = end
+                event["timed_column"] = lane
+                cluster.append(event)
+                cluster_end = max(lane_ends)
+            for member in cluster:
+                member["timed_columns"] = len(lane_ends)
+        return positioned
 
     @staticmethod
     def _split_timed_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:

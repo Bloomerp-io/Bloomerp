@@ -56,6 +56,10 @@ export default class ResizableDiv extends BaseComponent {
             this.currentWidth = parseWidth(this.element.dataset.startWidth);
             this.saveWidth(this.currentWidth);
         }
+        if (this.element.dataset.forceClose === "true" && this.element.dataset.forceOpen !== "true") {
+            this.expandedWidth = this.currentWidth;
+            this.currentWidth = "0px";
+        }
 
         this.applyWidth(this.currentWidth);
         this.element.style.minWidth = `${this.numberOption("minWidth", MIN_WIDTH)}px`;

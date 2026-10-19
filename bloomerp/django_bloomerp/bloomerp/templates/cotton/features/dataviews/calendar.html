@@ -1,13 +1,15 @@
-{% load i18n %}
+{% load i18n tz %}
+{% get_current_timezone as calendar_timezone %}
 {% comment %}
 Permission-filtered calendar dataview with day, week, month, year, and list modes.
 {% endcomment %}
 {% load bloomerp %}
 
 <div
-    class="flex h-full min-h-96 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs"
+    class="flex h-full min-h-96 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs focus:outline-none focus:ring-0"
     data-content-type-id="{{ content_type_id }}"
     data-calendar-view-mode="{{ view_mode|default:'week' }}"
+    data-calendar-timezone="{{ calendar_timezone }}"
     data-page-offset="{{ calendar_page_offset|default:0 }}"
     data-calendar-start-field-type="{{ start_field.field_type }}"
     data-calendar-end-field-type="{{ end_field.field_type|default:'' }}"
@@ -208,13 +210,14 @@ Permission-filtered calendar dataview with day, week, month, year, and list mode
                     {% for hour in calendar_hours %}<div class="h-20 pr-2 pt-1 text-right text-xs text-light">{{ hour|stringformat:"02d" }}:00</div>{% endfor %}
                 </div>
                 {% for day_column in calendar_day_columns %}
-                <div class="border-l border-gray-200">
+                <div class="relative border-l border-gray-200">
+                    <div class="pointer-events-none absolute inset-x-0 z-20 hidden border-t-2 border-primary" data-calendar-current-time="{{ day_column.date|date:'Y-m-d' }}" aria-hidden="true"></div>
                     {% for hour_unit in day_column.hours %}
                     {% with unit_key=hour_unit.key %}
                     {% with unit=calendar_events_by_unit|get_item:unit_key %}
                     <section class="relative h-20 overflow-visible border-b border-gray-200 p-1" data-calendar-unit="{{ unit_key }}" data-calendar-row="{{ forloop.counter0 }}" data-calendar-column="{{ forloop.parentloop.counter0 }}" data-calendar-unit-section data-calendar-dropzone data-calendar-create-start="{{ hour_unit.create_start }}" data-calendar-create-end="{{ hour_unit.create_end }}">
                         <button type="button" class="sr-only" data-calendar-unit="{{ unit_key }}" data-calendar-unit-cell bloomerp-component="calendar-cell">{{ day_column.date|date:"D j" }} {{ hour_unit.hour }}:00</button>
-                        <div class="space-y-1" data-calendar-events>
+                        <div data-calendar-events>
                             {% include "components/objects/dataview_calendar_events.html" with events=unit.events calendar_unit=unit_key calendar_has_more=unit.has_more calendar_next_unit_offset=5 calendar_view_mode=view_mode %}
                         </div>
                     </section>
