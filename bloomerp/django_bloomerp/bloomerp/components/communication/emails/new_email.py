@@ -17,8 +17,9 @@ from django.views.decorators.http import require_http_methods
 from bloomerp.communication.builtins.emails.registry import EMAIL_PROVIDER_REGISTRY
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.router import router
+from bloomerp.services.email_attachment_services import prepare_email_files
 from bloomerp.services.email_composer_requests import (
-    _get_attachments, _get_form_data, _join_recipients, _resolve_account,
+    _get_form_data, _join_recipients, _resolve_account,
     _resolve_draft, _validate_form_data, resolve_inbox_folder,
 )
 from bloomerp.services.email_composer_services import (
@@ -76,11 +77,12 @@ def _send_new_email(
     provider = EMAIL_PROVIDER_REGISTRY.get(email_account.provider)
     if provider is None:
         raise ValidationError(_("This email account has an unsupported provider."))
+    body, attachments = prepare_email_files(request, body)
     adapter = provider.adapter_class(email_account)
     try:
         adapter.send_email(
             to=form_data["to"], cc=form_data["cc"], bcc=form_data["bcc"],
-            subject=form_data["subject"], body_html=body, attachments=_get_attachments(request),
+            subject=form_data["subject"], body_html=body, attachments=attachments,
         )
     finally:
         close = getattr(adapter, "close", None)
