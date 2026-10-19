@@ -292,3 +292,62 @@ class TestEmailReplyActions(EmailReplyFixtureMixin, BaseBloomerpTestCaseWithMode
         delete_email(self.sent_item, Mock())
 
         self.assertFalse(InboxItem.objects.filter(pk=self.sent_item.pk).exists())
+
+
+class TestReplyEmailFiles(EmailReplyFixtureMixin, BloomerpComponentTestCase):
+    """Keep authored image delivery distinct from the original quoted message and local display."""
+
+    view_name = "components_reply_to_email"
+    auto_create_customers = False
+
+    def setUp(self) -> None:
+        """Create a synthetic stored image and isolate both provider reads and sends."""
+        import io
+        from PIL import Image
+        from bloomerp.models import FileNode
+        super().setUp()
+        output = io.BytesIO()
+        Image.new("RGB", (1, 1), "blue").save(output, format="PNG")
+        self.image = FileNode.objects.create(kind="FILE", created_by=self.user, content=SimpleUploadedFile("reply.png", output.getvalue()))
+        self.quoted_image = FileNode.objects.create(kind="FILE", created_by=self.user, content=SimpleUploadedFile("private-quoted.png", output.getvalue()))
+        self.body = f'<p>My reply</p><img data-reference-kind="file" data-target-id="{self.image.pk}" src="/api/files/serve/?file_id={self.image.pk}">'
+        content_patch = patch("bloomerp.components.communication.emails.reply_to_email.fetch_email_content", return_value=f'<p>Original</p><img src="cid:original-logo"><img src="http://testserver/api/files/serve/?file_id={self.quoted_image.pk}">')
+        content_patch.start()
+        self.addCleanup(content_patch.stop)
+        adapter_patch = patch("bloomerp.components.communication.emails.reply_to_email._resolve_email_adapter_for_account")
+        self.adapter = adapter_patch.start().return_value
+        self.adapter.send_email.return_value = "<inline-reply@example.com>"
+        self.addCleanup(adapter_patch.stop)
+
+    def get_test_scenarios(self) -> list[RequestScenario]:
+        """Test quoted CID compatibility, local rendering, and structured failures for retries."""
+        from uuid import uuid4
+        return [
+            RequestScenario(name="Reply embeds authored image and preserves pre-existing quoted CID", method="POST", user=self.user, data={"reply_to_item_id": self.item.pk, "to": "alice@example.com", "body": self.body}, headers={"Accept": "application/json"}, prepare=self.reset_send, expected=ExpectedResult(response_validators=self.sent_and_displayable)),
+            RequestScenario(name="Missing image fails as JSON without sending", method="POST", user=self.user, data={"reply_to_item_id": self.item.pk, "to": "alice@example.com", "body": f'<img data-reference-kind="file" data-target-id="{uuid4()}" src="missing">'}, headers={"Accept": "application/json"}, prepare=self.reset_send, expected=ExpectedResult(status_code=400, response_validators=self.failed_without_send)),
+            RequestScenario(name="New unresolved CID fails rather than silently dropping an intended image", method="POST", user=self.user, data={"reply_to_item_id": self.item.pk, "to": "alice@example.com", "body": '<img src="cid:unknown">'}, headers={"Accept": "application/json"}, prepare=self.reset_send, expected=ExpectedResult(status_code=400, response_validators=self.failed_without_send)),
+        ]
+
+    def reset_send(self, _scenario: RequestScenario) -> None:
+        """Clear mocked provider calls between independent requests."""
+        self.adapter.reset_mock()
+
+    def sent_and_displayable(self, response: HttpResponse) -> bool:
+        """Keep a stored-file display body locally while sending actual CID image bytes."""
+        self.adapter.send_email.assert_called_once()
+        kwargs = self.adapter.send_email.call_args.kwargs
+        self.assertIn('src="cid:original-logo"', kwargs["body_html"])
+        self.assertEqual(len(kwargs["attachments"]), 1)
+        self.assertIn("cid:" + kwargs["attachments"][0].content_id, kwargs["body_html"])
+        self.assertEqual(kwargs["body_html"].count(str(self.quoted_image.pk)), 1)
+        self.assertNotIn(str(self.image.pk), kwargs["body_html"])  # Quoted URLs are never resolved with the replier's authority.
+        stored = InboxItem.objects.get(related_item_id="<inline-reply@example.com>").raw_meta_data["outbound_body_html"]
+        self.assertIn(str(self.image.pk), stored)
+        self.assertNotIn(kwargs["attachments"][0].content_id, stored)
+        return "message" in response.json()
+
+    def failed_without_send(self, response: HttpResponse) -> bool:
+        """Require a structured failure while preserving the source image."""
+        self.adapter.send_email.assert_not_called()
+        self.image.refresh_from_db()
+        return "errors" in response.json()
