@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import transaction
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -22,16 +22,17 @@ from bloomerp.communication.builtins.emails.actions import (
 )
 from bloomerp.communication.utils.permissions import accessible_inbox_items
 from bloomerp.services.email_composer_requests import (
-    _get_attachments,
     _get_form_data,
     _join_recipients,
     _validate_form_data,
 )
 from bloomerp.router import router
+from bloomerp.services.email_attachment_services import prepare_email_files
 from bloomerp.utils.requests import render_message
 
 if TYPE_CHECKING:
     from bloomerp.models.communication.email_account import EmailAccount
+    from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
     from bloomerp.models.communication.inbox.inbox_item import InboxItem
 
 
@@ -201,10 +202,14 @@ def reply_to_email(
     """Render or send a reply to an accessible email inbox item."""
     inbox_item = resolve_inbox_item(request, inbox_item_or_id)
     if inbox_item is None:
+        if "application/json" in request.headers.get("Accept", ""):
+            return JsonResponse({"errors": [_("Select an email before replying.")]}, status=400)
         return render_message(request, _("Select an email before replying."), "warning")
 
     reply_recipients = reply_recipient_emails(inbox_item)
     if not reply_recipients:
+        if "application/json" in request.headers.get("Accept", ""):
+            return JsonResponse({"errors": [_("This email does not have a valid reply recipient.")]}, status=400)
         return render_message(
             request,
             _("This email does not have a valid reply recipient."),
@@ -214,6 +219,8 @@ def reply_to_email(
     inbox_folder = inbox_item.folder
     email_account = inbox_folder.related_object()
     if email_account is None:
+        if "application/json" in request.headers.get("Accept", ""):
+            return JsonResponse({"errors": [_("This email folder is not connected to an email account.")]}, status=400)
         return render_message(
             request,
             _("This email folder is not connected to an email account."),
@@ -250,14 +257,16 @@ def _send_reply(
     request: HttpRequest,
     *,
     inbox_item: "InboxItem",
-    inbox_folder,
-    email_account,
+    inbox_folder: "InboxFolder",
+    email_account: "EmailAccount",
     quoted_email: dict[str, str],
 ) -> HttpResponse:
     """Validate, send, and persist one reply."""
     form_data = _get_form_data(request)
     errors = _validate_form_data(form_data)
     if errors:
+        if "application/json" in request.headers.get("Accept", ""):
+            return JsonResponse({"errors": errors}, status=400)
         return _render_reply_composer(
             request,
             inbox_item=inbox_item,
@@ -276,20 +285,22 @@ def _send_reply(
         request=request,
     )
     body_html = f'{form_data["body"]}{quoted_html}'
-    attachments = _get_attachments(request)
     adapter = _resolve_email_adapter_for_account(email_account)
     try:
+        wire_body, attachments = prepare_email_files(request, form_data["body"])
         sent_message_id = adapter.send_email(
             to=form_data["to"],
             cc=form_data["cc"],
             bcc=form_data["bcc"],
             subject=form_data["subject"],
-            body_html=body_html,
+            body_html=f"{wire_body}{quoted_html}",
             attachments=attachments,
             in_reply_to=in_reply_to,
             references=references,
         )
     except ValidationError as exc:
+        if "application/json" in request.headers.get("Accept", ""):
+            return JsonResponse({"errors": exc.messages}, status=400)
         return _render_reply_composer(
             request,
             inbox_item=inbox_item,
@@ -313,6 +324,8 @@ def _send_reply(
         in_reply_to=in_reply_to,
         references=references,
     )
+    if "application/json" in request.headers.get("Accept", ""):
+        return JsonResponse({"message": _("Reply sent successfully.")})
     return render_message(request, _("Reply sent successfully."), "success")
 
 
@@ -320,8 +333,8 @@ def _render_reply_composer(
     request: HttpRequest,
     *,
     inbox_item: "InboxItem",
-    inbox_folder,
-    email_account,
+    inbox_folder: "InboxFolder",
+    email_account: "EmailAccount",
     quoted_email: dict[str, str],
     form_data: dict[str, object],
     errors: list[str] | None = None,
