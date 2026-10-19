@@ -135,7 +135,10 @@ export function launchContextMenu(
     const requestedKeys = insertKeys ?? Object.keys(ACTIONS);
     const normalizedQuery = query?.trim().toLowerCase() ?? '';
     const items = requestedKeys
-        .map((key) => ACTIONS[key])
+        .map(function resolveAction(key: string): Action | undefined {
+            /** Resolve builder-only commands through this editor instance. */
+            return textEditor.getAction(key);
+        })
         .filter((insert) => Boolean(insert))
         .filter((insert) => {
             if (!normalizedQuery) {
@@ -148,8 +151,9 @@ export function launchContextMenu(
             label: insert.label,
             icon: insert.icon,
             submenu: insert.submenu?.bind(null, textEditor),
-            onClick: () => {
-                insert.handler(textEditor);
+            onClick: function runMenuAction(): void {
+                /** Distinguish slash-trigger consumption from toolbar insertion. */
+                insert.handler(textEditor, anchor === "caret" ? "slash" : "selection");
             },
         }));
 

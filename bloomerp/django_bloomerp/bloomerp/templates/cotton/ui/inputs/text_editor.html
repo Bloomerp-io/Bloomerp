@@ -25,6 +25,7 @@ prepare their variable context, then call insert to preserve the original select
     data-name="{{ name }}"
     data-actions-toolbar-section-id="{{ actions_toolbar_section_id }}"
     data-editor-id="{{ editor_id }}"
+    data-editor-context="{{ editor_context|default:'' }}"
     data-include-toolbar="{{ include_toolbar }}"
     {% if height %}style="height: {{ height }};"{% endif %}
     >
