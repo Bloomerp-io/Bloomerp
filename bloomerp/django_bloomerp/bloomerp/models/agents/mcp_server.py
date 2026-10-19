@@ -8,9 +8,19 @@ from urllib.parse import urlsplit
 from django.core.exceptions import ValidationError
 from django.db import models, router, transaction
 from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_noop
 
+from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models.base_bloomerp_model import BloomerpModel
-from bloomerp.models.definition import ApiSettings, BloomerpModelConfig
+from bloomerp.models.definition import (
+    ApiSettings,
+    BloomerpModelConfig,
+    DetailViewSettings,
+    FieldLayout,
+    LayoutItem,
+    LayoutRow,
+    ModelViewSettings,
+)
 from bloomerp.modules.bloomai import BloomAIModule
 
 from .base import AgentQuerySet
@@ -34,6 +44,47 @@ class MCPIntegration(BloomerpModel):
         verbose_name_plural = _("MCP Integrations")
 
     bloomerp_config = BloomerpModelConfig(
+        model_view_settings=ModelViewSettings(
+            default_dataviews=[
+                TableDataView(
+                    name=gettext_noop("MCP integrations"),
+                    display_fields=[
+                        "name",
+                        "enabled",
+                        "connection_mode",
+                        "authentication_type",
+                    ],
+                    sort_field="name",
+                )
+            ]
+        ),
+        detail_view_settings=DetailViewSettings(
+            layouts=[
+                FieldLayout(
+                    rows=[
+                        LayoutRow(
+                            columns=2,
+                            title=gettext_noop("Server"),
+                            items=[
+                                LayoutItem(id="name"),
+                                LayoutItem(id="enabled"),
+                                LayoutItem(id="endpoint_url", colspan=2),
+                            ],
+                        ),
+                        LayoutRow(
+                            columns=2,
+                            title=gettext_noop("Authentication"),
+                            items=[
+                                LayoutItem(id="connection_mode"),
+                                LayoutItem(id="authentication_type"),
+                                LayoutItem(id="oauth_client_id", colspan=2),
+                                LayoutItem(id="oauth_scopes", colspan=2),
+                            ],
+                        ),
+                    ]
+                )
+            ]
+        ),
         module=BloomAIModule,
         api_settings=ApiSettings(enable_auto_generation=False),
         description="External MCP server configuration independent of an account.",
