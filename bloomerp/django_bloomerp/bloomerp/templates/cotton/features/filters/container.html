@@ -1,11 +1,17 @@
+{% load bloomerp %}
+{% url 'components_filters_fields' as fields_url %}
+{% url 'components_filters_lookups' as lookups_url %}
+{% url 'components_filters_value_editor' as value_editor_url %}
+{% url 'components_filters_get' as presets_url %}
+{% url 'components_filters_save' as save_url %}
 {# initial_filters is a JSON-encoded list of Filter groups. #}
 <div
     bloomerp-component="unified-filter-container"
-    data-fields-url="{% url 'components_filters_fields' %}"
-    data-lookups-url="{% url 'components_filters_lookups' %}"
-    data-value-editor-url="{% url 'components_filters_value_editor' %}"
-    data-presets-url="{% url 'components_filters_get' %}"
-    data-save-preset-url="{% url 'components_filters_save' %}"
+    data-fields-url="{{ fields_url|with_permission_token:request }}"
+    data-lookups-url="{{ lookups_url|with_permission_token:request }}"
+    data-value-editor-url="{{ value_editor_url|with_permission_token:request }}"
+    data-presets-url="{{ presets_url|with_permission_token:request }}"
+    data-save-preset-url="{{ save_url|with_permission_token:request }}"
     data-scope="{{ scope }}"
     data-scope-id="{{ id }}"
     data-name="{{ name|default:'filter' }}"

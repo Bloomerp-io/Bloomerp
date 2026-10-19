@@ -18,7 +18,7 @@ export default class CalendarEventEditor extends ObjectCRUDViewContainer {
             const searchUrl = new URL(this.element.dataset.recipientSearchUrl!, location.origin);
             const token = this.value("_permission_token");
             if (token) searchUrl.searchParams.set("_permission_token", token);
-            this.recipients = new EmailRecipients(source, this.lifecycle.signal, searchUrl.toString(), users);
+            this.recipients = new EmailRecipients(source, this.lifecycle.signal, searchUrl.pathname + searchUrl.search, users);
         }
         this.element.addEventListener("change", this.onChange, { signal: this.lifecycle.signal });
         this.element.addEventListener("input", this.onParticipantInput, { signal: this.lifecycle.signal });

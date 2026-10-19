@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from datetime import datetime
 from functools import partial
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -27,6 +27,12 @@ from bloomerp.modules.communication import CommunicationModule
 
 from .base import CalendarModel
 from .validators import new_calendar_uid, validate_calendar_timezone
+
+if TYPE_CHECKING:
+    from bloomerp.models.users.user import AbstractBloomerpUser
+
+    from .calendar_event_participant import CalendarEventParticipant
+
 
 
 def back_to_inbox(context: DataviewActionContext) -> HttpResponse:
@@ -301,6 +307,38 @@ class CalendarEvent(CalendarModel):
     def __str__(self) -> str:
         """Return the shared meeting's title independently of its placements."""
         return self.title
+
+    def is_internal(self) -> bool:
+        """Return whether every invited participant is linked to a Bloomerp user."""
+        return not self.participants.filter(user__isnull=True).exists()
+
+    def is_host(self, user: "AbstractBloomerpUser") -> bool:
+        """Identify a locally hosted event's creator or organizing calendar owner."""
+        return bool(self.organizing_inbox_id and (
+            self.created_by_id == user.pk or self.organizing_inbox.user_id == user.pk
+        ))
+
+    def get_participant(self, user: "AbstractBloomerpUser") -> "CalendarEventParticipant | None":
+        """Resolve a linked user or an invited external mailbox the caller can use."""
+        if not user.is_authenticated:
+            return None
+        participants = self.participants.filter(invitation_cancelled=False)
+        participant = participants.filter(user=user).first()
+        if participant is not None or self.organizing_inbox_id:
+            return participant
+        from bloomerp.communication.utils.permissions import accessible_inboxes
+        from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
+        from bloomerp.services.email_composer_services import accessible_email_accounts
+
+        folders = InboxFolder.objects.filter(
+            inbox__in=self.inboxes.filter(pk__in=accessible_inboxes(user)), type="email"
+        )
+        for account in accessible_email_accounts(user).filter(status="active"):
+            if folders.filter(related_object_id=str(account.pk)).exists():
+                participant = participants.filter(email__iexact=account.email_address).first()
+                if participant is not None:
+                    return participant
+        return None
 
     def get_absolute_url(self) -> str:
         """

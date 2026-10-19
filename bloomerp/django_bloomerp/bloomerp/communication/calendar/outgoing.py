@@ -236,71 +236,91 @@ def respond_to_calendar_invitation(
     *,
     user: AbstractBloomerpUser,
     event_id: UUID,
-    email_account_id: UUID,
-    inbox_id: int,
+    email_account_id: UUID | None = None,
+    inbox_id: int | None = None,
     response_status: str,
     expected_sequence: int,
 ) -> str | None:
-    """Send the invited identity's iTIP reply and record its successful response.
+    """Record a response, sending an iTIP reply for an external invitation.
 
-    Suppress a repeated successful response for the same event revision. Call
-    outside an enclosing transaction or after its commit; delivery tracking and
-    retry behavior remain the responsibility of ordinary email sending.
+    Without an explicit account, resolve the caller's user or invited mailbox identity.
+    Explicit email-screen responses retain the existing row and field policy checks.
+    Failed delivery rolls back attendance, and repeated successful replies are suppressed.
     """
+    from bloomerp.communication.utils.permissions import accessible_inboxes
+
     if response_status not in {"accepted", "tentative", "declined"}:
         raise ValidationError("Choose accepted, tentative, or declined.")
     event = CalendarEvent.objects.select_for_update().get(pk=event_id)
-    require_event_access(user, event)
+    own_response = email_account_id is None and inbox_id is None
+    send_reply = True
+    account = None
+    if own_response:
+        identity = event.get_participant(user)
+        if identity is None:
+            raise PermissionDenied("You are not an invited participant.")
+        participant = event.participants.select_for_update().get(pk=identity.pk)
+        send_reply = not bool(event.organizing_inbox_id)
+        if send_reply:
+            accounts = accessible_email_accounts(user).filter(
+                email_address__iexact=participant.email, status="active"
+            )
+            for candidate in accounts:
+                folder = InboxFolder.objects.filter(
+                    inbox__in=event.inboxes.filter(pk__in=accessible_inboxes(user)),
+                    type="email", related_object_id=str(candidate.pk),
+                ).first()
+                if folder is not None:
+                    account = _email_account(user, candidate.pk, folder.inbox_id)
+                    break
+            if account is None:
+                raise ValidationError("The invited email account is not available to send your response.")
+    else:
+        if email_account_id is None or inbox_id is None:
+            raise ValidationError("Choose an invited email account and its calendar inbox.")
+        require_event_access(user, event)
+        account = _email_account(user, email_account_id, inbox_id)
+        if not event.inboxes.filter(pk=inbox_id).exists():
+            raise PermissionDenied("This event is not placed in the responding Inbox.")
+        participant = event.participants.select_for_update().filter(
+            email__iexact=account.email_address, invitation_cancelled=False
+        ).first()
+        if participant is None:
+            raise PermissionDenied("This email identity was not invited to the meeting.")
+        manager = UserPolicyManager(user)
+        if not manager.has_access_to_object(
+            participant, "change", fields=[
+                "response_status", "responded_at", "reply_sequence", "reply_dtstamp",
+                "last_sent_reply_sequence", "last_sent_reply_status",
+            ],
+        ):
+            raise PermissionDenied("You cannot respond for this participant.")
+        if not manager.has_access_to_object(
+            participant, "view", fields=["email", "display_name", "response_status"]
+        ):
+            raise PermissionDenied("You cannot view this participant.")
     if event.cancelled or event.sequence != expected_sequence:
-        raise ValidationError(
-            "This invitation was updated or cancelled. Refresh it before responding."
-        )
-    account = _email_account(user, email_account_id, inbox_id)
-    if not event.inboxes.filter(pk=inbox_id).exists():
-        raise PermissionDenied("This event is not placed in the responding Inbox.")
-    participant = (
-        event.participants.select_for_update()
-        .filter(email__iexact=account.email_address, invitation_cancelled=False)
-        .first()
-    )
-    if participant is None:
-        raise PermissionDenied("This email identity was not invited to the meeting.")
-    manager = UserPolicyManager(user)
-    if not manager.has_access_to_object(
-        participant,
-        "change",
-        fields=[
-            "response_status",
-            "responded_at",
-            "reply_sequence",
-            "reply_dtstamp",
-            "last_sent_reply_sequence",
-            "last_sent_reply_status",
-        ],
-    ):
-        raise PermissionDenied("You cannot respond for this participant.")
-    if not manager.has_access_to_object(
-        participant, "view", fields=["email", "display_name", "response_status"]
-    ):
-        raise PermissionDenied("You cannot view this participant.")
-    if (
-        participant.response_status == response_status
-        and participant.last_sent_reply_sequence == event.sequence
+        raise ValidationError("This invitation was updated or cancelled. Refresh it before responding.")
+    if participant.response_status == response_status and (
+        participant.last_sent_reply_sequence == event.sequence
         and participant.last_sent_reply_status == response_status
+        if send_reply else participant.reply_sequence == event.sequence
     ):
         return None
     stamp = timezone.now().replace(microsecond=0)
     if participant.reply_dtstamp and stamp <= participant.reply_dtstamp:
         stamp = participant.reply_dtstamp.replace(microsecond=0) + timedelta(seconds=1)
-    payload = build_scheduling_calendar(
-        event, "REPLY", [participant], stamp=stamp, response_status=response_status
-    )
-    message_id = _send(account, event, "REPLY", payload, [event.organizer_email])
+    message_id = None
+    if send_reply:
+        payload = build_scheduling_calendar(
+            event, "REPLY", [participant], stamp=stamp, response_status=response_status
+        )
+        message_id = _send(account, event, "REPLY", payload, [event.organizer_email])
+        participant.last_sent_reply_sequence = event.sequence
+        participant.last_sent_reply_status = response_status
     participant.response_status = response_status
     participant.responded_at = stamp
     participant.reply_sequence = event.sequence
     participant.reply_dtstamp = stamp
-    participant.last_sent_reply_sequence = event.sequence
-    participant.last_sent_reply_status = response_status
     participant.save()
     return message_id

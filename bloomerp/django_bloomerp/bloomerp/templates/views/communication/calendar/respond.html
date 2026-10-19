@@ -1,0 +1,39 @@
+{% load i18n bloomerp %}
+<form id="calendar-event-response-form" method="post" action="{{ form_url }}"
+      hx-post="{{ form_url }}" hx-target="#calendar-event-response-form" hx-swap="outerHTML" hx-push-url="false"
+      hx-sync="this:drop" bloomerp-component="object-crud-view-container"
+      data-layout="{{ layout|dump_layout_json }}" class="space-y-5 p-6">
+    {% csrf_token %}
+    {% if permission_token %}<input type="hidden" name="_permission_token" value="{{ permission_token }}">{% endif %}
+    {{ form.sequence }}
+    <div>
+        <h2 class="text-lg font-semibold">{{ calendar_event.title }}</h2>
+        <p class="text-sm text-light">{{ calendar_event.organizer_email }}</p>
+        {% if calendar_event.all_day %}
+        <p>{{ calendar_event.start_date }} · {% translate "All day" %}</p>
+        {% else %}
+        <p>{{ calendar_event.start }} — {{ calendar_event.end }}</p>
+        {% endif %}
+        {% if calendar_event.location %}<p>{{ calendar_event.location }}</p>{% endif %}
+    </div>
+    <div data-layout-root>
+        {% if not calendar_event.cancelled %}
+        {% for row in layout.rows %}
+        <c-features.layout.row :row="row" />
+        {% endfor %}
+        {% endif %}
+    </div>
+    {% if calendar_event.cancelled %}
+    <p role="status">{% translate "Invitation cancelled" %}</p>
+    {% else %}
+    {% if form.non_field_errors %}<div role="alert" class="text-sm text-danger-dark">{{ form.non_field_errors }}</div>{% endif %}
+    <div class="space-y-2">
+        <p class="text-sm text-light">{% translate "Current attendance" %}: {{ participant.get_response_status_display }}</p>
+    </div>
+    <div class="flex justify-end border-t border-gray-200 pt-4">
+        <button type="submit" class="btn btn-primary btn-sm" id="object-crud-container-save-button">
+            <i class="fa fa-save" aria-hidden="true"></i><span>{% translate "Update attendance" %}</span>
+        </button>
+    </div>
+    {% endif %}
+</form>

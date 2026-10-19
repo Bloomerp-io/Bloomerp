@@ -274,3 +274,35 @@ async function standaloneAvailability(): Promise<void> {
 }
 
 test('availability sidebar works independently of an event form', standaloneAvailability);
+
+/** Search through the real SDK and preserve explicitly selected account identities. */
+async function userSuggestions(): Promise<void> {
+    const f = fixture();
+    try {
+        f.w.fetch = async function searchUsers(input: RequestInfo | URL): Promise<Response> {
+            const url = new URL(String(input));
+            f.requests.push(url);
+            return new Response(JSON.stringify(url.pathname === "/recipients/" ? {
+                suggestions: [{ email: "john@example.com", label: "Users", user_id: "john", display_name: "John Doe" }],
+            } : { users: [] }), { headers: { "Content-Type": "application/json" } });
+        };
+        const entry = f.form.querySelector<HTMLInputElement>('[role="combobox"]')!;
+        entry.focus();
+        entry.value = "John";
+        entry.dispatchEvent(new f.w.InputEvent("input", { bubbles: true }));
+        await new Promise<void>(function waitForSearch(resolve: () => void): void { setTimeout(resolve, 250); });
+        const request = f.requests.find((url: URL): boolean => url.pathname === "/recipients/");
+        assert.ok(request, "Participant search must reach the same-origin recipient endpoint");
+        assert.equal(request.origin, "https://app.example");
+        assert.equal(request.searchParams.get("q"), "John");
+        assert.equal(request.searchParams.get("calendar_users"), "1");
+        assert.equal(request.searchParams.get("_permission_token"), "scoped-calendar-token");
+        const option = f.form.querySelector<HTMLElement>('[role="option"][data-user-id="john"]');
+        assert.ok(option);
+        assert.match(option.textContent!, /John Doe/);
+        option.click();
+        assert.deepEqual(JSON.parse(f.form.querySelector<HTMLInputElement>('[name="attendee_users"]')!.value), ["u1", "john"]);
+    } finally { f.dom.window.close(); }
+}
+
+test("participant suggestions use a valid SDK URL and retain selected users", userSuggestions);

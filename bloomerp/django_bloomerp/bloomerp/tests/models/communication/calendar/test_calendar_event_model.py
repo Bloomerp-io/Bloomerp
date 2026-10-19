@@ -24,6 +24,15 @@ class TestCalendarEventModel(CalendarFixtures, BloomerpModelTestCase):
         """Cover shared calendars and invalid date or booking-origin combinations."""
         scenarios = [
             ModelScenario(
+                name="Only linked users make an event internal",
+                preparation=self.prepare,
+                create_args=self.event_args,
+                post_create=self.add_internal_participant,
+                create_validators=self.internal_participant_only,
+                update_args={},
+                update_validators=self.external_address_is_not_internal,
+            ),
+            ModelScenario(
                 name="One meeting appears in several inboxes and moves without copies",
                 preparation=self.prepare,
                 create_args=self.event_args,
@@ -149,3 +158,16 @@ class TestCalendarEventModel(CalendarFixtures, BloomerpModelTestCase):
         event = CalendarEvent(**self.event_args(start=None, end=None))
         CalendarEvent.objects.bulk_create([event])
         return event
+
+    def add_internal_participant(self, event: CalendarEvent) -> None:
+        """Link a user explicitly, independently of calendar placement."""
+        event.participants.create(user=self.user)
+
+    def internal_participant_only(self, event: CalendarEvent) -> bool:
+        """Recognize a user-only attendee list and resolve the caller's membership."""
+        return event.is_internal() and event.get_participant(self.user).user_id == self.user.pk
+
+    def external_address_is_not_internal(self, event: CalendarEvent) -> bool:
+        """An email-only attendee makes the participant list external."""
+        event.participants.create(email="external@example.com")
+        return not event.is_internal()
