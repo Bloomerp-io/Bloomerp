@@ -112,8 +112,8 @@ Permission-filtered calendar dataview with day, week, month, year, and list mode
                 {% endfor %}
                 {% with week_segments=calendar_month_segments_by_week|get_item:forloop.counter0 %}
                 {% for event in week_segments %}
-                <button
-                    type="button"
+                <div
+                    role="button" tabindex="0"
                     class="calendar-event relative z-10 mx-1 block self-start overflow-hidden rounded-xl border px-2 py-1 text-left text-xs shadow-xs {{ event.color_classes }}"
                     style="grid-column: {{ event.start_column }} / span {{ event.span }}; grid-row: 1; margin-top: calc(2rem + {{ event.lane }} * 3.25rem);"
                     data-calendar-unit="{{ event.start_date|date:'Y-m-d' }}"
@@ -131,7 +131,7 @@ Permission-filtered calendar dataview with day, week, month, year, and list mode
                 >
                     {% if event.can_edit_start %}<span class="absolute inset-y-0 left-0 w-2 cursor-ew-resize" data-calendar-resize-start aria-hidden="true"></span>{% endif %}
                     {% if event.can_edit_end %}<span class="absolute inset-y-0 right-0 w-2 cursor-ew-resize" data-calendar-resize-end aria-hidden="true"></span>{% endif %}
-                    <span class="flex min-w-0 items-center gap-1"><span class="truncate font-medium">{{ event.object }}</span>{% include "components/objects/dataview_calendar_group_dots.html" %}</span>
+                    <div class="flex min-w-0 items-center gap-1"><span class="truncate font-medium">{{ event.object }}</span>{% include "components/objects/dataview_calendar_group_dots.html" %}{% include "components/objects/dataview_calendar_actions.html" %}</div>
                     {% if fields %}
                     <span class="mt-0.5 block truncate opacity-75">
                         {% for field in fields %}
@@ -139,7 +139,7 @@ Permission-filtered calendar dataview with day, week, month, year, and list mode
                         {% endfor %}
                     </span>
                     {% endif %}
-                </button>
+                </div>
                 {% endfor %}
                 {% endwith %}
             </div>
@@ -172,8 +172,8 @@ Permission-filtered calendar dataview with day, week, month, year, and list mode
                 {% endfor %}
                 {% if view_mode == 'week' %}
                 {% for event in calendar_week_segments %}
-                <button
-                    type="button"
+                <div
+                    role="button" tabindex="0"
                     class="calendar-event relative z-10 mx-1 block self-start overflow-hidden rounded-xl border px-2 py-1 text-left text-xs shadow-xs {{ event.color_classes }}"
                     style="grid-column: {{ event.start_column|add:1 }} / span {{ event.span }}; grid-row: 1; margin-top: calc(0.25rem + {{ event.lane }} * 3.25rem);"
                     data-calendar-unit="{{ event.start_date|date:'Y-m-d' }}"
@@ -191,7 +191,7 @@ Permission-filtered calendar dataview with day, week, month, year, and list mode
                 >
                     {% if event.can_edit_start %}<span class="absolute inset-y-0 left-0 w-2 cursor-ew-resize" data-calendar-resize-start aria-hidden="true"></span>{% endif %}
                     {% if event.can_edit_end %}<span class="absolute inset-y-0 right-0 w-2 cursor-ew-resize" data-calendar-resize-end aria-hidden="true"></span>{% endif %}
-                    <span class="flex min-w-0 items-center gap-1"><span class="truncate font-medium">{{ event.object }}</span>{% include "components/objects/dataview_calendar_group_dots.html" %}</span>
+                    <div class="flex min-w-0 items-center gap-1"><span class="truncate font-medium">{{ event.object }}</span>{% include "components/objects/dataview_calendar_group_dots.html" %}{% include "components/objects/dataview_calendar_actions.html" %}</div>
                     {% if fields %}
                     <span class="mt-0.5 block truncate opacity-75">
                         {% for field in fields %}
@@ -199,7 +199,7 @@ Permission-filtered calendar dataview with day, week, month, year, and list mode
                         {% endfor %}
                     </span>
                     {% endif %}
-                </button>
+                </div>
                 {% endfor %}
                 {% endif %}
             </div>
@@ -277,7 +277,12 @@ Permission-filtered calendar dataview with day, week, month, year, and list mode
                 data-calendar-can-edit-start="{{ event.can_edit_start|yesno:'true,false' }}"
                 data-calendar-can-edit-end="{{ event.can_edit_end|yesno:'true,false' }}"
                 draggable="{% if event.can_edit_start and event.can_edit_end %}true{% else %}false{% endif %}"
-            >{{ event.object }}</div>
+            >
+                <div class="flex items-center gap-1">
+                    <span>{{ event.object }}</span>
+                    {% include "components/objects/dataview_calendar_actions.html" %}
+                </div>
+            </div>
             {% endfor %}
         </div>
     </div>

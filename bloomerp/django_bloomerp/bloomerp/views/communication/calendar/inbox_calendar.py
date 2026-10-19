@@ -54,7 +54,7 @@ def inbox_calendar_context(request: HttpRequest, inbox_id: int) -> dict[str, Any
         "_arg_calendar_inbox": str(inbox.pk),
         "calendar_color_preferred": str(inbox.pk),
     }
-    context["calendar_args"] = {"hide_filters": "inboxes,inboxes__in,cancelled"}
+    context["calendar_args"] = {"hide_filters": "true"}
 
     context["calendar_token"] = issue_calendar_token(request.user, inbox.pk, selected)
     return context

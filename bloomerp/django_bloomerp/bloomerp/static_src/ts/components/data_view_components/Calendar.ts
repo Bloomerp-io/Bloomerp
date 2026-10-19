@@ -450,6 +450,7 @@ export class Calendar extends BaseDataViewComponent {
     private onEventPointerDown = (event: PointerEvent): void => {
         if (!this.element || event.button !== 0 || this.mutationInFlight) return;
         const target = event.target as HTMLElement | null;
+        if (target?.closest("[data-calendar-object-actions]")) return;
         const edge = target?.closest<HTMLElement>("[data-calendar-resize-start], [data-calendar-resize-end]");
         const item = target?.closest<HTMLElement>("[data-calendar-event]");
         if (!item) return;
@@ -568,7 +569,7 @@ export class Calendar extends BaseDataViewComponent {
 
     private onCalendarDragStart = (event: DragEvent): void => {
         const target = event.target as HTMLElement | null;
-        if (target?.closest("[data-calendar-resize-start], [data-calendar-resize-end]")) {
+        if (target?.closest("[data-calendar-object-actions], [data-calendar-resize-start], [data-calendar-resize-end]")) {
             event.preventDefault();
             return;
         }

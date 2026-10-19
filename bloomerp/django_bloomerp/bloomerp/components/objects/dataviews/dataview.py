@@ -601,6 +601,7 @@ def dataview(
         'data_view_url': data_view_url,
         'renderer_operation_querystring': renderer_operation_querystring,
         'initial_filters': request.GET.get('filter'),
+        'hide_filters': request.GET.get('_arg_hide_filters', '').lower() == 'true',
         'count' : state.count,
         'before_data_view': before_data_view,
         'is_data_section_request': is_data_section_request,

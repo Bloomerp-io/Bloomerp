@@ -54,7 +54,9 @@
             {% endfor %}
         </div>
     </div>
+    {% if not hide_filters %}
     <c-features.filters.rendered scope="model" id="{{ content_type_id }}" :filter_host="preference"/>
+    {% endif %}
 {% endif %}
 
     <!--Table section-->

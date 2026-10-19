@@ -1,6 +1,5 @@
 import BaseComponent, { getComponent } from "../BaseComponent";
-import htmx from "htmx.org";
-import { getCsrfToken } from "../../utils/cookies";
+import savePreference from "../../utils/preferences";
 import { t } from "../../utils/i18n";
 import type ForeignFieldWidget from "../widgets/ForeignFieldWidget";
 
@@ -16,9 +15,14 @@ export default class InboxCalendarOverlay extends BaseComponent {
         document.addEventListener("click", this.onOutsideClick, { signal: this.lifecycle.signal });
     }
 
-    /** Close the dropdown when focus stays elsewhere in the page. */
+    /** Keep owned FK portals inside the menu's interaction boundary while dismissing outside clicks. */
     private onOutsideClick = (event: MouseEvent): void => {
-        if (event.target instanceof Node && !this.element.contains(event.target)) this.element.removeAttribute("open");
+        if (!(event.target instanceof Node) || this.element.contains(event.target)) return;
+        for (const element of this.element.querySelectorAll<HTMLElement>('[bloomerp-component="foreign-field-widget"]')) {
+            const widget = getComponent(element) as ForeignFieldWidget | null;
+            if (widget?.ownsEvent(event)) return;
+        }
+        this.element.removeAttribute("open");
     };
 
     /** Let Escape dismiss this menu before it reaches an enclosing modal. */
@@ -35,7 +39,7 @@ export default class InboxCalendarOverlay extends BaseComponent {
         void this.apply(event);
     };
 
-    /** Send only the preference selection; the server reloads the dataview using its normal filter. */
+    /** Save alignment through the preference utility and let the returned loader refresh the calendar. */
     private async apply(event: MouseEvent): Promise<void> {
         if (!(event.target instanceof Element) || !event.target.closest("[data-apply-overlay]")) return;
         if (this.saving) return;
@@ -50,16 +54,22 @@ export default class InboxCalendarOverlay extends BaseComponent {
         const container = this.element.closest<HTMLElement>('[bloomerp-component="dataview-container"]');
         const saveUrl = this.element.dataset.saveUrl;
         if (!container || !saveUrl) return;
+        const currentUrl = new URL(container.dataset.url || window.location.href, window.location.origin);
+        const queryParams: Record<string, string> = {};
+        for (const key of ["q", "calendar_page"]) {
+            const value = currentUrl.searchParams.get(key);
+            if (value !== null) queryParams[key] = value;
+        }
         const button = this.element.querySelector<HTMLButtonElement>("[data-apply-overlay]");
         this.saving = true;
         if (button) button.disabled = true;
         try {
-            await htmx.ajax("post", saveUrl, {
-                target: container, swap: "outerHTML",
-                values: {
-                    selection: JSON.stringify({ inboxes: values, users }),
-                    csrfmiddlewaretoken: getCsrfToken() || "",
-                },
+            await savePreference(saveUrl, { selection: JSON.stringify({ inboxes: values, users }) }, {
+                source: this.element,
+                target: container,
+                swap: "outerHTML",
+                queryParams,
+                headers: { "X-Bloomerp-Sync-Url": String(container.dataset.syncUrl === "true") },
             });
         } catch {
             if (error && !this.lifecycle.signal.aborted) {

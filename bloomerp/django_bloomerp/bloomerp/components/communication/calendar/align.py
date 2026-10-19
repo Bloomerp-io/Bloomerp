@@ -31,7 +31,7 @@ from bloomerp.services.preference_services import PreferenceManager
 @login_required
 @require_POST
 def align_calendars(request: HttpRequest, inbox_id: int) -> HttpResponse:
-    """Save the calendar selection and reload the ordinary dataview from that preference."""
+    """Save the calendar selection and return its authorized dataview loader with filters hidden."""
     inbox = resolve_calendar_inbox(request.user, inbox_id)
     try:
         data = json.loads(
@@ -92,13 +92,11 @@ def align_calendars(request: HttpRequest, inbox_id: int) -> HttpResponse:
     )
 
     context = inbox_calendar_context(request, inbox.pk)
-    return render(
-        request,
-        "cotton/features/dataviews/call.html",
-        {
-            "content_type_id": context["calendar_content_type_id"],
-            "filters": context["calendar_filters"],
-            "args": context["calendar_args"],
-            "token": context["calendar_token"],
-        },
-    )
+    return render(request, "cotton/features/dataviews/call.html", {
+        "content_type_id": context["calendar_content_type_id"],
+        "filters": context["calendar_filters"],
+        "args": context["calendar_args"],
+        "token": context["calendar_token"],
+        "hide_filters": True,
+        "sync_url": request.headers.get("X-Bloomerp-Sync-Url", "false").lower() == "true",
+    })

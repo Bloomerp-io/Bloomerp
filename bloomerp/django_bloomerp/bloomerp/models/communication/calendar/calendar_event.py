@@ -19,7 +19,9 @@ from bloomerp.models.definition import (
     DataviewAction,
     DataviewActionContext,
     DataviewHTMLAction,
+    DataviewModalAction,
     ModelViewSettings,
+    ObjectAction,
     get_default_dataview_actions,
 )
 from bloomerp.modules.communication import CommunicationModule
@@ -79,7 +81,7 @@ def calendar_event_dataview_actions() -> list[DataviewAction | DataviewHTMLActio
             id="add_calendars",
             template_name="models/calendar_event/align_calendars.html",
             should_render_func=calendar_overlay_visible,
-        )
+        ),
     ]
 
     for default_action in get_default_dataview_actions():
@@ -126,7 +128,13 @@ class CalendarEvent(CalendarModel):
             ],
             dataview_actions=calendar_event_dataview_actions(),
         ),
-        object_actions=[],
+        object_actions=[
+            ObjectAction(
+                id="accept_invite",
+                label="Accept invite",
+                execution_func=lambda _,__:HttpResponse("Hey")
+            )    
+        ],
     )
 
     calendar_uid = models.CharField(

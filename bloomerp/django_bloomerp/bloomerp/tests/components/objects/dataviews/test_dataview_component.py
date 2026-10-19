@@ -193,6 +193,22 @@ class TestDataviewComponent(BloomerpComponentTestCase):
 
         request_scenarios += [
             RequestScenario(
+                name="FILTERS: Hide applied filters without hiding the filter button or changing results",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                query_params={
+                    **filter_query_params(Filter(connector="AND", conditions=[
+                        FilterCondition(field_path="age", lookup_id="equals", value=3),
+                    ])),
+                    "_arg_hide_filters": "true",
+                },
+                expected=ExpectedResult(response_validators=[
+                    self.contains_entries(customers.filter(age=3)),
+                    self.does_not_contain_text("data-rendered-filters"),
+                    self.contains_text('data-data-view-button="filter"'),
+                ]),
+            ),
+            RequestScenario(
                 name="ACCESS: Superuser sees all entries",
                 user=self.admin_user,
                 view_kwargs=kwargs,

@@ -3,8 +3,9 @@ import re
 from datetime import date, datetime, timedelta
 from html import unescape
 
+from bs4 import BeautifulSoup
 from django.db import models
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
 from django.test import RequestFactory
 from django.urls import reverse
 from django.utils import timezone
@@ -20,6 +21,7 @@ from bloomerp.models.definition import (
     DataviewHTMLAction,
     DataviewModalAction,
     ModelViewSettings,
+    ObjectModalAction,
     get_model_config,
 )
 from bloomerp.permissions.definition import BloomerpPermission
@@ -1307,6 +1309,16 @@ def _calendar_record_label(instance: models.Model) -> str:
     return str(instance.name)
 
 
+def _calendar_object_action_url(obj: models.Model) -> str:
+    """Return an object-specific modal endpoint without invoking a transport."""
+    return f"/calendar-actions/{obj.pk}/"
+
+
+def _deny_calendar_object_action(request: HttpRequest, obj: models.Model) -> bool:
+    """Keep a denied action out of every calendar representation."""
+    return False
+
+
 class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
     auto_create_customers = False
 
@@ -1374,6 +1386,53 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
         })
         preference.save(update_fields=["options"])
         return content_type, preference
+
+    def test_object_actions_render_in_each_calendar_mode_and_unit_page(self) -> None:
+        """Render authorized object actions on timed and date-only events, including paged results."""
+        self.client.force_login(self.admin_user)
+        content_type, preference = self.configure_mixed_calendar()
+        self.addCleanup(setattr, self.CalendarEventModel, "bloomerp_config",
+                        getattr(self.CalendarEventModel, "bloomerp_config", None))
+        config = BloomerpModelConfig()
+        self.CalendarEventModel.bloomerp_config = config
+        config.object_actions = [
+            ObjectModalAction(id="calendar-action", label="Open calendar action", endpoint=_calendar_object_action_url),
+            ObjectModalAction(id="denied-action", label="Denied calendar action", endpoint=_calendar_object_action_url,
+                              should_render_func=_deny_calendar_object_action),
+        ]
+        today = timezone.localdate()
+        start = timezone.make_aware(datetime.combine(today, datetime.min.time()).replace(hour=10))
+        timed = self.CalendarEventModel.objects.create(
+            name="Action timed event", starts_at=start, ends_at=start + timedelta(hours=1),
+        )
+        all_day = self.CalendarEventModel.objects.create(
+            name="Action date-only event", starts_on=today, ends_on=today + timedelta(days=1),
+        )
+        url = reverse("components_dataview", kwargs={"content_type_id": content_type.pk})
+        for mode in ("day", "week", "month", "year", "list"):
+            with self.subTest(mode=mode):
+                preference.options["calendar"]["calendar_view_mode"] = mode
+                preference.options["calendar"].pop("view_mode", None)
+                preference.save(update_fields=["options"])
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 200)
+                self.assertNotContains(response, "Denied calendar action")
+                soup = BeautifulSoup(response.content, "html.parser")
+                for obj in (timed, all_day):
+                    event = soup.select_one(f'[data-calendar-event][data-object-id="{obj.pk}"]')
+                    self.assertIsNotNone(event)
+                    self.assertIsNotNone(event.select_one(f'[hx-get="{_calendar_object_action_url(obj)}"]'))
+                self.assertFalse(soup.select("button button"))
+        unit_url = reverse("components_dataview_renderer_operation", kwargs={
+            "content_type_id": content_type.pk, "preference_id": preference.pk, "action": "unit",
+        })
+        response = self.client.get(unit_url, {
+            "calendar_view_mode": "list", "calendar_unit": today.isoformat(), "calendar_unit_offset": 0,
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, _calendar_object_action_url(timed))
+        self.assertContains(response, _calendar_object_action_url(all_day))
+        self.assertNotContains(response, "Denied calendar action")
 
     def test_mixed_calendar_pages_exclusive_date_only_ranges(self) -> None:
         """Render and page all-day dates alongside timed events without an all-day flag."""

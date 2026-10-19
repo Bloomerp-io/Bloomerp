@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
 import type { OutputAsset, OutputChunk } from 'rollup';
 import { JSDOM, type DOMWindow } from 'jsdom';
+import type renderDataview from '../../utils/dataview.ts';
 
 const root = fileURLToPath(new URL('../../..', import.meta.url)).replace(/\/$/, '');
 const entry = `${root}/calendar-regression-entry.ts`;
@@ -23,6 +24,7 @@ const result = await build({
                 import { Modal } from '${root}/ts/components/Modal';
                 import { Drawer } from '${root}/ts/components/Drawer';
                 import InboxCalendarOverlay from '${root}/ts/components/inbox/InboxCalendarOverlay';
+                import renderDataview from '${root}/ts/utils/dataview';
                 import { registerComponent, initComponents } from '${root}/ts/components/BaseComponent';
                 import htmx from 'htmx.org';
                 registerComponent('calendar', Calendar);
@@ -31,7 +33,7 @@ const result = await build({
                 registerComponent('dataview-container', DataViewContainer);
                 registerComponent('modal', Modal);
                 registerComponent('drawer', Drawer);
-                export { initComponents, htmx };
+                export { initComponents, htmx, renderDataview };
             `;
         },
     }],
@@ -47,6 +49,7 @@ const scriptCode = script.code;
 interface FixtureWindow extends DOMWindow {
     CalendarFixture: {
         initComponents(element: HTMLElement): void;
+        renderDataview: typeof renderDataview;
         htmx: { ajax(method: string, url: string, options: Record<string, unknown>): Promise<HTMLElement> };
     };
 }
@@ -61,7 +64,7 @@ interface Fixture {
 function fixture(mode: string, create: boolean = true, datePair: boolean = true, endField: boolean = true, query: Record<string, string> = {}): Fixture {
     const month = mode === 'month';
     const dom = new JSDOM(`<!doctype html>
-        <div id="data-view-1" bloomerp-component="dataview-container" data-content-type-id="1"
+        <section data-calendar-dataview-host><div id="data-view-1" bloomerp-component="dataview-container" data-content-type-id="1"
             data-base-url="/components/dataview/1/" data-url="/components/dataview/1/?inboxes=1"
             data-create-url="${create ? '/components/create-object/1/?inboxes=1' : ''}"
             data-modal-id="create-object-modal" data-target="#create-object-modal-body">
@@ -82,14 +85,14 @@ function fixture(mode: string, create: boolean = true, datePair: boolean = true,
                         data-calendar-create-start="2026-10-15T${month ? '00' : '09'}:00:00+02:00"
                         data-calendar-create-end="2026-10-${month ? '16T00' : '15T10'}:00:00+02:00">
                         <button data-calendar-unit-cell bloomerp-component="calendar-cell">Empty cell</button>
-                        <button data-calendar-event bloomerp-component="calendar-cell" data-object-id="event"
-                            data-detail-url="/events/event/update/" data-object-string="Existing event">Existing event</button>
+                        <div role="button" tabindex="0" data-calendar-event bloomerp-component="calendar-cell" data-object-id="event"
+                            data-detail-url="/events/event/update/" data-object-string="Existing event">Existing event</div>
                     </section>
                     </div>
                 </div>
             </div>
         </div>
-        <div id="create-object-modal" bloomerp-component="modal"></div>`,
+        </section><div id="create-object-modal" bloomerp-component="modal"></div>`,
         { runScripts: 'outside-only', pretendToBeVisual: true, url: 'https://app.example/inbox/1/calendar/' });
     const w = dom.window as FixtureWindow;
     const evaluate = w.XPathExpression.prototype.evaluate;
@@ -136,6 +139,24 @@ function hourlyCreation(): void {
 }
 test('day and week double-clicks open the shared modal with one-hour defaults', hourlyCreation);
 
+/** Embedded action controls must retain focus and avoid the calendar's event gestures. */
+test('object action controls do not navigate, focus the event, or begin a calendar drag', (): void => {
+    const f = fixture('week');
+    try {
+        const event = f.w.document.querySelector<HTMLElement>('[data-calendar-event]')!;
+        event.insertAdjacentHTML('beforeend', '<div data-calendar-object-actions data-no-row-click><button type="button">Action</button></div>');
+        const button = event.querySelector('button')!;
+        button.focus();
+        button.dispatchEvent(new f.w.MouseEvent('pointerdown', { bubbles: true, button: 0 }));
+        assert.equal(f.w.document.activeElement, button);
+        button.dispatchEvent(new f.w.MouseEvent('dblclick', { bubbles: true }));
+        assert.equal(f.requests.length, 0);
+        const drag = new f.w.Event('dragstart', { bubbles: true, cancelable: true });
+        button.dispatchEvent(drag);
+        assert.equal(drag.defaultPrevented, true);
+    } finally { f.dom.window.close(); }
+});
+
 /** Prefer the explicit date pair in month view, with an exclusive end on the following day. */
 function monthlyCreation(): void {
     const f = fixture('month');
@@ -177,27 +198,66 @@ function existingEventsAndUnavailableCreation(): void {
 }
 test('event double-clicks navigate and unavailable creation does nothing', existingEventsAndUnavailableCreation);
 
-/** Applying alignment submits only preferences and replaces the dataview with its normal loader. */
+/** Save alignment through the shared preference utility and swap in the server's dataview loader. */
 async function saveAlignment(): Promise<void> {
-    const f = fixture('month');
+    const f = fixture('month', true, true, true, { q: 'meeting', calendar_page: '2', _permission_token: 'old-token' });
     try {
         let posted: Record<string, unknown> | null = null;
-        /** Inspect the preference save request without mocking calendar rendering. */
+        let requested: URL | null = null;
+        f.w.document.cookie = 'csrftoken=preference-test';
+        const overlay = f.w.document.querySelector<HTMLElement>('[bloomerp-component="inbox-calendar-overlay"]')!;
+        const container = f.w.document.querySelector<HTMLElement>('[bloomerp-component="dataview-container"]')!;
+        /** Inspect the real preference utility request without replacing its POST or CSRF handling. */
         f.w.CalendarFixture.htmx.ajax = function captureSave(method: string, url: string, options: Record<string, unknown>): Promise<HTMLElement> {
             assert.equal(method, 'post');
-            assert.equal(url, '/components/communication/calendar/1/align/');
+            assert.equal(options.source, overlay);
+            assert.equal(options.target, container);
             assert.equal(options.swap, 'outerHTML');
-            assert.equal(options.target, f.w.document.querySelector('[bloomerp-component="dataview-container"]'));
+            assert.equal((options.headers as Record<string, string>)['X-CSRFToken'], 'preference-test');
+            assert.equal((options.headers as Record<string, string>)['X-Bloomerp-Sync-Url'], 'false');
+            requested = new URL(url, f.w.location.origin);
             posted = options.values as Record<string, unknown>;
-            return Promise.resolve(f.w.document.createElement('div'));
+            return Promise.resolve(container);
         };
         f.w.document.querySelector<HTMLButtonElement>('[data-apply-overlay]')!.click();
+        /** Flush the preference utility's completed HTMX request. */
+        await new Promise<void>(function nextTurn(resolve: () => void): void { f.w.setTimeout(resolve, 0); });
         assert.deepEqual(JSON.parse(String(posted!.selection)), { inboxes: ['1', '2'], users: [] });
-        assert.deepEqual(Object.keys(posted!), ['selection', 'csrfmiddlewaretoken']);
-        await Promise.resolve();
+        assert.deepEqual(Object.keys(posted!), ['selection']);
+        assert(requested);
+        const url = requested as URL;
+        assert.equal(url.pathname, '/components/communication/calendar/1/align/');
+        assert.equal(url.searchParams.get('q'), 'meeting');
+        assert.equal(url.searchParams.get('calendar_page'), '2');
+        assert.equal(url.searchParams.has('_permission_token'), false);
+        assert.equal(url.searchParams.has('filter'), false);
         assert.equal(f.requests.length, 0);
     } finally { f.dom.window.close(); }
 }
+
+/** A failed preference save should remain visible and allow another attempt. */
+test('calendar preference save errors are shown and the apply button permits retry', async (): Promise<void> => {
+    const f = fixture('month');
+    try {
+        let attempts = 0;
+        /** Fail only the first transport request to exercise the real utility rejection path. */
+        f.w.CalendarFixture.htmx.ajax = function rejectFirstSave(method: string, url: string, options: Record<string, unknown>): Promise<HTMLElement> {
+            attempts += 1;
+            return attempts === 1 ? Promise.reject(new Error('Save failed')) : Promise.resolve(f.cell);
+        };
+        const button = f.w.document.querySelector<HTMLButtonElement>('[data-apply-overlay]')!;
+        button.click();
+        /** Flush the rejected save and the component's error feedback. */
+        await new Promise<void>(function failedTurn(resolve: () => void): void { f.w.setTimeout(resolve, 0); });
+        assert.equal(f.w.document.querySelector<HTMLElement>('[data-overlay-error]')!.hidden, false);
+        assert.equal(button.disabled, false);
+        button.click();
+        /** Flush the successful retry. */
+        await new Promise<void>(function retryTurn(resolve: () => void): void { f.w.setTimeout(resolve, 0); });
+        assert.equal(attempts, 2);
+        assert.equal(f.w.document.querySelector<HTMLElement>('[data-overlay-error]')!.hidden, true);
+    } finally { f.dom.window.close(); }
+});
 
 /** Empty selection cannot accidentally widen the calendar membership filter. */
 function emptyAlignment(): void {
@@ -212,6 +272,30 @@ function emptyAlignment(): void {
 
 test('align calendars only saves the preference and reloads the dataview', saveAlignment);
 test('empty calendar alignment does not widen access', emptyAlignment);
+
+/** Explicit utility options override inherited arguments without retaining an obsolete capability. */
+test('renderDataview accepts optional shell arguments, filters, and synchronization', async (): Promise<void> => {
+    const f = fixture('month');
+    try {
+        const host = f.w.document.querySelector<HTMLElement>('[data-calendar-dataview-host]')!;
+        /** Check the helper's serialized options and return the initialized dataview fixture. */
+        f.w.CalendarFixture.htmx.ajax = function captureRender(method: string, url: string, options: Record<string, unknown>): Promise<HTMLElement> {
+            const query = new URL(url, f.w.location.origin).searchParams;
+            assert.equal(method, 'get');
+            assert.equal(query.get('_arg_hide_filters'), 'false');
+            assert.equal(query.get('_arg_calendar_inbox'), '2');
+            assert.equal(query.get('calendar_page'), '3');
+            assert.equal(query.has('_permission_token'), false);
+            assert.deepEqual(JSON.parse(query.get('filter')!), [{ connector: 'AND', conditions: [] }]);
+            assert.equal((options.headers as Record<string, string>)['X-Bloomerp-Sync-Url'], 'true');
+            return Promise.resolve(host);
+        };
+        await f.w.CalendarFixture.renderDataview(host, 1, undefined, [{ connector: 'AND', conditions: [] }], {
+            queryParams: { calendar_page: 3, _permission_token: 'obsolete-token', filter: 'obsolete-filter' },
+            args: { hide_filters: true, calendar_inbox: 2 }, hideFilters: false, permissionToken: null, syncUrl: true,
+        });
+    } finally { f.dom.window.close(); }
+});
 
 /** Calendar periods must not shadow the shared dataview's detail-navigation mode. */
 test('double-clicking an event opens its update URL inside the shared drawer', (): void => {
