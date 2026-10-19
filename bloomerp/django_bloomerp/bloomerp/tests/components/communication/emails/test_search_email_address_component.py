@@ -1,11 +1,16 @@
 """Recipient suggestion contracts and permission boundaries."""
 
 from django.http import HttpResponse
+
 from bloomerp.filters.definition import FilterCondition
 from bloomerp.models import User
 from bloomerp.permissions.definition import RowPolicyRuleContent
 from bloomerp.permissions.manager import PolicyManager
-from bloomerp.tests.base import BloomerpComponentTestCase, ExpectedResult, RequestScenario
+from bloomerp.tests.base import (
+    BloomerpComponentTestCase,
+    ExpectedResult,
+    RequestScenario,
+)
 
 
 class TestSearchEmailAddressComponent(BloomerpComponentTestCase):
@@ -21,6 +26,9 @@ class TestSearchEmailAddressComponent(BloomerpComponentTestCase):
         self.admin_user.email = "suggestion@example.com"
         self.admin_user.save(update_fields=["email"])
         return [
+            RequestScenario(name="Calendar suggestions preserve explicit account identity", user=self.admin_user,
+                query_params={"q": "suggestion", "calendar_users": "1"},
+                expected=ExpectedResult(response_validators=self.calendar_identity)),
             RequestScenario(name="Login required", expected=ExpectedResult(status_code=302)),
             RequestScenario(name="Blank query", user=self.admin_user,
                             expected=ExpectedResult(response_validators=self.empty)),
@@ -80,3 +88,8 @@ class TestSearchEmailAddressComponent(BloomerpComponentTestCase):
             )],
         )
         policy.users.add(self.normal_user)
+
+    def calendar_identity(self, response: HttpResponse) -> bool:
+        """Return a selectable user ID only in calendar mode for readable user email fields."""
+        items = response.json()["suggestions"]
+        return len(items) == 1 and items[0]["user_id"] in {str(self.normal_user.pk), str(self.admin_user.pk)}

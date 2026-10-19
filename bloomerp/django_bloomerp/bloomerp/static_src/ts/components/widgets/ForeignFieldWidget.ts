@@ -1,6 +1,6 @@
 import { t as _ } from "@/utils/i18n";
 import { getItemNavigationKey } from "@/utils/itemNavigation";
-import renderDataView from "@/utils/dataview";
+import renderDataview from "@/utils/dataview";
 import { createModalInstance } from "@/utils/modals";
 import { t } from "@/utils/i18n";
 import { parseInitialFilters } from "@/components/filters/definition";
@@ -232,7 +232,7 @@ export default class ForeignFieldWidget extends BaseWidget {
         // 2. Populate the modal with the 
         // 3. Render the data view into the modal body and wait for the container instance
         try {
-            await renderDataView(
+            await renderDataview(
                 modal.getBodyElement(),
                 Number(this.contentTypeId),
                 'foreign-field-dataview',
@@ -351,6 +351,12 @@ export default class ForeignFieldWidget extends BaseWidget {
         if (typeof (el as any).scrollIntoView === 'function') {
             (el as HTMLElement).scrollIntoView({ block: 'nearest' });
         }
+    }
+
+    /** Recognize widget interactions even after a portalled result is removed during selection. */
+    public ownsEvent(event: Event): boolean {
+        const path = event.composedPath();
+        return path.includes(this.element) || (this.dropdown !== null && path.includes(this.dropdown));
     }
 
     /** Keep portalled previews interactive while preserving ordinary outside-click dismissal. */

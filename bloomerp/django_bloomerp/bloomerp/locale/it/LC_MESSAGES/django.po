@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-15 13:03+0000\n"
+"POT-Creation-Date: 2026-10-19 11:11+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: it\n"
@@ -81,12 +81,12 @@ msgid "%(name)s cannot be previewed here."
 msgstr "Non è possibile visualizzare l’anteprima di %(name)s qui."
 
 #: form_behaviors/shared/calculate.py:98
-#, fuzzy, python-format
+#, python-format
 msgid "%(noun)s '%(operand_name)s' does not contain a finite numeric value."
 msgstr "%(noun)s '%(operand_name)s' non contiene un valore numerico finito."
 
 #: form_behaviors/shared/calculate.py:88 form_behaviors/shared/calculate.py:94
-#, fuzzy, python-format
+#, python-format
 msgid "%(noun)s '%(operand_name)s' does not contain a numeric value."
 msgstr "%(noun)s '%(operand_name)s' non contiene un valore numerico."
 
@@ -178,9 +178,8 @@ msgstr "Una raccolta di funzionalità e strumenti vari che non rientrano in altr
 # | msgid "A name and scope identifier are required."
 # | msgid "A call request identifier is required."
 #: form_behaviors/builtins/calculate.py:191
-#, fuzzy
 msgid "A collection row is required."
-msgstr "È richiesto un identificativo della richiesta di chiamata."
+msgstr "È richiesta una riga della raccolta."
 
 #: models/files/file_extraction.py:323
 msgid "A completed extraction needs a manifest."
@@ -192,9 +191,8 @@ msgid "A configured connection is required for this identity."
 msgstr "Per questa identità è necessaria una connessione configurata."
 
 #: form_behaviors/builtins/calculate.py:162
-#, fuzzy
 msgid "A date or datetime supports only adding or subtracting a numeric offset."
-msgstr "Una data o una data e ora supporta solo l'aggiunta o la sottrazione di un offset numerico."
+msgstr "A una data o data e ora è possibile solo aggiungere o sottrarre un offset numerico."
 
 #: bloomerp.policy.description models/access_control/policy.py:76
 msgid "A description of the access control policy."
@@ -234,9 +232,8 @@ msgstr "Un'etichetta leggibile per questa chiave API."
 
 # | msgid "An item is required."
 #: components/form_behaviors/render_action_config_form.py:38
-#, fuzzy
 msgid "A layout context is required."
-msgstr "È richiesto un elemento."
+msgstr "È richiesto un contesto di layout."
 
 #: models/filters/filter.py:44
 msgid "A name and scope identifier are required."
@@ -255,16 +252,18 @@ msgstr "Un numero del provider ha cambiato indirizzo. Riconcilia la linea prima 
 # | msgid "Calling is unavailable."
 # | msgid "Conferencing is unavailable."
 #: form_behaviors/builtins/set_o2m_value.py:188
-#, fuzzy
 msgid "A related source record is unavailable."
-msgstr "Le conferenze non sono disponibili."
+msgstr "Un record della fonte correlata non è disponibile."
 
 # | msgid "Free Variables"
 # | msgid "Browser calling is unavailable."
 #: form_behaviors/builtins/set_o2m_value.py:249
-#, fuzzy
 msgid "A related source value is unavailable."
-msgstr "Le chiamate dal browser non sono disponibili."
+msgstr "Un valore della fonte correlata non è disponibile."
+
+#: forms/communication/calendar_event.py:324
+msgid "A selected user has no selected calendar."
+msgstr "Un utente selezionato non ha un calendario selezionato."
 
 # | msgid "A name and scope identifier are required."
 # | msgid "A call request identifier is required."
@@ -275,16 +274,14 @@ msgstr "Sono necessarie una modalità di chiamata valida e un identificativo del
 # | msgid "A name and scope identifier are required."
 # | msgid "A call request identifier is required."
 #: components/form_behaviors/render_action_config_form.py:71
-#, fuzzy
 msgid "A valid editor prefix is required."
-msgstr "È richiesto un identificativo della richiesta di chiamata."
+msgstr "È richiesto un prefisso dell'editor valido."
 
 # | msgid "A name and scope identifier are required."
 # | msgid "A call request identifier is required."
 #: components/form_behaviors/render_action_config_form.py:42
-#, fuzzy
 msgid "A valid listener field is required."
-msgstr "È richiesto un identificativo della richiesta di chiamata."
+msgstr "È richiesto un campo listener valido."
 
 #: bloomerp.documenttemplate.page_size models/document_templates/document_template.py:32
 msgid "A3"
@@ -366,7 +363,13 @@ msgstr "Chiave API v2"
 msgid "Abandoned"
 msgstr "Abbandonato"
 
-#: bloomerp.conferenceparticipant.invitation_status bloomerp.immessage.status
+# | msgid "Accepted"
+#: templates/components/communication/calendar/invitation.html:22
+msgid "Accept"
+msgstr "Accetta"
+
+#: bloomerp.calendareventparticipant.response_status bloomerp.conferenceparticipant.invitation_status
+#: bloomerp.immessage.status models/communication/calendar/calendar_event_participant.py:18
 #: models/communication/conferencing/conference_participant.py:19
 #: models/communication/instant_messaging/im_message.py:50
 msgid "Accepted"
@@ -420,21 +423,18 @@ msgstr "Tipi di contenuto accessibili"
 # | msgid "Access Token"
 # | msgid "Access"
 #: form_behaviors/builtins/set_o2m_value.py:92
-#, fuzzy
 msgid "Accessor"
-msgstr "Token di accesso"
+msgstr "Accessor"
 
 # | msgid "The field used for the pie slice labels."
 # | msgid "The field must belong to the referenced model."
 #: form_behaviors/builtins/set_o2m_value.py:177
-#, fuzzy
 msgid "Accessor must belong to the source relation's model."
-msgstr "Il campo deve appartenere al modello a cui si fa riferimento."
+msgstr "L'accessor deve appartenere al modello della relazione di origine."
 
 #: form_behaviors/builtins/set_o2m_value.py:191
-#, fuzzy
 msgid "Accessor must expose a single stored value."
-msgstr "L'accessore deve esporre un singolo valore memorizzato."
+msgstr "L'accessor deve esporre un singolo valore memorizzato."
 
 #: bloomerp.apikey.account models/api/api_key.py:88 models/communication/email_account.py:58
 #: models/communication/voip/voip_connection.py:79
@@ -474,50 +474,41 @@ msgstr "ID azione"
 
 # | msgid "Operation does not exist"
 #: components/form_behaviors/render_action_config_form.py:53
-#, fuzzy
 msgid "Action does not exist."
-msgstr "L'operazione non esiste"
+msgstr "L'azione non esiste."
 
 # | msgid "Activity logging is not enabled for this model."
 #: form_behaviors/execution.py:333
-#, fuzzy
 msgid "Action is not applicable to this listener."
-msgstr "La registrazione delle attività non è abilitata per questo modello."
+msgstr "L'azione non è applicabile a questo listener."
 
 # | msgid "Activity logging is not enabled for this model."
 #: form_behaviors/execution.py:351
-#, fuzzy
 msgid "Action is not applicable to this target."
-msgstr "La registrazione delle attività non è abilitata per questo modello."
+msgstr "L'azione non è applicabile a questa destinazione."
 
 #: form_behaviors/execution.py:377
-#, fuzzy
 msgid "Action must return a BehaviorResult."
 msgstr "L'azione deve restituire un BehaviorResult."
 
 # | msgid "Editor occurrences require a field."
 #: form_behaviors/execution.py:342
-#, fuzzy
 msgid "Action requires a target field."
-msgstr "Le occorrenze dell'editor richiedono un campo."
+msgstr "L'azione richiede un campo di destinazione."
 
 #: form_behaviors/execution.py:382
-#, fuzzy
 msgid "Action result collections must be tuples."
-msgstr "Le raccolte del risultato dell'azione devono essere tuple."
+msgstr "Le raccolte dei risultati dell'azione devono essere tuple."
 
 #: form_behaviors/execution.py:425
-#, fuzzy
 msgid "Action returned an invalid message."
 msgstr "L'azione ha restituito un messaggio non valido."
 
 #: form_behaviors/execution.py:416
-#, fuzzy
 msgid "Action returned an invalid state target."
 msgstr "L'azione ha restituito una destinazione di stato non valida."
 
 #: form_behaviors/execution.py:391
-#, fuzzy
 msgid "Action returned an undeclared value target."
 msgstr "L'azione ha restituito una destinazione di valore non dichiarata."
 
@@ -531,10 +522,12 @@ msgstr ""
 "Attiva l'applicazione TeXML e configura il relativo sottodominio SIP in modo che riceva solo le "
 "tue connessioni."
 
-#: bloomerp.conferencesession.status bloomerp.emailaccount.status bloomerp.imconnection.status
-#: bloomerp.voipconnection.status bloomerp.voipnumber.is_active bloomerp.workflow.active
-#: models/automation/workflow.py:199 models/communication/conferencing/conference_session.py:23
-#: models/communication/email_account.py:37 models/communication/instant_messaging/im_connection.py:32
+#: bloomerp.calendarbooking.active bloomerp.conferencesession.status bloomerp.emailaccount.status
+#: bloomerp.imconnection.status bloomerp.voipconnection.status bloomerp.voipnumber.is_active
+#: bloomerp.workflow.active models/automation/workflow.py:199
+#: models/communication/calendar/calendar_booking.py:44
+#: models/communication/conferencing/conference_session.py:23 models/communication/email_account.py:37
+#: models/communication/instant_messaging/im_connection.py:32
 #: models/communication/voip/voip_connection.py:130 models/communication/voip/voip_number.py:107
 msgid "Active"
 msgstr "Attivo"
@@ -571,9 +564,15 @@ msgstr "Attore"
 #: components/ui/sidebar.py:167 components/ui/sidebar.py:177 components/ui/sidebar.py:215
 #: components/ui/sidebar.py:243
 #: templates/components/communication/instant_messaging/group_members.html:29
-#: templates/components/objects/dataview_actions/add.html:13
+#: templates/components/objects/dataview_actions/add.html:14
 msgid "Add"
 msgstr "Aggiungi"
+
+# | msgid "Bloomerp File Field"
+# | msgid "Bloomerp User"
+#: forms/communication/calendar_event.py:120
+msgid "Add Bloomerp meeting"
+msgstr "Aggiungi riunione Bloomerp"
 
 #: templates/views/access_control/manage_permissions/wizard_object_access_control.html:175
 msgid "Add Field Policy"
@@ -582,6 +581,16 @@ msgstr "Aggiungi criterio campo"
 #: templates/views/workflows/builder.html:12
 msgid "Add Node"
 msgstr "Aggiungi nodo"
+
+# | msgid "A detailed description of the initiative"
+#: forms/communication/calendar_event.py:251
+msgid "Add a description or meeting notes"
+msgstr "Aggiungi una descrizione o note della riunione"
+
+# | msgid "Add Condition"
+#: forms/communication/calendar_event.py:250
+msgid "Add a location"
+msgstr "Aggiungi una posizione"
 
 #: services/email_composer_requests.py:89
 msgid "Add a subject or message body before sending."
@@ -595,12 +604,16 @@ msgstr "Aggiungi una colonna del totale per ogni riga."
 msgid "Add a totals row beneath the pivot table."
 msgstr "Aggiungi una riga dei totali sotto la tabella pivot."
 
+# | msgid "Add at least one recipient."
+#: forms/communication/calendar_event.py:384
+msgid "Add at least one attendee to email invitations."
+msgstr "Aggiungi almeno un partecipante agli inviti via email."
+
 #: services/email_composer_requests.py:81
 msgid "Add at least one recipient."
 msgstr "Aggiungi almeno un destinatario."
 
 #: templates/widgets/behavior_builder_widget.html:19
-#, fuzzy
 msgid "Add behavior"
 msgstr "Aggiungi comportamento"
 
@@ -614,6 +627,10 @@ msgstr "Aggiungi file o moduli"
 msgid "Add folder"
 msgstr "Aggiungi cartella"
 
+#: forms/communication/calendar_event.py:249
+msgid "Add guests by email"
+msgstr "Aggiungi ospiti tramite email"
+
 #: templates/cotton/features/layout/container.html:132
 msgid "Add items"
 msgstr "Aggiungi elementi"
@@ -626,6 +643,10 @@ msgstr "Aggiungi link"
 #: templates/cotton/features/workspaces/tiles/text.html:9
 msgid "Add markdown content to preview your text tile."
 msgstr "Aggiungi contenuto Markdown per visualizzare in anteprima il riquadro di testo."
+
+#: forms/communication/calendar_event.py:269
+msgid "Add no more than 100 guests."
+msgstr "Aggiungi non più di 100 ospiti."
 
 #: templates/widgets/one_to_many_field_widget.html:108
 msgid "Add row"
@@ -652,16 +673,14 @@ msgstr "Pagina di amministrazione"
 # | msgid "Admin page"
 # | msgid "Admin"
 #: templates/components/communication/calling/controls.html:13
-#, fuzzy
 msgid "Admit"
-msgstr "Pagina di amministrazione"
+msgstr "Ammetti"
 
 # | msgid "Admin page"
 # | msgid "Admin"
 #: bloomerp.conferenceadmission.status models/communication/conferencing/conference_admission.py:18
-#, fuzzy
 msgid "Admitted"
-msgstr "Pagina di amministrazione"
+msgstr "Ammesso"
 
 #: workspaces/analytics_tile/model.py:224
 msgid "Advanced formatting"
@@ -710,14 +729,17 @@ msgstr "Aggregazione"
 
 # | msgid "The session cannot return to an earlier state."
 #: form_behaviors/builtins/calculate.py:173
-#, fuzzy
 msgid "Aggregations cannot return a date or datetime."
-msgstr "La sessione non può tornare a uno stato precedente."
+msgstr "Le aggregazioni non possono restituire una data o una data e ora."
 
 #: form_behaviors/builtins/calculate.py:64
-#, fuzzy
 msgid "Aggregations must reference a collection column."
 msgstr "Le aggregazioni devono fare riferimento a una colonna di raccolta."
+
+# | msgid "Calendar"
+#: templates/models/calendar_event/align_calendars.html:5
+msgid "Align calendars"
+msgstr "Allinea i calendari"
 
 #: bloomerp.inboxfolder.type form_behaviors/builtins/fetch.py:300
 #: templates/views/access_control/manage_permissions/wizard_object_access_control.html:56
@@ -737,6 +759,10 @@ msgstr "Tutte le autorizzazioni"
 msgid "All Staff Users"
 msgstr "Tutti gli utenti dello staff"
 
+#: forms/communication/calendar_event.py:389
+msgid "All attendees need an email address to receive invitations."
+msgstr "Tutti i partecipanti devono avere un indirizzo email per ricevere gli inviti."
+
 #: bloomerp.aiagent.internal_resource_mode models/agents/ai_agent.py:136
 msgid "All built-in Bloomerp resources"
 msgstr "Tutte le risorse integrate di Bloomerp"
@@ -745,7 +771,10 @@ msgstr "Tutte le risorse integrate di Bloomerp"
 msgid "All built-in Bloomerp tools"
 msgstr "Tutti gli strumenti integrati di Bloomerp"
 
-#: templates/cotton/features/dataviews/calendar.html:149
+#: bloomerp.calendarevent.all_day forms/communication/calendar_event.py:129
+#: models/communication/calendar/calendar_event.py:210
+#: templates/cotton/features/dataviews/calendar.html:160
+#: templates/views/communication/calendar/respond.html:13
 msgid "All day"
 msgstr "Tutto il giorno"
 
@@ -768,13 +797,20 @@ msgstr ""
 # | msgid "Loading filters..."
 # | msgid "No matching items."
 #: form_behaviors/builtins/fetch.py:343
-#, fuzzy
 msgid "All matching records"
-msgstr "Nessun elemento corrispondente."
+msgstr "Tutti i record corrispondenti"
 
 #: templates/components/objects/dataview_gant_unscheduled.html:21
 msgid "All visible records are scheduled."
 msgstr "Tutti i record visibili sono pianificati."
+
+#: dataviews/calendar/config.py:112
+msgid "All-day end date (exclusive)"
+msgstr "Data di fine (esclusa) per l’intera giornata"
+
+#: dataviews/calendar/config.py:112
+msgid "All-day start date"
+msgstr "Data di inizio per l’intera giornata"
 
 #: bloomerp.immessage.sequence models/communication/instant_messaging/im_message.py:30
 msgid "Allocated under a conversation lock by the messaging service."
@@ -813,7 +849,6 @@ msgid "An active or ended call must have a start time."
 msgstr "Una chiamata attiva o terminata deve avere un orario di inizio."
 
 #: form_behaviors/builtins/calculate.py:93
-#, fuzzy
 msgid "An aggregation must reference a collection column."
 msgstr "Un'aggregazione deve fare riferimento a una colonna di raccolta."
 
@@ -823,7 +858,6 @@ msgid "An emoji is required."
 msgstr "È richiesta un'emoji."
 
 #: form_behaviors/builtins/calculate.py:334
-#, fuzzy
 msgid "An expression may reference only one collection."
 msgstr "Un'espressione può fare riferimento a una sola raccolta."
 
@@ -869,8 +903,11 @@ msgstr ""
 "Si applica alle nuove chiamate agli strumenti. Le approvazioni in sospeso richiedono comunque una"
 " decisione. Le autorizzazioni degli strumenti si applicano sempre."
 
+#: templates/models/calendar_event/align_calendars.html:24
+msgid "Apply"
+msgstr "Applica"
+
 #: form_behaviors/builtins/transform_text.py:146
-#, fuzzy
 msgid "Apply a deterministic text normalization to the listener value."
 msgstr "Applica una normalizzazione deterministica del testo al valore del listener."
 
@@ -940,8 +977,7 @@ msgstr "Chiedi a BloomAI"
 msgid "Ask anything about your workspace…"
 msgstr "Chiedi qualsiasi cosa sul tuo spazio di lavoro…"
 
-#: templates/views/communication/conferencing/meeting.html:16
-#, fuzzy
+#: templates/views/communication/conferencing/meeting.html:20
 msgid "Ask to join"
 msgstr "Chiedi di partecipare"
 
@@ -979,7 +1015,7 @@ msgstr "Allega"
 msgid "Attachment fields do not have editor occurrences."
 msgstr "I campi degli allegati non hanno occorrenze nell'editor."
 
-#: templates/cotton/features/agent/body.html:120 templates/inbox_items/email.html:7
+#: templates/cotton/features/agent/body.html:120 templates/inbox_items/email.html:12
 msgid "Attachments"
 msgstr "Allegati"
 
@@ -990,6 +1026,23 @@ msgstr "Gli allegati non appartengono a questo oggetto e campo."
 #: bloomerp.airunevent.attempt
 msgid "Attempt"
 msgstr "Tentativo"
+
+#: forms/communication/calendar_event_response.py:13
+msgid "Attendance"
+msgstr "Partecipazione"
+
+# | msgid "Item updated"
+#: views/communication/calendar/update.py:137
+msgid "Attendance updated."
+msgstr "Partecipazione aggiornata."
+
+#: bloomerp.calendarschedulingcancellation.attendee_email
+msgid "Attendee Email"
+msgstr "Email del partecipante"
+
+#: templates/cotton/features/calendar/availability.html:6
+msgid "Attendee availability"
+msgstr "Disponibilità dei partecipanti"
 
 #: bloomerp.conferencesession.initial_media_mode
 #: models/communication/conferencing/conference_session.py:29
@@ -1044,6 +1097,20 @@ msgctxt "bloomerp:module:name"
 msgid "Automation"
 msgstr "Automazione"
 
+#: templates/cotton/features/calendar/availability.html:5
+msgid "Availability"
+msgstr "Disponibilità"
+
+# | msgctxt "bloomerp:route:description"
+# | msgid "Available Modules"
+#: bloomerp.calendarbooking.availability_hours models/communication/calendar/calendar_booking.py:36
+msgid "Availability hours"
+msgstr "Orari di disponibilità"
+
+#: bloomerp.calendarbooking.timezone models/communication/calendar/calendar_booking.py:39
+msgid "Availability timezone"
+msgstr "Fuso orario della disponibilità"
+
 msgctxt "bloomerp:route:description"
 msgid "Available Modules"
 msgstr "Moduli disponibili"
@@ -1067,6 +1134,12 @@ msgstr "Media"
 #: templates/cotton/features/agent/body.html:12
 msgid "Awaiting approval"
 msgstr "In attesa di approvazione"
+
+# | msgid "Writing response…"
+#: bloomerp.calendareventparticipant.response_status
+#: models/communication/calendar/calendar_event_participant.py:17
+msgid "Awaiting response"
+msgstr "In attesa di risposta"
 
 #: templates/mixins/bloomerp_layout_form_mixin.html:104
 #: templates/mixins/bloomerp_layout_form_mixin.html:168 templates/views/base_wizard.html:66
@@ -1118,31 +1191,26 @@ msgid "Before"
 msgstr "Prima"
 
 #: form_behaviors/definition.py:234
-#, fuzzy
 msgid "Behavior IDs must be unique within a field."
 msgstr "Gli ID dei comportamenti devono essere univoci all'interno di un campo."
 
 # | msgid "Mailbox connection failed"
 # | msgid "Email connection failed"
 #: components/form_behaviors/execute.py:120
-#, fuzzy
 msgid "Behavior evaluation failed."
-msgstr "Connessione email non riuscita"
+msgstr "Valutazione del comportamento non riuscita."
 
 # | msgid "Free Variables"
 # | msgid "Browser calling is unavailable."
 #: form_fields/behavior_field.py:44
-#, fuzzy
 msgid "Behavior listener is unavailable."
-msgstr "Le chiamate dal browser non sono disponibili."
+msgstr "Il listener del comportamento non è disponibile."
 
 #: field_types/builtins/display.py:153
-#, fuzzy
 msgid "Behaviors"
 msgstr "Comportamenti"
 
 #: form_fields/behavior_field.py:25
-#, fuzzy
 msgid "Behaviors must be a structured object."
 msgstr "I comportamenti devono essere un oggetto strutturato."
 
@@ -1178,6 +1246,12 @@ msgstr "Corpo"
 msgid "Body Html"
 msgstr "Corpo HTML"
 
+# | msgid "form submission"
+#: bloomerp.calendarevent.calendar_booking_submission
+#: models/communication/calendar/calendar_event.py:176
+msgid "Booking submission"
+msgstr "Invio della prenotazione"
+
 # | msgid "Bookmarks"
 #: bloomerp.bookmark models/users/bookmark.py:13
 msgid "Bookmark"
@@ -1206,7 +1280,6 @@ msgid "Bottom margin of the header in inches."
 msgstr "Margine inferiore dell'intestazione in pollici."
 
 #: bloomerp.conferenceadmission.browser_key
-#, fuzzy
 msgid "Browser Key"
 msgstr "Chiave del browser"
 
@@ -1217,7 +1290,7 @@ msgstr "La chiamata dal browser non è disponibile per questa linea."
 
 # | msgid "No workflow graph was available for this execution."
 # | msgid "Browser calling is unavailable for this line."
-#: communication/builtins/conferencing/controller.py:301
+#: communication/builtins/conferencing/controller.py:307
 msgid "Browser calling is unavailable for this provider."
 msgstr "Le chiamate dal browser non sono disponibili per questo provider."
 
@@ -1281,7 +1354,7 @@ msgid "Bulk Upload {model}"
 msgstr "Caricamento in blocco di {model}"
 
 # | msgid "Row actions"
-#: templates/components/objects/dataview.html:194
+#: templates/components/objects/dataview.html:197
 msgid "Bulk actions"
 msgstr "Azioni di massa"
 
@@ -1310,26 +1383,97 @@ msgid "By allowing access, ChatGPT can:"
 msgstr "Consentendo l'accesso, ChatGPT potrà:"
 
 #: form_behaviors/builtins/calculate.py:447
-#, fuzzy
 msgid "Calculate"
 msgstr "Calcola"
 
 #: form_behaviors/builtins/calculate.py:449
-#, fuzzy
 msgid ""
 "Calculate numeric values or scalar date/datetime offsets (days for dates, minutes for datetimes) "
 "from a safe formula."
 msgstr ""
-"Calcola valori numerici o offset scalari di data/data e ora (giorni per le date, minuti per le "
-"date e ora) a partire da una formula sicura."
+"Calcola valori numerici o scostamenti scalari di data/data e ora (giorni per le date, minuti per "
+"data e ora) a partire da una formula sicura."
 
 #: dataviews/pivot_table/config.py:93
 msgid "Calculate the totals row from this page or the entire filtered dataset."
 msgstr "Calcola la riga dei totali da questa pagina o dall'intero set di dati filtrato."
 
 #: bloomerp.userlistviewpreference.view_type dataviews/registry.py:135
+#: forms/communication/calendar_event.py:100 templates/views/communication/inbox.html:156
+#: templates/views/communication/inbox.html:159
 msgid "Calendar"
 msgstr "Calendario"
+
+#: bloomerp.calendarevent.calendar_uid bloomerp.calendarschedulingcancellation.calendar_uid
+msgid "Calendar Uid"
+msgstr "UID del calendario"
+
+# | msgid "Calendar"
+#: bloomerp.calendarbooking bloomerp.calendarbookingsubmission.calendar_booking
+#: models/communication/calendar/calendar_booking.py:47
+#: models/communication/calendar/calendar_booking_submission.py:17
+msgid "Calendar booking"
+msgstr "Prenotazione del calendario"
+
+#: bloomerp.calendarbookingsubmission models/communication/calendar/calendar_booking_submission.py:24
+msgid "Calendar booking submission"
+msgstr "Invio della prenotazione del calendario"
+
+#: bloomerp.calendarbookingsubmission models/communication/calendar/calendar_booking_submission.py:25
+msgid "Calendar booking submissions"
+msgstr "Invii delle prenotazioni del calendario"
+
+# | msgid "Calendar"
+#: bloomerp.calendarbooking models/communication/calendar/calendar_booking.py:48
+msgid "Calendar bookings"
+msgstr "Prenotazioni del calendario"
+
+# | msgid "Calendar"
+#: bloomerp.calendarevent models/communication/calendar/calendar_event.py:213
+msgid "Calendar event"
+msgstr "Evento del calendario"
+
+# | msgid "im conversation participant"
+# | msgid "Conference participant"
+#: bloomerp.calendareventparticipant models/communication/calendar/calendar_event_participant.py:54
+msgid "Calendar event participant"
+msgstr "Partecipante all'evento del calendario"
+
+# | msgid "im conversation participants"
+# | msgid "Conference participants"
+#: bloomerp.calendareventparticipant models/communication/calendar/calendar_event_participant.py:55
+msgid "Calendar event participants"
+msgstr "Partecipanti all'evento del calendario"
+
+# | msgid "Calendar"
+#: bloomerp.calendarevent models/communication/calendar/calendar_event.py:214
+msgid "Calendar events"
+msgstr "Eventi del calendario"
+
+# | msgid "Calendar"
+#: bloomerp.calendarevent.inboxes models/communication/calendar/calendar_event.py:168
+msgid "Calendar inboxes"
+msgstr "Caselle di posta del calendario"
+
+# | msgid "Calendar Uid"
+#: dataviews/calendar/config.py:92
+msgid "Calendar period"
+msgstr "Periodo del calendario"
+
+# | msgid "Object no longer available"
+# | msgid "This selection is no longer available."
+#: components/communication/calendar/align.py:59
+msgid "Calendar selection is no longer accessible."
+msgstr "La selezione del calendario non è più accessibile."
+
+# | msgid "Calendar"
+#: templates/cotton/features/dataviews/calendar.html:76
+msgid "Calendar view mode"
+msgstr "Modalità di visualizzazione del calendario"
+
+msgctxt "bloomerp:route:name"
+msgid "CalendarEventUpdateView"
+msgstr "CalendarEventUpdateView"
 
 # | msgid "Call API"
 #: bloomerp.phonecallevent.call models/communication/voip/phone_call_event.py:13
@@ -1370,13 +1514,18 @@ msgid "Camera off"
 msgstr "Fotocamera disattivata"
 
 # | msgid "Canceled"
-#: templates/cotton/features/agent/body.html:67
+#: templates/cotton/features/agent/body.html:67 templates/views/communication/calendar/create.html:28
+#: templates/views/communication/calendar/create.html:29
 msgid "Cancel"
 msgstr "Annulla"
 
 #: bloomerp.airun.cancel_requested_at
 msgid "Cancel Requested At"
 msgstr "Data e ora della richiesta di annullamento"
+
+#: templates/components/communication/calendar/schedule.html:15
+msgid "Cancel meeting"
+msgstr "Annulla riunione"
 
 # | msgid "Cancel Requested At"
 #: templates/components/communication/instant_messaging/conversation.html:24
@@ -1389,9 +1538,10 @@ msgid "Canceled"
 msgstr "Annullato"
 
 #: bloomerp.aiapproval.status bloomerp.airun.status bloomerp.airunattempt.status
-#: bloomerp.aitoolcall.status bloomerp.conferenceparticipant.invitation_status
-#: bloomerp.conferencesession.status bloomerp.fileextraction.status bloomerp.todo.status
-#: bloomerp.workflowrun.status bloomerp.workflowrunstep.status models/automation/workflow_run.py:112
+#: bloomerp.aitoolcall.status bloomerp.calendarevent.cancelled
+#: bloomerp.conferenceparticipant.invitation_status bloomerp.conferencesession.status
+#: bloomerp.fileextraction.status bloomerp.todo.status bloomerp.workflowrun.status
+#: bloomerp.workflowrunstep.status models/automation/workflow_run.py:112
 #: models/automation/workflow_run_step.py:10
 #: models/communication/conferencing/conference_participant.py:22
 #: models/communication/conferencing/conference_session.py:25 models/files/file_extraction.py:177
@@ -1477,6 +1627,12 @@ msgstr "Campo a scelta"
 msgid "Choice colors"
 msgstr "Colori delle opzioni"
 
+# | msgid "Copy first value"
+# | msgid "Choose value"
+#: forms/communication/calendar_event.py:101
+msgid "Choose a calendar"
+msgstr "Scegli un calendario"
+
 #: field_types/builtins/text.py:88
 msgid "Choose a color for each value. Colors for removed choices are ignored."
 msgstr "Scegli un colore per ogni valore. I colori delle opzioni rimosse vengono ignorati."
@@ -1486,14 +1642,17 @@ msgid "Choose a configured mapping key."
 msgstr "Scegli una chiave di mappatura configurata."
 
 #: form_behaviors/builtins/populate_week_dates.py:83
-#, fuzzy
 msgid "Choose a date column, not row identity or deletion."
-msgstr "Scegli una colonna di date, non l'identità della riga o l'eliminazione."
+msgstr "Scegli una colonna data, non l'identificativo della riga o l'eliminazione."
 
 # | msgid "The label"
 #: templates/cotton/features/instant_messaging/message.html:15
 msgid "Choose a reaction"
 msgstr "Scegli una reazione"
+
+#: forms/communication/calendar_event.py:380
+msgid "Choose a sending account linked to this calendar inbox."
+msgstr "Scegli un account di invio collegato a questa casella di posta del calendario."
 
 #: templates/cotton/features/agent/body.html:98
 msgid "Choose a suggestion or ask a question."
@@ -1532,10 +1691,9 @@ msgid "Choose value"
 msgstr "Scegli un valore"
 
 # | msgid "Choose the provider for this AI agent."
-#: communication/builtins/conferencing/sharing.py:175
-#, fuzzy
+#: communication/builtins/conferencing/sharing.py:181
 msgid "Choose whether to admit this guest."
-msgstr "Scegli il provider per questo agente AI."
+msgstr "Scegli se ammettere questo ospite."
 
 #: workspaces/dataview_tile/form.py:43
 msgid "Choose which actions will be rendered in the toolbar."
@@ -1546,7 +1704,6 @@ msgid "Choose which model-level permissions this policy grants."
 msgstr "Scegli quali autorizzazioni a livello di modello concede questa policy."
 
 #: templates/widgets/behavior_builder_widget.html:23
-#, fuzzy
 msgid "Clear all"
 msgstr "Cancella tutto"
 
@@ -1556,16 +1713,20 @@ msgid "Clear icon color"
 msgstr "Colore dell'icona di cancellazione"
 
 #: form_behaviors/builtins/clear_value.py:73
-#, fuzzy
 msgid "Clear the target using its field type's empty-value semantics."
-msgstr "Svuota la destinazione secondo la semantica del valore vuoto del tipo di campo."
+msgstr "Svuota l'obiettivo secondo le regole del valore vuoto del tipo di campo."
 
 # | msgid "Copy first value"
 # | msgid "Choose value"
 #: form_behaviors/builtins/clear_value.py:72
-#, fuzzy
 msgid "Clear value"
-msgstr "Scegli un valore"
+msgstr "Cancella valore"
+
+#: templates/cotton/features/calendar/availability.html:7
+msgid "Click a time to schedule an hour. Shaded cells are busy; ? means availability is unavailable."
+msgstr ""
+"Fai clic su un orario per pianificare un’ora. Le celle ombreggiate indicano che l’orario è "
+"occupato; ? indica che la disponibilità non è disponibile."
 
 #: bloomerp.immessage.client_id bloomerp.oauthaccesstoken.client_id
 #: bloomerp.oauthauthorizationcode.client_id
@@ -1596,7 +1757,7 @@ msgstr "Chiudi l’assistente"
 
 # | msgid "Details"
 # | msgid "Core Details"
-#: templates/components/objects/dataview.html:180
+#: templates/components/objects/dataview.html:183
 msgid "Close details"
 msgstr "Chiudi dettagli"
 
@@ -1637,26 +1798,22 @@ msgstr "Hash del codice"
 
 # | msgid "Call controls"
 #: templates/components/communication/calling/controls.html:6
-#, fuzzy
 msgid "Collapse call controls"
-msgstr "Controlli della chiamata"
+msgstr "Comprimi i controlli della chiamata"
 
 #: form_behaviors/builtins/transform_text.py:45
-#, fuzzy
 msgid "Collapse whitespace"
-msgstr "Riduci gli spazi bianchi"
+msgstr "Comprimi gli spazi bianchi"
 
 #: bloomerp.workflownode.sub_type
 msgid "Collect"
 msgstr "Raccogli"
 
 #: form_behaviors/builtins/calculate.py:70
-#, fuzzy
 msgid "Collection columns must be used inside an aggregation."
-msgstr "Le colonne di raccolta devono essere usate all'interno di un'aggregazione."
+msgstr "Le colonne delle raccolte devono essere usate all'interno di un'aggregazione."
 
 #: form_behaviors/execution.py:216
-#, fuzzy
 msgid "Collections require at most 1000 row objects."
 msgstr "Le raccolte possono contenere al massimo 1000 oggetti riga."
 
@@ -1665,15 +1822,14 @@ msgstr "Le raccolte possono contenere al massimo 1000 oggetti riga."
 msgid "Color"
 msgstr "Colore"
 
-#: dataviews/calendar/config.py:73
+#: dataviews/calendar/config.py:100
 msgid "Color grouping"
 msgstr "Raggruppamento per colore"
 
 # | msgid "Columns"
 #: form_behaviors/builtins/populate_week_dates.py:53 form_behaviors/shared/calculate.py:19
-#, fuzzy
 msgid "Column"
-msgstr "Colonne"
+msgstr "Colonna"
 
 #: templates/cotton/ui/inputs/one_to_many/column_actions.html:2
 msgid "Column actions"
@@ -1681,9 +1837,8 @@ msgstr "Azioni colonna"
 
 # | msgid "Column actions"
 #: form_behaviors/builtins/fetch.py:320
-#, fuzzy
 msgid "Column mappings"
-msgstr "Azioni colonna"
+msgstr "Mappature delle colonne"
 
 #: templates/cotton/features/dataviews/pivot_table.html:104
 msgid "Column totals"
@@ -1710,7 +1865,10 @@ msgstr "Reindirizzamento ai dettagli del commento"
 #: bloomerp.aiagent.comments bloomerp.aiagentaccess.comments bloomerp.aiapproval.comments
 #: bloomerp.aiartifact.comments bloomerp.aiconversation.comments bloomerp.aimessage.comments
 #: bloomerp.aimessageartifact.comments bloomerp.airun.comments bloomerp.airunattempt.comments
-#: bloomerp.airunevent.comments bloomerp.aitoolcall.comments bloomerp.apikey.comments bloomerp.comment
+#: bloomerp.airunevent.comments bloomerp.aitoolcall.comments bloomerp.apikey.comments
+#: bloomerp.calendarbooking.comments bloomerp.calendarbookingsubmission.comments
+#: bloomerp.calendarevent.comments bloomerp.calendareventparticipant.comments
+#: bloomerp.calendarschedulingcancellation.comments bloomerp.comment
 #: bloomerp.conferenceadmission.comments bloomerp.conferenceattendance.comments
 #: bloomerp.conferenceparticipant.comments bloomerp.conferenceroom.comments
 #: bloomerp.conferencesession.comments bloomerp.conferencewebhookreceipt.comments
@@ -1767,21 +1925,18 @@ msgid "Compute"
 msgstr "Calcola"
 
 #: form_fields/behavior_field.py:53
-#, fuzzy
 msgid "Condition field is not in this layout."
 msgstr "Il campo della condizione non è presente in questo layout."
 
 # | msgid "No workflow graph was available for this execution."
 # | msgid "Sending is unavailable for this conversation."
 #: form_behaviors/execution.py:261
-#, fuzzy
 msgid "Condition field is unavailable in this draft."
-msgstr "L'invio non è disponibile per questa conversazione."
+msgstr "Il campo della condizione non è disponibile in questa bozza."
 
 #: form_behaviors/execution.py:265
-#, fuzzy
 msgid "Condition lookup cannot evaluate draft values."
-msgstr "La ricerca della condizione non può valutare valori in bozza."
+msgstr "La ricerca della condizione non può valutare i valori della bozza."
 
 # | msgid "Preference"
 # | msgid "Preference name"
@@ -1823,7 +1978,9 @@ msgstr "Sala conferenze"
 msgid "Conference rooms"
 msgstr "Sale conferenze"
 
-#: bloomerp.conferencesession models/communication/conferencing/conference_session.py:70
+#: bloomerp.calendarevent.conference_session bloomerp.conferencesession
+#: models/communication/calendar/calendar_event.py:193
+#: models/communication/conferencing/conference_session.py:70
 msgid "Conference session"
 msgstr "Sessione di conferenza"
 
@@ -1841,9 +1998,15 @@ msgstr "Ricevuta webhook della conferenza"
 msgid "Conference webhook receipts"
 msgstr "Ricevute webhook della conferenza"
 
+# | msgid "No workflow graph was available for this execution."
+# | msgid "Browser calling is unavailable for this line."
+#: forms/communication/calendar_event.py:351
+msgid "Conferencing is unavailable for this instance."
+msgstr "La conferenza non è disponibile per questa istanza."
+
 # | msgid "Detailed run logging is still available."
 # | msgid "Calling is unavailable."
-#: components/communication/conferencing/join.py:34
+#: components/communication/conferencing/join.py:36
 msgid "Conferencing is unavailable."
 msgstr "Le conferenze non sono disponibili."
 
@@ -1851,9 +2014,8 @@ msgstr "Le conferenze non sono disponibili."
 # | msgid "Calling is unavailable."
 # | msgid "Conferencing is unavailable."
 #: communication/builtins/conferencing/meetings.py:60
-#, fuzzy
 msgid "Conferencing is unavailable. Please retry."
-msgstr "Le conferenze non sono disponibili."
+msgstr "La conferenza non è disponibile. Riprova."
 
 #: bloomerp.airun.config_snapshot
 msgid "Config Snapshot"
@@ -1867,9 +2029,8 @@ msgstr "Configura account"
 
 # | msgid "Initial query parameters must be a JSON object."
 #: components/form_behaviors/render_action_config_form.py:68
-#, fuzzy
 msgid "Configuration must be an object."
-msgstr "I parametri iniziali della query devono essere un oggetto JSON."
+msgstr "La configurazione deve essere un oggetto."
 
 #: views/communication/create_email_account.py:369
 msgid "Configure account"
@@ -1974,7 +2135,8 @@ msgstr "Connessioni"
 msgid "Consumed Message Sequence"
 msgstr "Sequenza dei messaggi consumati"
 
-#: bloomerp.comment.content bloomerp.filenode.content bloomerp.todo.content
+#: bloomerp.calendarevent.content bloomerp.comment.content bloomerp.filenode.content
+#: bloomerp.todo.content models/communication/calendar/calendar_event.py:197
 #: models/communication/comment.py:42 models/project_management/todo.py:392
 msgid "Content"
 msgstr "Contenuto"
@@ -2101,34 +2263,27 @@ msgid "Copy"
 msgstr "Copia"
 
 #: form_behaviors/builtins/set_o2m_value.py:271
-#, fuzzy
 msgid "Copy each active row's source column or related accessor into a compatible column."
-msgstr ""
-"Copia la colonna di origine di ogni riga attiva o l'accessore correlato in una colonna "
-"compatibile."
+msgstr "Copia la colonna di origine o l'accessor correlato di ogni riga attiva in una colonna compatibile."
 
 # | msgid "Copy first value"
 #: form_behaviors/builtins/copy_field_value.py:239
-#, fuzzy
 msgid "Copy field value"
-msgstr "Copia il primo valore"
+msgstr "Copia valore del campo"
 
 #: templates/cotton/ui/inputs/one_to_many/column_actions.html:30
 msgid "Copy first value"
 msgstr "Copia il primo valore"
 
 #: templates/components/communication/calling/controls.html:20
-#, fuzzy
 msgid "Copy meeting link"
-msgstr "Copia il link della riunione"
+msgstr "Copia link della riunione"
 
 #: form_behaviors/builtins/copy_field_value.py:240
-#, fuzzy
 msgid "Copy the listener or one field from its selected related record into the target."
-msgstr "Copia il listener o un campo del record correlato selezionato nella destinazione."
+msgstr "Copia il listener o un campo dal record correlato selezionato nella destinazione."
 
 #: form_fields/behavior.py:165
-#, fuzzy
 msgid "Copy-related-rows actions require a source field."
 msgstr "Le azioni di copia delle righe correlate richiedono un campo di origine."
 
@@ -2156,7 +2311,6 @@ msgid "Count"
 msgstr "Account"
 
 #: form_behaviors/builtins/calculate.py:87
-#, fuzzy
 msgid "Count, first, and last require one collection column."
 msgstr "Conteggio, primo e ultimo richiedono una colonna di raccolta."
 
@@ -2185,7 +2339,7 @@ msgid "Create API Key"
 msgstr "Crea chiave API"
 
 # | msgid "Create Todo"
-#: templates/views/communication/inbox.html:191
+#: templates/views/communication/inbox.html:200
 msgid "Create Inbox"
 msgstr "Crea casella di posta"
 
@@ -2257,7 +2411,7 @@ msgctxt "bloomerp:route:description"
 msgid "Create an access control policy"
 msgstr "Crea un criterio di controllo degli accessi"
 
-#: templates/views/communication/inbox.html:192
+#: templates/views/communication/inbox.html:201
 msgid "Create an inbox or select one that has been shared with you."
 msgstr "Crea una casella di posta o selezionane una che è stata condivisa con te."
 
@@ -2279,14 +2433,18 @@ msgstr "Crea connessione"
 
 # | msgctxt "bloomerp:route:name"
 # | msgid "Create user"
-#: templates/views/communication/inbox.html:207
+#: templates/views/communication/inbox.html:216
 msgid "Create custom"
 msgstr "Crea personalizzata"
 
-#: templates/views/communication/inbox.html:202
+#: templates/views/communication/inbox.html:211
 #: templates/views/workspaces/bloomerp_workspace_view.html:28
 msgid "Create default"
 msgstr "Crea predefinito"
+
+msgctxt "bloomerp:route:name"
+msgid "Create event"
+msgstr "Crea evento"
 
 # | msgid "Create Todo"
 #: templates/components/communication/instant_messaging/create_group.html:11
@@ -2333,24 +2491,27 @@ msgstr "Crea {model}"
 #: bloomerp.aiartifact.created_by bloomerp.aiconversation.created_by bloomerp.aimessage.created_by
 #: bloomerp.aimessageartifact.created_by bloomerp.airun.created_by bloomerp.airunattempt.created_by
 #: bloomerp.airunevent.created_by bloomerp.aitoolcall.created_by bloomerp.apikey.created_by
-#: bloomerp.comment.created_by bloomerp.conferenceadmission.created_by
-#: bloomerp.conferenceattendance.created_by bloomerp.conferenceparticipant.created_by
-#: bloomerp.conferenceroom.created_by bloomerp.conferencesession.created_by
-#: bloomerp.conferencewebhookreceipt.created_by bloomerp.documenttemplate.created_by
-#: bloomerp.documenttemplateheader.created_by bloomerp.documenttemplatestyling.created_by
-#: bloomerp.emailaccount.created_by bloomerp.emaildraft.created_by bloomerp.fileextraction.created_by
-#: bloomerp.filenode.created_by bloomerp.filereference.created_by bloomerp.form.created_by
-#: bloomerp.formsubmission.created_by bloomerp.imauthorization.created_by
-#: bloomerp.imconnection.created_by bloomerp.imconversation.created_by
-#: bloomerp.imconversationactivity.created_by bloomerp.imconversationparticipant.created_by
-#: bloomerp.imendpoint.created_by bloomerp.imidentity.created_by bloomerp.imidentitysource.created_by
-#: bloomerp.immessage.created_by bloomerp.immessageattachment.created_by
-#: bloomerp.immessagereaction.created_by bloomerp.imthreadreadposition.created_by
-#: bloomerp.inboxfolder.created_by bloomerp.inboxitem.created_by bloomerp.initiative.created_by
-#: bloomerp.label.created_by bloomerp.mcpconnection.created_by bloomerp.mcpintegration.created_by
-#: bloomerp.phonecall.created_by bloomerp.phonecallevent.created_by bloomerp.policy.created_by
-#: bloomerp.savedfilter.created_by bloomerp.sqlquery.created_by bloomerp.tile.created_by
-#: bloomerp.todo.created_by bloomerp.userinboxpreference.created_by bloomerp.voipconnection.created_by
+#: bloomerp.calendarbooking.created_by bloomerp.calendarbookingsubmission.created_by
+#: bloomerp.calendarevent.created_by bloomerp.calendareventparticipant.created_by
+#: bloomerp.calendarschedulingcancellation.created_by bloomerp.comment.created_by
+#: bloomerp.conferenceadmission.created_by bloomerp.conferenceattendance.created_by
+#: bloomerp.conferenceparticipant.created_by bloomerp.conferenceroom.created_by
+#: bloomerp.conferencesession.created_by bloomerp.conferencewebhookreceipt.created_by
+#: bloomerp.documenttemplate.created_by bloomerp.documenttemplateheader.created_by
+#: bloomerp.documenttemplatestyling.created_by bloomerp.emailaccount.created_by
+#: bloomerp.emaildraft.created_by bloomerp.fileextraction.created_by bloomerp.filenode.created_by
+#: bloomerp.filereference.created_by bloomerp.form.created_by bloomerp.formsubmission.created_by
+#: bloomerp.imauthorization.created_by bloomerp.imconnection.created_by
+#: bloomerp.imconversation.created_by bloomerp.imconversationactivity.created_by
+#: bloomerp.imconversationparticipant.created_by bloomerp.imendpoint.created_by
+#: bloomerp.imidentity.created_by bloomerp.imidentitysource.created_by bloomerp.immessage.created_by
+#: bloomerp.immessageattachment.created_by bloomerp.immessagereaction.created_by
+#: bloomerp.imthreadreadposition.created_by bloomerp.inboxfolder.created_by
+#: bloomerp.inboxitem.created_by bloomerp.initiative.created_by bloomerp.label.created_by
+#: bloomerp.mcpconnection.created_by bloomerp.mcpintegration.created_by bloomerp.phonecall.created_by
+#: bloomerp.phonecallevent.created_by bloomerp.policy.created_by bloomerp.savedfilter.created_by
+#: bloomerp.sqlquery.created_by bloomerp.tile.created_by bloomerp.todo.created_by
+#: bloomerp.userinboxpreference.created_by bloomerp.voipconnection.created_by
 #: bloomerp.voipnumber.created_by bloomerp.workflow.created_by bloomerp.workflownode.created_by
 #: models/mixins/user_stamp_model_mixin.py:20
 msgid "Created By"
@@ -2381,6 +2542,13 @@ msgstr "Le credenziali devono associare stringhe a stringhe."
 #: templates/cotton/ui/chat/composer.html:13
 msgid "Ctrl/⌘ + Enter to send"
 msgstr "Ctrl/⌘ + Invio per inviare"
+
+# | msgid "Preference"
+# | msgid "Preference name"
+# | msgid "Conference attendance"
+#: templates/views/communication/calendar/respond.html:31
+msgid "Current attendance"
+msgstr "Partecipazione attuale"
 
 #: templates/cotton/app/sidebar/body.html:206
 msgid "Current language"
@@ -2421,9 +2589,8 @@ msgstr "Tabella DB"
 
 # | msgid "Change"
 #: form_behaviors/builtins/show_message.py:26
-#, fuzzy
 msgid "Danger"
-msgstr "Modifica"
+msgstr "Pericolo"
 
 #: templates/cotton/app/theme_selector.html:14
 msgid "Dark"
@@ -2438,7 +2605,6 @@ msgid "Data View"
 msgstr "Vista dati"
 
 #: form_behaviors/builtins/fetch.py:656
-#, fuzzy
 msgid "Data lookup"
 msgstr "Ricerca dati"
 
@@ -2459,7 +2625,6 @@ msgid "Date View Preference"
 msgstr "Preferenza di visualizzazione della data"
 
 #: form_behaviors/shared/temporal.py:60
-#, fuzzy
 msgid "Date and datetime offsets must be a whole number."
 msgstr "Gli scostamenti di data e data/ora devono essere numeri interi."
 
@@ -2468,7 +2633,7 @@ msgid "Date and time when the document was signed."
 msgstr "Data e ora in cui il documento è stato firmato."
 
 # | msgid "Date Field"
-#: dataviews/calendar/config.py:49
+#: dataviews/calendar/config.py:76
 msgid "Date field"
 msgstr "Campo data"
 
@@ -2482,7 +2647,10 @@ msgstr "Campo data e ora"
 #: bloomerp.aimessageartifact.datetime_created bloomerp.airun.datetime_created
 #: bloomerp.airunattempt.datetime_created bloomerp.airunevent.datetime_created
 #: bloomerp.aitoolcall.datetime_created bloomerp.apikey.datetime_created
-#: bloomerp.bookmark.datetime_created bloomerp.comment.datetime_created
+#: bloomerp.bookmark.datetime_created bloomerp.calendarbooking.datetime_created
+#: bloomerp.calendarbookingsubmission.datetime_created bloomerp.calendarevent.datetime_created
+#: bloomerp.calendareventparticipant.datetime_created
+#: bloomerp.calendarschedulingcancellation.datetime_created bloomerp.comment.datetime_created
 #: bloomerp.conferenceadmission.datetime_created bloomerp.conferenceattendance.datetime_created
 #: bloomerp.conferenceparticipant.datetime_created bloomerp.conferenceroom.datetime_created
 #: bloomerp.conferencesession.datetime_created bloomerp.conferencewebhookreceipt.datetime_created
@@ -2521,26 +2689,29 @@ msgstr "Data e ora di ricezione"
 #: bloomerp.aimessageartifact.datetime_updated bloomerp.airun.datetime_updated
 #: bloomerp.airunattempt.datetime_updated bloomerp.airunevent.datetime_updated
 #: bloomerp.aitoolcall.datetime_updated bloomerp.apikey.datetime_updated
-#: bloomerp.comment.datetime_updated bloomerp.conferenceadmission.datetime_updated
-#: bloomerp.conferenceattendance.datetime_updated bloomerp.conferenceparticipant.datetime_updated
-#: bloomerp.conferenceroom.datetime_updated bloomerp.conferencesession.datetime_updated
-#: bloomerp.conferencewebhookreceipt.datetime_updated bloomerp.documenttemplate.datetime_updated
-#: bloomerp.documenttemplateheader.datetime_updated bloomerp.documenttemplatestyling.datetime_updated
-#: bloomerp.emailaccount.datetime_updated bloomerp.emaildraft.datetime_updated
-#: bloomerp.fileextraction.datetime_updated bloomerp.filenode.datetime_updated
-#: bloomerp.filereference.datetime_updated bloomerp.form.datetime_updated
-#: bloomerp.formsubmission.datetime_updated bloomerp.imauthorization.datetime_updated
-#: bloomerp.imconnection.datetime_updated bloomerp.imconversation.datetime_updated
-#: bloomerp.imconversationactivity.datetime_updated bloomerp.imconversationparticipant.datetime_updated
-#: bloomerp.imendpoint.datetime_updated bloomerp.imidentity.datetime_updated
-#: bloomerp.imidentitysource.datetime_updated bloomerp.immessage.datetime_updated
-#: bloomerp.immessageattachment.datetime_updated bloomerp.immessagereaction.datetime_updated
-#: bloomerp.imthreadreadposition.datetime_updated bloomerp.inboxfolder.datetime_updated
-#: bloomerp.inboxitem.datetime_updated bloomerp.initiative.datetime_updated
-#: bloomerp.mcpconnection.datetime_updated bloomerp.mcpintegration.datetime_updated
-#: bloomerp.phonecall.datetime_updated bloomerp.phonecallevent.datetime_updated
-#: bloomerp.policy.datetime_updated bloomerp.savedfilter.datetime_updated
-#: bloomerp.sqlquery.datetime_updated bloomerp.tile.datetime_updated bloomerp.todo.datetime_updated
+#: bloomerp.calendarbooking.datetime_updated bloomerp.calendarbookingsubmission.datetime_updated
+#: bloomerp.calendarevent.datetime_updated bloomerp.calendareventparticipant.datetime_updated
+#: bloomerp.calendarschedulingcancellation.datetime_updated bloomerp.comment.datetime_updated
+#: bloomerp.conferenceadmission.datetime_updated bloomerp.conferenceattendance.datetime_updated
+#: bloomerp.conferenceparticipant.datetime_updated bloomerp.conferenceroom.datetime_updated
+#: bloomerp.conferencesession.datetime_updated bloomerp.conferencewebhookreceipt.datetime_updated
+#: bloomerp.documenttemplate.datetime_updated bloomerp.documenttemplateheader.datetime_updated
+#: bloomerp.documenttemplatestyling.datetime_updated bloomerp.emailaccount.datetime_updated
+#: bloomerp.emaildraft.datetime_updated bloomerp.fileextraction.datetime_updated
+#: bloomerp.filenode.datetime_updated bloomerp.filereference.datetime_updated
+#: bloomerp.form.datetime_updated bloomerp.formsubmission.datetime_updated
+#: bloomerp.imauthorization.datetime_updated bloomerp.imconnection.datetime_updated
+#: bloomerp.imconversation.datetime_updated bloomerp.imconversationactivity.datetime_updated
+#: bloomerp.imconversationparticipant.datetime_updated bloomerp.imendpoint.datetime_updated
+#: bloomerp.imidentity.datetime_updated bloomerp.imidentitysource.datetime_updated
+#: bloomerp.immessage.datetime_updated bloomerp.immessageattachment.datetime_updated
+#: bloomerp.immessagereaction.datetime_updated bloomerp.imthreadreadposition.datetime_updated
+#: bloomerp.inboxfolder.datetime_updated bloomerp.inboxitem.datetime_updated
+#: bloomerp.initiative.datetime_updated bloomerp.mcpconnection.datetime_updated
+#: bloomerp.mcpintegration.datetime_updated bloomerp.phonecall.datetime_updated
+#: bloomerp.phonecallevent.datetime_updated bloomerp.policy.datetime_updated
+#: bloomerp.savedfilter.datetime_updated bloomerp.sqlquery.datetime_updated
+#: bloomerp.tile.datetime_updated bloomerp.todo.datetime_updated
 #: bloomerp.userinboxpreference.datetime_updated bloomerp.voipconnection.datetime_updated
 #: bloomerp.voipnumber.datetime_updated bloomerp.workflow.datetime_updated
 #: bloomerp.workflownode.datetime_updated bloomerp.workflowrun.datetime_updated
@@ -2552,7 +2723,7 @@ msgstr "Data e ora di aggiornamento"
 msgid "Datetime View Preference"
 msgstr "Preferenza di visualizzazione di data e ora"
 
-#: dataviews/calendar/config.py:20
+#: dataviews/calendar/config.py:23 dataviews/calendar/renderer.py:71
 msgid "Day"
 msgstr "Giorno"
 
@@ -2565,7 +2736,6 @@ msgid "Day-Month-Year Hour:Minute (15-08-2000 12:30)"
 msgstr "Giorno-Mese-Anno Ora:Minuto (15-08-2000 12:30)"
 
 #: form_behaviors/builtins/populate_week_dates.py:60
-#, fuzzy
 msgid "Days"
 msgstr "Giorni"
 
@@ -2584,14 +2754,15 @@ msgstr "Campo decimale"
 # | msgid "Time Field"
 # | msgid "Timeline"
 # | msgid "Declined"
+#: templates/components/communication/calendar/invitation.html:24
 #: templates/components/communication/calling/controls.html:13
-#, fuzzy
 msgid "Decline"
-msgstr "Rifiutato"
+msgstr "Rifiuta"
 
 # | msgid "Time Field"
 # | msgid "Timeline"
-#: bloomerp.conferenceparticipant.invitation_status
+#: bloomerp.calendareventparticipant.response_status bloomerp.conferenceparticipant.invitation_status
+#: models/communication/calendar/calendar_event_participant.py:20
 #: models/communication/conferencing/conference_participant.py:20
 msgid "Declined"
 msgstr "Rifiutato"
@@ -2630,23 +2801,29 @@ msgstr "Record dei filtri predefiniti JSON"
 msgid "Default Filters"
 msgstr "Filtri predefiniti"
 
+#: bloomerp.policy.default_policy_hash
+msgid "Default Policy Hash"
+msgstr "Hash dei criteri predefiniti"
+
+#: bloomerp.policy.default_policy_key
+msgid "Default Policy Key"
+msgstr "Chiave dei criteri predefiniti"
+
 #: views/communication/create_email_account.py:104
 msgid "Defaults to email address"
 msgstr "Predefinito all'indirizzo email"
 
 #: form_behaviors/builtins/fetch.py:306
-#, fuzzy
 msgid "Defaults to record ID; first/last use this field with ID as a tie-breaker."
 msgstr ""
-"Il valore predefinito è l'ID del record; per primo/ultimo, questo campo viene usato con l'ID come"
-" criterio secondario."
+"Per impostazione predefinita viene usato l'ID del record; per primo/ultimo, questo campo viene "
+"usato con l'ID come criterio di spareggio."
 
 #: templates/components/access_control/row_policy.html:3
 msgid "Define the row policy by selecting a lookup and value for the field."
 msgstr "Definisci la policy delle righe selezionando una ricerca e un valore per il campo."
 
 #: field_types/builtins/display.py:156
-#, fuzzy
 msgid "Define what this form should do when the field changes."
 msgstr "Definisci cosa deve fare questo modulo quando il campo cambia."
 
@@ -2716,9 +2893,10 @@ msgstr "Dipendenza da"
 msgid "Descending"
 msgstr "Ordina in ordine decrescente"
 
-#: bloomerp.form.description bloomerp.initiative.description bloomerp.policy.description
-#: bloomerp.tile.description models/access_control/policy.py:77 models/forms/form.py:74
-#: models/project_management/initiative.py:151 models/workspaces/tile.py:40
+#: bloomerp.calendarbooking.description bloomerp.form.description bloomerp.initiative.description
+#: bloomerp.policy.description bloomerp.tile.description forms/communication/calendar_event.py:149
+#: models/access_control/policy.py:77 models/communication/calendar/calendar_booking.py:30
+#: models/forms/form.py:74 models/project_management/initiative.py:151 models/workspaces/tile.py:40
 msgid "Description"
 msgstr "Descrizione"
 
@@ -2745,12 +2923,12 @@ msgstr ""
 "eliminare gli account."
 
 #: form_behaviors/shared/calculate.py:120
-#, fuzzy, python-format
+#, python-format
 msgid "Destination column '%(field)s' is not editable."
 msgstr "La colonna di destinazione '%(field)s' non è modificabile."
 
 #: form_behaviors/shared/calculate.py:132
-#, fuzzy, python-format
+#, python-format
 msgid "Destination column '%(field)s' is not numeric."
 msgstr "La colonna di destinazione '%(field)s' non è numerica."
 
@@ -2758,6 +2936,12 @@ msgstr "La colonna di destinazione '%(field)s' non è numerica."
 #: components/files/actions/move_file.py:42
 msgid "Destination folder"
 msgstr "Cartella di destinazione"
+
+# | msgid "Create folder"
+# | msgid "Destination folder"
+#: bloomerp.calendarbooking.target_inboxes models/communication/calendar/calendar_booking.py:27
+msgid "Destination inboxes"
+msgstr "Caselle di posta di destinazione"
 
 # | msgid "Details"
 #: bloomerp.activitylog.source models/audit/activity_log.py:14
@@ -2783,7 +2967,6 @@ msgid "Details"
 msgstr "Dettagli"
 
 #: communication/builtins/instant_messaging/builtins/phone.py:362
-#, fuzzy
 msgid "Dial"
 msgstr "Chiama"
 
@@ -2835,7 +3018,8 @@ msgid "Display label and settings"
 msgstr "Etichetta e impostazioni di visualizzazione"
 
 # | msgid "Display Name"
-#: bloomerp.conferenceparticipant.display_name_snapshot
+#: bloomerp.calendareventparticipant.display_name bloomerp.conferenceparticipant.display_name_snapshot
+#: models/communication/calendar/calendar_event_participant.py:37
 #: models/communication/conferencing/conference_participant.py:39
 msgid "Display name"
 msgstr "Nome visualizzato"
@@ -2955,7 +3139,6 @@ msgstr "Modelli di documento"
 # | msgctxt "bloomerp:route:name"
 # | msgid "Document templates"
 #: models/document_templates/document_template.py:117
-#, fuzzy
 msgid "Document templates"
 msgstr "Modelli di documento"
 
@@ -3009,6 +3192,10 @@ msgstr "Rilascia qui un record non programmato."
 msgid "Drop fields here"
 msgstr "Trascina qui i campi"
 
+#: bloomerp.calendarschedulingcancellation.dtstamp
+msgid "Dtstamp"
+msgstr "DTSTAMP"
+
 #: bloomerp.todo.status models/project_management/todo.py:56 templates/views/workflows/builder.html:42
 msgid "Duplicate"
 msgstr "Duplica"
@@ -3023,7 +3210,6 @@ msgid "Duration in seconds"
 msgstr "Durata in secondi"
 
 #: form_behaviors/execution.py:144
-#, fuzzy
 msgid "Each layout field must occur once."
 msgstr "Ogni campo del layout deve comparire una sola volta."
 
@@ -3053,7 +3239,7 @@ msgid "Edit details and save. Changing authentication settings requires reconnec
 msgstr "Modifica i dettagli e salva. Se modifichi le impostazioni di autenticazione, dovrai riconnetterti."
 
 # | msgid "Loading filters..."
-#: templates/cotton/features/filters/rendered.html:3
+#: templates/cotton/features/filters/rendered.html:5
 msgid "Edit filter"
 msgstr "Modifica filtro"
 
@@ -3080,7 +3266,9 @@ msgstr "Preferenza effettiva"
 msgid "Effort"
 msgstr "Impegno"
 
-#: bloomerp.inboxitem.item_type models/users/user.py:154 templates/views/generic/detail/base.html:163
+#: bloomerp.calendarbookingsubmission.email bloomerp.inboxitem.item_type
+#: models/communication/calendar/calendar_booking_submission.py:20 models/users/user.py:154
+#: templates/views/generic/detail/base.html:163
 msgid "Email"
 msgstr "E-mail"
 
@@ -3122,6 +3310,11 @@ msgstr "Account email '%(account)s' salvato correttamente."
 msgid "Email connection failed"
 msgstr "Connessione email non riuscita"
 
+# | msgid "ai conversations"
+#: forms/communication/calendar_event.py:112
+msgid "Email invitations"
+msgstr "Inviti via e-mail"
+
 #: models/communication/signature_request.py:37
 msgid "Email of the recipient (if recipient is not provided)."
 msgstr "E-mail del destinatario (se il destinatario non è specificato)."
@@ -3162,7 +3355,6 @@ msgid "Enable incoming calls"
 msgstr "Abilita le chiamate in arrivo"
 
 #: form_behaviors/builtins/set_field_interaction.py:60
-#, fuzzy
 msgid "Enable or disable the target field without changing its value or visibility."
 msgstr "Abilita o disabilita il campo di destinazione senza modificarne il valore o la visibilità."
 
@@ -3203,10 +3395,26 @@ msgstr ""
 "Password crittografata o password dell'app utilizzata per i provider che supportano "
 "l'autenticazione diretta SMTP/IMAP."
 
+# | msgid "Ended at"
+# | msgid "Ended"
+#: bloomerp.calendarevent.end models/communication/calendar/calendar_event.py:200
+msgid "End"
+msgstr "Fine"
+
 # | msgid "Date Field"
-#: dataviews/calendar/config.py:57
+# | msgid "End date field"
+#: forms/communication/calendar_event.py:140
+msgid "End date"
+msgstr "Data di fine"
+
+# | msgid "Date Field"
+#: dataviews/calendar/config.py:84
 msgid "End date field"
 msgstr "Campo data"
+
+#: forms/communication/calendar_event.py:396
+msgid "End date must be on or after the start date."
+msgstr "La data di fine deve essere uguale o successiva alla data di inizio."
 
 # | msgid "Code Field"
 #: dataviews/gant/config.py:69
@@ -3218,10 +3426,20 @@ msgstr "Campo codice"
 msgid "End for everyone"
 msgstr "Termina per tutti"
 
+#: forms/communication/calendar_event.py:415
+msgid "End must be after the start."
+msgstr "La fine deve essere successiva all’inizio."
+
 # | msgid "Reason"
 #: bloomerp.conferencesession.end_reason models/communication/conferencing/conference_session.py:67
 msgid "End reason"
 msgstr "Motivo della conclusione"
+
+# | msgid "Code Field"
+# | msgid "End field"
+#: forms/communication/calendar_event.py:145
+msgid "End time"
+msgstr "Ora di fine"
 
 # | msgid "Ended at"
 #: bloomerp.conferencesession.status models/communication/conferencing/conference_session.py:24
@@ -3246,10 +3464,19 @@ msgstr "URL dell’endpoint"
 msgid "Enrich Data"
 msgstr "Arricchisci i dati"
 
-#: communication/builtins/conferencing/sharing.py:134
-#, fuzzy
+#: communication/builtins/conferencing/sharing.py:140
 msgid "Enter a name of up to 255 characters."
 msgstr "Inserisci un nome di massimo 255 caratteri."
+
+# | msgid "Enter a valid mapping."
+#: forms/communication/calendar_event.py:403
+msgid "Enter a time."
+msgstr "Inserisci un orario."
+
+# | msgid "Enter a valid mapping."
+#: models/communication/calendar/validators.py:16
+msgid "Enter a valid IANA timezone."
+msgstr "Inserisci un fuso orario IANA valido."
 
 #: communication/builtins/voip/builtins/telnyx.py:141
 msgid "Enter a valid Telnyx Ed25519 public key."
@@ -3257,9 +3484,8 @@ msgstr "Inserisci una chiave pubblica Ed25519 di Telnyx valida."
 
 # | msgid "Enter a valid mapping."
 #: form_behaviors/builtins/calculate.py:123
-#, fuzzy
 msgid "Enter a valid arithmetic expression."
-msgstr "Inserisci una mappatura valida."
+msgstr "Inserisci un'espressione aritmetica valida."
 
 #: form_fields/mapping_field.py:77
 msgid "Enter a valid mapping row."
@@ -3282,9 +3508,8 @@ msgstr "Inserisci le impostazioni dell’agente e le credenziali del provider."
 # | msgid "Enter an international phone number."
 #: communication/builtins/instant_messaging/builtins/phone.py:201
 #: communication/builtins/voip/actions.py:158
-#, fuzzy
 msgid "Enter an international phone number including the country code."
-msgstr "Inserisci un numero di telefono internazionale."
+msgstr "Inserisci un numero di telefono internazionale, incluso il prefisso internazionale."
 
 #: models/communication/voip/voip_number.py:99
 msgid "Enter an international phone number."
@@ -3336,6 +3561,13 @@ msgid "Error Code"
 msgstr "Codice errore"
 
 # | msgid "Event Type"
+# | msgid "Event ID"
+#: bloomerp.calendareventparticipant.event
+#: models/communication/calendar/calendar_event_participant.py:26
+msgid "Event"
+msgstr "Evento"
+
+# | msgid "Event Type"
 #: bloomerp.conferencewebhookreceipt.event_id
 #: models/communication/conferencing/conference_webhook_receipt.py:19
 msgid "Event ID"
@@ -3345,10 +3577,33 @@ msgstr "ID evento"
 msgid "Event Type"
 msgstr "Tipo di evento"
 
+# | msgid "Item created"
+#: views/communication/calendar/create.py:238
+msgid "Event created."
+msgstr "Evento creato."
+
 # | msgid "Identifier"
 #: bloomerp.phonecallevent.event_id models/communication/voip/phone_call_event.py:17
 msgid "Event identifier"
 msgstr "Identificativo evento"
+
+#: views/communication/calendar/create.py:254
+msgid "Event saved, but invitations could not be sent. Retry from the event's scheduling action."
+msgstr ""
+"Evento salvato, ma non è stato possibile inviare gli inviti. Riprova dall’azione di "
+"pianificazione dell’evento."
+
+# | msgid "Event Type"
+# | msgid "Event type"
+#: bloomerp.calendarevent.event_timezone models/communication/calendar/calendar_event.py:202
+msgid "Event timezone"
+msgstr "Fuso orario dell'evento"
+
+# | msgid "Event Type"
+# | msgid "Event type"
+#: forms/communication/calendar_event.py:103 forms/communication/calendar_event.py:240
+msgid "Event title"
+msgstr "Titolo dell'evento"
 
 # | msgid "Event Type"
 #: bloomerp.conferencewebhookreceipt.event_type
@@ -3356,9 +3611,18 @@ msgstr "Identificativo evento"
 msgid "Event type"
 msgstr "Tipo di evento"
 
+# | msgid "Item created"
+#: views/communication/calendar/create.py:238
+msgid "Event updated."
+msgstr "Evento aggiornato."
+
 #: templates/components/forms/initial_data_value.html:26
 msgid "Every row gets this child field value."
 msgstr "Ogni riga riceve questo valore del campo figlio."
+
+#: bloomerp.calendarevent.end_date models/communication/calendar/calendar_event.py:209
+msgid "Exclusive end date"
+msgstr "Data di fine esclusa"
 
 #: templates/inbox_items/workflow_run.html:30
 msgid "Executed steps"
@@ -3386,9 +3650,8 @@ msgstr "ID esecutore"
 
 # | msgid "Select a list of MCP tool names."
 #: form_behaviors/builtins/set_o2m_value.py:36
-#, fuzzy
 msgid "Expected a list of row dictionaries."
-msgstr "Seleziona un elenco di nomi di strumenti MCP."
+msgstr "Era previsto un elenco di dizionari di righe."
 
 #: models/files/file_reference.py:177
 msgid "Expected an attachment or rich-text field."
@@ -3418,29 +3681,24 @@ msgstr "Esporta"
 # | msgid "Permission"
 # | msgid "Session"
 #: form_behaviors/builtins/calculate.py:294
-#, fuzzy
 msgid "Expression"
-msgstr "Sessione"
+msgstr "Espressione"
 
 #: form_behaviors/builtins/calculate.py:99
-#, fuzzy
 msgid "Expressions may contain only numeric literals."
 msgstr "Le espressioni possono contenere solo valori numerici letterali."
 
 #: form_behaviors/builtins/calculate.py:137
-#, fuzzy
 msgid "Expressions require decimal numeric literals."
 msgstr "Le espressioni richiedono valori numerici decimali letterali."
 
 #: form_behaviors/builtins/calculate.py:104
-#, fuzzy
 msgid "Expressions support only +, -, *, and / operators."
 msgstr "Le espressioni supportano solo gli operatori +, -, * e /."
 
 #: form_behaviors/builtins/calculate.py:110
-#, fuzzy
 msgid "Expressions support only unary + and -."
-msgstr "Le espressioni supportano solo gli operatori unari + e -."
+msgstr "Le espressioni supportano solo + e - unari."
 
 #: bloomerp.imconnection.external_account_id
 msgid "External Account Id"
@@ -3478,12 +3736,10 @@ msgid "Failed"
 msgstr "Non riuscito"
 
 #: form_behaviors/builtins/fetch.py:299 form_behaviors/builtins/fetch.py:650
-#, fuzzy
 msgid "Fetch"
 msgstr "Recupera"
 
 #: form_behaviors/builtins/fetch.py:272
-#, fuzzy
 msgid "Fetch for each existing row"
 msgstr "Recupera per ogni riga esistente"
 
@@ -3494,38 +3750,38 @@ msgid "Field"
 msgstr "Campo"
 
 #: form_behaviors/builtins/clear_value.py:27 form_behaviors/execution.py:164
-#, fuzzy, python-format
+#, python-format
 msgid "Field '%(field)s' has no editable value contract."
-msgstr "Il campo '%(field)s' non dispone di un contratto per un valore modificabile."
+msgstr "Il campo '%(field)s' non ha un contratto di valore modificabile."
 
 #: form_behaviors/shared/temporal.py:50
-#, fuzzy, python-format
+#, python-format
 msgid "Field '%(field)s' is not an editable date or datetime."
-msgstr "Il campo '%(field)s' non è una data o una data/ora modificabile."
+msgstr "Il campo '%(field)s' non è una data o una data e ora modificabile."
 
 #: form_behaviors/shared/write_policy.py:65
-#, fuzzy, python-format
+#, python-format
 msgid "Field '%(field)s' is not editable."
 msgstr "Il campo '%(field)s' non è modificabile."
 
 #: form_behaviors/execution.py:189
-#, fuzzy, python-format
+#, python-format
 msgid "Field '%(field)s' requires a boolean value."
 msgstr "Il campo '%(field)s' richiede un valore booleano."
 
 #: form_behaviors/execution.py:174
-#, fuzzy, python-format
+#, python-format
 msgid "Field '%(field)s' requires a scalar value."
 msgstr "Il campo '%(field)s' richiede un valore scalare."
 
 # | msgid "No workflow graph was available for this execution."
 # | msgid "Sending is unavailable for this conversation."
 #: form_behaviors/execution.py:280
-#, fuzzy, python-format
+#, python-format
 msgid "Field '%(field_name)s' is unavailable in this draft."
-msgstr "L'invio non è disponibile per questa conversazione."
+msgstr "Il campo '%(field_name)s' non è disponibile in questa bozza."
 
-#: bloomerp.policy.field_policy models/access_control/policy.py:93
+#: bloomerp.policy.field_policy models/access_control/policy.py:101
 msgid "Field Policy"
 msgstr "Policy del campo"
 
@@ -3542,15 +3798,13 @@ msgid "Field does not exist"
 msgstr "Il campo non esiste"
 
 #: form_behaviors/builtins/fetch.py:286 form_behaviors/builtins/fetch.py:386
-#, fuzzy
 msgid "Field from matching record"
-msgstr "Campo dal record corrispondente"
+msgstr "Campo del record corrispondente"
 
 # | msgid "No scheduled records."
 #: form_behaviors/builtins/copy_field_value.py:105
-#, fuzzy
 msgid "Field on selected record"
-msgstr "Nessun record pianificato."
+msgstr "Campo del record selezionato"
 
 #: workspaces/analytics_tile/model.py:607
 msgid "Field options updated"
@@ -3578,9 +3832,8 @@ msgstr "Lo slot del campo non esiste"
 # | msgid "Field updated"
 #: form_behaviors/builtins/set_field_interaction.py:64
 #: form_behaviors/builtins/set_field_visibility.py:64
-#, fuzzy
 msgid "Field state"
-msgstr "Campo aggiornato"
+msgstr "Stato del campo"
 
 #: workspaces/analytics_tile/model.py:659
 msgid "Field updated"
@@ -3590,9 +3843,8 @@ msgstr "Campo aggiornato"
 # | msgid "Select values"
 #: form_behaviors/builtins/copy_field_value.py:245 form_behaviors/builtins/set_relative_date.py:116
 #: form_behaviors/builtins/set_user_field_to_current_user.py:49
-#, fuzzy
 msgid "Field values"
-msgstr "Seleziona i valori"
+msgstr "Valori dei campi"
 
 #: dataviews/pivot_table/config.py:63
 msgid "Fields aggregated into the leaf columns of the pivot table."
@@ -3686,9 +3938,11 @@ msgstr "Nome file"
 #: bloomerp.aiartifact.files bloomerp.aiconversation.files bloomerp.aimessage.files
 #: bloomerp.aimessageartifact.files bloomerp.airun.files bloomerp.airunattempt.files
 #: bloomerp.airunevent.files bloomerp.aitoolcall.files bloomerp.apikey.files
-#: bloomerp.applicationfield.field_type bloomerp.conferenceadmission.files
-#: bloomerp.conferenceattendance.files bloomerp.conferenceparticipant.files
-#: bloomerp.conferenceroom.files bloomerp.conferencesession.files
+#: bloomerp.applicationfield.field_type bloomerp.calendarbooking.files
+#: bloomerp.calendarbookingsubmission.files bloomerp.calendarevent.files
+#: bloomerp.calendareventparticipant.files bloomerp.calendarschedulingcancellation.files
+#: bloomerp.conferenceadmission.files bloomerp.conferenceattendance.files
+#: bloomerp.conferenceparticipant.files bloomerp.conferenceroom.files bloomerp.conferencesession.files
 #: bloomerp.conferencewebhookreceipt.files bloomerp.documenttemplate.files
 #: bloomerp.documenttemplateheader.files bloomerp.documenttemplatestyling.files
 #: bloomerp.emailaccount.files bloomerp.emaildraft.files bloomerp.fileextraction.files
@@ -3716,7 +3970,6 @@ msgid "Files for object for {model} model"
 msgstr "File dell'oggetto per il modello {model}"
 
 #: form_behaviors/builtins/increment_o2m_value.py:101
-#, fuzzy
 msgid "Fill blank integer cells in a collection with sequential values."
 msgstr "Compila le celle intere vuote di una raccolta con valori sequenziali."
 
@@ -3745,11 +3998,8 @@ msgid "Filters"
 msgstr "Filtri"
 
 #: form_behaviors/builtins/fetch.py:651
-#, fuzzy
 msgid "Find accessible records with filters and copy one value or populate collection rows."
-msgstr ""
-"Trova i record accessibili usando filtri e copia un valore oppure compila le righe di una "
-"raccolta."
+msgstr "Trova i record accessibili con filtri e copia un valore o compila le righe di una raccolta."
 
 #: templates/inbox_items/workflow_run.html:34
 msgid "Finished"
@@ -3763,7 +4013,6 @@ msgid "Finished At"
 msgstr "Completato il"
 
 #: form_behaviors/builtins/fetch.py:300 form_behaviors/builtins/fetch.py:354
-#, fuzzy
 msgid "First"
 msgstr "Primo"
 
@@ -3860,9 +4109,8 @@ msgid "Form Submissions"
 msgstr "Invii dei moduli"
 
 #: form_behaviors/execution.py:108
-#, fuzzy
 msgid "Form submission access requires an unsaved Form draft."
-msgstr "Per accedere all'invio del modulo è necessaria una bozza di modulo non salvata."
+msgstr "Per accedere all'invio del modulo è necessaria una bozza del modulo non salvata."
 
 #: views/forms/submit.py:102
 msgid "Form successfully filled in."
@@ -3900,9 +4148,8 @@ msgstr "Dal nodo"
 # | msgid "Db Column"
 # | msgid "DB Column"
 #: form_behaviors/builtins/set_o2m_value.py:89
-#, fuzzy
 msgid "From column"
-msgstr "Colonna DB"
+msgstr "Dalla colonna"
 
 #: bloomerp.userlistviewpreference.view_type dataviews/registry.py:146
 msgid "Gantt"
@@ -3925,7 +4172,6 @@ msgid "Generate Token"
 msgstr "Genera token"
 
 #: form_behaviors/builtins/populate_week_dates.py:131
-#, fuzzy
 msgid "Generate five or seven dated rows from the source ISO week."
 msgstr "Genera cinque o sette righe con date a partire dalla settimana ISO di origine."
 
@@ -3957,7 +4203,7 @@ msgstr "Nome del branch Git"
 msgid "Give the policy a name and description before saving."
 msgstr "Assegna un nome e una descrizione alla policy prima di salvarla."
 
-#: bloomerp.policy.global_permissions models/access_control/policy.py:117
+#: bloomerp.policy.global_permissions models/access_control/policy.py:125
 msgid "Global Permissions"
 msgstr "Autorizzazioni globali"
 
@@ -3965,7 +4211,7 @@ msgstr "Autorizzazioni globali"
 msgid "Global access control"
 msgstr "Controllo degli accessi globale"
 
-#: bloomerp.policy.global_permissions models/access_control/policy.py:116
+#: bloomerp.policy.global_permissions models/access_control/policy.py:124
 msgid "Global permissions applied by this policy."
 msgstr "Autorizzazioni globali applicate da questa policy."
 
@@ -3995,12 +4241,12 @@ msgstr "Nome del gruppo"
 msgid "Group settings"
 msgstr "Impostazioni del gruppo"
 
-#: bloomerp.aiagentaccess.groups bloomerp.policy.groups models/access_control/policy.py:109
+#: bloomerp.aiagentaccess.groups bloomerp.policy.groups models/access_control/policy.py:117
 #: models/agents/ai_agent_access.py:55
 msgid "Groups"
 msgstr "Gruppi"
 
-#: bloomerp.policy.groups models/access_control/policy.py:108
+#: bloomerp.policy.groups models/access_control/policy.py:116
 msgid "Groups assigned to this access control policy."
 msgstr "Gruppi assegnati a questa policy di controllo degli accessi."
 
@@ -4071,7 +4317,6 @@ msgid "Hex color code for the sidebar item (e.g. #FF5733)."
 msgstr "Codice colore esadecimale per l'elemento della barra laterale (ad es. #FF5733)."
 
 #: form_behaviors/builtins/set_field_visibility.py:27
-#, fuzzy
 msgid "Hidden"
 msgstr "Nascosto"
 
@@ -4109,14 +4354,16 @@ msgstr "Intervento umano"
 #: bloomerp.aiartifact.id bloomerp.aiconversation.id bloomerp.aimessage.id
 #: bloomerp.aimessageartifact.id bloomerp.airun.id bloomerp.airunattempt.id bloomerp.airunevent.id
 #: bloomerp.aitoolcall.id bloomerp.apikey.id bloomerp.applicationfield.id bloomerp.bookmark.id
-#: bloomerp.comment.id bloomerp.conferenceadmission.id bloomerp.conferenceattendance.id
-#: bloomerp.conferenceparticipant.id bloomerp.conferenceroom.id bloomerp.conferencesession.id
-#: bloomerp.conferencewebhookreceipt.id bloomerp.documenttemplate.id bloomerp.documenttemplateheader.id
-#: bloomerp.documenttemplatestyling.id bloomerp.emailaccount.id bloomerp.emaildraft.id
-#: bloomerp.fieldpolicy.id bloomerp.fileextraction.id bloomerp.filenode.id bloomerp.filereference.id
-#: bloomerp.form.id bloomerp.formsubmission.id bloomerp.imauthorization.id bloomerp.imconnection.id
-#: bloomerp.imconversation.id bloomerp.imconversationactivity.id bloomerp.imconversationparticipant.id
-#: bloomerp.imendpoint.id bloomerp.imidentity.id bloomerp.imidentitysource.id bloomerp.immessage.id
+#: bloomerp.calendarbooking.id bloomerp.calendarbookingsubmission.id bloomerp.calendarevent.id
+#: bloomerp.calendareventparticipant.id bloomerp.calendarschedulingcancellation.id bloomerp.comment.id
+#: bloomerp.conferenceadmission.id bloomerp.conferenceattendance.id bloomerp.conferenceparticipant.id
+#: bloomerp.conferenceroom.id bloomerp.conferencesession.id bloomerp.conferencewebhookreceipt.id
+#: bloomerp.documenttemplate.id bloomerp.documenttemplateheader.id bloomerp.documenttemplatestyling.id
+#: bloomerp.emailaccount.id bloomerp.emaildraft.id bloomerp.fieldpolicy.id bloomerp.fileextraction.id
+#: bloomerp.filenode.id bloomerp.filereference.id bloomerp.form.id bloomerp.formsubmission.id
+#: bloomerp.imauthorization.id bloomerp.imconnection.id bloomerp.imconversation.id
+#: bloomerp.imconversationactivity.id bloomerp.imconversationparticipant.id bloomerp.imendpoint.id
+#: bloomerp.imidentity.id bloomerp.imidentitysource.id bloomerp.immessage.id
 #: bloomerp.immessageattachment.id bloomerp.immessagereaction.id bloomerp.imthreadreadposition.id
 #: bloomerp.inbox.id bloomerp.inboxfolder.id bloomerp.inboxitem.id bloomerp.initiative.id
 #: bloomerp.label.id bloomerp.mcpconnection.id bloomerp.mcpintegration.id bloomerp.mention.id
@@ -4287,6 +4534,10 @@ msgstr "Elemento della posta in arrivo"
 msgid "Inbox Items"
 msgstr "Elementi della posta in arrivo"
 
+msgctxt "bloomerp:route:name"
+msgid "Inbox calendar"
+msgstr "Calendario della casella di posta"
+
 # | msgid "Inboxs"
 #: bloomerp.inbox models/communication/inbox/inbox.py:19
 msgid "Inboxes"
@@ -4295,6 +4546,10 @@ msgstr "Poste in arrivo"
 #: bloomerp.documenttemplate.include_page_numbers models/document_templates/document_template.py:216
 msgid "Include Page Numbers"
 msgstr "Includi numeri di pagina"
+
+#: templates/models/calendar_event/align_calendars.html:20
+msgid "Include calendars these users can access."
+msgstr "Includi i calendari a cui questi utenti possono accedere."
 
 #: dataviews/file_browser/config.py:211
 msgid "Include files attached to objects through these relations."
@@ -4319,9 +4574,8 @@ msgstr "Incrementa il primo valore"
 
 # | msgid "Increment first value"
 #: form_behaviors/builtins/increment_o2m_value.py:100
-#, fuzzy
 msgid "Increment o2m value"
-msgstr "Incrementa il primo valore"
+msgstr "Incrementa valore o2m"
 
 #: bloomerp.inbox.selected bloomerp.sidebar.selected bloomerp.userdetailviewtabspreference.selected
 #: bloomerp.userlistviewpreference.selected bloomerp.userobjectlayoutpreference.selected
@@ -4349,9 +4603,8 @@ msgid "Indicates whether the inbox item has been read by the user."
 msgstr "Indica se l'elemento della posta in arrivo è stato letto dall'utente."
 
 #: form_behaviors/builtins/show_message.py:26
-#, fuzzy
 msgid "Info"
-msgstr "Info"
+msgstr "Informazioni"
 
 #: bloomerp.inbox.initial_default bloomerp.sidebar.initial_default
 #: bloomerp.userdetailviewtabspreference.initial_default
@@ -4423,15 +4676,13 @@ msgid "Integer Field"
 msgstr "Campo intero"
 
 #: bloomerp.mcpconnection.integration
-#, fuzzy
 msgid "Integration"
 msgstr "Integrazione"
 
 # | msgid "Integration"
 #: form_behaviors/builtins/set_field_interaction.py:26
-#, fuzzy
 msgid "Interaction"
-msgstr "Integrazione"
+msgstr "Interazione"
 
 # | msgid "Integration"
 #: bloomerp.immessage.direction models/communication/instant_messaging/im_message.py:40
@@ -4459,24 +4710,34 @@ msgstr "ID allegato non valido."
 msgid "Invalid authentication values. Reconnect to continue."
 msgstr "Valori di autenticazione non validi. Riconnettiti per continuare."
 
+# | msgid "Invalid tool approval rules."
+# | msgid "Invalid email request."
+#: components/communication/calendar/availability.py:44
+msgid "Invalid availability request."
+msgstr "Richiesta di disponibilità non valida."
+
 # | msgid "Invalid mailbox mapping: %(error)s"
 #: form_fields/behavior_field.py:31
-#, fuzzy, python-format
+#, python-format
 msgid "Invalid behavior configuration: %(exc)s"
-msgstr "Mappatura della casella di posta non valida: %(error)s"
+msgstr "Configurazione del comportamento non valida: %(exc)s"
 
 # | msgid "Invalid tool approval rules."
 # | msgid "Invalid email request."
 #: components/form_behaviors/execute.py:64
-#, fuzzy
 msgid "Invalid behavior execution request."
-msgstr "Richiesta email non valida."
+msgstr "Richiesta di esecuzione del comportamento non valida."
+
+# | msgid "Invalid tool approval rules."
+# | msgid "Invalid email request."
+#: components/communication/calendar/align.py:65
+msgid "Invalid calendar selection."
+msgstr "Selezione del calendario non valida."
 
 # | msgid "Invalid file extraction manifest."
 #: form_behaviors/execution.py:226
-#, fuzzy
 msgid "Invalid collection row columns."
-msgstr "Manifest di estrazione dei file non valido."
+msgstr "Colonne della riga della raccolta non valide."
 
 #: components/activity/activity_log.py:22
 msgid "Invalid content type ID"
@@ -4533,9 +4794,8 @@ msgstr "Filtri raggruppati non validi."
 # | msgid "Invalid field policy"
 # | msgid "Invalid email object."
 #: components/form_behaviors/render_action_config_form.py:36
-#, fuzzy
 msgid "Invalid layout context."
-msgstr "Oggetto email non valido."
+msgstr "Contesto del layout non valido."
 
 #: communication/builtins/emails/mailboxes.py:77
 #, python-format
@@ -4543,12 +4803,11 @@ msgid "Invalid mailbox mapping: %(error)s"
 msgstr "Mappatura della casella di posta non valida: %(error)s"
 
 #: form_behaviors/execution.py:235
-#, fuzzy
 msgid "Invalid or duplicate related row identity."
 msgstr "Identità della riga correlata non valida o duplicata."
 
 #: form_behaviors/builtins/fetch.py:465
-#, fuzzy, python-format
+#, python-format
 msgid "Invalid or incompatible mapping: %(target_name)s → %(source_name)s."
 msgstr "Mappatura non valida o incompatibile: %(target_name)s → %(source_name)s."
 
@@ -4560,6 +4819,12 @@ msgstr "Criterio riga non valido"
 msgid "Invalid row policy field"
 msgstr "Campo del criterio riga non valido"
 
+# | msgid "Invalid tool approval rules."
+# | msgid "Invalid email request."
+#: forms/communication/calendar_event.py:286 forms/communication/calendar_event.py:309
+msgid "Invalid selected users."
+msgstr "Utenti selezionati non validi."
+
 #: models/agents/ai_conversation.py:121
 msgid "Invalid tool approval rules."
 msgstr "Regole di approvazione degli strumenti non valide."
@@ -4568,6 +4833,21 @@ msgstr "Regole di approvazione degli strumenti non valide."
 #: form_fields/bloomerp_file_field.py:111
 msgid "Invalid uploaded file."
 msgstr "File caricato non valido."
+
+#: bloomerp.calendareventparticipant.invitation_cancelled
+msgid "Invitation Cancelled"
+msgstr "Invito annullato"
+
+#: bloomerp.calendarevent.invitation_sent_at
+msgid "Invitation Sent At"
+msgstr "Invito inviato il"
+
+# | msgid "staff status"
+# | msgid "Invitation status"
+#: templates/components/communication/calendar/invitation.html:12
+#: templates/views/communication/calendar/respond.html:27
+msgid "Invitation cancelled"
+msgstr "Invito annullato"
 
 # | msgid "staff status"
 #: bloomerp.conferenceparticipant.invitation_status
@@ -4585,6 +4865,13 @@ msgstr "Invitato"
 #: models/communication/conferencing/conference_participant.py:49
 msgid "Invited at"
 msgstr "Invitato il"
+
+# | msgid "Ended at"
+# | msgid "Invited at"
+#: bloomerp.calendareventparticipant.email
+#: models/communication/calendar/calendar_event_participant.py:36
+msgid "Invited email"
+msgstr "Email invitata"
 
 #: bloomerp.imendpoint.is_active
 msgid "Is Active"
@@ -4664,10 +4951,9 @@ msgid "JSON Field"
 msgstr "Campo JSON"
 
 #: form_behaviors/builtins/fetch.py:321
-#, fuzzy
 msgid "JSON object mapping target columns to source columns, for example {\"quantity\": \"quantity\"}."
 msgstr ""
-"Oggetto JSON che associa le colonne di destinazione alle colonne di origine, ad esempio "
+"Oggetto JSON che mappa le colonne di destinazione alle colonne di origine, ad esempio "
 "{\"quantity\": \"quantity\"}."
 
 # | msgid "Phone call"
@@ -4677,8 +4963,8 @@ msgid "Join call"
 msgstr "Partecipa alla chiamata"
 
 #: templates/views/communication/conferencing/meeting.html:7
-#: templates/views/communication/conferencing/meeting.html:19
-#, fuzzy
+#: templates/views/communication/conferencing/meeting.html:10
+#: templates/views/communication/conferencing/meeting.html:23
 msgid "Join meeting"
 msgstr "Partecipa alla riunione"
 
@@ -4698,10 +4984,10 @@ msgstr "Data di ingresso"
 
 # | msgid "Phone call"
 # | msgid "Join call"
-#: templates/views/communication/conferencing/meeting.html:12
-#, fuzzy
+#: templates/views/communication/conferencing/meeting.html:9
+#: templates/views/communication/conferencing/meeting.html:16
 msgid "Joining as"
-msgstr "Partecipa alla chiamata"
+msgstr "Partecipa come"
 
 #: workspaces/analytics_tile/model.py:317
 msgid "KPI"
@@ -4756,7 +5042,6 @@ msgid "Languages"
 msgstr "Lingue"
 
 #: form_behaviors/builtins/fetch.py:300 form_behaviors/builtins/fetch.py:354
-#, fuzzy
 msgid "Last"
 msgstr "Ultimo"
 
@@ -4771,6 +5056,14 @@ msgstr "Data e ora dell'ultimo controllo"
 #: bloomerp.imconversationparticipant.last_read_message bloomerp.imthreadreadposition.last_read_message
 msgid "Last Read Message"
 msgstr "Ultimo messaggio letto"
+
+#: bloomerp.calendareventparticipant.last_sent_reply_sequence
+msgid "Last Sent Reply Sequence"
+msgstr "Sequenza dell'ultima risposta inviata"
+
+#: bloomerp.calendareventparticipant.last_sent_reply_status
+msgid "Last Sent Reply Status"
+msgstr "Stato dell'ultima risposta inviata"
 
 #: bloomerp.emailaccount.last_sync_error models/communication/email_account.py:283
 msgid "Last Sync Error"
@@ -4820,9 +5113,8 @@ msgstr "Oggetto del layout"
 # | msgid "Detailed run logging is still available."
 # | msgid "Calling is unavailable."
 #: components/form_behaviors/execute.py:100 form_behaviors/execution.py:125
-#, fuzzy
 msgid "Layout model is unavailable."
-msgstr "Le chiamate non sono disponibili."
+msgstr "Modello del layout non disponibile."
 
 #: bloomerp.airunattempt.lease_expires_at
 msgid "Lease Expires At"
@@ -4886,7 +5178,7 @@ msgstr "Data di uscita"
 msgid "Left margin of the header in inches."
 msgstr "Margine sinistro dell'intestazione in pollici."
 
-#: templates/cotton/features/dataviews/calendar.html:56
+#: templates/cotton/features/dataviews/calendar.html:63
 msgid "Legend"
 msgstr "Legenda"
 
@@ -4943,7 +5235,7 @@ msgstr "I collegamenti possono essere nidificati solo all'interno delle cartelle
 msgid "Links to the different models of the '{module}' module."
 msgstr "La pagina iniziale del modulo {module}."
 
-#: dataviews/calendar/config.py:24
+#: dataviews/calendar/config.py:27 dataviews/calendar/renderer.py:75
 msgid "List"
 msgstr "Elenco"
 
@@ -4972,16 +5264,14 @@ msgid "List view preference"
 msgstr "Preferenza di visualizzazione elenco"
 
 #: form_behaviors/execution.py:302
-#, fuzzy
 msgid "Listener field value is missing from the draft."
-msgstr "Il valore del campo listener manca dalla bozza."
+msgstr "Il valore del campo listener manca nella bozza."
 
 # | msgid "Copy first value"
 # | msgid "Choose value"
 #: form_behaviors/builtins/copy_field_value.py:104
-#, fuzzy
 msgid "Listener value"
-msgstr "Scegli un valore"
+msgstr "Valore del listener"
 
 # | msgid "im identity"
 #: bloomerp.conferenceattendance.livekit_identity
@@ -5006,7 +5296,7 @@ msgstr "SID stanza LiveKit"
 msgid "LiveKit room name"
 msgstr "Nome stanza LiveKit"
 
-#: templates/components/objects/dataview_calendar_events.html:53
+#: templates/components/objects/dataview_calendar_events.html:55
 #: templates/cotton/features/agent/body.html:122
 msgid "Load more"
 msgstr "Carica altro"
@@ -5057,6 +5347,12 @@ msgstr "Caricamento…"
 msgid "Local"
 msgstr "Locale"
 
+# | msgid "Action"
+#: bloomerp.calendarevent.location forms/communication/calendar_event.py:148
+#: models/communication/calendar/calendar_event.py:198
+msgid "Location"
+msgstr "Luogo"
+
 #: templates/views/auth/login.html:33
 msgid "Login"
 msgstr "Accedi"
@@ -5070,12 +5366,10 @@ msgid "Low"
 msgstr "Bassa"
 
 #: form_behaviors/builtins/transform_text.py:47
-#, fuzzy
 msgid "Lower snake case"
-msgstr "Minuscolo con parole separate da trattini bassi"
+msgstr "Snake case minuscolo"
 
 #: form_behaviors/builtins/transform_text.py:41
-#, fuzzy
 msgid "Lowercase"
 msgstr "Minuscolo"
 
@@ -5222,9 +5516,8 @@ msgid "Margin of the document template in inches."
 msgstr "Margine del modello di documento in pollici."
 
 #: form_behaviors/builtins/fetch.py:287
-#, fuzzy
 msgid "Matching record itself"
-msgstr "Il record corrispondente stesso"
+msgstr "Record corrispondente stesso"
 
 #: bloomerp.form.max_submissions models/forms/form.py:114
 msgid "Max Submissions"
@@ -5291,20 +5584,22 @@ msgstr "Media"
 
 # | msgid "Settings"
 #: communication/builtins/conferencing/meetings.py:51
-#, fuzzy
 msgid "Meeting"
-msgstr "Impostazioni"
+msgstr "Riunione"
 
 #: bloomerp.conferenceadmission models/communication/conferencing/conference_admission.py:44
-#, fuzzy
 msgid "Meeting admission"
 msgstr "Ammissione alla riunione"
 
 # | msgid "Permissions"
 #: bloomerp.conferenceadmission models/communication/conferencing/conference_admission.py:45
-#, fuzzy
 msgid "Meeting admissions"
-msgstr "Autorizzazioni"
+msgstr "Ammissioni alla riunione"
+
+#: bloomerp.calendarbooking.meeting_duration_minutes
+#: models/communication/calendar/calendar_booking.py:32
+msgid "Meeting duration in minutes"
+msgstr "Durata della riunione in minuti"
 
 # | msgid "Content Type"
 # | msgid "Channel Type"
@@ -5389,9 +5684,8 @@ msgstr "Cellulare"
 
 # | msgid "Model"
 #: form_behaviors/builtins/fetch.py:269
-#, fuzzy
 msgid "Mode"
-msgstr "Modello"
+msgstr "Modalità"
 
 #: bloomerp.savedfilter.scope models/filters/filter.py:33
 #: templates/components/workspaces/tiles/builders/analytics.html:263
@@ -5425,16 +5719,15 @@ msgid "Modules"
 msgstr "Moduli"
 
 #: form_behaviors/builtins/populate_week_dates.py:61
-#, fuzzy
 msgid "Monday–Friday"
 msgstr "Da lunedì a venerdì"
 
 #: form_behaviors/builtins/populate_week_dates.py:61
-#, fuzzy
 msgid "Monday–Sunday"
 msgstr "Da lunedì a domenica"
 
-#: dataviews/calendar/config.py:22 templates/cotton/features/dataviews/gant.html:32
+#: dataviews/calendar/config.py:25 dataviews/calendar/renderer.py:73
+#: templates/cotton/features/dataviews/gant.html:32
 msgid "Month"
 msgstr "Mese"
 
@@ -5488,19 +5781,24 @@ msgstr "Silenziato fino a"
 msgid "My Workspace"
 msgstr "I miei spazi di lavoro"
 
+# | msgid "Calendar"
+#: templates/models/calendar_event/align_calendars.html:7
+msgid "My calendars"
+msgstr "I miei calendari"
+
 msgctxt "bloomerp:route:name"
 msgid "My workspaces"
 msgstr "I miei spazi di lavoro"
 
 #: bloomerp.aiagent.name bloomerp.aiagentaccess.name bloomerp.apikey.name
-#: bloomerp.conferenceadmission.display_name bloomerp.documenttemplate.name
-#: bloomerp.documenttemplateheader.name bloomerp.documenttemplatestyling.name
-#: bloomerp.emailaccount.name bloomerp.fieldpolicy.name bloomerp.filenode.name bloomerp.form.name
-#: bloomerp.imconnection.name bloomerp.imconversation.name bloomerp.imendpoint.name bloomerp.inbox.name
-#: bloomerp.inboxfolder.name bloomerp.initiative.name bloomerp.label.name bloomerp.mcpintegration.name
-#: bloomerp.policy.name bloomerp.rowpolicy.name bloomerp.savedfilter.name bloomerp.sidebar.name
-#: bloomerp.sidebaritem.name bloomerp.sqlquery.name bloomerp.tile.name
-#: bloomerp.userdetailviewtabitem.name bloomerp.userdetailviewtabspreference.name
+#: bloomerp.calendarbookingsubmission.name bloomerp.conferenceadmission.display_name
+#: bloomerp.documenttemplate.name bloomerp.documenttemplateheader.name
+#: bloomerp.documenttemplatestyling.name bloomerp.emailaccount.name bloomerp.fieldpolicy.name
+#: bloomerp.filenode.name bloomerp.form.name bloomerp.imconnection.name bloomerp.imconversation.name
+#: bloomerp.imendpoint.name bloomerp.inbox.name bloomerp.inboxfolder.name bloomerp.initiative.name
+#: bloomerp.label.name bloomerp.mcpintegration.name bloomerp.policy.name bloomerp.rowpolicy.name
+#: bloomerp.savedfilter.name bloomerp.sidebar.name bloomerp.sidebaritem.name bloomerp.sqlquery.name
+#: bloomerp.tile.name bloomerp.userdetailviewtabitem.name bloomerp.userdetailviewtabspreference.name
 #: bloomerp.userlistviewpreference.name bloomerp.userobjectlayoutpreference.name
 #: bloomerp.voipconnection.name bloomerp.workflow.name bloomerp.workflowedge.name
 #: bloomerp.workflownode.name bloomerp.workspace.name components/files/actions/rename_form.py:10
@@ -5508,7 +5806,9 @@ msgstr "I miei spazi di lavoro"
 #: models/access_control/row_policy.py:28 models/agents/ai_agent.py:169
 #: models/agents/ai_agent_access.py:26 models/agents/mcp_server.py:43 models/api/api_key.py:93
 #: models/automation/workflow.py:189 models/automation/workflow_edge.py:23
-#: models/automation/workflow_node.py:54 models/communication/conferencing/conference_admission.py:31
+#: models/automation/workflow_node.py:54
+#: models/communication/calendar/calendar_booking_submission.py:19
+#: models/communication/conferencing/conference_admission.py:31
 #: models/communication/email_account.py:110 models/communication/voip/voip_connection.py:119
 #: models/document_templates/document_template.py:157
 #: models/document_templates/document_template_header.py:23
@@ -5563,7 +5863,6 @@ msgid "Needs Reply"
 msgstr "Richiede risposta"
 
 #: form_behaviors/execution.py:250
-#, fuzzy
 msgid "Nested collections are not supported."
 msgstr "Le raccolte annidate non sono supportate."
 
@@ -5651,9 +5950,14 @@ msgstr "Nessuna attività finora"
 
 # | msgid "Authentication configuration"
 #: templates/components/form_behavior/render_action_config_form.html:9
-#, fuzzy
 msgid "No additional configuration."
-msgstr "Configurazione dell'autenticazione"
+msgstr "Nessuna configurazione aggiuntiva."
+
+# | msgid "Date Field"
+# | msgid "End date field"
+#: dataviews/calendar/config.py:110
+msgid "No all-day date field"
+msgstr "Nessun campo data per eventi di tutto il giorno"
 
 #: templates/cotton/features/agent/body.html:149
 msgid "No approvals"
@@ -5671,11 +5975,17 @@ msgstr ""
 msgid "No available recipients or connections."
 msgstr "Non sono disponibili destinatari o connessioni."
 
-#: templates/cotton/features/dataviews/calendar.html:252
+#: templates/cotton/features/dataviews/calendar.html:264
 msgid "No calendar items in this period."
 msgstr "Nessun elemento del calendario in questo periodo."
 
-#: dataviews/calendar/config.py:113
+# | msgid "Free Variables"
+# | msgid "Browser calling is unavailable."
+#: templates/models/calendar_event/align_calendars.html:14
+msgid "No calendars available."
+msgstr "Nessun calendario disponibile."
+
+#: dataviews/calendar/config.py:156
 msgid "No color grouping"
 msgstr "Nessun raggruppamento per colore"
 
@@ -5689,7 +5999,7 @@ msgstr "Nessuna conversazione trovata."
 msgid "No conversations yet."
 msgstr "Nessuna conversazione finora."
 
-#: templates/cotton/features/dataviews/calendar.html:22
+#: templates/cotton/features/dataviews/calendar.html:29
 msgid "No date field selected"
 msgstr "Nessun campo data selezionato"
 
@@ -5700,6 +6010,13 @@ msgstr "Nessuna dipendenza"
 #: templates/components/forms/initial_data_value.html:75
 msgid "No editable child fields"
 msgstr "Nessun campo figlio modificabile"
+
+# | msgctxt "bloomerp:route:name"
+# | msgid "Review Submission"
+# | msgid "Review integration"
+#: forms/communication/calendar_event.py:108
+msgid "No email invitation"
+msgstr "Nessun invito via email"
 
 # | msgid "No AI providers are registered."
 #: templates/views/communication/create_im_connection/provider.html:5
@@ -5833,7 +6150,6 @@ msgid "Normal"
 msgstr "Normale"
 
 #: bloomerp.conferenceadmission.status models/communication/conferencing/conference_admission.py:19
-#, fuzzy
 msgid "Not admitted"
 msgstr "Non ammesso"
 
@@ -5965,13 +6281,16 @@ msgstr "Identificativo dell'oggetto"
 #: bloomerp.aimessageartifact.object_labels bloomerp.airun.object_labels
 #: bloomerp.airunattempt.object_labels bloomerp.airunevent.object_labels
 #: bloomerp.aitoolcall.object_labels bloomerp.apikey.object_labels
-#: bloomerp.conferenceadmission.object_labels bloomerp.conferenceattendance.object_labels
-#: bloomerp.conferenceparticipant.object_labels bloomerp.conferenceroom.object_labels
-#: bloomerp.conferencesession.object_labels bloomerp.conferencewebhookreceipt.object_labels
-#: bloomerp.documenttemplate.object_labels bloomerp.documenttemplateheader.object_labels
-#: bloomerp.documenttemplatestyling.object_labels bloomerp.emailaccount.object_labels
-#: bloomerp.emaildraft.object_labels bloomerp.fileextraction.object_labels
-#: bloomerp.filenode.object_labels bloomerp.filereference.object_labels bloomerp.form.object_labels
+#: bloomerp.calendarbooking.object_labels bloomerp.calendarbookingsubmission.object_labels
+#: bloomerp.calendarevent.object_labels bloomerp.calendareventparticipant.object_labels
+#: bloomerp.calendarschedulingcancellation.object_labels bloomerp.conferenceadmission.object_labels
+#: bloomerp.conferenceattendance.object_labels bloomerp.conferenceparticipant.object_labels
+#: bloomerp.conferenceroom.object_labels bloomerp.conferencesession.object_labels
+#: bloomerp.conferencewebhookreceipt.object_labels bloomerp.documenttemplate.object_labels
+#: bloomerp.documenttemplateheader.object_labels bloomerp.documenttemplatestyling.object_labels
+#: bloomerp.emailaccount.object_labels bloomerp.emaildraft.object_labels
+#: bloomerp.fileextraction.object_labels bloomerp.filenode.object_labels
+#: bloomerp.filereference.object_labels bloomerp.form.object_labels
 #: bloomerp.formsubmission.object_labels bloomerp.imauthorization.object_labels
 #: bloomerp.imconnection.object_labels bloomerp.imconversation.object_labels
 #: bloomerp.imconversationactivity.object_labels bloomerp.imconversationparticipant.object_labels
@@ -6010,12 +6329,10 @@ msgid "Occurrence Id"
 msgstr "ID occorrenza"
 
 #: form_behaviors/builtins/set_relative_date.py:55
-#, fuzzy
 msgid "Offset (days)"
 msgstr "Scostamento (giorni)"
 
 #: form_behaviors/builtins/set_relative_date.py:55
-#, fuzzy
 msgid "Offset (minutes)"
 msgstr "Scostamento (minuti)"
 
@@ -6059,6 +6376,12 @@ msgstr "Campo uno a uno"
 msgid "One To One User Field"
 msgstr "Campo utente uno a uno"
 
+# | msgid "Free Variables"
+# | msgid "Browser calling is unavailable."
+#: forms/communication/calendar_event.py:314
+msgid "One or more selected users are unavailable."
+msgstr "Uno o più utenti selezionati non sono disponibili."
+
 #: models/communication/instant_messaging/im_message_attachment.py:38
 msgid "Only files can be attached to messages."
 msgstr "Ai messaggi possono essere allegati solo file."
@@ -6076,9 +6399,8 @@ msgid "Only when empty"
 msgstr "Solo se vuoto"
 
 #: form_behaviors/builtins/fetch.py:345
-#, fuzzy
 msgid "Only when the collection has no active rows"
-msgstr "Solo se la raccolta non contiene righe attive"
+msgstr "Solo quando la raccolta non contiene righe attive"
 
 #: bloomerp.aiconversation.status bloomerp.imconversation.status
 #: models/communication/instant_messaging/im_conversation.py:65
@@ -6107,7 +6429,7 @@ msgstr "Apri oggetto"
 # | msgid "API Keys"
 # | msgid "API Key Details"
 # | msgid "Agent details"
-#: templates/components/objects/dataview.html:48
+#: templates/components/objects/dataview.html:51
 msgid "Open selected details"
 msgstr "Apri i dettagli selezionati"
 
@@ -6149,16 +6471,15 @@ msgstr ""
 msgid "Optional color for this series, for example #3b82f6."
 msgstr "Colore facoltativo per questa serie, ad esempio #3b82f6."
 
-#: dataviews/calendar/config.py:58
+#: dataviews/calendar/config.py:85
 msgid "Optional date field used as the end of an event range."
 msgstr "Campo data opzionale utilizzato come fine di un intervallo di eventi."
 
 #: form_behaviors/builtins/set_o2m_value.py:95
-#, fuzzy
 msgid "Optional field on the selected related record, for example sales_price."
-msgstr "Campo facoltativo del record correlato selezionato, ad esempio sales_price."
+msgstr "Campo opzionale del record correlato selezionato, ad esempio sales_price."
 
-#: dataviews/calendar/config.py:74
+#: dataviews/calendar/config.py:101
 msgid "Optional field used to color calendar items and build the legend."
 msgstr "Campo opzionale utilizzato per colorare gli elementi del calendario e creare la legenda."
 
@@ -6228,6 +6549,21 @@ msgstr "Ordina per"
 msgid "Order direction"
 msgstr "Direzione di ordinamento"
 
+#: bloomerp.calendarschedulingcancellation.organizer_email
+msgid "Organizer Email"
+msgstr "Email dell'organizzatore"
+
+#: bloomerp.calendarevent.organizer_email models/communication/calendar/calendar_event.py:195
+msgid "Organizer email"
+msgstr "Email dell'organizzatore"
+
+# | msgid "Accounting inbox"
+#: bloomerp.calendarbooking.organizing_inbox bloomerp.calendarevent.organizing_inbox
+#: models/communication/calendar/calendar_booking.py:21
+#: models/communication/calendar/calendar_event.py:184
+msgid "Organizing inbox"
+msgstr "Casella di posta dell'organizzatore"
+
 #: bloomerp.documenttemplate.page_orientation models/document_templates/document_template.py:197
 msgid "Orientation of the document template."
 msgstr "Orientamento del modello di documento."
@@ -6239,6 +6575,12 @@ msgstr "Contesto del browser di origine"
 #: dataviews/file_browser/renderer.py:112
 msgid "Other"
 msgstr "Altro"
+
+# | msgctxt "bloomerp:route:name"
+# | msgid "Create user"
+#: templates/models/calendar_event/align_calendars.html:18 templatetags/calendar_tags.py:51
+msgid "Other users"
+msgstr "Altri utenti"
 
 #: bloomerp.immessage.direction models/communication/instant_messaging/im_message.py:42
 msgid "Outbound"
@@ -6349,6 +6691,7 @@ msgstr "Partecipante"
 # | msgid "Participant"
 #: communication/builtins/instant_messaging/builtins/staff_groups.py:35
 #: communication/builtins/instant_messaging/builtins/staff_groups.py:52
+#: forms/communication/calendar_event.py:124
 #: templates/components/communication/calling/controls.html:31
 msgid "Participants"
 msgstr "Partecipanti"
@@ -6389,15 +6732,14 @@ msgstr "Autorizzazione"
 
 # | msgid "Permission required"
 #: form_behaviors/shared/permissions.py:9
-#, fuzzy
 msgid "Permission denied"
-msgstr "Autorizzazione richiesta"
+msgstr "Autorizzazione negata"
 
 # | msgid "Permission required"
 #: form_behaviors/shared/permissions.py:9
-#, fuzzy, python-format
+#, python-format
 msgid "Permission denied: %(message)s"
-msgstr "Autorizzazione richiesta"
+msgstr "Autorizzazione negata: %(message)s"
 
 #: views/access_control/create_policy.py:258
 msgid "Permission required"
@@ -6508,14 +6850,16 @@ msgstr "Pivot"
 #: bloomerp.aiartifact.pk bloomerp.aiconversation.pk bloomerp.aimessage.pk
 #: bloomerp.aimessageartifact.pk bloomerp.airun.pk bloomerp.airunattempt.pk bloomerp.airunevent.pk
 #: bloomerp.aitoolcall.pk bloomerp.apikey.pk bloomerp.applicationfield.pk bloomerp.bookmark.pk
-#: bloomerp.comment.pk bloomerp.conferenceadmission.pk bloomerp.conferenceattendance.pk
-#: bloomerp.conferenceparticipant.pk bloomerp.conferenceroom.pk bloomerp.conferencesession.pk
-#: bloomerp.conferencewebhookreceipt.pk bloomerp.documenttemplate.pk bloomerp.documenttemplateheader.pk
-#: bloomerp.documenttemplatestyling.pk bloomerp.emailaccount.pk bloomerp.emaildraft.pk
-#: bloomerp.fieldpolicy.pk bloomerp.fileextraction.pk bloomerp.filenode.pk bloomerp.filereference.pk
-#: bloomerp.form.pk bloomerp.formsubmission.pk bloomerp.imauthorization.pk bloomerp.imconnection.pk
-#: bloomerp.imconversation.pk bloomerp.imconversationactivity.pk bloomerp.imconversationparticipant.pk
-#: bloomerp.imendpoint.pk bloomerp.imidentity.pk bloomerp.imidentitysource.pk bloomerp.immessage.pk
+#: bloomerp.calendarbooking.pk bloomerp.calendarbookingsubmission.pk bloomerp.calendarevent.pk
+#: bloomerp.calendareventparticipant.pk bloomerp.calendarschedulingcancellation.pk bloomerp.comment.pk
+#: bloomerp.conferenceadmission.pk bloomerp.conferenceattendance.pk bloomerp.conferenceparticipant.pk
+#: bloomerp.conferenceroom.pk bloomerp.conferencesession.pk bloomerp.conferencewebhookreceipt.pk
+#: bloomerp.documenttemplate.pk bloomerp.documenttemplateheader.pk bloomerp.documenttemplatestyling.pk
+#: bloomerp.emailaccount.pk bloomerp.emaildraft.pk bloomerp.fieldpolicy.pk bloomerp.fileextraction.pk
+#: bloomerp.filenode.pk bloomerp.filereference.pk bloomerp.form.pk bloomerp.formsubmission.pk
+#: bloomerp.imauthorization.pk bloomerp.imconnection.pk bloomerp.imconversation.pk
+#: bloomerp.imconversationactivity.pk bloomerp.imconversationparticipant.pk bloomerp.imendpoint.pk
+#: bloomerp.imidentity.pk bloomerp.imidentitysource.pk bloomerp.immessage.pk
 #: bloomerp.immessageattachment.pk bloomerp.immessagereaction.pk bloomerp.imthreadreadposition.pk
 #: bloomerp.inbox.pk bloomerp.inboxfolder.pk bloomerp.inboxitem.pk bloomerp.initiative.pk
 #: bloomerp.label.pk bloomerp.mcpconnection.pk bloomerp.mcpintegration.pk bloomerp.mention.pk
@@ -6631,17 +6975,14 @@ msgstr "Intervallo di polling utilizzato dai provider che sincronizzano secondo 
 # | msgid "Agent browser connection"
 # | msgid "Create connection"
 #: form_behaviors/builtins/fetch.py:271
-#, fuzzy
 msgid "Populate collection"
-msgstr "Crea connessione"
+msgstr "Popola la raccolta"
 
 #: form_behaviors/builtins/populate_week_dates.py:130
-#, fuzzy
 msgid "Populate dates from week"
-msgstr "Compila le date della settimana"
+msgstr "Popola le date della settimana"
 
 #: form_behaviors/builtins/fetch.py:435
-#, fuzzy
 msgid "Populating a collection requires all matching records."
 msgstr "Per popolare una raccolta sono necessari tutti i record corrispondenti."
 
@@ -6800,9 +7141,8 @@ msgid "Provide both a content type and an object ID."
 msgstr "Fornisci sia un tipo di contenuto sia un ID oggetto."
 
 #: form_behaviors/builtins/fetch.py:440
-#, fuzzy
 msgid "Provide target-to-source column mappings."
-msgstr "Fornisci le mappature delle colonne da destinazione a origine."
+msgstr "Specifica le mappature delle colonne da destinazione a sorgente."
 
 #: bloomerp.emailaccount.provider bloomerp.imconnection.provider bloomerp.imidentity.provider_key
 #: bloomerp.voipconnection.provider models/communication/email_account.py:121
@@ -6959,6 +7299,10 @@ msgstr "Incorporamento pubblico abilitato"
 #: communication/builtins/voip/builtins/telnyx.py:45 communication/builtins/voip/builtins/twilio.py:43
 msgid "Public HTTPS URL"
 msgstr "URL HTTPS pubblico"
+
+#: bloomerp.calendarbooking.public_token
+msgid "Public Token"
+msgstr "Token pubblico"
 
 #: communication/builtins/voip/builtins/twilio.py:45
 msgid "Public base URL of this Bloomerp instance for Twilio callbacks."
@@ -7127,9 +7471,8 @@ msgstr "ID dell'oggetto correlato"
 # | msgid "Date Field"
 # | msgid "Date field"
 #: form_behaviors/builtins/copy_field_value.py:115
-#, fuzzy
 msgid "Related field"
-msgstr "Campo data"
+msgstr "Campo correlato"
 
 #: bloomerp.applicationfield.related_model models/application_field.py:60
 msgid "Related model for ForeignKey, OneToOneField, ManyToManyField"
@@ -7150,9 +7493,8 @@ msgstr "Oggetti correlati che verrebbero eliminati:"
 
 # | msgid "Attachments do not belong to this object and field."
 #: form_behaviors/execution.py:239
-#, fuzzy
 msgid "Related row does not belong to this object."
-msgstr "Gli allegati non appartengono a questo oggetto e campo."
+msgstr "La riga correlata non appartiene a questo oggetto."
 
 #: models/users/user_detail_view_tabs_preference.py:364
 msgid "Relationships"
@@ -7215,18 +7557,24 @@ msgid "Replace"
 msgstr "Sostituisci"
 
 #: form_behaviors/builtins/set_value.py:89
-#, fuzzy
 msgid "Replace the target field value, including with an empty value."
 msgstr "Sostituisci il valore del campo di destinazione, anche con un valore vuoto."
 
 #: form_behaviors/builtins/fetch.py:346
-#, fuzzy
 msgid "Replace unsaved rows only"
 msgstr "Sostituisci solo le righe non salvate"
 
 #: components/communication/emails/reply_to_email.py:335
 msgid "Reply"
 msgstr "Rispondi"
+
+#: bloomerp.calendareventparticipant.reply_dtstamp
+msgid "Reply Dtstamp"
+msgstr "Timestamp della risposta"
+
+#: bloomerp.calendareventparticipant.reply_sequence
+msgid "Reply Sequence"
+msgstr "Sequenza della risposta"
 
 #: bloomerp.immessage.reply_to
 msgid "Reply To"
@@ -7309,10 +7657,18 @@ msgid "Resource"
 msgstr "Risorsa"
 
 # | msgid "Ended at"
-#: bloomerp.conferenceparticipant.responded_at
+#: bloomerp.calendareventparticipant.responded_at bloomerp.conferenceparticipant.responded_at
+#: models/communication/calendar/calendar_event_participant.py:51
 #: models/communication/conferencing/conference_participant.py:50
 msgid "Responded at"
 msgstr "Data della risposta"
+
+# | msgctxt "bloomerp:route:name"
+# | msgid "message status"
+#: bloomerp.calendareventparticipant.response_status
+#: models/communication/calendar/calendar_event_participant.py:39
+msgid "Response status"
+msgstr "Stato della risposta"
 
 #: templates/cotton/features/agent/body.html:36
 msgid "Response stopped."
@@ -7327,12 +7683,12 @@ msgid "Result"
 msgstr "Risultato"
 
 #: form_behaviors/shared/calculate.py:115
-#, fuzzy, python-format
+#, python-format
 msgid "Result does not fit destination column '%(field)s'."
 msgstr "Il risultato non è compatibile con la colonna di destinazione '%(field)s'."
 
 #: form_behaviors/shared/calculate.py:127
-#, fuzzy, python-format
+#, python-format
 msgid "Result is invalid for destination column '%(field)s': %(details)s"
 msgstr "Il risultato non è valido per la colonna di destinazione '%(field)s': %(details)s"
 
@@ -7427,7 +7783,7 @@ msgstr "Elementi principali"
 msgid "Root object types that can be used as variables in the document template."
 msgstr "Tipi di oggetti radice che possono essere utilizzati come variabili nel modello di documento."
 
-#: bloomerp.policy.row_policy bloomerp.rowpolicyrule.row_policy models/access_control/policy.py:85
+#: bloomerp.policy.row_policy bloomerp.rowpolicyrule.row_policy models/access_control/policy.py:93
 #: models/access_control/row_policy_rule.py:33
 msgid "Row Policy"
 msgstr "Policy di riga"
@@ -7453,12 +7809,10 @@ msgid "Row actions"
 msgstr "Azioni riga"
 
 #: form_behaviors/builtins/calculate.py:330
-#, fuzzy
 msgid "Row formulas may only reference the target collection."
 msgstr "Le formule di riga possono fare riferimento solo alla raccolta di destinazione."
 
 #: form_behaviors/builtins/fetch.py:511
-#, fuzzy
 msgid "Row placeholders require per-row mode."
 msgstr "I segnaposto di riga richiedono la modalità per riga."
 
@@ -7595,6 +7949,7 @@ msgstr "HTML dell'editor sanificato; il corpo contiene il testo ricercabile."
 #: templates/components/workspaces/tiles/builders/link_items.html:64
 #: templates/cotton/features/agent/body.html:66 templates/mixins/bloomerp_layout_form_mixin.html:120
 #: templates/mixins/bloomerp_layout_form_mixin.html:184
+#: templates/views/communication/calendar/create.html:30
 msgid "Save"
 msgstr "Salva"
 
@@ -7664,6 +8019,10 @@ msgstr "Dispersione"
 msgid "Schedule"
 msgstr "Pianificazione"
 
+#: bloomerp.calendarevent.scheduling_dtstamp
+msgid "Scheduling Dtstamp"
+msgstr "Timestamp di pianificazione"
+
 #: bloomerp.tile.schema models/workspaces/tile.py:52
 msgid "Schema"
 msgstr "Schema"
@@ -7688,7 +8047,7 @@ msgstr "Ambiti"
 
 #: templates/cotton/app/sidebar/body.html:43 templates/cotton/features/agent/body.html:118
 #: templates/cotton/features/layout/container.html:98 templates/views/base.html:41
-#: templates/views/communication/inbox.html:159
+#: templates/views/communication/inbox.html:168
 msgid "Search"
 msgstr "Cerca"
 
@@ -7722,7 +8081,7 @@ msgid "Search fields"
 msgstr "Cerca campi"
 
 # | msgid "Searching:"
-#: templates/views/communication/inbox.html:166
+#: templates/views/communication/inbox.html:175
 msgid "Search inbox"
 msgstr "Cerca nella posta in arrivo"
 
@@ -7752,7 +8111,7 @@ msgid "Search route names or descriptions, or enter any URL."
 msgstr "Cerca i nomi o le descrizioni delle route oppure inserisci un URL qualsiasi."
 
 # | msgid "Search"
-#: templates/cotton/ui/search_section/container.html:28 templates/views/communication/inbox.html:165
+#: templates/cotton/ui/search_section/container.html:28 templates/views/communication/inbox.html:174
 msgid "Search..."
 msgstr "Cerca..."
 
@@ -7787,19 +8146,17 @@ msgstr "Seleziona un provider VoIP."
 # | msgid "Please select an email provider first."
 # | msgid "Select a VoIP provider first."
 #: form_behaviors/builtins/increment_o2m_value.py:27
-#, fuzzy
 msgid "Select a collection listener first."
-msgstr "Seleziona prima un provider VoIP."
+msgstr "Seleziona prima un listener della raccolta."
 
 # | msgid "Please select an email provider first."
 # | msgid "Select a VoIP provider first."
 #: form_behaviors/builtins/populate_week_dates.py:34 form_behaviors/builtins/set_o2m_value.py:79
-#, fuzzy
 msgid "Select a collection target first."
-msgstr "Seleziona prima un provider VoIP."
+msgstr "Seleziona prima una destinazione della raccolta."
 
 # | msgid "Select a field"
-#: dataviews/calendar/config.py:92
+#: dataviews/calendar/config.py:135
 msgid "Select a date field"
 msgstr "Seleziona un campo"
 
@@ -7808,7 +8165,6 @@ msgid "Select a field"
 msgstr "Seleziona un campo"
 
 #: form_behaviors/builtins/copy_field_value.py:153
-#, fuzzy
 msgid "Select a field from the related record."
 msgstr "Seleziona un campo del record correlato."
 
@@ -7822,9 +8178,8 @@ msgstr "Seleziona un elenco di nomi di strumenti MCP."
 
 # | msgid "Select a start date field in the display options."
 #: form_behaviors/builtins/calculate.py:264 form_behaviors/builtins/copy_field_value.py:89
-#, fuzzy
 msgid "Select a listener and target field first."
-msgstr "Seleziona un campo data di inizio nelle opzioni di visualizzazione."
+msgstr "Seleziona prima un listener e un campo di destinazione."
 
 # | msgid "Disconnected — waiting for connection"
 #: models/communication/instant_messaging/im_conversation.py:134
@@ -7842,7 +8197,6 @@ msgid "Select a readable, populated email field."
 msgstr "Seleziona un campo email leggibile e valorizzato."
 
 #: form_behaviors/builtins/set_o2m_value.py:152
-#, fuzzy
 msgid "Select a related field compatible with the target column."
 msgstr "Seleziona un campo correlato compatibile con la colonna di destinazione."
 
@@ -7853,11 +8207,10 @@ msgstr "Seleziona un messaggio principale."
 # | msgid "Select provider"
 # | msgid "Select a phone number"
 #: form_behaviors/builtins/fetch.py:481
-#, fuzzy
 msgid "Select a source column."
-msgstr "Seleziona un numero di telefono"
+msgstr "Seleziona una colonna sorgente."
 
-#: templates/cotton/features/dataviews/calendar.html:23
+#: templates/cotton/features/dataviews/calendar.html:30
 msgid "Select a start date field in the display options."
 msgstr "Seleziona un campo data di inizio nelle opzioni di visualizzazione."
 
@@ -7869,30 +8222,26 @@ msgstr ""
 
 # | msgid "Select a root message."
 #: form_behaviors/builtins/fetch.py:479
-#, fuzzy
 msgid "Select a target column."
-msgstr "Seleziona un messaggio principale."
+msgstr "Seleziona una colonna di destinazione."
 
 # | msgid "Select a field"
 # | msgid "Select a date field"
 #: form_behaviors/builtins/clear_value.py:39 form_behaviors/builtins/fetch.py:256
 #: form_behaviors/builtins/set_relative_date.py:49 form_behaviors/builtins/set_value.py:25
 #: form_behaviors/utils.py:29
-#, fuzzy
 msgid "Select a target field first."
-msgstr "Seleziona un campo"
+msgstr "Seleziona prima un campo di destinazione."
 
 # | msgid "Select a start date field in the display options."
 #: form_behaviors/definition.py:180
-#, fuzzy
 msgid "Select a target field for this action."
-msgstr "Seleziona un campo data di inizio nelle opzioni di visualizzazione."
+msgstr "Seleziona un campo di destinazione per questa azione."
 
 # | msgid "Select an email before replying."
 #: form_behaviors/builtins/fetch.py:85
-#, fuzzy
 msgid "Select a valid source model."
-msgstr "Seleziona un'email prima di rispondere."
+msgstr "Seleziona un modello di origine valido."
 
 # | msgid "Delete value"
 #: components/communication/voip/assign.py:39
@@ -7917,20 +8266,24 @@ msgstr "Seleziona un destinatario telefonico disponibile."
 # | msgid "Select related field"
 # | msgid "Select a readable, populated email field."
 #: form_behaviors/builtins/set_relative_date.py:53
-#, fuzzy
 msgid "Select an editable scalar date or datetime target field."
-msgstr "Seleziona un campo email leggibile e valorizzato."
+msgstr "Seleziona un campo di destinazione modificabile di tipo data o data e ora scalare."
 
 # | msgid "Select a field"
 # | msgid "Select a date field"
 #: form_fields/behavior_field.py:65
-#, fuzzy
 msgid "Select an eligible target field."
-msgstr "Seleziona un campo"
+msgstr "Seleziona un campo di destinazione idoneo."
 
 #: components/communication/emails/reply_to_email.py:204
 msgid "Select an email before replying."
 msgstr "Seleziona un'email prima di rispondere."
+
+# | msgid "Please select an email provider first."
+# | msgid "Select a VoIP provider first."
+#: templates/models/calendar_event/align_calendars.html:23
+msgid "Select at least one calendar or user."
+msgstr "Seleziona almeno un calendario o un utente."
 
 #: templates/cotton/features/dataviews/pivot_table.html:4
 msgid ""
@@ -7977,7 +8330,7 @@ msgid "Select related field"
 msgstr "Seleziona campo correlato"
 
 # | msgid "Selected Inbox Folder"
-#: templates/views/communication/inbox.html:197
+#: templates/views/communication/inbox.html:206
 msgid "Select shared inbox"
 msgstr "Seleziona la casella condivisa"
 
@@ -7994,12 +8347,17 @@ msgstr "Seleziona il tipo di riquadro che vuoi creare"
 msgid "Select type"
 msgstr "Seleziona tipo"
 
+#: forms/communication/calendar_event.py:126
+msgid "Select users to add this event to their calendar, or enter email addresses."
+msgstr ""
+"Seleziona gli utenti da aggiungere all'evento nel loro calendario oppure inserisci gli indirizzi "
+"email."
+
 # | msgid "Select a field"
 # | msgid "Select all filtered"
 #: form_behaviors/builtins/fetch.py:97
-#, fuzzy
 msgid "Select valid matching filters."
-msgstr "Seleziona tutti quelli filtrati"
+msgstr "Seleziona filtri di corrispondenza validi."
 
 # | msgid "Delete value"
 #: templates/widgets/mapping_multiple.html:2
@@ -8038,18 +8396,30 @@ msgstr "Strumenti Bloomerp integrati selezionati"
 msgid "Selected built-in Bloomerp tools only"
 msgstr "Solo strumenti Bloomerp integrati selezionati"
 
+#: forms/communication/calendar_event.py:318
+msgid "Selected users must have distinct email addresses."
+msgstr "Gli utenti selezionati devono avere indirizzi email distinti."
+
+#: forms/communication/calendar_event.py:114
+msgid ""
+"Selected users receive the event in their calendar. Enable email invitations to also send invites"
+" from the selected account."
+msgstr ""
+"Gli utenti selezionati riceveranno l'evento nel loro calendario. Attiva gli inviti via email per "
+"inviare anche gli inviti dall'account selezionato."
+
 #: form_behaviors/builtins/fetch.py:429
-#, fuzzy
 msgid "Selecting the matching record requires a relation target pointing to the source model."
 msgstr ""
-"La selezione del record corrispondente richiede una relazione di destinazione che punti al "
-"modello di origine."
+"Per selezionare il record corrispondente, è necessario che una destinazione della relazione punti"
+" al modello di origine."
 
 #: views/communication/create_email_account.py:176 views/workspaces/create_tile.py:60
 msgid "Selection required"
 msgstr "Selezione obbligatoria"
 
 #: components/communication/emails/new_email.py:103
+#: templates/views/communication/calendar/create.html:30
 msgid "Send"
 msgstr "Invia"
 
@@ -8060,6 +8430,17 @@ msgstr "Invia email"
 #: bloomerp.workflownode.sub_type
 msgid "Send User Message"
 msgstr "Invia messaggio all'utente"
+
+# | msgid "Dependency from"
+#: forms/communication/calendar_event.py:107
+#: templates/components/communication/calendar/schedule.html:9
+msgid "Send from"
+msgstr "Invia da"
+
+# | msgid "Field options updated"
+#: templates/components/communication/calendar/schedule.html:14
+msgid "Send invitation / update"
+msgstr "Invia invito / aggiornamento"
 
 # | msgid "Parent"
 # | msgid "Parent Message"
@@ -8104,11 +8485,11 @@ msgid "Sent folder"
 msgstr "Cartella Posta inviata"
 
 #: form_behaviors/builtins/transform_text.py:43
-#, fuzzy
 msgid "Sentence case"
-msgstr "Maiuscole/minuscole in stile frase"
+msgstr "Iniziale maiuscola"
 
-#: bloomerp.aimessage.sequence bloomerp.airunevent.sequence bloomerp.immessage.sequence
+#: bloomerp.aimessage.sequence bloomerp.airunevent.sequence bloomerp.calendarevent.sequence
+#: bloomerp.calendarschedulingcancellation.sequence bloomerp.immessage.sequence
 #: bloomerp.workflowrunstep.sequence models/automation/workflow_run_step.py:33
 msgid "Sequence"
 msgstr "Sequenza"
@@ -8134,53 +8515,45 @@ msgid "Session"
 msgstr "Sessione"
 
 #: form_behaviors/builtins/set_relative_date.py:109
-#, fuzzy
 msgid "Set a date relative to today in whole days, or a datetime relative to now in whole minutes."
 msgstr ""
-"Imposta una data relativa a oggi in giorni interi oppure una data e ora relative a questo momento"
-" in minuti interi."
+"Imposta una data relativa a oggi in giorni interi o una data e ora relativa a ora in minuti "
+"interi."
 
 # | msgctxt "bloomerp:route:name"
 # | msgid "Review Submission"
 # | msgid "Review integration"
 #: form_behaviors/builtins/set_field_interaction.py:59
-#, fuzzy
 msgid "Set field interaction"
-msgstr "Verifica integrazione"
+msgstr "Imposta interazione campo"
 
 #: form_behaviors/builtins/set_field_visibility.py:59
-#, fuzzy
 msgid "Set field visibility"
-msgstr "Imposta la visibilità del campo"
+msgstr "Imposta visibilità campo"
 
 # | msgid "Select related field"
 #: form_behaviors/builtins/set_o2m_value.py:270
-#, fuzzy
 msgid "Set related-row value"
-msgstr "Seleziona campo correlato"
+msgstr "Imposta il valore della riga correlata"
 
 # | msgid "Select related field"
 #: form_behaviors/builtins/set_relative_date.py:107
-#, fuzzy
 msgid "Set relative date"
-msgstr "Seleziona campo correlato"
+msgstr "Imposta data relativa"
 
 #: form_behaviors/builtins/set_user_field_to_current_user.py:45
-#, fuzzy
 msgid "Set the selected user field to the authenticated user evaluating the form."
-msgstr "Imposta il campo utente sull'utente autenticato che sta compilando il modulo."
+msgstr "Imposta il campo utente selezionato sull'utente autenticato che compila il modulo."
 
 #: form_behaviors/builtins/set_user_field_to_current_user.py:44
-#, fuzzy
 msgid "Set user field to current user"
 msgstr "Imposta il campo utente sull'utente corrente"
 
 # | msgid "Delete value"
 # | msgid "Select values"
 #: form_behaviors/builtins/set_value.py:88
-#, fuzzy
 msgid "Set value"
-msgstr "Seleziona i valori"
+msgstr "Imposta valore"
 
 #: bloomerp.imconnection.settings models/forms/form.py:37
 #: templates/components/communication/messaging_panel.html:14
@@ -8189,7 +8562,6 @@ msgid "Settings"
 msgstr "Impostazioni"
 
 #: bloomerp.conferencesession.share_token
-#, fuzzy
 msgid "Share Token"
 msgstr "Token di condivisione"
 
@@ -8203,9 +8575,8 @@ msgstr "Preferenza di condivisione"
 # | msgid "Base Preference"
 # | msgid "Share preference"
 #: templates/components/communication/calling/controls.html:19
-#, fuzzy
 msgid "Share screen"
-msgstr "Preferenza di condivisione"
+msgstr "Condividi schermo"
 
 # | msgid "Shared with"
 #: bloomerp.imauthorization.kind bloomerp.mcpintegration.connection_mode models/agents/mcp_server.py:23
@@ -8272,9 +8643,8 @@ msgstr "Mostra solo i campi obbligatori"
 
 # | msgid "The name of the form"
 #: form_behaviors/builtins/show_message.py:74
-#, fuzzy
 msgid "Show a message to the form user."
-msgstr "Il nome del modulo"
+msgstr "Mostra un messaggio all'utente del modulo."
 
 # | msgid "Column totals"
 #: dataviews/pivot_table/config.py:84
@@ -8297,14 +8667,12 @@ msgstr "Mostrami una panoramica dei ricavi"
 # | msgid "Parent Message"
 # | msgid "Send message"
 #: form_behaviors/builtins/show_message.py:73
-#, fuzzy
 msgid "Show message"
-msgstr "Invia messaggio"
+msgstr "Mostra messaggio"
 
 #: form_behaviors/builtins/set_field_visibility.py:60
-#, fuzzy
 msgid "Show or hide the target field without changing its value or interaction state."
-msgstr "Mostra o nascondi il campo di destinazione senza modificarne il valore o lo stato di interazione."
+msgstr "Mostra o nasconde il campo di destinazione senza modificarne il valore o lo stato di interazione."
 
 #: dataviews/pivot_table/config.py:77
 msgid "Show row totals"
@@ -8373,7 +8741,6 @@ msgid "Slack"
 msgstr "Slack"
 
 #: form_behaviors/builtins/transform_text.py:48
-#, fuzzy
 msgid "Slug"
 msgstr "Slug"
 
@@ -8415,6 +8782,10 @@ msgstr "Ordina per"
 msgid "Source"
 msgstr "Origine"
 
+#: bloomerp.calendarevent.source_calendar
+msgid "Source Calendar"
+msgstr "Calendario di origine"
+
 #: bloomerp.tag.source_content_type
 msgid "Source Content Type"
 msgstr "Tipo di contenuto sorgente"
@@ -8425,7 +8796,6 @@ msgid "Source File"
 msgstr "File sorgente"
 
 #: bloomerp.inboxitem.source_model
-#, fuzzy
 msgid "Source Model"
 msgstr "Modello di origine"
 
@@ -8441,15 +8811,13 @@ msgid "Source Object Id"
 msgstr "ID oggetto sorgente"
 
 #: form_behaviors/builtins/fetch.py:489
-#, fuzzy
 msgid "Source and target columns are incompatible."
-msgstr "Le colonne di origine e di destinazione sono incompatibili."
+msgstr "La colonna di origine e quella di destinazione sono incompatibili."
 
 # | msgid "Source Model"
 #: form_behaviors/builtins/fetch.py:311
-#, fuzzy
 msgid "Source column"
-msgstr "Modello sorgente"
+msgstr "Colonna di origine"
 
 # | msgid "Tool Identifier"
 #: bloomerp.imconversationactivity.source_id
@@ -8459,9 +8827,8 @@ msgstr "Identificativo sorgente"
 
 # | msgid "Source Model"
 #: form_behaviors/builtins/fetch.py:278
-#, fuzzy
 msgid "Source model"
-msgstr "Modello sorgente"
+msgstr "Modello di origine"
 
 #: bloomerp.emailaccount.oauth_scopes
 msgid "Space-separated OAuth scopes requested for this account."
@@ -8508,6 +8875,11 @@ msgstr "Impila più serie dell'asse Y quando supportato dal tipo di grafico sele
 msgid "Staff"
 msgstr "Personale"
 
+# | msgid "Start Date"
+#: bloomerp.calendarevent.start models/communication/calendar/calendar_event.py:199
+msgid "Start"
+msgstr "Inizio"
+
 #: bloomerp.initiative.start_date models/project_management/initiative.py:157
 msgid "Start Date"
 msgstr "Data di inizio"
@@ -8523,9 +8895,8 @@ msgid "Start Node"
 msgstr "Nodo iniziale"
 
 #: templates/components/communication/conferencing/start_meeting.html:3
-#, fuzzy
 msgid "Start a meeting on your own, then share its link to invite others."
-msgstr "Avvia una riunione per conto tuo, quindi condividi il link per invitare altre persone."
+msgstr "Avvia una riunione da solo, poi condividi il link per invitare altre persone."
 
 # | msgid "Start Date"
 # | msgid "Started at"
@@ -8535,8 +8906,13 @@ msgstr "Avvia chiamata audio"
 
 # | msgid "Start Date"
 #: communication/builtins/voip/actions.py:200
-#, fuzzy
 msgid "Start chat"
+msgstr "Avvia chat"
+
+# | msgid "Start Date"
+#: bloomerp.calendarevent.start_date forms/communication/calendar_event.py:131
+#: models/communication/calendar/calendar_event.py:208
+msgid "Start date"
 msgstr "Data di inizio"
 
 # | msgid "Status Field"
@@ -8552,13 +8928,18 @@ msgstr "Inizia da zero"
 # | msgid "Start Deadline"
 #: communication/builtins/instant_messaging/builtins/bloomerp.py:126
 #: templates/components/communication/conferencing/start_meeting.html:4
-#, fuzzy
+#: templates/views/communication/conferencing/meeting.html:10
 msgid "Start meeting"
-msgstr "Scadenza di avvio"
+msgstr "Avvia riunione"
 
 #: templates/components/objects/dataview_gant_rows.html:58
 msgid "Start or end date is missing."
 msgstr "La data di inizio o di fine è mancante."
+
+# | msgid "Start Date"
+#: forms/communication/calendar_event.py:136
+msgid "Start time"
+msgstr "Ora di inizio"
 
 #: templates/components/search/global_search.html:144
 msgid "Start typing to search."
@@ -8626,9 +9007,8 @@ msgstr "Interrompi"
 
 # | msgid "Stopping…"
 #: templates/components/communication/calling/controls.html:19
-#, fuzzy
 msgid "Stop sharing"
-msgstr "Interruzione…"
+msgstr "Interrompi condivisione"
 
 #: templates/cotton/features/agent/body.html:35
 msgid "Stopping…"
@@ -8691,6 +9071,13 @@ msgstr "Invia un modulo"
 msgid "Submit a new form"
 msgstr "Invia un nuovo modulo"
 
+# | msgid "Start Date"
+# | msgid "Started at"
+#: bloomerp.calendarbookingsubmission.submitted_at
+#: models/communication/calendar/calendar_booking_submission.py:21
+msgid "Submitted at"
+msgstr "Data di invio"
+
 #: bloomerp.fileextraction.status bloomerp.workflowrun.status models/automation/workflow_run.py:110
 #: models/files/file_extraction.py:173
 msgid "Succeeded"
@@ -8699,9 +9086,8 @@ msgstr "Completato"
 # | msgid "Access Token"
 # | msgid "Access"
 #: form_behaviors/builtins/show_message.py:26
-#, fuzzy
 msgid "Success"
-msgstr "Token di accesso"
+msgstr "Operazione riuscita"
 
 # | msgid "Access Token"
 #: bloomerp.form.success_text models/forms/form.py:79
@@ -8727,14 +9113,12 @@ msgid "Summary String"
 msgstr "Stringa di riepilogo"
 
 #: components/form_behaviors/execute.py:49
-#, fuzzy
 msgid "Supply exactly one preference_id or form_id."
-msgstr "Fornisci esattamente uno tra preference_id e form_id."
+msgstr "Fornire esattamente un preference_id o un form_id."
 
 #: form_behaviors/builtins/set_value.py:34
-#, fuzzy
 msgid "Supply the complete collection row array."
-msgstr "Fornisci l'array completo di righe della raccolta."
+msgstr "Fornire l'intero array di righe della raccolta."
 
 #: bloomerp.emailaccount.sync_cursor bloomerp.imconnection.sync_cursor
 #: models/communication/email_account.py:254
@@ -8794,6 +9178,10 @@ msgstr "Sincronizza questa connessione prima di cercare numeri."
 msgid "System"
 msgstr "Sistema"
 
+#: bloomerp.policy.system_created
+msgid "System Created"
+msgstr "Creato dal sistema"
+
 #: bloomerp.aiagent.default_instructions models/agents/ai_agent.py:190
 msgid "System Instructions"
 msgstr "Istruzioni di sistema"
@@ -8817,9 +9205,8 @@ msgstr "ID oggetto di destinazione"
 
 # | msgid "Cards per column"
 #: form_behaviors/builtins/calculate.py:291 form_behaviors/builtins/fetch.py:316
-#, fuzzy
 msgid "Target column"
-msgstr "Schede per colonna"
+msgstr "Colonna di destinazione"
 
 #: communication/builtins/voip/builtins/telnyx.py:42
 msgid "TeXML SIP subdomain"
@@ -8870,6 +9257,13 @@ msgstr "Intestazione del modello"
 #: templates/components/communication/emails/template_arguments.html:4
 msgid "Template variables"
 msgstr "Variabili del modello"
+
+# | msgid "Initiative"
+#: bloomerp.calendareventparticipant.response_status
+#: models/communication/calendar/calendar_event_participant.py:19
+#: templates/components/communication/calendar/invitation.html:23
+msgid "Tentative"
+msgstr "Forse"
 
 #: bloomerp.tile.type workspaces/registry.py:81
 msgid "Text"
@@ -8924,7 +9318,7 @@ msgstr "L'attore o l'entità associata all'elemento della posta in arrivo."
 msgid "The agent could not be saved. Check its name and settings."
 msgstr "Impossibile salvare l’agente. Controlla il nome e le impostazioni."
 
-#: dataviews/calendar/config.py:66
+#: dataviews/calendar/config.py:93
 msgid "The calendar period to show."
 msgstr "Il periodo del calendario da visualizzare."
 
@@ -8939,7 +9333,6 @@ msgid "The columns of the table"
 msgstr "Le colonne della tabella"
 
 #: form_behaviors/builtins/copy_field_value.py:200
-#, fuzzy
 msgid "The configured related field is not a stored value."
 msgstr "Il campo correlato configurato non è un valore memorizzato."
 
@@ -8947,12 +9340,10 @@ msgstr "Il campo correlato configurato non è un valore memorizzato."
 # | msgid "Calling is unavailable."
 # | msgid "Conferencing is unavailable."
 #: form_behaviors/builtins/copy_field_value.py:179
-#, fuzzy
 msgid "The configured related field is unavailable."
-msgstr "Le conferenze non sono disponibili."
+msgstr "Il campo correlato configurato non è disponibile."
 
 #: form_behaviors/builtins/fetch.py:244
-#, fuzzy
 msgid "The configured source field is not a stored value."
 msgstr "Il campo di origine configurato non è un valore memorizzato."
 
@@ -8960,9 +9351,8 @@ msgstr "Il campo di origine configurato non è un valore memorizzato."
 # | msgid "Calling is unavailable."
 # | msgid "Conferencing is unavailable."
 #: form_behaviors/builtins/fetch.py:197
-#, fuzzy
 msgid "The configured source model is unavailable."
-msgstr "Le conferenze non sono disponibili."
+msgstr "Il modello di origine configurato non è disponibile."
 
 # | msgid "The row policy configuration could not be read. Please review step 2 and try again."
 #: views/communication/create_voip_connection.py:174
@@ -9012,7 +9402,7 @@ msgid "The date field used as the start of the timeline item."
 msgstr "Il campo utilizzato per le etichette delle sezioni del grafico a torta."
 
 # | msgid "The field to be used for the X-axis of the chart."
-#: dataviews/calendar/config.py:50
+#: dataviews/calendar/config.py:77
 msgid "The date field used to place records on the calendar."
 msgstr "Il campo da utilizzare per l'asse X del grafico."
 
@@ -9021,9 +9411,8 @@ msgid "The date format to be used in the application"
 msgstr "Il formato della data da utilizzare nell'applicazione"
 
 #: form_behaviors/shared/temporal.py:64 form_behaviors/shared/temporal.py:77
-#, fuzzy
 msgid "The date or datetime offset is outside the supported range."
-msgstr "Lo scostamento della data o della data e ora è al di fuori dell'intervallo supportato."
+msgstr "L'offset di data o data e ora non rientra nell'intervallo supportato."
 
 #: bloomerp.user.datetime_view_preference models/users/user.py:103
 msgid "The datetime format to be used in the application"
@@ -9057,26 +9446,22 @@ msgstr "L'endpoint deve appartenere a questa connessione."
 
 # | msgid "The session cannot return to an earlier state."
 #: form_behaviors/builtins/calculate.py:251
-#, fuzzy
 msgid "The expression cannot be calculated."
-msgstr "La sessione non può tornare a uno stato precedente."
+msgstr "Non è possibile calcolare l'espressione."
 
 #: form_behaviors/builtins/calculate.py:247
-#, fuzzy
 msgid "The expression divides by zero."
 msgstr "L'espressione divide per zero."
 
 #: form_behaviors/builtins/calculate.py:125
-#, fuzzy
 msgid "The expression is too complex."
 msgstr "L'espressione è troppo complessa."
 
 #: form_behaviors/builtins/calculate.py:375
-#, fuzzy
 msgid "The expression result type must match the date or datetime target."
 msgstr ""
-"Il tipo del risultato dell'espressione deve corrispondere al campo di destinazione di tipo data o"
-" data e ora."
+"Il tipo del risultato dell'espressione deve corrispondere alla destinazione di tipo data o data e"
+" ora."
 
 # | msgid "The field used for the pie slice labels."
 #: models/files/file_reference.py:151
@@ -9103,19 +9488,19 @@ msgstr "Il campo utilizzato per le etichette delle sezioni del grafico a torta."
 msgid "The field used to order timeline records."
 msgstr "Il campo utilizzato per ordinare i record della cronologia."
 
-#: bloomerp.policy.field_policy models/access_control/policy.py:92
+#: bloomerp.policy.field_policy models/access_control/policy.py:100
 msgid "The field-level policy associated with this access control policy."
 msgstr "Il criterio a livello di campo associato a questo criterio di controllo degli accessi."
 
 #: form_behaviors/builtins/fetch.py:118
-#, fuzzy, python-format
+#, python-format
 msgid "The filter references unavailable %(scope)s field '%(field_name)s'."
-msgstr "Il filtro fa riferimento al campo %(scope)s '%(field_name)s', non disponibile."
+msgstr "Il filtro fa riferimento al campo %(scope)s '%(field_name)s', che non è disponibile."
 
 #: form_behaviors/builtins/fetch.py:159
-#, fuzzy, python-format
+#, python-format
 msgid "The filter references unknown %(scope)s field '%(field_name)s'."
-msgstr "Il filtro fa riferimento al campo %(scope)s '%(field_name)s', sconosciuto."
+msgstr "Il filtro fa riferimento al campo %(scope)s '%(field_name)s', che non è noto."
 
 #: bloomerp.inboxitem.folder
 msgid "The folder to which this inbox item belongs."
@@ -9135,10 +9520,13 @@ msgctxt "bloomerp:route:description"
 msgid "The homepage for the {module} module."
 msgstr "La home page del modulo {module}."
 
-#: templates/views/communication/conferencing/meeting.html:8
-#, fuzzy
+#: communication/builtins/conferencing/controller.py:222
+msgid "The host has not started this meeting yet."
+msgstr "L'organizzatore non ha ancora avviato la riunione."
+
+#: templates/views/communication/conferencing/meeting.html:12
 msgid "The host will admit you before you can enter the meeting."
-msgstr "L'organizzatore ti ammetterà prima che tu possa entrare nella riunione."
+msgstr "L'organizzatore ti ammetterà prima che tu possa accedere alla riunione."
 
 #: bloomerp.workflowrunstep.action_id models/automation/workflow_run_step.py:37
 msgid "The identifier of the action being executed in this step."
@@ -9158,24 +9546,24 @@ msgid "The label"
 msgstr "L'etichetta"
 
 #: form_behaviors/builtins/copy_field_value.py:151
-#, fuzzy
 msgid "The listener does not select a related record."
 msgstr "Il listener non seleziona un record correlato."
 
 #: form_behaviors/builtins/copy_field_value.py:100
-#, fuzzy
 msgid "The listener has no value compatible with the target."
-msgstr "Il listener non contiene un valore compatibile con la destinazione."
+msgstr "Il listener non contiene alcun valore compatibile con la destinazione."
 
 #: form_behaviors/builtins/copy_field_value.py:148
-#, fuzzy
 msgid "The listener is incompatible with the target."
-msgstr "Il listener è incompatibile con la destinazione."
+msgstr "Il listener non è compatibile con la destinazione."
+
+#: forms/communication/calendar_event.py:497
+msgid "The location and generated meeting link are too long."
+msgstr "La posizione e il link alla riunione generato sono troppo lunghi."
 
 #: form_behaviors/builtins/fetch.py:225
-#, fuzzy
 msgid "The lookup matched more than 1000 rows."
-msgstr "La ricerca ha trovato più di 1000 righe."
+msgstr "La ricerca ha restituito più di 1000 righe."
 
 # | msgid "No workflow graph was available for this execution."
 # | msgid "SMS is unavailable or the request identifier is invalid."
@@ -9349,7 +9737,6 @@ msgid "The registered subtype of the workflow node."
 msgstr "Il sottotipo registrato del nodo del flusso di lavoro."
 
 #: form_behaviors/builtins/copy_field_value.py:158
-#, fuzzy
 msgid "The related field is incompatible with the target."
 msgstr "Il campo correlato è incompatibile con la destinazione."
 
@@ -9361,9 +9748,8 @@ msgstr "L'oggetto correlato non esiste"
 # | msgid "Calling is unavailable."
 # | msgid "Conferencing is unavailable."
 #: form_behaviors/builtins/set_o2m_value.py:199
-#, fuzzy
 msgid "The related source field is unavailable."
-msgstr "Le conferenze non sono disponibili."
+msgstr "Il campo sorgente correlato non è disponibile."
 
 # | msgid "The row policy configuration could not be read. Please review step 2 and try again."
 #: templates/cotton/features/agent/body.html:38
@@ -9371,15 +9757,14 @@ msgid "The response could not be completed. Please try again."
 msgstr "Impossibile completare la risposta. Riprova."
 
 #: form_behaviors/builtins/fetch.py:625
-#, fuzzy
 msgid "The result would exceed 1000 collection rows."
-msgstr "Il risultato supererebbe le 1000 righe della raccolta."
+msgstr "Il risultato supererebbe il limite di 1000 righe della raccolta."
 
 #: bloomerp.rowpolicyrule.row_policy models/access_control/row_policy_rule.py:32
 msgid "The row-level access control policy this rule belongs to."
 msgstr "La politica di controllo degli accessi a livello di riga a cui appartiene questa regola."
 
-#: bloomerp.policy.row_policy models/access_control/policy.py:84
+#: bloomerp.policy.row_policy models/access_control/policy.py:92
 msgid "The row-level policy associated with this access control policy."
 msgstr "La politica a livello di riga associata a questa politica di controllo degli accessi."
 
@@ -9401,12 +9786,10 @@ msgstr "La porta di uscita selezionata non è disponibile sul nodo di origine."
 
 # | msgid "The email references a field you cannot view."
 #: form_behaviors/builtins/set_value.py:29
-#, fuzzy
 msgid "The selected target field cannot accept a value."
-msgstr "L'email fa riferimento a un campo che non puoi visualizzare."
+msgstr "Il campo di destinazione selezionato non può accettare un valore."
 
 #: form_behaviors/builtins/set_value.py:52
-#, fuzzy
 msgid "The selected target field requires a scalar value."
 msgstr "Il campo di destinazione selezionato richiede un valore scalare."
 
@@ -9423,9 +9806,8 @@ msgid "The size"
 msgstr "La dimensione"
 
 #: form_behaviors/builtins/populate_week_dates.py:76
-#, fuzzy
 msgid "The source week is missing from the draft."
-msgstr "La settimana di origine non è presente nella bozza."
+msgstr "La settimana sorgente non è presente nella bozza."
 
 #: forms/widgets.py:13
 msgid "The sql query (data) to use for the query"
@@ -9436,16 +9818,14 @@ msgid "The status of this workflow run step."
 msgstr "Lo stato di questo passaggio dell'esecuzione del flusso di lavoro."
 
 #: form_behaviors/builtins/calculate.py:363
-#, fuzzy
 msgid "The target column cannot reference itself."
 msgstr "La colonna di destinazione non può fare riferimento a sé stessa."
 
 # | msgid "The field used for the pie slice labels."
 # | msgid "The field must belong to the referenced model."
 #: form_behaviors/builtins/calculate.py:325
-#, fuzzy
 msgid "The target field cannot reference itself."
-msgstr "Il campo deve appartenere al modello a cui si fa riferimento."
+msgstr "Il campo di destinazione non può fare riferimento a sé stesso."
 
 #: bloomerp.inboxitem.title
 msgid "The title of the inbox item."
@@ -9479,8 +9859,7 @@ msgstr "La data entro la quale è richiesta l'attività"
 msgid "The user who requested the todo"
 msgstr "L'utente che ha richiesto l'attività"
 
-#: communication/builtins/conferencing/sharing.py:144
-#, fuzzy
+#: communication/builtins/conferencing/sharing.py:150
 msgid "The waiting room is full. Please try again later."
 msgstr "La sala d'attesa è al completo. Riprova più tardi."
 
@@ -9505,19 +9884,21 @@ msgid "This account is inactive."
 msgstr "Questo account è inattivo."
 
 #: form_fields/behavior.py:146
-#, fuzzy
 msgid "This aggregation requires a one-to-many column."
 msgstr "Questa aggregazione richiede una colonna uno-a-molti."
 
+#: templates/inbox_items/email.html:5
+msgid "This calendar message requires review and has not changed your calendar."
+msgstr "Questo messaggio del calendario richiede una revisione e non ha modificato il tuo calendario."
+
 # | msgid "No workflow graph was available for this execution."
 # | msgid "Browser calling is unavailable for this line."
-#: communication/builtins/conferencing/controller.py:228
-#: components/communication/conferencing/join.py:28
+#: communication/builtins/conferencing/controller.py:234
+#: components/communication/conferencing/join.py:30
 msgid "This call is not available to join."
 msgstr "Non è possibile partecipare a questa chiamata."
 
 #: form_fields/behavior_field.py:56
-#, fuzzy
 msgid "This condition cannot evaluate draft values."
 msgstr "Questa condizione non può valutare i valori della bozza."
 
@@ -9542,17 +9923,15 @@ msgstr "Include gli strumenti che possono modificare i dati."
 msgid "This is a partial preview. Download the file to see all data."
 msgstr "Questa è un’anteprima parziale. Scarica il file per visualizzare tutti i dati."
 
-#: communication/builtins/conferencing/sharing.py:202
-#, fuzzy
+#: communication/builtins/conferencing/sharing.py:208
 msgid "This meeting is full."
 msgstr "Questa riunione è al completo."
 
 # | msgid "Object no longer available"
 # | msgid "This selection is no longer available."
-#: communication/builtins/conferencing/sharing.py:80
-#, fuzzy
+#: communication/builtins/conferencing/sharing.py:86
 msgid "This meeting link is no longer available."
-msgstr "Questa opzione non è più disponibile."
+msgstr "Questo link alla riunione non è più disponibile."
 
 # | msgid "MCP credentials could not be decrypted."
 #: communication/builtins/voip/controller.py:256
@@ -9688,17 +10067,29 @@ msgstr "Timestamp"
 msgid "Timestamp when the inbox item was received by its source system."
 msgstr "Timestamp di ricezione dell'elemento della posta in arrivo da parte del sistema di origine."
 
-#: bloomerp.aiconversation.title bloomerp.applicationfield.title bloomerp.conferenceroom.title
-#: bloomerp.inboxitem.title bloomerp.todo.title models/communication/conferencing/conference_room.py:12
-#: models/communication/inbox/inbox_item.py:90 models/project_management/todo.py:387
+# | msgid "Time Field"
+# | msgid "Timeline"
+#: forms/communication/calendar_event.py:118
+msgid "Timezone"
+msgstr "Fuso orario"
+
+#: views/communication/calendar/create.py:67
+msgid "Timing"
+msgstr "Orario"
+
+#: bloomerp.aiconversation.title bloomerp.applicationfield.title bloomerp.calendarbooking.title
+#: bloomerp.calendarevent.title bloomerp.conferenceroom.title bloomerp.inboxitem.title
+#: bloomerp.todo.title models/communication/calendar/calendar_booking.py:29
+#: models/communication/calendar/calendar_event.py:196
+#: models/communication/conferencing/conference_room.py:12 models/communication/inbox/inbox_item.py:90
+#: models/project_management/todo.py:387
 msgid "Title"
 msgstr "Titolo"
 
 # | msgid "Title"
 #: form_behaviors/builtins/transform_text.py:42
-#, fuzzy
 msgid "Title case"
-msgstr "Titolo"
+msgstr "Iniziali maiuscole"
 
 #: bloomerp.phonecall.to_address models/communication/voip/phone_call.py:73
 #: templates/components/communication/emails/email_editor.html:75
@@ -9713,11 +10104,10 @@ msgstr "Al nodo"
 # | msgid "Db Column"
 # | msgid "DB Column"
 #: form_behaviors/builtins/set_o2m_value.py:90
-#, fuzzy
 msgid "To column"
-msgstr "Colonna DB"
+msgstr "Alla colonna"
 
-#: templates/cotton/features/agent/body.html:7 templates/cotton/features/dataviews/calendar.html:33
+#: templates/cotton/features/agent/body.html:7 templates/cotton/features/dataviews/calendar.html:40
 #: templates/cotton/features/dataviews/gant.html:22
 msgid "Today"
 msgstr "Oggi"
@@ -9857,20 +10247,17 @@ msgid "Transfer ownership"
 msgstr "Trasferisci la proprietà"
 
 #: form_behaviors/builtins/transform_text.py:145
-#, fuzzy
 msgid "Transform text"
 msgstr "Trasforma testo"
 
 #: form_behaviors/builtins/transform_text.py:126
-#, fuzzy
 msgid "Transform text requires a string listener value."
 msgstr "La trasformazione del testo richiede che il valore del listener sia una stringa."
 
 # | msgid "Advanced formatting"
 #: form_behaviors/builtins/transform_text.py:55
-#, fuzzy
 msgid "Transformation"
-msgstr "Formattazione avanzata"
+msgstr "Trasformazione"
 
 #: automation/registry.py:51 bloomerp.workflownode.type
 msgid "Trigger"
@@ -9889,9 +10276,8 @@ msgid "Trigger Type"
 msgstr "Tipo di attivazione"
 
 #: form_behaviors/builtins/transform_text.py:44
-#, fuzzy
 msgid "Trim"
-msgstr "Rimuovi spazi"
+msgstr "Rimuovi spazi superflui"
 
 # | msgid "application field"
 #: communication/builtins/voip/builtins/twilio.py:39
@@ -9941,12 +10327,10 @@ msgid "UUID Field"
 msgstr "Campo UUID"
 
 #: communication/builtins/conferencing/meetings.py:57
-#, fuzzy
 msgid "Unable to start this meeting."
 msgstr "Impossibile avviare questa riunione."
 
 #: form_behaviors/builtins/calculate.py:168
-#, fuzzy
 msgid "Unary operators cannot apply to a date or datetime."
 msgstr "Gli operatori unari non possono essere applicati a una data o a una data e ora."
 
@@ -9964,9 +10348,9 @@ msgstr "Non disponibile"
 # | msgid "Available Modules"
 # | msgid "Unavailable tool: %(name)s"
 #: form_fields/behavior_field.py:60
-#, fuzzy, python-format
+#, python-format
 msgid "Unavailable action: %(action)s."
-msgstr "Strumento non disponibile: %(name)s"
+msgstr "Azione non disponibile: %(action)s."
 
 #: forms/agents/ai_agent.py:206
 #, python-format
@@ -9989,29 +10373,27 @@ msgstr ""
 # | msgid "AI conversations"
 # | msgid "Unknown conversation provider."
 #: form_behaviors/utils.py:62
-#, fuzzy
 msgid "Unknown action configuration fields."
-msgstr "Provider di conversazione sconosciuto."
+msgstr "Campi di configurazione dell'azione sconosciuti."
 
 # | msgid "Conversation History"
 # | msgid "Conversation actions"
 #: form_behaviors/execution.py:327
-#, fuzzy, python-format
+#, python-format
 msgid "Unknown action: %(action)s."
-msgstr "Azioni della conversazione"
+msgstr "Azione sconosciuta: %(action)s."
 
 # | msgid "Unknown carrier provider."
 #: form_behaviors/execution.py:295
-#, fuzzy
 msgid "Unknown behavior event."
-msgstr "Provider dell'operatore sconosciuto."
+msgstr "Evento di comportamento sconosciuto."
 
 #: communication/builtins/voip/controller.py:28
 msgid "Unknown carrier provider."
 msgstr "Provider dell'operatore sconosciuto."
 
 #: form_behaviors/builtins/calculate.py:344
-#, fuzzy, python-format
+#, python-format
 msgid "Unknown collection: %(collection_name)s."
 msgstr "Raccolta sconosciuta: %(collection_name)s."
 
@@ -10021,26 +10403,25 @@ msgid "Unknown conversation provider."
 msgstr "Provider di conversazione sconosciuto."
 
 #: form_behaviors/builtins/calculate.py:353
-#, fuzzy, python-format
+#, python-format
 msgid "Unknown or non-numeric column: %(collection_name)s.%(column_name)s."
 msgstr "Colonna sconosciuta o non numerica: %(collection_name)s.%(column_name)s."
 
 #: form_behaviors/builtins/calculate.py:321
-#, fuzzy, python-format
+#, python-format
 msgid "Unknown or unsupported calculation field: %(details)s."
 msgstr "Campo di calcolo sconosciuto o non supportato: %(details)s."
 
 # | msgid "Unknown carrier provider."
 #: form_behaviors/shared/write_policy.py:95
-#, fuzzy
 msgid "Unknown scalar write policy."
-msgstr "Provider dell'operatore sconosciuto."
+msgstr "Criterio di scrittura scalare sconosciuto."
 
 #: templates/components/communication/messaging_panel.html:37
 msgid "Unread only"
 msgstr "Solo non letti"
 
-#: templates/cotton/features/dataviews/calendar.html:258
+#: templates/cotton/features/dataviews/calendar.html:270
 msgid "Unscheduled"
 msgstr "Non pianificato"
 
@@ -10050,9 +10431,8 @@ msgstr "Record non pianificati"
 
 # | msgid "Unsupported file extension."
 #: form_behaviors/builtins/calculate.py:113 form_behaviors/builtins/calculate.py:253
-#, fuzzy
 msgid "Unsupported expression syntax."
-msgstr "Estensione file non supportata."
+msgstr "Sintassi dell'espressione non supportata."
 
 #: form_fields/bloomerp_file_field.py:126
 msgid "Unsupported file extension."
@@ -10060,9 +10440,8 @@ msgstr "Estensione file non supportata."
 
 # | msgid "Unsupported file extension."
 #: form_behaviors/execution.py:122
-#, fuzzy
 msgid "Unsupported layout owner."
-msgstr "Estensione file non supportata."
+msgstr "Proprietario del layout non supportato."
 
 #: components/workspaces/tiles/preview.py:202
 msgid "Untitled tile"
@@ -10084,6 +10463,13 @@ msgctxt "bloomerp:route:description"
 msgid "Update a workflow"
 msgstr "Aggiorna un flusso di lavoro"
 
+# | msgid "Preference"
+# | msgid "Preference name"
+# | msgid "Conference attendance"
+#: templates/views/communication/calendar/respond.html:35
+msgid "Update attendance"
+msgstr "Aggiorna la partecipazione"
+
 msgctxt "bloomerp:route:description"
 msgid "Update this policy"
 msgstr "Aggiorna questo criterio"
@@ -10096,24 +10482,27 @@ msgstr "Aggiorna questo riquadro"
 #: bloomerp.aiartifact.updated_by bloomerp.aiconversation.updated_by bloomerp.aimessage.updated_by
 #: bloomerp.aimessageartifact.updated_by bloomerp.airun.updated_by bloomerp.airunattempt.updated_by
 #: bloomerp.airunevent.updated_by bloomerp.aitoolcall.updated_by bloomerp.apikey.updated_by
-#: bloomerp.comment.updated_by bloomerp.conferenceadmission.updated_by
-#: bloomerp.conferenceattendance.updated_by bloomerp.conferenceparticipant.updated_by
-#: bloomerp.conferenceroom.updated_by bloomerp.conferencesession.updated_by
-#: bloomerp.conferencewebhookreceipt.updated_by bloomerp.documenttemplate.updated_by
-#: bloomerp.documenttemplateheader.updated_by bloomerp.documenttemplatestyling.updated_by
-#: bloomerp.emailaccount.updated_by bloomerp.emaildraft.updated_by bloomerp.fileextraction.updated_by
-#: bloomerp.filenode.updated_by bloomerp.filereference.updated_by bloomerp.form.updated_by
-#: bloomerp.formsubmission.updated_by bloomerp.imauthorization.updated_by
-#: bloomerp.imconnection.updated_by bloomerp.imconversation.updated_by
-#: bloomerp.imconversationactivity.updated_by bloomerp.imconversationparticipant.updated_by
-#: bloomerp.imendpoint.updated_by bloomerp.imidentity.updated_by bloomerp.imidentitysource.updated_by
-#: bloomerp.immessage.updated_by bloomerp.immessageattachment.updated_by
-#: bloomerp.immessagereaction.updated_by bloomerp.imthreadreadposition.updated_by
-#: bloomerp.inboxfolder.updated_by bloomerp.inboxitem.updated_by bloomerp.initiative.updated_by
-#: bloomerp.label.updated_by bloomerp.mcpconnection.updated_by bloomerp.mcpintegration.updated_by
-#: bloomerp.phonecall.updated_by bloomerp.phonecallevent.updated_by bloomerp.policy.updated_by
-#: bloomerp.savedfilter.updated_by bloomerp.sqlquery.updated_by bloomerp.tile.updated_by
-#: bloomerp.todo.updated_by bloomerp.userinboxpreference.updated_by bloomerp.voipconnection.updated_by
+#: bloomerp.calendarbooking.updated_by bloomerp.calendarbookingsubmission.updated_by
+#: bloomerp.calendarevent.updated_by bloomerp.calendareventparticipant.updated_by
+#: bloomerp.calendarschedulingcancellation.updated_by bloomerp.comment.updated_by
+#: bloomerp.conferenceadmission.updated_by bloomerp.conferenceattendance.updated_by
+#: bloomerp.conferenceparticipant.updated_by bloomerp.conferenceroom.updated_by
+#: bloomerp.conferencesession.updated_by bloomerp.conferencewebhookreceipt.updated_by
+#: bloomerp.documenttemplate.updated_by bloomerp.documenttemplateheader.updated_by
+#: bloomerp.documenttemplatestyling.updated_by bloomerp.emailaccount.updated_by
+#: bloomerp.emaildraft.updated_by bloomerp.fileextraction.updated_by bloomerp.filenode.updated_by
+#: bloomerp.filereference.updated_by bloomerp.form.updated_by bloomerp.formsubmission.updated_by
+#: bloomerp.imauthorization.updated_by bloomerp.imconnection.updated_by
+#: bloomerp.imconversation.updated_by bloomerp.imconversationactivity.updated_by
+#: bloomerp.imconversationparticipant.updated_by bloomerp.imendpoint.updated_by
+#: bloomerp.imidentity.updated_by bloomerp.imidentitysource.updated_by bloomerp.immessage.updated_by
+#: bloomerp.immessageattachment.updated_by bloomerp.immessagereaction.updated_by
+#: bloomerp.imthreadreadposition.updated_by bloomerp.inboxfolder.updated_by
+#: bloomerp.inboxitem.updated_by bloomerp.initiative.updated_by bloomerp.label.updated_by
+#: bloomerp.mcpconnection.updated_by bloomerp.mcpintegration.updated_by bloomerp.phonecall.updated_by
+#: bloomerp.phonecallevent.updated_by bloomerp.policy.updated_by bloomerp.savedfilter.updated_by
+#: bloomerp.sqlquery.updated_by bloomerp.tile.updated_by bloomerp.todo.updated_by
+#: bloomerp.userinboxpreference.updated_by bloomerp.voipconnection.updated_by
 #: bloomerp.voipnumber.updated_by bloomerp.workflow.updated_by bloomerp.workflownode.updated_by
 #: models/mixins/user_stamp_model_mixin.py:27
 msgid "Updated By"
@@ -10150,12 +10539,10 @@ msgid "Uploading…"
 msgstr "Caricamento…"
 
 #: form_behaviors/builtins/transform_text.py:46
-#, fuzzy
 msgid "Upper snake case"
 msgstr "Maiuscolo con underscore"
 
 #: form_behaviors/builtins/transform_text.py:40
-#, fuzzy
 msgid "Uppercase"
 msgstr "Maiuscolo"
 
@@ -10188,6 +10575,10 @@ msgstr ""
 "Usa un'applicazione TeXML dedicata con un profilo vocale in uscita e una connessione con "
 "credenziali browser separata senza un profilo vocale in uscita. Acquista i numeri su Telnyx, "
 "assegnali all'applicazione TeXML, quindi sincronizza."
+
+#: models/communication/calendar/calendar_event.py:303
+msgid "Use a timezone-aware instant."
+msgstr "Usa un istante con fuso orario."
 
 #: forms/agents/ai_agent.py:338
 msgid "Use an HTTP endpoint without credentials, query parameters, or fragments."
@@ -10227,15 +10618,14 @@ msgid "Use encrypted credential storage."
 msgstr "Usa l'archiviazione crittografata delle credenziali."
 
 #: form_behaviors/builtins/calculate.py:297
-#, fuzzy
 msgid ""
 "Use numeric fields, collection.column, and sum/count/first/last. For scalar date/datetime "
 "targets, add or subtract whole-number offsets from a date (days) or datetime (minutes). Blank "
 "dates leave the target unchanged."
 msgstr ""
-"Usa campi numerici, collection.column e sum/count/first/last. Per i campi di destinazione di tipo"
-" data/data e ora scalari, aggiungi o sottrai valori interi a una data (giorni) o a una data e ora"
-" (minuti). Se le date sono vuote, il campo di destinazione non viene modificato."
+"Usa campi numerici, collection.column e sum/count/first/last. Per i target scalari di tipo "
+"date/datetime, aggiungi o sottrai offset interi da una data (giorni) o da un datetime (minuti). "
+"Le date vuote lasciano invariato il target."
 
 #: templates/views/access_control/manage_permissions/wizard_object_access_control.html:151
 msgid "Use rule"
@@ -10246,16 +10636,14 @@ msgid "Use set_credentials() to encrypt secrets."
 msgstr "Usa set_credentials() per crittografare i segreti."
 
 #: form_behaviors/builtins/calculate.py:83
-#, fuzzy
 msgid "Use sum, count, first, or last with one collection expression."
-msgstr "Usa sum, count, first o last con un'espressione di raccolta."
+msgstr "Usa sum, count, first o last con una sola espressione di raccolta."
 
 #: templates/components/workspaces/tiles/builders/links.html:21
 msgid "Use the arrows to reorder items"
 msgstr "Usa le frecce per riordinare gli elementi"
 
 #: form_behaviors/builtins/fetch.py:296
-#, fuzzy
 msgid "Use {{ object.field }} or, in per-row mode, {{ row.column }}."
 msgstr "Usa {{ object.field }} oppure, in modalità per riga, {{ row.column }}."
 
@@ -10276,13 +10664,14 @@ msgstr ""
 "Utilizzato solo per l'accesso agli strumenti selezionati. Lascia vuoto per non consentire alcuno "
 "strumento integrato. I nomi non disponibili vengono mantenuti, ma non possono essere eseguiti."
 
-#: bloomerp.aimessage.role bloomerp.bookmark.user bloomerp.conferenceadmission.user
-#: bloomerp.conferenceparticipant.user bloomerp.emaildraft.user bloomerp.imauthorization.user
-#: bloomerp.imconversationparticipant.user bloomerp.inbox.user bloomerp.mcpconnection.user
-#: bloomerp.mention.user bloomerp.oauthaccesstoken.user bloomerp.oauthauthorizationcode.user
-#: bloomerp.sidebar.user bloomerp.user bloomerp.userdetailviewtabspreference.user
-#: bloomerp.userinboxpreference.user bloomerp.userlistviewpreference.user
-#: bloomerp.userobjectlayoutpreference.user bloomerp.workspace.user
+#: bloomerp.aimessage.role bloomerp.bookmark.user bloomerp.calendareventparticipant.user
+#: bloomerp.conferenceadmission.user bloomerp.conferenceparticipant.user bloomerp.emaildraft.user
+#: bloomerp.imauthorization.user bloomerp.imconversationparticipant.user bloomerp.inbox.user
+#: bloomerp.mcpconnection.user bloomerp.mention.user bloomerp.oauthaccesstoken.user
+#: bloomerp.oauthauthorizationcode.user bloomerp.sidebar.user bloomerp.user
+#: bloomerp.userdetailviewtabspreference.user bloomerp.userinboxpreference.user
+#: bloomerp.userlistviewpreference.user bloomerp.userobjectlayoutpreference.user
+#: bloomerp.workspace.user models/communication/calendar/calendar_event_participant.py:34
 #: models/communication/conferencing/conference_participant.py:37
 #: models/communication/inbox/user_inbox_preference.py:24 models/users/base_preference.py:106
 #: models/users/bookmark.py:21 models/users/user.py:163
@@ -10349,7 +10738,7 @@ msgstr "Preferenze del layout dell'oggetto dell'utente"
 msgid "Username"
 msgstr "Nome utente"
 
-#: bloomerp.aiagentaccess.users bloomerp.policy.users bloomerp.user models/access_control/policy.py:101
+#: bloomerp.aiagentaccess.users bloomerp.policy.users bloomerp.user models/access_control/policy.py:109
 #: models/agents/ai_agent_access.py:48 models/project_management/todo.py:126 models/users/user.py:164
 msgid "Users"
 msgstr "Utenti"
@@ -10358,7 +10747,7 @@ msgctxt "bloomerp:module:name"
 msgid "Users & Permissions"
 msgstr "Utenti e autorizzazioni"
 
-#: bloomerp.policy.users models/access_control/policy.py:100
+#: bloomerp.policy.users models/access_control/policy.py:108
 msgid "Users assigned to this access control policy."
 msgstr "Utenti assegnati a questo criterio di controllo degli accessi."
 
@@ -10397,9 +10786,8 @@ msgstr "Valore su tutte le righe"
 
 # | msgid "Value on all rows"
 #: form_behaviors/builtins/fetch.py:284
-#, fuzzy
 msgid "Value to copy"
-msgstr "Valore su tutte le righe"
+msgstr "Valore da copiare"
 
 #: dataviews/pivot_table/config.py:62 workspaces/analytics_tile/model.py:395
 msgid "Values"
@@ -10445,8 +10833,7 @@ msgid "View deleted data"
 msgstr "Visualizza i dati eliminati"
 
 # | msgid "View row"
-#: bloomerp.userlistviewpreference.view_mode dataviews/calendar/config.py:65
-#: models/users/user_list_view_preference.py:80
+#: bloomerp.userlistviewpreference.view_mode models/users/user_list_view_preference.py:80
 #: templates/cotton/features/dataviews/display_options.html:30
 msgid "View mode"
 msgstr "Visualizza riga"
@@ -10470,12 +10857,10 @@ msgid "Virtual folders"
 msgstr "Cartelle virtuali"
 
 #: form_behaviors/builtins/set_field_visibility.py:26
-#, fuzzy
 msgid "Visibility"
 msgstr "Visibilità"
 
 #: form_behaviors/builtins/set_field_visibility.py:27
-#, fuzzy
 msgid "Visible"
 msgstr "Visibile"
 
@@ -10590,9 +10975,8 @@ msgstr "In attesa della tua approvazione…"
 # | msgid "Waiting"
 #: templates/components/communication/calling/controls.html:12
 #: templates/components/communication/calling/controls.html:38
-#, fuzzy
 msgid "Waiting to join"
-msgstr "In attesa"
+msgstr "In attesa di partecipare"
 
 # | msgid "Loading more…"
 #: templates/cotton/features/agent/body.html:33
@@ -10600,7 +10984,6 @@ msgid "Waiting to resume…"
 msgstr "In attesa di riprendere…"
 
 #: form_behaviors/builtins/show_message.py:26
-#, fuzzy
 msgid "Warning"
 msgstr "Avviso"
 
@@ -10608,7 +10991,8 @@ msgstr "Avviso"
 msgid "Webhook Ed25519 public key"
 msgstr "Chiave pubblica Ed25519 del webhook"
 
-#: dataviews/calendar/config.py:21 templates/cotton/features/dataviews/gant.html:33
+#: dataviews/calendar/config.py:24 dataviews/calendar/renderer.py:72
+#: templates/cotton/features/dataviews/gant.html:33
 msgid "Week"
 msgstr "Settimana"
 
@@ -10674,7 +11058,6 @@ msgstr ""
 "esecuzioni."
 
 #: form_behaviors/builtins/set_relative_date.py:57
-#, fuzzy
 msgid ""
 "Whole days relative to today in the current timezone. Use a positive number for later, a negative"
 " number for earlier, or zero for today."
@@ -10683,7 +11066,6 @@ msgstr ""
 "successiva, un numero negativo per una data precedente o zero per oggi."
 
 #: form_behaviors/builtins/set_relative_date.py:60
-#, fuzzy
 msgid ""
 "Whole minutes relative to the current time. Use a positive number for later, a negative number "
 "for earlier, or zero for now."
@@ -10786,26 +11168,22 @@ msgstr "Scrivi un messaggio…"
 #: form_behaviors/builtins/calculate.py:303 form_behaviors/builtins/copy_field_value.py:120
 #: form_behaviors/builtins/fetch.py:326 form_behaviors/builtins/populate_week_dates.py:40
 #: form_behaviors/builtins/set_o2m_value.py:98 form_behaviors/builtins/set_relative_date.py:73
-#, fuzzy
 msgid "Write policy"
-msgstr "Crea criterio"
+msgstr "Policy di scrittura"
 
 #: templates/components/communication/emails/email_editor.html:152
 msgid "Write your message"
 msgstr "Scrivi il tuo messaggio"
 
 #: form_behaviors/shared/write_policy.py:43
-#, fuzzy
 msgid "WritePolicyField default must be in its allowed policies."
-msgstr "Il valore predefinito di WritePolicyField deve appartenere alle policy consentite."
+msgstr "Il valore predefinito di WritePolicyField deve essere incluso tra le policy consentite."
 
 #: form_behaviors/shared/write_policy.py:40
-#, fuzzy
 msgid "WritePolicyField received an unknown policy ID."
-msgstr "WritePolicyField ha ricevuto un ID di policy sconosciuto."
+msgstr "WritePolicyField ha ricevuto un ID policy sconosciuto."
 
 #: form_behaviors/shared/write_policy.py:38
-#, fuzzy
 msgid "WritePolicyField requires at least one allowed policy."
 msgstr "WritePolicyField richiede almeno una policy consentita."
 
@@ -10841,7 +11219,8 @@ msgstr "Asse Y"
 msgid "Y-axis label"
 msgstr "Etichetta dell'asse Y"
 
-#: dataviews/calendar/config.py:23 templates/cotton/features/dataviews/gant.html:30
+#: dataviews/calendar/config.py:26 dataviews/calendar/renderer.py:74
+#: templates/cotton/features/dataviews/gant.html:30
 msgid "Year"
 msgstr "Anno"
 
@@ -10875,13 +11254,44 @@ msgstr "Stai per eliminare <span class=\"font-semibold\">%(object)s</span>."
 msgid "You can attach up to 20 items."
 msgstr "Puoi allegare fino a 20 elementi."
 
+#: forms/communication/calendar_event.py:296
+msgid "You cannot add internal attendees."
+msgstr "Non puoi aggiungere partecipanti interni."
+
+#: forms/communication/calendar_event.py:448
+msgid "You cannot create events in this calendar."
+msgstr "Non puoi creare eventi in questo calendario."
+
+#: forms/communication/calendar_event.py:340
+msgid "You cannot create this type of event."
+msgstr "Non puoi creare questo tipo di evento."
+
+# | msgid "You cannot send these invitations."
+#: forms/communication/calendar_event.py:479
+msgid "You cannot remove these participants."
+msgstr "Non puoi rimuovere questi partecipanti."
+
+#: views/communication/calendar/create.py:234
+msgid "You cannot send these invitations."
+msgstr "Non puoi inviare questi inviti."
+
+# | msgid "You cannot create events in this calendar."
+#: forms/communication/calendar_event.py:447
+msgid "You cannot update events in this calendar."
+msgstr "Non puoi aggiornare gli eventi in questo calendario."
+
 # | msgid "Groups"
 # | msgid "Group by"
 # | msgid "Group name"
-#: templates/views/communication/conferencing/meeting.html:14
-#, fuzzy
+#: templates/views/communication/conferencing/meeting.html:18
 msgid "Your name"
-msgstr "Nome del gruppo"
+msgstr "Il tuo nome"
+
+# | msgid "The row policy configuration could not be read. Please review step 2 and try again."
+# | msgid "The response could not be completed. Please try again."
+#: views/communication/calendar/update.py:135
+msgid "Your response could not be sent. Please try again."
+msgstr "Non è stato possibile inviare la tua risposta. Riprova."
 
 #: templates/cotton/features/agent/body.html:22
 msgid "Your selected model is unavailable. Choose another model for your next message."
@@ -10925,7 +11335,7 @@ msgstr "conversazione IA"
 
 #: bloomerp.aiconversation
 msgid "ai conversations"
-msgstr "conversazioni AI"
+msgstr "conversazioni IA"
 
 #: bloomerp.aimessage
 msgid "ai message"
@@ -10978,9 +11388,16 @@ msgstr "chiamate a strumenti AI"
 # | msgid "Authentication Type"
 # | msgid "All Authenticated Users"
 #: form_behaviors/builtins/set_user_field_to_current_user.py:34
-#, fuzzy
 msgid "an authenticated user is required"
-msgstr "Tutti gli utenti autenticati"
+msgstr "è necessario un utente autenticato"
+
+#: bloomerp.calendarschedulingcancellation
+msgid "calendar scheduling cancellation"
+msgstr "annullamento della pianificazione del calendario"
+
+#: bloomerp.calendarschedulingcancellation
+msgid "calendar scheduling cancellations"
+msgstr "annullamenti della pianificazione del calendario"
 
 msgctxt "bloomerp:route:name"
 msgid "call status"
@@ -10993,6 +11410,10 @@ msgstr "data di iscrizione"
 #: bloomerp.user.email
 msgid "email address"
 msgstr "indirizzo email"
+
+#: templates/components/communication/calendar/invitation.html:7
+msgid "exclusive end"
+msgstr "fine esclusiva"
 
 #: bloomerp.filenode
 msgid "file node"
@@ -11240,18 +11661,15 @@ msgid "workspace"
 msgstr "spazio di lavoro"
 
 #: form_behaviors/builtins/fetch.py:235
-#, fuzzy
 msgid "you cannot read the configured lookup data"
 msgstr "non puoi leggere i dati di ricerca configurati"
 
 #: form_behaviors/builtins/set_o2m_value.py:238
-#, fuzzy
 msgid "you cannot read the configured related data"
 msgstr "non puoi leggere i dati correlati configurati"
 
 #: form_behaviors/builtins/copy_field_value.py:191 form_behaviors/builtins/copy_field_value.py:193
 #: form_behaviors/builtins/copy_field_value.py:197
-#, fuzzy
 msgid "you cannot read the selected related value"
 msgstr "non puoi leggere il valore correlato selezionato"
 
@@ -11279,9 +11697,6 @@ msgstr "Relazione {related_model_plural} per {model}"
 
 #~ msgid "Absolute URL Model Mixins"
 #~ msgstr "Mixin dei modelli URL assoluti"
-
-#~ msgid "Add Condition"
-#~ msgstr "Aggiungi condizione"
 
 #~ msgid "Agreed — and the back button keeps my search."
 #~ msgstr "D'accordo — e il pulsante Indietro conserva la mia ricerca."
@@ -11332,10 +11747,6 @@ msgstr "Relazione {related_model_plural} per {model}"
 
 # | msgid "Bloomerp File Field"
 #~ msgid "Bloomerp Models"
-#~ msgstr "Campo file Bloomerp"
-
-# | msgid "Bloomerp File Field"
-#~ msgid "Bloomerp User"
 #~ msgstr "Campo file Bloomerp"
 
 # | msgid "Bloomerp File Field"
@@ -11761,9 +12172,6 @@ msgstr "Relazione {related_model_plural} per {model}"
 
 #~ msgid "form"
 #~ msgstr "modulo"
-
-#~ msgid "form submission"
-#~ msgstr "invio del modulo"
 
 #~ msgid "form submissions"
 #~ msgstr "invii del modulo"

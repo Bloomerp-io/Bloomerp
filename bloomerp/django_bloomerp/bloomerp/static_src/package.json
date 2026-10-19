@@ -18,6 +18,7 @@
     "test:url-widget": "node --experimental-strip-types --test ts/components/widgets/URLWidget.test.ts",
     "test:sdk": "node --experimental-transform-types --test ts/sdk/sdk.test.ts",
     "test:foreign-field": "node --experimental-strip-types --test ts/components/widgets/ForeignFieldWidget.test.ts",
+    "test:calendar": "node --experimental-strip-types --test ts/components/data_view_components/Calendar.test.ts ts/components/inbox/CalendarEventEditor.test.ts",
     "test:theme": "node --experimental-strip-types --test ts/components/theme/theme.test.ts ts/components/theme/neutralHighlights.test.ts",
     "test:agent": "node --experimental-strip-types --experimental-test-module-mocks --test ts/utils/agent.test.ts ts/utils/agentEditorState.test.ts",
     "test:agent-markdown": "node --experimental-strip-types --test ts/utils/agentMarkdown.test.ts",

@@ -44,6 +44,7 @@ from bloomerp.permissions.definition import (
     AccessRule,
     BloomerpPermission,
     PermissionMatch,
+    PermissionToken,
     PermissionScope,
     RowPolicyRuleContent,
 )
@@ -135,11 +136,34 @@ class UserPolicyManager:
     policies: QuerySet[Policy]
     is_anonymous: bool
 
-    def __init__(self, user: AbstractBloomerpUser | None):
+    def __init__(
+        self, user: AbstractBloomerpUser | None, *, token: str | None = None,
+        use_request_token: bool = True,
+    ) -> None:
+        """Combine stored grants with a capability, optionally ignoring inherited request grants."""
+        from bloomerp.permissions.access_tokens import request_permission_token
+
         self.user = user
         self.is_anonymous = not user or user.is_anonymous
+        encoded = token if token is not None else (
+            request_permission_token(user) if use_request_token else None
+        )
+        self.token = PermissionToken.verify(
+            encoded, audience=str(user.pk) if user and user.is_authenticated else None,
+        ) if encoded is not None else None
         self._policies: QuerySet[Policy] | None = None
         self.policies = self.get_user_policies()
+
+    def _token_rule(self, model: type[models.Model]) -> AccessRule | None:
+        """Return this capability only for its signed model and while it remains valid."""
+        from django.core.exceptions import PermissionDenied
+        from django.utils import timezone
+
+        if self.token is None:
+            return None
+        if self.token.expiry <= timezone.now():
+            raise PermissionDenied("Permission token expired")
+        return self.token.rule if self.token.model_label == model._meta.label_lower else None
 
     def get_user_policies(self) -> QuerySet[Policy]:
         """Retrieve all policies associated with the user.
@@ -222,6 +246,9 @@ class UserPolicyManager:
                 )
 
         access_rules.extend(get_access_rules_from_model(model))
+        token_rule = self._token_rule(model)
+        if token_rule is not None:
+            access_rules.append(token_rule)
         return access_rules
 
     def get_field_policies(self) -> QuerySet[FieldPolicy]:
@@ -285,11 +312,12 @@ class UserPolicyManager:
         permissions: Optional[list[str] | list[BloomerpPermission] | str | BloomerpPermission],
         match: PermissionMatch = PermissionMatch.ANY,
     ) -> QuerySet[ApplicationField]:
+        """Union model field grants from stored policies and the matching capability."""
         model, content_type = resolve_model_and_content_type(model_or_content_type)
         fields = self._field_queryset(content_type)
         if getattr(self.user, "is_superuser", False):
             return fields
-        if self.is_anonymous:
+        if self.is_anonymous and self._token_rule(model) is None:
             return fields.none()
 
         requested = (
@@ -320,6 +348,14 @@ class UserPolicyManager:
                     return fields
                 allowed_ids.add(str(field_id))
 
+        token_rule = self._token_rule(model)
+        if token_rule is not None:
+            for field, values in token_rule.field_permissions.items():
+                granted = set(PolicyManager._qualify_permission_codenames(model, values))
+                if self._permission_matches(granted, requested, match):
+                    if field == "__all__":
+                        return fields
+                    allowed_ids.add(str(ApplicationField.resolve_for_content_type(content_type, field).pk))
         return fields.filter(pk__in=allowed_ids)
 
     def has_field_permission(
@@ -398,10 +434,11 @@ class UserPolicyManager:
         permissions: list[str] | list[BloomerpPermission] | str | BloomerpPermission,
         match: PermissionMatch = PermissionMatch.ANY,
     ) -> QuerySet[models.Model]:
+        """Filter rows through the same stored and request-scoped rules used for fields."""
         model, content_type = resolve_model_and_content_type(model_or_content_type)
         if getattr(self.user, "is_superuser", False):
             return model.objects.all()
-        if self.is_anonymous:
+        if self.is_anonymous and self._token_rule(model) is None:
             return model.objects.none()
 
         requested = PolicyManager._qualify_permission_codenames(model, permissions)
@@ -502,6 +539,14 @@ class UserPolicyManager:
         """
         if getattr(self.user, "is_superuser", False):
             return True
+        model, _ = resolve_model_and_content_type(model_or_content_type)
+        token_rule = self._token_rule(model)
+        if token_rule is not None:
+            requested = PolicyManager._qualify_permission_codenames(model, permissions)
+            if any(self._permission_matches(
+                set(PolicyManager._qualify_permission_codenames(model, row.permissions)), requested, match,
+            ) for row in token_rule.row_permissions):
+                return True
         return bool(
             self.get_row_policy_rules(
                 model_or_content_type,
@@ -565,10 +610,11 @@ class UserPolicyManager:
         permissions: list[str] | list[BloomerpPermission] | str | BloomerpPermission,
         match: PermissionMatch = PermissionMatch.ANY,
     ) -> bool:
+        """Check model operations from stored permissions and the scoped capability."""
         model, content_type = resolve_model_and_content_type(model_or_content_type)
         if getattr(self.user, "is_superuser", False):
             return True
-        if self.is_anonymous:
+        if self.is_anonymous and self._token_rule(model) is None:
             return False
 
         requested = PolicyManager._qualify_permission_codenames(model, permissions)
@@ -579,8 +625,12 @@ class UserPolicyManager:
             if permission.content_type_id == content_type.pk
             and permission.codename in requested
         }
+        token_rule = self._token_rule(model)
+        if token_rule is not None:
+            for row in token_rule.row_permissions:
+                policy_grants.update(PolicyManager._qualify_permission_codenames(model, row.permissions))
         checks = [
-            self.user.has_perm(f"{content_type.app_label}.{codename}")
+            (not self.is_anonymous and self.user.has_perm(f"{content_type.app_label}.{codename}"))
             or codename in policy_grants
             for codename in requested
         ]
@@ -595,7 +645,7 @@ class UserPolicyManager:
         """Return fields accessible on a persisted object, including lazy model wrappers."""
         model, content_type = resolve_model_and_content_type(obj._meta.model)
         fields = self._field_queryset(content_type)
-        if obj.pk is None or self.is_anonymous:
+        if obj.pk is None or (self.is_anonymous and self._token_rule(model) is None):
             return fields.none()
         if getattr(self.user, "is_superuser", False):
             return fields
@@ -780,7 +830,7 @@ class UserPolicyManager:
                 
         return accessible_models
         
-    def validate_filters(self, model_or_content_type, filters: Filters) -> None:
+    def validate_filters(self, model_or_content_type: type[models.Model] | ContentType, filters: Filters) -> None:
         """Authorize filter dependencies without modifying filters or querysets.
 
         Until execution can constrain related rows, traversals require explicit
@@ -792,7 +842,7 @@ class UserPolicyManager:
         from bloomerp.permissions.compilers.base import BasePermissionCompiler
 
         model, _ = resolve_model_and_content_type(model_or_content_type)
-        if self.is_anonymous or not self.has_global_permission(model, BloomerpPermission.VIEW):
+        if not self.has_global_permission(model, BloomerpPermission.VIEW):
             raise PermissionDenied("Model view permission is required for filtering")
         resolver = FilterFieldResolver.for_model(model)
         superuser = getattr(self.user, "is_superuser", False)
@@ -841,6 +891,16 @@ class UserPolicyManager:
 
         for group in filters:
             for condition in group.conditions:
+                token_rule = self._token_rule(model)
+                # The issuer already authorized this exact frozen predicate. Editing
+                # its path, lookup, or value still requires ordinary filter permissions.
+                if token_rule is not None and any(
+                    row.connector == "AND"
+                    and BasePermissionCompiler.matches_requested_permissions(row.permissions, ["view"], PermissionMatch.ANY)
+                    and condition in row.conditions
+                    for row in token_rule.row_permissions
+                ):
+                    continue
                 traversed_relation = False
                 for dependency in resolver.resolve_dependencies(condition.field_path):
                     if superuser:
@@ -904,7 +964,7 @@ class UserPolicyManager:
             return False
         if getattr(self.user, "is_superuser", False):
             return True
-        if self.is_anonymous:
+        if self.is_anonymous and self._token_rule(type(candidate)) is None:
             return False
 
         requested = PolicyManager._qualify_permission_codenames(type(candidate), permissions)

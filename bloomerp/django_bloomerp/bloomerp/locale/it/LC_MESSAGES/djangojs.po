@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-15 13:03+0000\n"
+"POT-Creation-Date: 2026-10-19 11:11+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: it\n"
@@ -35,7 +35,6 @@ msgid "AND"
 msgstr "E"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:76
-#, fuzzy
 msgid "Action"
 msgstr "Azione"
 
@@ -87,18 +86,25 @@ msgstr "Applica"
 msgid "Attachment"
 msgstr "Allegato"
 
+#: static_src/ts/components/inbox/CalendarAvailability.ts:64
+msgid "Availability could not be loaded."
+msgstr "Impossibile caricare la disponibilità."
+
+#: static_src/ts/components/inbox/CalendarAvailability.ts:94
+#: static_src/ts/components/inbox/CalendarAvailability.ts:119
+msgid "Availability unavailable"
+msgstr "Disponibilità non disponibile"
+
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:392
 #: static_src/ts/utils/contextMenu.ts:164
 msgid "Back"
 msgstr "Indietro"
 
 #: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:237
-#, fuzzy
 msgid "Behavior evaluation failed ({status})."
 msgstr "Valutazione del comportamento non riuscita ({status})."
 
 #: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:254
-#, fuzzy
 msgid "Behavior evaluation failed."
 msgstr "Valutazione del comportamento non riuscita."
 
@@ -108,16 +114,14 @@ msgid "Behavior name"
 msgstr "Nome comportamento"
 
 #: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:245
-#, fuzzy
 msgid "Behavior response revision does not match the draft."
 msgstr "La revisione della risposta del comportamento non corrisponde alla bozza."
 
 #: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:266
 #: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:270
 #: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:279
-#, fuzzy
 msgid "Behavior target '{field}' is not rendered."
-msgstr "La destinazione del comportamento '{field}' non è visualizzata."
+msgstr "La destinazione '{field}' del comportamento non è visualizzata."
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
 msgid "Blue"
@@ -126,6 +130,15 @@ msgstr "Blu"
 #: static_src/ts/components/text_editor/actions.ts:222
 msgid "Bullet List"
 msgstr "Elenco puntato"
+
+#: static_src/ts/components/inbox/CalendarAvailability.ts:118
+#: static_src/ts/components/inbox/CalendarAvailability.ts:119
+msgid "Busy"
+msgstr "Occupato"
+
+#: static_src/ts/components/inbox/InboxCalendarOverlay.ts:66
+msgid "Calendar selections could not be saved. Please try again."
+msgstr "Impossibile salvare le selezioni del calendario. Riprova."
 
 #: static_src/ts/components/communication/Calling.ts:373
 msgid "Call disconnected"
@@ -173,7 +186,6 @@ msgid "Code Block"
 msgstr "Blocco di codice"
 
 #: static_src/ts/components/communication/Calling.ts:74
-#, fuzzy
 msgid "Collapse call controls"
 msgstr "Comprimi i controlli della chiamata"
 
@@ -183,9 +195,8 @@ msgid "Collapse group"
 msgstr "Comprimi gruppo"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:207
-#, fuzzy
 msgid "Complete every action and wait for its configuration to load."
-msgstr "Completa ogni azione e attendi il caricamento della relativa configurazione."
+msgstr "Completa ogni azione e attendi che venga caricata la relativa configurazione."
 
 #: static_src/ts/components/filters/ConditionEditor.ts:175
 #: static_src/ts/components/filters/widget.ts:26
@@ -201,12 +212,10 @@ msgid "Conditions"
 msgstr "Condizioni"
 
 #: static_src/ts/components/communication/MeetingLobby.ts:44
-#, fuzzy
 msgid "Connection interrupted. Retrying…"
 msgstr "Connessione interrotta. Nuovo tentativo…"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:151
-#, fuzzy
 msgid "Could not load action configuration."
 msgstr "Impossibile caricare la configurazione dell'azione."
 
@@ -219,7 +228,6 @@ msgid "Could not load results. Try searching again."
 msgstr "Impossibile caricare i risultati. Prova a cercare di nuovo."
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:189
-#, fuzzy
 msgid "Could not read configuration."
 msgstr "Impossibile leggere la configurazione."
 
@@ -236,7 +244,6 @@ msgid "Create label"
 msgstr "Crea etichetta"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:81
-#, fuzzy
 msgid "Default"
 msgstr "Predefinito"
 
@@ -257,9 +264,8 @@ msgid "Drag row"
 msgstr "Trascina riga"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:322
-#, fuzzy
 msgid "Each behavior needs at least one action."
-msgstr "Ogni comportamento richiede almeno un'azione."
+msgstr "Ogni comportamento deve includere almeno un'azione."
 
 #: static_src/ts/components/filters/RenderedFilter.ts:95
 msgid "Edit"
@@ -270,7 +276,6 @@ msgid "Email operation failed. Your edits are still here; please try again."
 msgstr "Operazione email non riuscita. Le modifiche sono ancora qui; riprova."
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:245
-#, fuzzy
 msgid "Enabled"
 msgstr "Abilitato"
 
@@ -278,7 +283,7 @@ msgstr "Abilitato"
 msgid "Enter a single field key."
 msgstr "Inserisci una singola chiave di campo."
 
-#: static_src/ts/components/inbox/EmailRecipients.ts:136
+#: static_src/ts/components/inbox/EmailRecipients.ts:166
 msgid "Enter a valid email address or remove the invalid recipient."
 msgstr "Inserisci un indirizzo email valido o rimuovi il destinatario non valido."
 
@@ -287,7 +292,6 @@ msgid "Enter a valid http, https, mailto, or tel URL."
 msgstr "Inserisci un URL http, https, mailto o tel valido."
 
 #: static_src/ts/components/communication/Calling.ts:74
-#, fuzzy
 msgid "Expand call controls"
 msgstr "Espandi i controlli della chiamata"
 
@@ -329,14 +333,12 @@ msgid "Filter scope is missing."
 msgstr "Ambito del filtro mancante."
 
 #: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:202
-#, fuzzy
 msgid "Form behaviors changed each other repeatedly. Check for a cycle in the configured behaviors."
 msgstr ""
-"I comportamenti del modulo si sono modificati a vicenda ripetutamente. Verifica che non ci sia un"
-" ciclo nei comportamenti configurati."
+"I comportamenti del modulo si sono modificati a vicenda ripetutamente. Verifica che non ci siano "
+"cicli nei comportamenti configurati."
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:49
-#, fuzzy
 msgid "Form fields"
 msgstr "Campi del modulo"
 
@@ -365,7 +367,6 @@ msgid "Heading 3"
 msgstr "Titolo 3"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:308
-#, fuzzy
 msgid "Hide behavior"
 msgstr "Nascondi comportamento"
 
@@ -393,7 +394,6 @@ msgid "Incoming calling is unavailable. Check your connection and access."
 msgstr "Le chiamate in arrivo non sono disponibili. Controlla la connessione e l'accesso."
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:248
-#, fuzzy
 msgid "Initial load and change"
 msgstr "Caricamento iniziale e modifica"
 
@@ -403,7 +403,6 @@ msgid "Insert link"
 msgstr "Inserisci link"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:359
-#, fuzzy
 msgid "Invalid behavior configuration: expected version 1 with a behaviors list."
 msgstr ""
 "Configurazione del comportamento non valida: era prevista la versione 1 con un elenco di "
@@ -446,7 +445,6 @@ msgid "Link name"
 msgstr "Nome del link"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:138
-#, fuzzy
 msgid "Loading configuration…"
 msgstr "Caricamento della configurazione…"
 
@@ -469,7 +467,6 @@ msgid "Match conditions"
 msgstr "Condizioni di corrispondenza"
 
 #: static_src/ts/components/communication/Calling.ts:181
-#, fuzzy
 msgid "Meeting link copied"
 msgstr "Link della riunione copiato"
 
@@ -493,14 +490,12 @@ msgid "Move action up"
 msgstr "Sposta l’azione in alto"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:400
-#, fuzzy
 msgid "Move behavior down"
-msgstr "Sposta comportamento in basso"
+msgstr "Sposta il comportamento in basso"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:399
-#, fuzzy
 msgid "Move behavior up"
-msgstr "Sposta comportamento in alto"
+msgstr "Sposta il comportamento in alto"
 
 #: static_src/ts/components/communication/Calling.ts:321
 msgid "No incoming call accounts are available"
@@ -517,6 +512,10 @@ msgstr "Nessun filtro corrispondente."
 #: static_src/ts/components/PermissionsTable.ts:440
 msgid "No objects"
 msgstr "Nessun oggetto"
+
+#: static_src/ts/components/inbox/CalendarAvailability.ts:79
+msgid "No readable attendee calendars."
+msgstr "Nessun calendario dei partecipanti leggibile."
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:182
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:445
@@ -537,6 +536,10 @@ msgstr "Nessuna riga"
 msgid "No saved filters yet."
 msgstr "Non ci sono ancora filtri salvati."
 
+#: static_src/ts/components/inbox/CalendarAvailability.ts:119
+msgid "No visible conflicts"
+msgstr "Nessun conflitto visibile"
+
 #: static_src/ts/components/text_editor/actions.ts:228
 msgid "Numbered List"
 msgstr "Elenco numerato"
@@ -555,12 +558,10 @@ msgid "Objects"
 msgstr "Oggetti"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:248
-#, fuzzy
 msgid "On change"
 msgstr "Alla modifica"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:248
-#, fuzzy
 msgid "On initial load"
 msgstr "Al caricamento iniziale"
 
@@ -614,7 +615,6 @@ msgid "Remove action"
 msgstr "Rimuovi azione"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:257
-#, fuzzy
 msgid "Remove behavior"
 msgstr "Rimuovi comportamento"
 
@@ -626,7 +626,7 @@ msgstr "Rimuovi condizione"
 msgid "Remove group"
 msgstr "Rimuovi gruppo"
 
-#: static_src/ts/components/inbox/EmailRecipients.ts:104
+#: static_src/ts/components/inbox/EmailRecipients.ts:119
 msgid "Remove recipient"
 msgstr "Rimuovi destinatario"
 
@@ -638,8 +638,11 @@ msgstr "Rimuovi riga"
 msgid "Remove {label}"
 msgstr "Rimuovi {label}"
 
+#: static_src/ts/components/ResizableDiv.ts:368
+msgid "Resize panel"
+msgstr "Ridimensiona pannello"
+
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:162
-#, fuzzy
 msgid "Retry"
 msgstr "Riprova"
 
@@ -648,9 +651,12 @@ msgid "Row title"
 msgstr "Titolo della riga"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:247
-#, fuzzy
 msgid "Run behavior"
 msgstr "Esegui comportamento"
+
+#: static_src/ts/components/inbox/CalendarEventEditor.ts:46
+msgid "Save"
+msgstr "Salva"
 
 #: static_src/ts/components/filters/SavedFilters.ts:89
 #: static_src/ts/components/filters/SavedFilters.ts:90
@@ -694,7 +700,7 @@ msgstr "Cerca modelli"
 msgid "Search unavailable"
 msgstr "Ricerca non disponibile"
 
-#: static_src/ts/components/inbox/EmailRecipients.ts:234
+#: static_src/ts/components/inbox/EmailRecipients.ts:266
 msgid "Searching email addresses…"
 msgstr "Ricerca indirizzi email…"
 
@@ -711,12 +717,10 @@ msgid "Select"
 msgstr "Seleziona"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:78
-#, fuzzy
 msgid "Select action"
 msgstr "Seleziona azione"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:135
-#, fuzzy
 msgid "Select an action and its required target to configure it."
 msgstr "Seleziona un'azione e la relativa destinazione obbligatoria per configurarla."
 
@@ -733,9 +737,12 @@ msgid "Select lookup"
 msgstr "Seleziona ricerca"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:113
-#, fuzzy
 msgid "Select target field"
-msgstr "Seleziona campo di destinazione"
+msgstr "Seleziona il campo di destinazione"
+
+#: static_src/ts/components/inbox/CalendarEventEditor.ts:46
+msgid "Send"
+msgstr "Invia"
 
 #: static_src/ts/components/inbox/EmailEditor.ts:268
 msgid "Sending email…"
@@ -759,20 +766,23 @@ msgstr "Mostra solo i campi obbligatori"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:259
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:308
-#, fuzzy
 msgid "Show behavior"
-msgstr "Mostra comportamento"
+msgstr "Mostra il comportamento"
 
 #: static_src/ts/components/text_editor/BloomerpTextEditor.ts:410
 #: static_src/ts/components/text_editor/BloomerpTextEditor.ts:411
 msgid "Show formatting toolbar"
 msgstr "Mostra la barra degli strumenti di formattazione"
 
+#: static_src/ts/components/inbox/CalendarAvailability.ts:112
+msgid "Start event at"
+msgstr "Inizia evento alle"
+
 #: static_src/ts/components/communication/Calling.ts:124
 msgid "Starting call…"
 msgstr "Avvio della chiamata…"
 
-#: static_src/ts/components/inbox/EmailRecipients.ts:52
+#: static_src/ts/components/inbox/EmailRecipients.ts:65
 msgid "Suggested email addresses"
 msgstr "Indirizzi email suggeriti"
 
@@ -781,7 +791,6 @@ msgid "Table"
 msgstr "Tabella"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:77
-#, fuzzy
 msgid "Target field"
 msgstr "Campo di destinazione"
 
@@ -799,12 +808,10 @@ msgid "The filter editor is not ready."
 msgstr "L'editor dei filtri non è pronto."
 
 #: static_src/ts/components/communication/MeetingLobby.ts:52
-#, fuzzy
 msgid "The host did not admit you."
-msgstr "L’organizzatore non ti ha ammesso."
+msgstr "L'organizzatore non ti ha ammesso."
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:378
-#, fuzzy
 msgid "The saved behavior configuration cannot be edited in this format."
 msgstr "La configurazione del comportamento salvata non può essere modificata in questo formato."
 
@@ -825,9 +832,12 @@ msgid "This editor accepts one condition group per rule."
 msgstr "Questo editor accetta un solo gruppo di condizioni per regola."
 
 #: static_src/ts/components/communication/MeetingLobby.ts:52
-#, fuzzy
 msgid "This meeting is no longer available."
 msgstr "Questa riunione non è più disponibile."
+
+#: static_src/ts/components/inbox/CalendarAvailability.ts:87
+msgid "Time"
+msgstr "Ora"
 
 #: static_src/ts/utils/modals.ts:43
 msgid "Toggle fullscreen"
@@ -860,12 +870,10 @@ msgstr "Impossibile aggiornare le impostazioni dei campi. Riprova."
 
 #: static_src/ts/components/communication/MeetingLobby.ts:26
 #: static_src/ts/components/communication/MeetingLobby.ts:29
-#, fuzzy
 msgid "Unable to request admission."
-msgstr "Impossibile richiedere l’ammissione."
+msgstr "Impossibile richiedere l'ammissione."
 
 #: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:292
-#, fuzzy
 msgid "Unable to save changes. Please try again."
 msgstr "Impossibile salvare le modifiche. Riprova."
 
@@ -874,12 +882,10 @@ msgid "Unable to save the layout. Please try again before editing settings."
 msgstr "Impossibile salvare il layout. Riprova prima di modificare le impostazioni."
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:92
-#, fuzzy
 msgid "Unavailable action: {action}"
 msgstr "Azione non disponibile: {action}"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:117
-#, fuzzy
 msgid "Unavailable field: {field}"
 msgstr "Campo non disponibile: {field}"
 
@@ -887,10 +893,14 @@ msgstr "Campo non disponibile: {field}"
 msgid "Upload image"
 msgstr "Carica immagine"
 
+#: static_src/ts/components/inbox/EmailRecipients.ts:114
+#: static_src/ts/components/inbox/EmailRecipients.ts:325
+msgid "User"
+msgstr "Utente"
+
 #: static_src/ts/components/communication/MeetingLobby.ts:52
-#, fuzzy
 msgid "Waiting for the host to admit you…"
-msgstr "In attesa che l’organizzatore ti ammetta…"
+msgstr "In attesa che l'organizzatore ti ammetta…"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:426
 msgid "Yellow"
@@ -901,9 +911,8 @@ msgid "You do not have permission to move this card."
 msgstr "Non hai l’autorizzazione per spostare questa scheda."
 
 #: static_src/ts/components/communication/MeetingLobby.ts:52
-#, fuzzy
 msgid "You have been admitted. You can now join."
-msgstr "Sei stato ammesso. Ora puoi partecipare."
+msgstr "Ti è stato consentito l'accesso. Ora puoi partecipare."
 
 #: static_src/ts/components/communication/Calling.ts:264
 msgid "You left the call"

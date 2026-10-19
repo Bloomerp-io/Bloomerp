@@ -2,14 +2,13 @@
 
 from uuid import UUID
 
-from django.contrib.auth.models import AnonymousUser
-from django.core.exceptions import PermissionDenied
-
 from bloomerp.models.communication.conferencing import (
     ConferenceParticipant,
     ConferenceSession,
 )
 from bloomerp.models.users.user import AbstractBloomerpUser
+from django.contrib.auth.models import AnonymousUser
+from django.core.exceptions import PermissionDenied
 
 
 def require_participant(
@@ -20,6 +19,17 @@ def require_participant(
         raise PermissionDenied
     participant = session.participants.filter(user=user).first()
     if participant is None:
+        raise PermissionDenied
+    calendar_event = getattr(session, "calendar_event", None)
+    if calendar_event is not None and (
+        calendar_event.cancelled
+        or (
+            participant.role != "host"
+            and not calendar_event.participants.filter(
+                user=user, invitation_cancelled=False
+            ).exists()
+        )
+    ):
         raise PermissionDenied
     if session.room.conversation_id:
         from bloomerp.communication.builtins.instant_messaging.calling import (

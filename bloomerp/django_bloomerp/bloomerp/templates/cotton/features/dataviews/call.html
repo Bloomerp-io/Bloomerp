@@ -1,7 +1,7 @@
-
+{# hide_filters="true" hides applied filters while retaining the filter action. #}
 {% url 'components_dataview' content_type_id=content_type_id as base_url %}
 <div
-	hx-get="{{ base_url }}{% if filters %}{% for key, value in filters.items %}{% if forloop.first %}?{% else %}&{% endif %}{{ key|urlencode }}={{ value|urlencode }}{% endfor %}{% endif %}{% if component_id %}{% if filters %}&{% else %}?{% endif %}_component_id={{ component_id }}{% endif %}{% if args %}{% for key, value in args.items %}{% if filters or component_id or not forloop.first %}&{% else %}?{% endif %}_arg_{{ key|urlencode }}={{ value|urlencode }}{% endfor %}{% endif %}{% if request.GET.urlencode %}{% if filters or component_id or args %}&{% else %}?{% endif %}{{ request.GET.urlencode }}{% endif %}"
+	hx-get="{{ base_url }}{% if filters %}{% for key, value in filters.items %}{% if forloop.first %}?{% else %}&{% endif %}{{ key|urlencode }}={{ value|urlencode }}{% endfor %}{% endif %}{% if component_id %}{% if filters %}&{% else %}?{% endif %}_component_id={{ component_id }}{% endif %}{% if args %}{% for key, value in args.items %}{% if filters or component_id or not forloop.first %}&{% else %}?{% endif %}_arg_{{ key|urlencode }}={{ value|urlencode }}{% endfor %}{% endif %}{% if token %}{% if filters or component_id or args %}&{% else %}?{% endif %}_permission_token={{ token|urlencode }}{% endif %}{% if request.GET.urlencode %}{% if filters or component_id or args or token %}&{% else %}?{% endif %}{{ request.GET.urlencode }}{% endif %}{% if hide_filters|stringformat:"s"|lower == "true" %}{% if filters or component_id or args or token or request.GET.urlencode %}&{% else %}?{% endif %}_arg_hide_filters=true{% endif %}"
 	hx-trigger="load"
 	hx-target="this"
 	hx-swap="outerHTML"

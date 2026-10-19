@@ -1,0 +1,41 @@
+{% load i18n bloomerp %}
+<form id="calendar-event-create-form" method="post" action="{{ form_url }}"
+      hx-post="{{ form_url }}" hx-target="#calendar-event-create-form" hx-swap="outerHTML" hx-push-url="false"
+      hx-sync="this:drop"
+      x-data="{ allDay: {{ form.all_day.value|yesno:'true,false' }}, senderSelected: '{{ form.sender.value|default:''|escapejs }}' }"
+      bloomerp-component="calendar-event-editor"
+      data-recipient-search-url="{% url 'components_search_email_address' %}?calendar_users=1"
+      data-layout="{{ layout|dump_layout_json }}" class="min-w-0{% if data_view_create_id %} -m-3{% endif %}">
+    {% csrf_token %}
+    {% if permission_token %}<input type="hidden" name="_permission_token" value="{{ permission_token }}">{% endif %}
+    {% if data_view_create_id %}<input type="hidden" name="data_view_create_id" value="{{ data_view_create_id }}">{% endif %}
+    <div class="flex flex-col xl:flex-row" data-resizable-div-container>
+        <div class="flex min-w-0 flex-1 flex-col">
+        {% if can_cancel_calendar_event %}
+        <div class="flex justify-end px-6 pt-4">
+            <button type="button" hx-post="{% url 'calendar_events_detail_cancel' pk=object.pk %}" hx-include="closest form" hx-sync="closest form:drop" hx-disabled-elt="this" class="btn btn-danger btn-sm">{% translate 'Cancel event' %}</button>
+        </div>
+        {% endif %}
+        <div class="hidden flex items-center justify-end gap-2 px-6 py-4" id="object-crud-container-buttons">
+            <c-ui.shortcut_tooltip shortcut="mod+s" action="click" position="bottom">
+            <button type="submit" class="btn btn-primary btn-sm" id="object-crud-container-save-button"><i class="fa fa-save" aria-hidden="true"></i><span data-calendar-submit-label>{% if form.attendees.value or form.attendee_users.value and form.attendee_users.value != '[]' %}{% translate 'Send' %}{% else %}{% translate 'Save' %}{% endif %}</span></button>
+            </c-ui.shortcut_tooltip>
+        </div>
+        <div class="space-y-5 p-6">
+            {% if layout_non_field_errors %}
+            <div role="alert" class="text-sm text-danger-dark">{{ layout_non_field_errors|unordered_list }}</div>
+            {% endif %}
+            {% if form.attendees %}
+            <input type="hidden" name="attendee_users" value="{{ form.attendee_users.value|default:'[]' }}" data-identities="{{ attendee_identities }}" data-labels="{{ attendee_labels }}">
+            {% endif %}
+            <div class="space-y-4 [&_[data-layout-grid]]:max-sm:!grid-cols-1 [&_[data-layout-item-id]]:max-sm:!col-span-1" data-layout-root>
+                {% for row in layout.rows %}
+                <c-features.layout.row :row="row" />
+                {% endfor %}
+            </div>
+        </div>
+        </div>
+        <c-features.calendar.availability />
+    </div>
+
+</form>

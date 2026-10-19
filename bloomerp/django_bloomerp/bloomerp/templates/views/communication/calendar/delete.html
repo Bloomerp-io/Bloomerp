@@ -1,0 +1,9 @@
+{% load i18n %}
+{% if calendar_cancellation_required %}
+<div class="space-y-4">
+    <p>{% translate "Cancel this event before deleting it so invited guests receive a cancellation." %}</p>
+    <a href="{{ object.get_absolute_url }}" class="btn btn-secondary">{% translate "Update event" %}</a>
+</div>
+{% else %}
+    {% include "views/generic/detail/delete.html" %}
+{% endif %}

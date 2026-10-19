@@ -3,8 +3,9 @@ import re
 from datetime import date, datetime, timedelta
 from html import unescape
 
+from bs4 import BeautifulSoup
 from django.db import models
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
 from django.test import RequestFactory
 from django.urls import reverse
 from django.utils import timezone
@@ -20,6 +21,7 @@ from bloomerp.models.definition import (
     DataviewHTMLAction,
     DataviewModalAction,
     ModelViewSettings,
+    ObjectModalAction,
     get_model_config,
 )
 from bloomerp.permissions.definition import BloomerpPermission
@@ -1302,16 +1304,32 @@ class TestDataView(BaseBloomerpTestCaseWithModels):
         self.assertNotIn("bg-primary-100", first_name_button.group(1))
 
 
+def _calendar_record_label(instance: models.Model) -> str:
+    """Give the temporary calendar dataview fixture its configured display name."""
+    return str(instance.name)
+
+
+def _calendar_object_action_url(obj: models.Model) -> str:
+    """Return an object-specific modal endpoint without invoking a transport."""
+    return f"/calendar-actions/{obj.pk}/"
+
+
+def _deny_calendar_object_action(request: HttpRequest, obj: models.Model) -> bool:
+    """Keep a denied action out of every calendar representation."""
+    return False
+
+
 class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
     auto_create_customers = False
 
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
+        """Register an isolated fixture without colliding with the real CalendarEvent model."""
         super().setUpClass()
         cls.CalendarEventModel = create_test_models(
             app_label="bloomerp",
             model_defs={
-                "CalendarEvent": {
+                "DataviewCalendarRecord": {
                     "name": models.CharField(max_length=100),
                     "starts_on": models.DateField(null=True, blank=True),
                     "ends_on": models.DateField(null=True, blank=True),
@@ -1322,11 +1340,11 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
                         choices=[("alpha", "Alpha"), ("beta", "Beta")],
                         blank=True,
                     ),
-                    "__str__": lambda self: self.name,
+                    "__str__": _calendar_record_label,
                 },
             },
             use_bloomerp_base=True,
-        )["CalendarEvent"]
+        )["DataviewCalendarRecord"]
         cls._register_dynamic_model_routes([cls.CalendarEventModel])
 
     def _configure_calendar(self, *, with_times=False, view_mode="month"):
@@ -1357,7 +1375,131 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
         preference.save()
         return content_type
 
-    def test_calendar_renders_ranges_year_list_and_color_legend(self):
+    def configure_mixed_calendar(self) -> tuple[ContentType, UserListViewPreference]:
+        """Configure independent timed and exclusive date-only ranges on the flag-free fixture."""
+        content_type = self._configure_calendar(with_times=True, view_mode="month")
+        preference = PreferenceManager(self.admin_user).get_or_create_selected(
+            UserListViewPreference, scope={"content_type_id": content_type.pk},
+        )
+        preference.options["calendar"].update({
+            "start_date_field": "starts_on", "end_date_field": "ends_on",
+        })
+        preference.save(update_fields=["options"])
+        return content_type, preference
+
+    def test_object_actions_render_in_each_calendar_mode_and_unit_page(self) -> None:
+        """Render authorized object actions on timed and date-only events, including paged results."""
+        self.client.force_login(self.admin_user)
+        content_type, preference = self.configure_mixed_calendar()
+        self.addCleanup(setattr, self.CalendarEventModel, "bloomerp_config",
+                        getattr(self.CalendarEventModel, "bloomerp_config", None))
+        config = BloomerpModelConfig()
+        self.CalendarEventModel.bloomerp_config = config
+        config.object_actions = [
+            ObjectModalAction(id="calendar-action", label="Open calendar action", endpoint=_calendar_object_action_url),
+            ObjectModalAction(id="denied-action", label="Denied calendar action", endpoint=_calendar_object_action_url,
+                              should_render_func=_deny_calendar_object_action),
+        ]
+        today = timezone.localdate()
+        start = timezone.make_aware(datetime.combine(today, datetime.min.time()).replace(hour=10))
+        timed = self.CalendarEventModel.objects.create(
+            name="Action timed event", starts_at=start, ends_at=start + timedelta(hours=1),
+        )
+        all_day = self.CalendarEventModel.objects.create(
+            name="Action date-only event", starts_on=today, ends_on=today + timedelta(days=1),
+        )
+        url = reverse("components_dataview", kwargs={"content_type_id": content_type.pk})
+        for mode in ("day", "week", "month", "year", "list"):
+            with self.subTest(mode=mode):
+                preference.options["calendar"]["calendar_view_mode"] = mode
+                preference.options["calendar"].pop("view_mode", None)
+                preference.save(update_fields=["options"])
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 200)
+                self.assertNotContains(response, "Denied calendar action")
+                soup = BeautifulSoup(response.content, "html.parser")
+                for obj in (timed, all_day):
+                    event = soup.select_one(f'[data-calendar-event][data-object-id="{obj.pk}"]')
+                    self.assertIsNotNone(event)
+                    self.assertIsNotNone(event.select_one(f'[hx-get="{_calendar_object_action_url(obj)}"]'))
+                self.assertFalse(soup.select("button button"))
+        unit_url = reverse("components_dataview_renderer_operation", kwargs={
+            "content_type_id": content_type.pk, "preference_id": preference.pk, "action": "unit",
+        })
+        response = self.client.get(unit_url, {
+            "calendar_view_mode": "list", "calendar_unit": today.isoformat(), "calendar_unit_offset": 0,
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, _calendar_object_action_url(timed))
+        self.assertContains(response, _calendar_object_action_url(all_day))
+        self.assertNotContains(response, "Denied calendar action")
+
+    def test_mixed_calendar_pages_exclusive_date_only_ranges(self) -> None:
+        """Render and page all-day dates alongside timed events without an all-day flag."""
+        self.client.force_login(self.admin_user)
+        content_type, preference = self.configure_mixed_calendar()
+        today = timezone.localdate()
+        event = self.CalendarEventModel.objects.create(
+            name="Date-only meeting", starts_on=today, ends_on=today + timedelta(days=1),
+        )
+        start = timezone.make_aware(datetime.combine(today, datetime.min.time()).replace(hour=9))
+        self.CalendarEventModel.objects.create(name="Timed meeting", starts_at=start, ends_at=start + timedelta(hours=1))
+        url = reverse("components_dataview", kwargs={"content_type_id": content_type.pk})
+        response = self.client.get(url, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Date-only meeting")
+        self.assertContains(response, "Timed meeting")
+        unit_url = reverse("components_dataview_renderer_operation", kwargs={
+            "content_type_id": content_type.pk, "preference_id": preference.pk, "action": "unit",
+        })
+        for day, expected in ((today, True), (today + timedelta(days=1), False)):
+            response = self.client.get(unit_url, {
+                "calendar_view_mode": "list", "calendar_unit": day.isoformat(), "calendar_unit_offset": 0,
+            })
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(event.name in response.content.decode(), expected)
+
+    def test_calendar_create_defaults_fill_the_shared_modal_form(self) -> None:
+        """Expose the configured create fields and prefill them through the shared component GET."""
+        self.client.force_login(self.admin_user)
+        content_type, _preference = self.configure_mixed_calendar()
+        url = reverse("components_dataview", kwargs={"content_type_id": content_type.pk})
+        response = self.client.get(url, HTTP_HX_REQUEST="true")
+        self.assertContains(response, 'data-calendar-create-start-field="starts_at"')
+        self.assertContains(response, 'data-calendar-create-start-date-field="starts_on"')
+        start = timezone.make_aware(datetime(2026, 10, 15, 9))
+        end = start + timedelta(hours=1)
+        create_url = reverse("components_create_object", kwargs={"content_type_id": content_type.pk})
+        response = self.client.get(create_url, {
+            "starts_at": start.isoformat(), "ends_at": end.isoformat(), "data_view_create_id": "calendar-cell",
+        }, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+        form = response.context["form"]
+        self.assertEqual(form.fields["starts_at"].clean(form.initial["starts_at"]), start)
+        self.assertEqual(form.fields["ends_at"].clean(form.initial["ends_at"]), end)
+
+    def test_mixed_calendar_edits_the_date_only_pair(self) -> None:
+        """Move a date-only range while retaining its exclusive end and empty datetime fields."""
+        self.client.force_login(self.admin_user)
+        content_type, preference = self.configure_mixed_calendar()
+        event = self.CalendarEventModel.objects.create(
+            name="All-day move", starts_on=date(2026, 10, 15), ends_on=date(2026, 10, 17),
+        )
+        url = reverse("components_dataview_renderer_operation", kwargs={
+            "content_type_id": content_type.pk, "preference_id": preference.pk, "action": "dates",
+        })
+        start = timezone.make_aware(datetime(2026, 10, 16))
+        end = timezone.make_aware(datetime(2026, 10, 18))
+        response = self.client.post(url, json.dumps({"updates": [{
+            "object_id": str(event.pk), "start_ms": round(start.timestamp() * 1000), "end_ms": round(end.timestamp() * 1000),
+        }]}), content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+        event.refresh_from_db()
+        self.assertEqual((event.starts_on, event.ends_on), (start.date(), end.date()))
+        self.assertIsNone(event.starts_at)
+        self.assertIsNone(event.ends_at)
+
+    def test_calendar_renders_ranges_year_list_and_color_legend(self) -> None:
         """
         Use case: A color-grouped event spans several days and users switch calendar modes.
         Expected result: The range is one spanning bar, the legend renders, and saved modes are honored.
@@ -1366,7 +1508,9 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
         self.client.force_login(self.admin_user)
         content_type = self._configure_calendar()
         today = timezone.localdate()
-        event_day = today.replace(day=10)
+        # Keep this range within one week: month rendering splits at week boundaries.
+        event_day = today.replace(day=1)
+        event_day += timedelta(days=(7 - event_day.weekday()) % 7)
         event = self.CalendarEventModel.objects.create(
             name="Conference",
             starts_on=event_day,
@@ -1446,7 +1590,7 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
         self.assertContains(response, 'draggable="true"', html=False)
         self.assertContains(response, "height: max(", html=False)
 
-    def test_calendar_week_renders_multiday_event_as_one_draggable_range(self):
+    def test_calendar_week_renders_multiday_event_as_one_draggable_range(self) -> None:
         """
         Use case: An all-day event spans several dates in week view.
         Expected result: One draggable bar spans the relevant day columns without duplicate entries.
@@ -1470,7 +1614,7 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
         self.assertContains(response, 'class="calendar-event', count=1, html=False)
         self.assertContains(
             response,
-            '<span class="block truncate font-medium">Release window</span>',
+            '<span class="truncate font-medium">Release window</span>',
             count=1,
             html=True,
         )
@@ -1533,7 +1677,7 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
         self.assertEqual((scheduled.starts_on, scheduled.ends_on), (date(2026, 9, 2), date(2026, 9, 5)))
         self.assertEqual((unscheduled.starts_on, unscheduled.ends_on), (date(2026, 9, 10), date(2026, 9, 11)))
 
-    def test_calendar_unit_loads_five_events_at_a_time(self):
+    def test_calendar_unit_loads_five_events_at_a_time(self) -> None:
         """
         Use case: More than five timed events start in the same calendar hour.
         Expected result: The unit renders five events and loads the next page on demand.
@@ -1553,6 +1697,11 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
             )
         url = reverse("components_dataview", kwargs={"content_type_id": content_type.id})
 
+        self.CalendarEventModel.objects.create(
+            name="Earlier overlapping session", starts_at=start - timedelta(minutes=25),
+            ends_at=start + timedelta(minutes=15),
+        )
+
         # 2. Render the current day and verify only the first five unit records are present.
         response = self.client.get(url, HTTP_HX_REQUEST="true")
         self.assertEqual(response.status_code, 200)
@@ -1560,6 +1709,10 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
             self.assertContains(response, f"Session {index}", html=False)
         self.assertNotContains(response, "Session 5", html=False)
         self.assertContains(response, "calendar_unit_offset=5", html=False)
+        initial_cards = BeautifulSoup(response.content, "html.parser").select('[data-calendar-event][title^="Session "]')
+        self.assertEqual(len(initial_cards), 5)
+        self.assertEqual({card["data-calendar-overlap-columns"] for card in initial_cards}, {"8"})
+        self.assertEqual({card["data-calendar-overlap-column"] for card in initial_cards}, {"1", "2", "3", "4", "5"})
 
         # 3. Request the next page through the permission-filtered renderer action.
         page_url = reverse(
@@ -1585,6 +1738,10 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
         self.assertContains(page_response, "Session 5", html=False)
         self.assertContains(page_response, "Session 6", html=False)
         self.assertNotContains(page_response, "Load more", html=False)
+        paged_cards = BeautifulSoup(page_response.content, "html.parser").select('[data-calendar-event]')
+        self.assertEqual({card["data-calendar-overlap-columns"] for card in paged_cards}, {"8"})
+        self.assertEqual({card["data-calendar-overlap-column"] for card in paged_cards}, {"6", "7"})
+        self.assertTrue(all("width: calc(100% / 8 - 0.5rem)" in card["style"] for card in paged_cards))
 
 
 class TestGantDataView(BaseBloomerpTestCaseWithModels):

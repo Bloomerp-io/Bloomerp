@@ -1,4 +1,5 @@
 {% load i18n %}
+{% if create_component_url %}
 <div class="w-full sm:w-auto" data-data-view-button="{{ action.id }}">
     <c-ui.shortcut_tooltip position="bottom" action="click" shortcut="{{ action.shortcut }}">
         <button
@@ -6,7 +7,7 @@
             data-dataview-add-button="true"
             data-dataview-create-button="true"
             data-modal-id="create-object-modal"
-            data-create-url="{% url 'components_create_object' content_type_id=content_type_id %}{% if create_querystring %}?{{ create_querystring }}{% endif %}"
+            data-create-url="{{ create_component_url }}"
             data-target="#create-object-modal-body"
         >
             <i class="fa fa-plus"></i>
@@ -14,3 +15,4 @@
         </button>
     </c-ui.shortcut_tooltip>
 </div>
+{% endif %}

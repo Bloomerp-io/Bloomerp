@@ -1,0 +1,9 @@
+{% load i18n %}
+<div id="data-view-{{ content_type_id }}" bloomerp-component="dataview-container"
+     data-content-type-id="{{ content_type_id }}" data-view-type="calendar" data-view-mode="normal"
+     data-base-url="{{ calendar_url }}" data-url="{{ calendar_current_url }}" data-sync-url="true">
+    <div class="mb-3">
+        <c-ui.search name="q" :value="search_query" input_id="data-view-search-input-{{ content_type_id }}" placeholder="Search events…" />
+    </div>
+    <div id="data-view-data-section">{{ calendar_html|safe }}</div>
+</div>

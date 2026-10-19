@@ -1197,6 +1197,9 @@
   .h-2 {
     height: calc(var(--spacing) * 2);
   }
+  .h-2\.5 {
+    height: calc(var(--spacing) * 2.5);
+  }
   .h-3 {
     height: calc(var(--spacing) * 3);
   }
@@ -1335,6 +1338,9 @@
   .max-h-\[60vh\] {
     max-height: 60vh;
   }
+  .max-h-\[560px\] {
+    max-height: 560px;
+  }
   .max-h-\[calc\(100vh-2rem\)\] {
     max-height: calc(100vh - 2rem);
   }
@@ -1373,6 +1379,9 @@
   }
   .min-h-36 {
     min-height: calc(var(--spacing) * 36);
+  }
+  .min-h-48 {
+    min-height: calc(var(--spacing) * 48);
   }
   .min-h-64 {
     min-height: calc(var(--spacing) * 64);
@@ -1424,6 +1433,9 @@
   }
   .w-2 {
     width: calc(var(--spacing) * 2);
+  }
+  .w-2\.5 {
+    width: calc(var(--spacing) * 2.5);
   }
   .w-2\/3 {
     width: calc(2/3 * 100%);
@@ -4015,6 +4027,13 @@
       }
     }
   }
+  .hover\:text-slate-900 {
+    &:hover {
+      @media (hover: hover) {
+        color: var(--color-slate-900);
+      }
+    }
+  }
   .hover\:underline {
     &:hover {
       @media (hover: hover) {
@@ -4636,6 +4655,11 @@
       grid-template-columns: minmax(0,1fr) minmax(16rem,20rem) auto;
     }
   }
+  .xl\:flex-row {
+    @media (width >= 80rem) {
+      flex-direction: row;
+    }
+  }
   .xl\:gap-0 {
     @media (width >= 80rem) {
       gap: calc(var(--spacing) * 0);
@@ -4660,6 +4684,17 @@
     @media (width >= 80rem) {
       border-style: var(--tw-border-style);
       border-width: 0px;
+    }
+  }
+  .xl\:border-l {
+    @media (width >= 80rem) {
+      border-left-style: var(--tw-border-style);
+      border-left-width: 1px;
+    }
+  }
+  .xl\:border-gray-200 {
+    @media (width >= 80rem) {
+      border-color: var(--color-gray-200);
     }
   }
   .dark\:block {
@@ -4807,6 +4842,20 @@
     &:where(.dark, .dark *) {
       &:disabled {
         color: var(--color-zinc-500);
+      }
+    }
+  }
+  .\[\&_\[data-layout-grid\]\]\:max-sm\:\!grid-cols-1 {
+    & [data-layout-grid] {
+      @media (width < 40rem) {
+        grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+      }
+    }
+  }
+  .\[\&_\[data-layout-item-id\]\]\:max-sm\:\!col-span-1 {
+    & [data-layout-item-id] {
+      @media (width < 40rem) {
+        grid-column: span 1 / span 1 !important;
       }
     }
   }
@@ -5989,6 +6038,27 @@
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
     --tw-outline-style: none;
     outline-style: none;
+  }
+  [data-tile-visualization] > div, [data-tile-visualization] .js-plotly-plot {
+    height: 100% !important;
+  }
+  .workspace-tile--expanded {
+    height: 100%;
+    min-height: calc(var(--spacing) * 0);
+    border-style: var(--tw-border-style);
+    border-width: 0px;
+    padding: calc(var(--spacing) * 0);
+  }
+  .workspace-tile--expanded > [data-layout-item-header], .workspace-tile--expanded > [data-layout-colspan-resize-handle] {
+    display: none;
+  }
+  .workspace-tile--expanded > [data-layout-item-body] {
+    min-height: calc(var(--spacing) * 0);
+    flex: 1;
+    overflow: auto;
+  }
+  .workspace-tile--expanded > [data-layout-item-body] > [data-tile-visualization], .workspace-tile--expanded [bloomerp-component="workspace-tile-canvas"] {
+    height: 100% !important;
   }
   .layout-item--bordered {
     border-radius: var(--radius-xl);

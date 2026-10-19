@@ -1,6 +1,6 @@
 from datetime import datetime
-from typing import Any
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
 from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
@@ -14,6 +14,13 @@ class EmailAttachmentMetadata(BaseModel):
     filename: str
     content_type: str = "application/octet-stream"
     size: int = 0
+
+
+class CalendarEmailPart(BaseModel):
+    """Decoded calendar MIME content, including its declared scheduling method."""
+
+    content: str
+    method: str = ""
 
 
 class BloomerpEmail(BaseModel):
@@ -39,6 +46,7 @@ class BloomerpEmail(BaseModel):
     snippet: str = ""
     raw: dict[str, Any] = Field(default_factory=dict)
     attachments: list[EmailAttachmentMetadata] = Field(default_factory=list)
+    calendar_parts: list[CalendarEmailPart] = Field(default_factory=list)
 
     def retrieval_metadata(self) -> dict[str, Any]:
         return self.model_dump(
@@ -70,6 +78,7 @@ class EmailAttachment(BaseModel):
     filename: str
     content: bytes
     content_type: str = "application/octet-stream"
+    calendar_method: str = ""
 
 
 class BaseEmailAdapter:

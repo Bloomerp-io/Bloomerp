@@ -1,4 +1,4 @@
-from django.http import Http404, HttpRequest, HttpResponse, StreamingHttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed, StreamingHttpResponse
 from bloomerp.models.definition import ObjectAction, get_model_config
 from bloomerp.router import router
 from bloomerp.utils.models import get_object_model_and_content_type_or_404
@@ -37,6 +37,8 @@ def actions_execute(
     
     if not action:
         raise Http404("Action not found")
+    if request.method != action.method:
+        return HttpResponseNotAllowed([action.method])
     
     try:
         response = action.execution_func(request, object)

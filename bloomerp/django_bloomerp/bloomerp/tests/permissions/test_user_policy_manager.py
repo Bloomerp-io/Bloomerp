@@ -732,3 +732,80 @@ class TestUserPermissionManager(BaseBloomerpTestCaseWithModels):
 
         Expected Result: The fields the user has access to
         """
+
+    def permission_token(self, *, public: bool = False) -> str:
+        """Issue a short-lived customer-only grant for row five and its age field."""
+        from datetime import timedelta
+        from django.utils import timezone
+        from bloomerp.permissions.definition import PermissionToken
+
+        return PermissionToken(
+            model_label=self.CustomerModel._meta.label_lower,
+            audience=None if public else str(self.normal_user.pk),
+            public=public,
+            expiry=timezone.now() + timedelta(minutes=5),
+            rule=AccessRule(
+                row_permissions=[RowPolicyRuleContent(
+                    conditions=[{"field_path": "age", "lookup_id": "equals", "value": 5}],
+                    permissions=[BloomerpPermission.VIEW, BloomerpPermission.ADD],
+                )],
+                field_permissions={"age": [BloomerpPermission.VIEW, BloomerpPermission.ADD]},
+            ),
+        ).sign()
+
+    def test_permission_token_scopes_rows_fields_models_and_operations(self) -> None:
+        """Grant only signed rows, fields, and operations without modifying stored policies."""
+        manager = UserPolicyManager(self.normal_user, token=self.permission_token())
+        self.assertTrue(manager.has_global_permission(self.CustomerModel, "view"))
+        self.assertFalse(manager.has_global_permission(self.CustomerModel, "delete"))
+        self.assertFalse(manager.has_global_permission(ApplicationField, "view"))
+        self.assertSetEqual(
+            set(manager.get_accessible_queryset(self.CustomerModel, "view").values_list("pk", flat=True)),
+            set(self.CustomerModel.objects.filter(age=5).values_list("pk", flat=True)),
+        )
+        self.assertEqual(list(manager.get_accessible_fields(self.CustomerModel, "view").values_list("field", flat=True)), ["age"])
+        candidate = self.CustomerModel(age=5)
+        self.assertTrue(manager.candidate_matches_row_policies(candidate, "add"))
+        candidate.age = 6
+        self.assertFalse(manager.candidate_matches_row_policies(candidate, "add"))
+        self.assertFalse(UserPolicyManager(self.normal_user).has_global_permission(self.CustomerModel, "view"))
+
+    def test_permission_token_rejects_tampering_recipient_and_expiry(self) -> None:
+        """Fail closed for altered, misaddressed, and expired signed capabilities."""
+        from datetime import timedelta
+        from django.core.exceptions import PermissionDenied
+        from django.utils import timezone
+        from bloomerp.permissions.definition import PermissionToken
+
+        encoded = self.permission_token()
+        with self.assertRaises(PermissionDenied):
+            UserPolicyManager(self.normal_user, token=encoded + "x")
+        with self.assertRaises(PermissionDenied):
+            UserPolicyManager(self.admin_user, token=encoded)
+        token = PermissionToken.verify(encoded, audience=str(self.normal_user.pk))
+        token.expiry = timezone.now() - timedelta(seconds=1)
+        with self.assertRaises(PermissionDenied):
+            UserPolicyManager(self.normal_user, token=token.sign())
+
+    def test_public_permission_token_supports_anonymous_manager(self) -> None:
+        """An explicitly public capability grants only its signed scope to anonymous callers."""
+        manager = UserPolicyManager(None, token=self.permission_token(public=True))
+        self.assertTrue(manager.has_global_permission(self.CustomerModel, "view"))
+        self.assertEqual(list(manager.get_accessible_fields(self.CustomerModel, "view").values_list("field", flat=True)), ["age"])
+        self.assertFalse(manager.get_accessible_queryset(self.CustomerModel, "view").exclude(age=5).exists())
+
+    def test_permission_token_action_urls_stay_same_origin(self) -> None:
+        """Preserve tokens for actions while withholding them from external destinations."""
+        from unittest.mock import patch
+        from django.test import RequestFactory
+        from bloomerp.permissions.access_tokens import permission_token_url
+
+        encoded = self.permission_token()
+        request = RequestFactory().get("/calendar/", {"_permission_token": encoded})
+        request.user = self.normal_user
+        with patch("bloomerp.middleware.current_request", return_value=request):
+            self.assertIn("_permission_token=", permission_token_url(request, "/actions/?page=1"))
+            self.assertEqual(permission_token_url(request, "https://external.example/action/"), "https://external.example/action/")
+            self.assertTrue(UserPolicyManager(self.normal_user).has_global_permission(self.CustomerModel, "view"))
+            self.assertFalse(UserPolicyManager(self.admin_user, token=None)._token_rule(self.CustomerModel))
+        self.assertIsNone(UserPolicyManager(self.normal_user).token)

@@ -148,11 +148,13 @@ export abstract class BaseDataViewCell extends BaseComponent {
         }
     }
 
+    /** Navigate on cell double-clicks while leaving embedded action controls independent. */
     private setupEventListeners() : void {
         if (!this.element) return;
 
         // Click event
-        this.element.addEventListener('dblclick', (event)=>{
+        this.element.addEventListener('dblclick', (event: MouseEvent): void => {
+            if (event.target instanceof Element && event.target.closest('[data-no-row-click]')) return;
             this.click()
         })
     }

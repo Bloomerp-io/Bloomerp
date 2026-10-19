@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Literal, Optional
-from pydantic import BaseModel, Field, PrivateAttr, model_validator
+from typing import Any, Literal, Optional, Self
+from pydantic import AwareDatetime, BaseModel, Field, PrivateAttr, model_validator
 
 from bloomerp.filters.definition import Filter, FilterCondition
 
@@ -176,3 +176,34 @@ class AccessRule(BaseModel):
     field_permissions: dict[str, list[BloomerpPermission | str]] = Field(default_factory=dict)
     
     
+class PermissionToken(BaseModel):
+    """A signed, model-scoped capability issued by trusted server-side code."""
+
+    version: Literal[1] = 1
+    model_label: str
+    rule: AccessRule
+    expiry: AwareDatetime
+    audience: str | None = None
+    public: bool = False
+
+    @model_validator(mode="after")
+    def validate_scope(self) -> Self:
+        """Require a model identifier and an explicit recipient or public bearer grant."""
+        if len(self.model_label.split(".")) != 2 or not all(self.model_label.split(".")):
+            raise ValueError("Use the model's app_label.model_name identifier")
+        if self.public == bool(self.audience):
+            raise ValueError("Choose either a recipient or an explicit public token")
+        return self
+
+    def sign(self) -> str:
+        """Sign this capability without concealing its payload; issuance is server-only."""
+        from bloomerp.permissions.access_tokens import sign_permission_token
+
+        return sign_permission_token(self)
+
+    @classmethod
+    def verify(cls, token: str, *, audience: str | None = None) -> Self:
+        """Verify integrity, expiry, schema, and the intended recipient before granting access."""
+        from bloomerp.permissions.access_tokens import verify_permission_token
+
+        return verify_permission_token(token, audience=audience)

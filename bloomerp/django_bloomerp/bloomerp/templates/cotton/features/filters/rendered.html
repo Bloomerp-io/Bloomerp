@@ -1,11 +1,13 @@
 {% load i18n bloomerp %}
+{% url 'components_filters_value_editor' as value_editor_url %}
+{% url 'components_filters_defaults' as defaults_url %}
 {% can_manage_preference_object request.user filter_host as can_manage_defaults %}
 {% translate "Edit filter" as edit_filter_title %}
 
 
 <div data-rendered-filters
-     data-defaults-url="{% url 'components_filters_defaults' %}"
-     data-value-editor-url="{% url 'components_filters_value_editor' %}"
+     data-defaults-url="{{ defaults_url|with_permission_token:request }}"
+     data-value-editor-url="{{ value_editor_url|with_permission_token:request }}"
      data-host-id="{{ filter_host.pk }}"
      data-can-manage-defaults="{{ can_manage_defaults|yesno:'true,false' }}"
      data-default-filters="{{ filter_host.default_filter_records_json }}"

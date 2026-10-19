@@ -113,7 +113,7 @@
 	</section>
 
 	<!--Side section-->
-	<c-ui.resizable_div id="detail-aside" toggle_shortcut="mod+shift+y" start_width="22rem" fit_to_main_bottom="true" force_open="{% if highlight_comment_id %}true{% endif %}" class="w-full xl:border-0 border-t border-gray-200  xl:h-full xl:min-h-0 xl:self-stretch xl:-ml-px xl:w-[22rem]">
+	<c-ui.resizable_div id="detail-aside" toggle_shortcut="mod+shift+y" start_width="22rem" fit_to_main_bottom="true" force_open="{% if highlight_comment_id %}true{% endif %}" force_close="{% if detail_sidebar_force_close %}true{% endif %}" class="w-full xl:border-0 border-t border-gray-200  xl:h-full xl:min-h-0 xl:self-stretch xl:-ml-px xl:w-[22rem]">
 		<aside class="xl:h-full xl:min-h-0">
 			<div class="relative flex flex-col overflow-hidden border-r border-gray-200 bg-white xl:h-full xl:min-h-0" data-resizable-div-panel>
 				<div class="pointer-events-none absolute left-0 top-0 z-40 h-full w-px bg-gray-200"></div>

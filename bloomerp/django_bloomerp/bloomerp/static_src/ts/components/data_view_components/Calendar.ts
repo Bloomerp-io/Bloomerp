@@ -61,14 +61,19 @@ export class Calendar extends BaseDataViewComponent {
     private mutationInFlight = false;
     private activeGestureController: AbortController | null = null;
     private activeGestureCleanup: (() => void) | null = null;
+    private currentTimeTimer: number | null = null;
 
+    /** Bind calendar navigation, preference changes, and event editing to this instance. */
     public override initialize(): void {
         if (!this.element) return;
         super.initialize();
 
-        this.viewMode = this.element.dataset.viewMode || "week";
+        this.viewMode = this.element.dataset.calendarViewMode || "week";
         this.pageOffset = Number.parseInt(this.element.dataset.pageOffset || "0", 10) || 0;
         const controller = this.ensureAbortController();
+        if (["day", "week", "month"].includes(this.viewMode) && this.dataViewContainer?.canCreate) {
+            this.element.addEventListener("dblclick", this.onEmptyCellDoubleClick, { signal: controller.signal });
+        }
 
         this.element.querySelectorAll<HTMLElement>("[data-calendar-nav]").forEach((button) => {
             button.addEventListener("click", () => {
@@ -80,18 +85,14 @@ export class Calendar extends BaseDataViewComponent {
         });
 
         const modeSelect = this.element.querySelector<HTMLSelectElement>("[data-calendar-view-mode]");
-        modeSelect?.addEventListener("change", () => {
-            const optionsSelect = this.dataViewContainer?.element?.querySelector<HTMLSelectElement>(
-                '[data-display-options-form] [name="view_mode"]',
-            );
-            if (!optionsSelect) return;
-            optionsSelect.value = modeSelect.value;
-            optionsSelect.dispatchEvent(new Event("change", { bubbles: true }));
+        modeSelect?.addEventListener("change", (): void => {
+            void this.persistViewMode(modeSelect);
         }, { signal: controller.signal });
 
         this.element.addEventListener("pointerdown", this.onEventPointerDown, {
             signal: controller.signal,
         });
+        this.element.addEventListener("focusin", this.onCellFocus, { signal: controller.signal });
         this.element.addEventListener("dragstart", this.onCalendarDragStart, {
             signal: controller.signal,
         });
@@ -119,9 +120,41 @@ export class Calendar extends BaseDataViewComponent {
         }, { capture: true, signal: controller.signal });
 
         this.restorePendingFocus();
+        this.updateCurrentTime();
+        if (this.element.querySelector("[data-calendar-current-time]")) {
+            if (this.currentTimeTimer !== null) window.clearInterval(this.currentTimeTimer);
+            this.currentTimeTimer = window.setInterval(this.updateCurrentTime, 30_000);
+        }
     }
 
+    /** Position the current-time indicator across today or the entire current week. */
+    private updateCurrentTime = (): void => {
+        if (!this.element?.isConnected) {
+            if (this.currentTimeTimer !== null) window.clearInterval(this.currentTimeTimer);
+            this.currentTimeTimer = null;
+            return;
+        }
+        const parts = new Intl.DateTimeFormat("en-CA", {
+            timeZone: this.element.dataset.calendarTimezone || undefined,
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+        }).formatToParts(new Date());
+        const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+        const today = `${values.year}-${values.month}-${values.day}`;
+        const minutes = Number(values.hour) * 60 + Number(values.minute);
+        const markers = Array.from(this.element.querySelectorAll<HTMLElement>("[data-calendar-current-time]"));
+        const showAcrossWeek = this.viewMode === "week"
+            && markers.some((marker) => marker.dataset.calendarCurrentTime === today);
+        for (const marker of markers) {
+            marker.classList.toggle("hidden", !showAcrossWeek && marker.dataset.calendarCurrentTime !== today);
+            marker.style.top = `${minutes / 1440 * 100}%`;
+        }
+    };
+
+    /** Release event gestures and the live current-time indicator timer. */
     public override destroy(): void {
+        if (this.currentTimeTimer !== null) window.clearInterval(this.currentTimeTimer);
+        this.currentTimeTimer = null;
         this.activeGestureController?.abort();
         this.activeGestureController = null;
         this.activeGestureCleanup?.();
@@ -143,6 +176,76 @@ export class Calendar extends BaseDataViewComponent {
 
     public moveCellRight(): BaseDataViewCell {
         return this.move("right");
+    }
+
+    /** Create from empty date cells while leaving event double-click navigation untouched. */
+    private onEmptyCellDoubleClick = (event: MouseEvent): void => {
+        const target = event.target as HTMLElement | null;
+        if (!target || target.closest("[data-calendar-event], [data-calendar-load-more], a, input, select, textarea")) return;
+        const cell = target.closest<HTMLElement>("[data-calendar-unit-section]");
+        if (!cell || !this.element?.contains(cell)) return;
+        const values = this.getCreateInitialValues(cell);
+        const opener = cell.querySelector<HTMLElement>("[data-calendar-unit-cell]") ?? cell;
+        if (!values || !this.dataViewContainer?.openCreateForm(values, opener)) return;
+        event.preventDefault();
+        event.stopPropagation();
+    };
+
+    /** Map server-generated cell boundaries to the configured date or datetime field names. */
+    private getCreateInitialValues(cell: HTMLElement): Record<string, string> | null {
+        const data = this.element?.dataset;
+        const startField = data?.calendarCreateStartField;
+        const unit = cell.dataset.calendarUnit;
+        if (!startField || !unit || !cell.dataset.calendarCreateStart || !cell.dataset.calendarCreateEnd) return null;
+        const day = unit.slice(0, 10);
+        const dateStart = data.calendarCreateStartDateField;
+        const dateEnd = data.calendarCreateEndDateField;
+        if (this.viewMode === "month" && dateStart && dateEnd) {
+            return { [dateStart]: day, [dateEnd]: cell.dataset.calendarCreateEnd.slice(0, 10) };
+        }
+        const isDate = data.calendarStartFieldType === "DateField";
+        const values = { [startField]: isDate ? day : cell.dataset.calendarCreateStart };
+        const endField = data.calendarCreateEndField;
+        if (endField) {
+            values[endField] = isDate
+                ? (startField === dateStart ? cell.dataset.calendarCreateEnd.slice(0, 10) : day)
+                : cell.dataset.calendarCreateEnd;
+        }
+        return values;
+    }
+
+    /** Save the selected calendar period without relying on a display-options form. */
+    private async persistViewMode(select: HTMLSelectElement): Promise<void> {
+        const url = this.element?.dataset.calendarModeUrl;
+        if (!url || select.disabled) return;
+        select.disabled = true;
+        const csrfToken = getCsrfToken();
+        const signal = this.ensureAbortController().signal;
+        try {
+            const response = await fetch(url, {
+                method: "POST",
+                credentials: "same-origin",
+                signal,
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
+                },
+                body: JSON.stringify({ view_mode: select.value }),
+            });
+            if (!response.ok) throw new Error("Unable to save the calendar view mode.");
+            const optionsSelect = this.dataViewContainer?.element?.querySelector<HTMLSelectElement>(
+                '[data-display-options-form] [name="calendar_view_mode"]',
+            );
+            if (optionsSelect) optionsSelect.value = select.value;
+            this.dataViewContainer?.filter({ calendar_page: null, calendar_view_mode: null });
+        } catch (error) {
+            if (signal.aborted) return;
+            select.value = this.viewMode;
+            showMessage("Unable to save the calendar view mode.", MessageType.ERROR);
+            console.error("Failed to save the calendar view mode", error);
+        } finally {
+            select.disabled = false;
+        }
     }
 
     private navigateTo(pageOffset: number, preserveFocus: boolean = false): void {
@@ -260,6 +363,19 @@ export class Calendar extends BaseDataViewComponent {
         return true;
     }
 
+    /** Synchronize keyboard selection when Tab or an assistive control focuses an event directly. */
+    private onCellFocus = (event: FocusEvent): void => {
+        const target = event.target as HTMLElement | null;
+        if (target?.closest("[data-calendar-object-actions]")) return;
+        const element = target?.closest<HTMLElement>('[bloomerp-component="calendar-cell"]');
+        const cell = element ? getComponent(element) : null;
+        if (cell instanceof CalendarCell) {
+            this.focus(cell);
+            this.collapseSelectionToActive();
+        }
+    };
+
+    /** Walk individual records within a slot before moving to a neighboring calendar unit. */
     private move(direction: CalendarDirection): BaseDataViewCell {
         if (!this.currentCell) this.initFocus();
         if (!this.currentCell) throw new Error("Calendar has no cells to navigate");
@@ -271,13 +387,10 @@ export class Calendar extends BaseDataViewComponent {
         const unitCells = this.cellsForUnit(unit);
         const itemIndex = unitCells.indexOf(current);
         const forward = direction === "down" || direction === "right";
-        const cyclesItems = direction === "up"
-            || direction === "down"
-            || (this.viewMode !== "week" && this.viewMode !== "day");
-        if (cyclesItems && forward && itemIndex >= 0 && itemIndex < unitCells.length - 1) {
+        if (forward && itemIndex >= 0 && itemIndex < unitCells.length - 1) {
             return unitCells[itemIndex + 1];
         }
-        if (cyclesItems && !forward && itemIndex > 0) {
+        if (!forward && itemIndex > 0) {
             return unitCells[itemIndex - 1];
         }
 
@@ -340,6 +453,7 @@ export class Calendar extends BaseDataViewComponent {
         return Boolean(this.element?.dataset.calendarEndFieldType);
     }
 
+    /** Move both original boundaries using date-only or timed grid semantics for the event. */
     private buildMovedUpdate(
         item: HTMLElement,
         direction: CalendarDirection,
@@ -350,20 +464,21 @@ export class Calendar extends BaseDataViewComponent {
         if (!objectId || !Number.isFinite(start)) return null;
         const update: CalendarDateUpdate = {
             object_id: objectId,
-            start_ms: this.shiftTimestamp(start, direction),
+            start_ms: this.shiftTimestamp(start, direction, item.dataset.calendarAllDay === "true"),
         };
         if (this.hasEndField && Number.isFinite(end)) {
-            update.end_ms = this.shiftTimestamp(end, direction);
+            update.end_ms = this.shiftTimestamp(end, direction, item.dataset.calendarAllDay === "true");
         }
         return update;
     }
 
-    private shiftTimestamp(timestamp: number, direction: CalendarDirection): number {
+    /** Move date-only events by calendar days and timed events by the current grid unit. */
+    private shiftTimestamp(timestamp: number, direction: CalendarDirection, allDay: boolean = false): number {
         const shifted = new Date(timestamp);
         const amount = direction === "left" || direction === "up" ? -1 : 1;
-        if (this.viewMode === "week" && (direction === "up" || direction === "down")) {
+        if (!allDay && this.viewMode === "week" && (direction === "up" || direction === "down")) {
             shifted.setHours(shifted.getHours() + amount);
-        } else if (this.viewMode === "day") {
+        } else if (!allDay && this.viewMode === "day") {
             shifted.setHours(shifted.getHours() + amount);
         } else if (this.viewMode === "month" && (direction === "up" || direction === "down")) {
             shifted.setDate(shifted.getDate() + amount * 7);
@@ -375,9 +490,11 @@ export class Calendar extends BaseDataViewComponent {
         return shifted.getTime();
     }
 
+    /** Resize a permitted event boundary while retaining its inferred date or datetime semantics. */
     private onEventPointerDown = (event: PointerEvent): void => {
         if (!this.element || event.button !== 0 || this.mutationInFlight) return;
         const target = event.target as HTMLElement | null;
+        if (target?.closest("[data-calendar-object-actions]")) return;
         const edge = target?.closest<HTMLElement>("[data-calendar-resize-start], [data-calendar-resize-end]");
         const item = target?.closest<HTMLElement>("[data-calendar-event]");
         if (!item) return;
@@ -478,7 +595,7 @@ export class Calendar extends BaseDataViewComponent {
                 ? (vertical ? "up" : "left")
                 : (vertical ? "down" : "right");
             for (let index = 0; index < Math.abs(units); index += 1) {
-                value = this.shiftTimestamp(value, direction);
+                value = this.shiftTimestamp(value, direction, item.dataset.calendarAllDay === "true");
             }
             const start = Number(item.dataset.calendarStart);
             const end = Number(item.dataset.calendarEnd);
@@ -496,7 +613,7 @@ export class Calendar extends BaseDataViewComponent {
 
     private onCalendarDragStart = (event: DragEvent): void => {
         const target = event.target as HTMLElement | null;
-        if (target?.closest("[data-calendar-resize-start], [data-calendar-resize-end]")) {
+        if (target?.closest("[data-calendar-object-actions], [data-calendar-resize-start], [data-calendar-resize-end]")) {
             event.preventDefault();
             return;
         }

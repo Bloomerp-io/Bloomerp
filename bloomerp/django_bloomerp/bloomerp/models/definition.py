@@ -1,15 +1,13 @@
-import json
 import inspect
+import json
 import re
 from dataclasses import dataclass
 from typing import Any, Callable, Literal, Optional, Type
 from urllib.parse import urlsplit
 
+from django.conf import settings
+from django.db.models import Model, QuerySet
 from django.http import HttpRequest, HttpResponse, StreamingHttpResponse
-from bloomerp.config.definition import BloomerpConfig
-from bloomerp.dataviews.definition import BaseDataview
-from bloomerp.permissions.definition import AccessRule, BloomerpPermission
-from bloomerp.workspaces.base import BaseTileConfig
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -18,8 +16,12 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from django.conf import settings
-from django.db.models import Model, QuerySet
+
+from bloomerp.config.definition import BloomerpConfig
+from bloomerp.dataviews.definition import BaseDataview
+from bloomerp.permissions.definition import AccessRule, BloomerpPermission
+from bloomerp.workspaces.base import BaseTileConfig
+
 
 class LayoutItem(BaseModel):
     id: int | str
@@ -265,6 +267,7 @@ class ObjectAction(BaseModel):
     label:str
 
     execution_func:Callable[[HttpRequest, Model], HttpResponse | StreamingHttpResponse | None]
+    method: Literal["GET", "POST"] = "POST"
     
     should_render_func:Callable[[HttpRequest, Model], bool] = lambda req, obj : True
     
@@ -317,10 +320,13 @@ class DataviewAction(BaseModel):
     id: str
     label: str
     execution_func: Callable[[DataviewActionContext], HttpResponse]
+    method: Literal["GET", "POST"] = "POST"
     shortcut: str | None = None
     should_render_func: Callable[[DataviewActionContext], bool] = lambda context: True
     icon: str | None = None
     style: Literal["primary", "secondary"] = "secondary"
+    target: str | None = None
+    button_attrs: dict[str, Any] | None = None
 
 
 class DataviewModalAction(BaseModel):
@@ -335,10 +341,32 @@ class DataviewModalAction(BaseModel):
     modal_size: Literal["sm", "md", "lg", "xl", "full"] = "md"
 
 
-def get_default_dataview_actions(skip:Optional[list[str]]=None) -> list[DataviewHTMLAction]:
-    """Return a new copy of the standard Dataview toolbar configuration."""
+def can_create_dataview_object(context: DataviewActionContext) -> bool:
+    """Enable Add only when the model exposes a create route and the user has add permission."""
+    from django.urls import NoReverseMatch, reverse
+
+    from bloomerp.permissions.manager import UserPolicyManager
+    from bloomerp.utils.models import get_create_view_url
+
+    if not UserPolicyManager(context.request.user).has_global_permission(context.model, BloomerpPermission.ADD):
+        return False
+    try:
+        reverse(get_create_view_url(context.model))
+    except NoReverseMatch:
+        return False
+    return True
+
+
+def get_default_dataview_actions(
+    skip: list[str] | None = None,
+    include: list[str] | None = None,
+) -> list[DataviewHTMLAction]:
+    """Return standard toolbar actions in order, limited by include and then skip.
+
+    An omitted include selects all defaults; an empty include selects none.
+    Skip takes precedence when an action appears in both lists.
+    """
     template_root = "components/objects/dataview_actions"
-    resolved = []
     
     actions = [
         DataviewHTMLAction(
@@ -348,6 +376,7 @@ def get_default_dataview_actions(skip:Optional[list[str]]=None) -> list[Dataview
         ),
         DataviewHTMLAction(
             id="add",
+            should_render_func=can_create_dataview_object,
             template_name=f"{template_root}/add.html",
             shortcut="mod+2",
         ),
@@ -372,14 +401,12 @@ def get_default_dataview_actions(skip:Optional[list[str]]=None) -> list[Dataview
             shortcut="mod+6",
         ),
     ]
-    if skip:
-        for action in actions:
-            if action.id not in skip:
-                resolved.append(action)
-                
-        return resolved
-    
-    return actions
+    return [
+        action
+        for action in actions
+        if (include is None or action.id in include)
+        and (not skip or action.id not in skip)
+    ]
     
 
 class DetailViewSettings(BaseModel):

@@ -28,7 +28,7 @@ class InboxView(BaseBloomerpView, TemplateView):
     template_name = "views/communication/inbox.html"
     
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
-        """Present accessible inbox folders and their configured mailbox labels."""
+        """Present accessible folders, mailbox labels, and authorized Inbox calendar navigation."""
         ctx = super().get_context_data(**kwargs)
         ctx.update(self.get_inbox_context())
         return ctx
@@ -47,6 +47,12 @@ class InboxView(BaseBloomerpView, TemplateView):
             for folder_type in INBOX_FOLDER_REGISTRY.values()
             if not folder_type.source_model
         ]
+        from bloomerp.communication.calendar.access import can_view_inbox_calendar
+
+        ctx["inbox_calendar_url"] = (
+            reverse("inbox_calendar", kwargs={"inbox_id": inbox.pk})
+            if inbox and can_view_inbox_calendar(self.request.user) else None
+        )
         ctx["inbox"] = inbox
         ctx["inbox_preference"] = inbox_preference
         ctx["can_manage_inbox"] = bool(

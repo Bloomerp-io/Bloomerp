@@ -9,6 +9,7 @@ from bloomerp.models.definition import (
     LayoutItem,
     LayoutRow,
     ModelViewSettings,
+    get_default_dataview_actions,
 )
 from bloomerp.models.project_management.todo import Todo
 
@@ -20,6 +21,36 @@ from bloomerp.models.definition import (
 )
 
 from bloomerp.workspaces.text_tile.model import TextTileConfig
+
+
+class DefaultDataviewActionTests(SimpleTestCase):
+    """Cover toolbar selection without requiring database-backed model fixtures."""
+
+    def test_include_limits_actions_in_standard_order(self) -> None:
+        """Select requested defaults while retaining their established toolbar order."""
+        actions = get_default_dataview_actions(include=["display-options", "add"])
+        self.assertEqual([action.id for action in actions], ["add", "display-options"])
+
+    def test_empty_include_returns_no_actions(self) -> None:
+        """Distinguish an explicit empty selection from the default toolbar."""
+        self.assertEqual(get_default_dataview_actions(include=[]), [])
+
+    def test_skip_takes_precedence_over_include(self) -> None:
+        """Keep excluded actions absent even when explicitly included."""
+        actions = get_default_dataview_actions(
+            include=["add", "export"], skip=["add"]
+        )
+        self.assertEqual([action.id for action in actions], ["export"])
+
+    def test_omitted_include_preserves_existing_skip_behavior(self) -> None:
+        """Preserve the full toolbar and positional skip argument for existing callers."""
+        defaults = get_default_dataview_actions()
+        actions = get_default_dataview_actions(["add"])
+        self.assertEqual(len(defaults), 6)
+        self.assertEqual(
+            [action.id for action in actions],
+            [action.id for action in defaults if action.id != "add"],
+        )
 
 
 class BloomerpModelConfigTileTests(SimpleTestCase):

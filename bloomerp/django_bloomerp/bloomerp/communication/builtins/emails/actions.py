@@ -8,16 +8,24 @@ from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 from django.urls import reverse
 
-from bloomerp.communication.builtins.emails.mailboxes import merge_mailboxes, normalize_mailboxes
-from bloomerp.communication.builtins.emails.base_adapter import BloomerpEmail, EmailAttachment
-from bloomerp.communication.builtins.emails.email_providers import EmailProviderDefinition
+from bloomerp.communication.builtins.emails.base_adapter import (
+    BloomerpEmail,
+    EmailAttachment,
+)
+from bloomerp.communication.builtins.emails.email_providers import (
+    EmailProviderDefinition,
+)
+from bloomerp.communication.builtins.emails.mailboxes import (
+    merge_mailboxes,
+    normalize_mailboxes,
+)
 from bloomerp.communication.builtins.emails.registry import EMAIL_PROVIDER_REGISTRY
 from bloomerp.models.communication.email_account import EmailAccount
 
 if TYPE_CHECKING:
+    from bloomerp.communication.builtins.emails.base_adapter import BaseEmailAdapter
     from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
     from bloomerp.models.communication.inbox.inbox_item import InboxItem
-    from bloomerp.communication.builtins.emails.base_adapter import BaseEmailAdapter
 
 DEEP_QUERY_LIMIT = 50
 DEFAULT_MAILBOX = "INBOX"
@@ -95,15 +103,9 @@ def _is_locally_stored_outbound_email(inbox_item: "InboxItem") -> bool:
 
 
 def render_email(inbox_item:"InboxItem", request: HttpRequest) -> str:
-    """_summary_
+    """Render email content, attachments, and policy-authorized calendar response controls."""
+    from bloomerp.communication.calendar.access import invitation_context
 
-    Args:
-        inbox_item (InboxItem): _description_
-        request (HttpRequest): _description_
-
-    Returns:
-        str: _description_
-    """
     metadata = inbox_item.raw_meta_data or {}
     content = metadata.get("outbound_body_html")
     if content is None:
@@ -128,6 +130,8 @@ def render_email(inbox_item:"InboxItem", request: HttpRequest) -> str:
         {
             "content": content,
             "files": files,
+            "calendar_invitation": invitation_context(inbox_item, request.user),
+            "calendar_needs_review": any(result.get("outcome") == "requires_review" for result in metadata.get("calendar_processing", [])),
         },
         request=request,
     )
@@ -270,6 +274,7 @@ def _upsert_email_inbox_item_result(
     email: BloomerpEmail,
     folder: "InboxFolder",
 ) -> tuple["InboxItem", bool]:
+    """Persist provider email metadata and process scheduling content on every sync path."""
     from bloomerp.communication.registry import INBOX_FOLDER_REGISTRY
     from bloomerp.models.communication.inbox.inbox_item import InboxItem
 
@@ -312,6 +317,13 @@ def _upsert_email_inbox_item_result(
         }
         inbox_item.datetime_received = email.date
         inbox_item.save()
+        if email.calendar_parts:
+            from bloomerp.communication.calendar.incoming import process_calendar_email
+
+            account = _resolve_email_account_from_folder(folder)
+            sent_mailboxes = {name for name, settings in normalize_mailboxes(account.mailboxes).items() if settings["sent_folder"]}
+            if email.mailbox not in sent_mailboxes:
+                process_calendar_email(email, folder, inbox_item)
     return inbox_item, created
 
 

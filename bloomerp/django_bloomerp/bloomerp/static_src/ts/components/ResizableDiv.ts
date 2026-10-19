@@ -56,6 +56,10 @@ export default class ResizableDiv extends BaseComponent {
             this.currentWidth = parseWidth(this.element.dataset.startWidth);
             this.saveWidth(this.currentWidth);
         }
+        if (this.element.dataset.forceClose === "true" && this.element.dataset.forceOpen !== "true") {
+            this.expandedWidth = this.currentWidth;
+            this.currentWidth = "0px";
+        }
 
         this.applyWidth(this.currentWidth);
         this.element.style.minWidth = `${this.numberOption("minWidth", MIN_WIDTH)}px`;
@@ -365,7 +369,7 @@ export default class ResizableDiv extends BaseComponent {
             this.resizeFrom === "right" ? "translate-x-1/2" : "-translate-x-1/2",
             "cursor-col-resize",
         ].join(" ");
-        handle.setAttribute("aria-label", "Resize panel");
+        handle.setAttribute("aria-label", t("Resize panel"));
         handle.setAttribute("role", "separator");
         handle.setAttribute("data-resizable-div-handle", "true");
 

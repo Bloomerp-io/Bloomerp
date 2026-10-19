@@ -1,4 +1,9 @@
 {% load i18n %}
+{% if calendar_invitation %}
+{% include "components/communication/calendar/invitation.html" %}
+{% elif calendar_needs_review %}
+<p role="status">{% translate "This calendar message requires review and has not changed your calendar." %}</p>
+{% endif %}
 
 
 {% if files %}

@@ -11,6 +11,9 @@
     data-url="{{ data_view_url }}"
     data-base-url="{{ dataview_base_url }}"
     data-full-create-url="{{ full_create_url|default:'' }}"
+    data-create-url="{{ create_component_url|default:'' }}"
+    data-modal-id="create-object-modal"
+    data-target="#create-object-modal-body"
     data-sync-url="{{ sync_url|yesno:'true,false' }}"
     data-preference-id="{{ preference.pk }}"
     class="flex flex-col"
@@ -51,7 +54,9 @@
             {% endfor %}
         </div>
     </div>
+    {% if not hide_filters %}
     <c-features.filters.rendered scope="model" id="{{ content_type_id }}" :filter_host="preference"/>
+    {% endif %}
 {% endif %}
 
     <!--Table section-->

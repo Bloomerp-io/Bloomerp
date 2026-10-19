@@ -2,14 +2,16 @@
 
 from uuid import UUID
 
+from bloomerp.communication.builtins.conferencing.controller import (
+    ConferenceController,
+    ConferenceUnavailable,
+)
+from bloomerp.router import router
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.http import HttpRequest, JsonResponse
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
-
-from bloomerp.communication.builtins.conferencing.controller import ConferenceController
-from bloomerp.router import router
 
 
 @router.register(
@@ -29,7 +31,7 @@ def join(request: HttpRequest, session_id: UUID) -> JsonResponse:
             status=400,
             headers=headers,
         )
-    except ImproperlyConfigured:
+    except (ConferenceUnavailable, ImproperlyConfigured):
         return JsonResponse(
             {"error": _("Conferencing is unavailable.")}, status=503, headers=headers
         )

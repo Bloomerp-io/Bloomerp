@@ -2,19 +2,20 @@
 {% load bloomerp %}
 
 {% for event in events %}
-<button
-    type="button"
-    class="calendar-event block w-full rounded-xl border px-2 py-1 text-left text-xs shadow-xs transition-opacity hover:opacity-80 {{ event.color_classes }} {% if calendar_view_mode == 'day' or calendar_view_mode == 'week' %}{% if not event.all_day %}absolute left-1 right-1 z-10 overflow-hidden{% endif %}{% endif %}"
-    {% if calendar_view_mode == 'day' or calendar_view_mode == 'week' %}{% if not event.all_day %}style="top: calc({{ event.start_minute }} * 5rem / 60); height: max(1.75rem, calc({{ event.duration_minutes }} * 5rem / 60));"{% endif %}{% endif %}
+<div
+    role="button" tabindex="0"
+    class="calendar-event block w-full rounded-xl border px-2 py-1 text-left text-xs shadow-xs transition-opacity hover:opacity-80 {{ event.color_classes }} {% if calendar_view_mode == 'day' or calendar_view_mode == 'week' %}{% if not event.all_day %}absolute z-10 overflow-hidden{% endif %}{% endif %}"
+    {% if calendar_view_mode == 'day' or calendar_view_mode == 'week' %}{% if not event.all_day %}data-calendar-overlap-column="{{ event.timed_column }}" data-calendar-overlap-columns="{{ event.timed_columns }}" style="top: calc({{ event.start_minute }} * 5rem / 60); height: max(1.75rem, calc({{ event.duration_minutes }} * 5rem / 60)); left: calc({{ event.timed_column }} * 100% / {{ event.timed_columns }} + 0.25rem); width: calc(100% / {{ event.timed_columns }} - 0.5rem);"{% endif %}{% endif %}
     title="{{ event.object }}"
     data-calendar-unit="{{ calendar_unit }}"
     data-calendar-event
+    data-calendar-all-day="{{ event.all_day|yesno:'true,false' }}"
     data-calendar-start="{{ event.start_ms }}"
     data-calendar-end="{{ event.end_ms }}"
     data-calendar-can-edit-start="{{ event.can_edit_start|yesno:'true,false' }}"
     data-calendar-can-edit-end="{{ event.can_edit_end|yesno:'true,false' }}"
     draggable="{{ event.can_move|yesno:'true,false' }}"
-    data-detail-url="{{ event.object.get_absolute_url }}"
+    data-detail-url="{{ event.object.get_absolute_url|with_permission_token:request }}"
     data-object-id="{{ event.object.pk }}"
     data-object-string="{{ event.object }}"
     bloomerp-component="calendar-cell"
@@ -25,10 +26,14 @@
     {% if event.can_edit_end %}
     <span class="absolute {% if calendar_view_mode == 'day' or calendar_view_mode == 'week' %}inset-x-0 bottom-0 h-2 cursor-ns-resize{% else %}inset-y-0 right-0 w-2 cursor-ew-resize{% endif %}" data-calendar-resize-end aria-hidden="true"></span>
     {% endif %}
-    <span class="flex min-w-0 items-center gap-1">
+    <div class="flex min-w-0 items-center gap-1">
+        {% if calendar_view_mode != 'day' and calendar_view_mode != 'week' %}
         {% if event.start_time %}<span class="shrink-0 font-medium">{{ event.start_time|time:"H:i" }}</span>{% endif %}
-        <span class="truncate font-medium">{{ event.object }}</span>
-    </span>
+        {% endif %}
+        <span class="min-w-0 flex-1 truncate font-medium">{{ event.object }}</span>
+        {% include "components/objects/dataview_calendar_group_dots.html" %}
+        {% include "components/objects/dataview_calendar_actions.html" %}
+    </div>
     {% if fields %}
     <span class="mt-0.5 block truncate opacity-75">
         {% for field in fields %}
@@ -36,7 +41,7 @@
         {% endfor %}
     </span>
     {% endif %}
-</button>
+</div>
 {% endfor %}
 
 {% if calendar_has_more %}

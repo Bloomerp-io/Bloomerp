@@ -1,5 +1,7 @@
 """Readable dataview scenarios for the draft unified filtering pipeline."""
 from collections.abc import Callable
+from datetime import timedelta
+from django.utils import timezone
 from unittest import skip
 
 from django.contrib.contenttypes.models import ContentType
@@ -23,6 +25,7 @@ from bloomerp.models.users.user_list_view_preference import UserListViewPreferen
 from bloomerp.permissions.definition import (
     AccessRule,
     BloomerpPermission,
+    PermissionToken,
     RowPolicyRuleCondition,
     RowPolicyRuleContent,
 )
@@ -98,18 +101,19 @@ class TestDataviewComponent(BloomerpComponentTestCase):
             return (
                 set(actual_ids) == expected_ids
                 and len(actual_ids) == len(expected_ids)
+                and (fields is None or {field.field for field in response.context["dataview_render_fields"]} == set(fields))
             )
 
         validate.__name__ = f"contains_entries(exact_count={len(expected_entries)}, fields={fields})"
         return validate
 
-    
+
     def uses_render_value_function(self, field, instance):
         def validate(response):
             return uses_render_value_function(response, instance, field)
-        
+
         return validate
-    
+
     def set_view_type(self, view_type: BaseDataview):
         def set_fields(scenario: RequestScenario):
             preference: UserListViewPreference = PreferenceManager(
@@ -163,7 +167,7 @@ class TestDataviewComponent(BloomerpComponentTestCase):
         document_template_kwargs = {
             "content_type_id": document_template_content_type.pk,
         }
-        
+
         request_scenarios = []
         for dataview_type in DATAVIEW_REGISTRY.values():
             if dataview_type.requires_display_fields:
@@ -185,9 +189,25 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                     )
                 except:
                     print("skipping for ", dataview_type.label)
-        
-            
+
+
         request_scenarios += [
+            RequestScenario(
+                name="FILTERS: Hide applied filters without hiding the filter button or changing results",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                query_params={
+                    **filter_query_params(Filter(connector="AND", conditions=[
+                        FilterCondition(field_path="age", lookup_id="equals", value=3),
+                    ])),
+                    "_arg_hide_filters": "true",
+                },
+                expected=ExpectedResult(response_validators=[
+                    self.contains_entries(customers.filter(age=3)),
+                    self.does_not_contain_text("data-rendered-filters"),
+                    self.contains_text('data-data-view-button="filter"'),
+                ]),
+            ),
             RequestScenario(
                 name="ACCESS: Superuser sees all entries",
                 user=self.admin_user,
@@ -336,7 +356,7 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                         conditions=[
                             FilterCondition(field_path="age", lookup_id="less_than", value=6)
                         ]
-                    )    
+                    )
                 ),
                 expected=ExpectedResult(
                     response_validators=[
@@ -466,7 +486,50 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                 expected=ExpectedResult(
                     status_code=403
                 )
+            ),
+            RequestScenario(
+                name="Access token provides temporary access",
+                user=self.normal_user,
+                view_kwargs=kwargs,
+                prepare=self.set_view_type(TableDataView(display_fields=["age"])),
+                query_params={
+                    "_permission_token" : PermissionToken(
+                        rule=AccessRule(
+                            row_permissions=[
+                                RowPolicyRuleContent(
+                                    connector="AND",
+                                    conditions=[
+                                        FilterCondition(
+                                            field_path="age",
+                                            lookup_id="equals",
+                                            value=5
+                                        )
+                                    ],
+                                    permissions=[BloomerpPermission.VIEW]
+                                )
+                            ],
+                            field_permissions={
+                                "age" : [BloomerpPermission.VIEW]
+                            }
+                        ),
+                        model_label=self.CustomerModel._meta.label_lower,
+                        audience=str(self.normal_user.pk),
+                        expiry=timezone.now() + timedelta(minutes=10),
+                    ).sign()
+                },
+            expected=ExpectedResult(
+                status_code=200,
+                response_validators=[
+                    self.contains_entries(
+                        customers.filter(
+                            age=5
+                        ),
+                        fields=["age"]
+                    )
+                ]
             )
+            ),
+
         ]
 
         request_scenarios.extend(

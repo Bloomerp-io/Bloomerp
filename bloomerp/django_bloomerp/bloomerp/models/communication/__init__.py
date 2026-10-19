@@ -66,3 +66,21 @@ __all__ += [
     "ConferenceRoom", "ConferenceSession", "ConferenceParticipant",
     "ConferenceAttendance", "ConferenceWebhookReceipt",
 ]
+
+from .calendar import (
+    CalendarBooking,
+    CalendarBookingSubmission,
+    CalendarEvent,
+    CalendarEventParticipant,
+)
+
+__all__ += [
+    "CalendarBooking",
+    "CalendarBookingSubmission",
+    "CalendarEvent",
+    "CalendarEventParticipant",
+]
+
+from .calendar import CalendarSchedulingCancellation
+
+__all__ += ["CalendarSchedulingCancellation"]

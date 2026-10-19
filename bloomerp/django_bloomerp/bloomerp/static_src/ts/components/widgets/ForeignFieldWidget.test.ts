@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
 import type { OutputAsset, OutputChunk } from 'rollup';
 import type ForeignFieldWidget from './ForeignFieldWidget.ts';
+import type InboxCalendarOverlay from '../inbox/InboxCalendarOverlay.ts';
 import type { DetailViewCell, DetailViewCellChangeDetail } from '../detail_view_components/DetailViewCell.ts';
 import type ObjectCRUDViewContainer from '../detail_view_components/ObjectCRUDViewContainer.ts';
 import { JSDOM, VirtualConsole, type DOMWindow } from 'jsdom';
@@ -23,13 +24,14 @@ const result = await build({
             if (id !== entry) return null;
             return `
                 import ForeignFieldWidget from '${root}/ts/components/widgets/ForeignFieldWidget';
+                import InboxCalendarOverlay from '${root}/ts/components/inbox/InboxCalendarOverlay';
                 import { DetailViewCell } from '${root}/ts/components/detail_view_components/DetailViewCell';
                 import ObjectCRUDViewContainer from '${root}/ts/components/detail_view_components/ObjectCRUDViewContainer';
                 import { registerComponent, initComponents, getComponent } from '${root}/ts/components/BaseComponent';
                 registerComponent('foreign-field-widget', ForeignFieldWidget);
                 registerComponent('detail-view-value', DetailViewCell);
                 registerComponent('object-crud-view-container', ObjectCRUDViewContainer);
-                export { ForeignFieldWidget, DetailViewCell, ObjectCRUDViewContainer, initComponents, getComponent };
+                export { ForeignFieldWidget, InboxCalendarOverlay, DetailViewCell, ObjectCRUDViewContainer, initComponents, getComponent };
             `;
         },
     }],
@@ -47,6 +49,7 @@ const scriptCode = script.code;
 interface FixtureWindow extends DOMWindow {
     ForeignFieldFixture: {
         ForeignFieldWidget: typeof ForeignFieldWidget;
+        InboxCalendarOverlay: typeof InboxCalendarOverlay;
         DetailViewCell: typeof DetailViewCell;
         ObjectCRUDViewContainer: typeof ObjectCRUDViewContainer;
         initComponents(element: HTMLElement): void;
@@ -166,6 +169,28 @@ test('foreign-key results remain inside the top-layer filter and use host coordi
         assert.equal(f.menu.style.width, '160px');
         assert.equal(f.menu.classList.contains('hidden'), false);
     } finally { dispose(f); }
+});
+
+/** Keep calendar alignment open when its body-portalled picker selects and removes a result. */
+test('calendar alignment stays open for its FK selection and closes for outside clicks', async (): Promise<void> => {
+    const f = await fixture(false);
+    const details = f.w.document.createElement('details');
+    details.open = true;
+    f.widget.before(details);
+    details.append(f.widget);
+    const overlay = new f.w.ForeignFieldFixture.InboxCalendarOverlay(details);
+    overlay.initialize();
+    try {
+        assert.equal(f.menu.parentElement, f.w.document.body);
+        f.menu.querySelector('li[data-id="7"]')!.dispatchEvent(new f.w.MouseEvent('click', { bubbles: true, detail: 1 }));
+        assert.equal(f.component.getValue(), '7');
+        assert.equal(details.open, true);
+        f.w.document.getElementById('outside')!.click();
+        assert.equal(details.open, false);
+    } finally {
+        overlay.destroy();
+        dispose(f);
+    }
 });
 
 /** Preserve ordinary body portal coordinates for forms outside a popover. */

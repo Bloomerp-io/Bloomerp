@@ -3,17 +3,16 @@
 from typing import Any
 from uuid import UUID
 
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import render
-from django.views.decorators.cache import never_cache
-from django.views.decorators.http import require_GET
-
 from bloomerp.communication.builtins.conferencing.sharing import (
     account_presentation,
     shared_session,
 )
 from bloomerp.models.communication.conferencing import ConferenceSession
 from bloomerp.router import router
+from django.http import HttpRequest, HttpResponse
+from django.shortcuts import render
+from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_GET
 
 
 @router.register(
@@ -29,15 +28,38 @@ from bloomerp.router import router
 def meeting(
     request: HttpRequest, token: UUID, model: type[ConferenceSession], **kwargs: Any
 ) -> HttpResponse:
-    """Present a live lobby or a terminal notice without granting admission."""
+    """Present calendar joining, guest admission, or a terminal notice for shared links."""
     session = shared_session(token, allow_ended=True)
-    ended = session.status not in {"ringing", "active"}
+    ended = session.status not in {"pending", "ringing", "active"}
+    participant = (
+        session.participants.filter(user=request.user).first()
+        if request.user.is_authenticated
+        else None
+    )
+    calendar_event = getattr(session, "calendar_event", None)
+    direct_join = bool(
+        not ended
+        and calendar_event is not None
+        and participant
+        and (
+            participant.role == "host"
+            or (
+                session.status != "pending"
+                and calendar_event.participants.filter(
+                    user=request.user, invitation_cancelled=False
+                ).exists()
+            )
+        )
+    )
     response = render(
         request,
         "views/communication/conferencing/meeting.html",
         {
             "token": token,
             "ended": ended,
+            "direct_join": direct_join,
+            "conference_session": session,
+            "starting_meeting": session.status == "pending",
             "joining_name": account_presentation(request.user, session)["displayName"]
             if request.user.is_authenticated and not ended
             else "",

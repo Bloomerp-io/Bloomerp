@@ -1,6 +1,21 @@
 """Value editor rendering and restoration through the scoped POST endpoint."""
+import re
+from datetime import timedelta
+from html import unescape
 from unittest import skip
+from unittest.mock import patch
+from urllib.parse import parse_qs, urlsplit
 
+from django.template.loader import render_to_string
+from django.test import RequestFactory
+from django.utils import timezone
+
+from bloomerp.models.users.user_list_view_preference import UserListViewPreference
+from bloomerp.permissions.definition import (
+    AccessRule,
+    PermissionToken,
+    RowPolicyRuleContent,
+)
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
@@ -17,6 +32,7 @@ class TestValueEditorComponent(BloomerpComponentTestCase):
     create_foreign_models = True
 
     def get_test_scenarios(self) -> list[RequestScenario]:
+        """Cover value restoration and model-scoped authorization for editor requests."""
         model_params = {
             "scope": "model",
             "id": self.get_content_type_for_model(self.CustomerModel).pk,
@@ -24,6 +40,17 @@ class TestValueEditorComponent(BloomerpComponentTestCase):
             "lookup_id": "equals",
         }
         scenarios = [
+            RequestScenario(
+                name="A model-scoped token authorizes the JSON value-editor POST",
+                method="POST", user=self.normal_user, content_type="application/json",
+                data=model_params, prepare=self.attach_view_token,
+                expected=ExpectedResult(response_validators=[response_has_widget, widget_has_input(name="value", type="text")]),
+            ),
+            RequestScenario(
+                name="The same user cannot load the value editor without the token",
+                method="POST", user=self.normal_user, content_type="application/json",
+                data=model_params, expected=ExpectedResult(status_code=403),
+            ),
             RequestScenario(
                 name="EDITOR: Text equality renders a named text input",
                 method="POST",
@@ -174,3 +201,34 @@ class TestValueEditorComponent(BloomerpComponentTestCase):
     @skip("TODO: Define the structured-value restoration contract and widget fixture")
     def test_structured_value_restoration(self):
         """Objects and arrays restore without coercing their contents to strings."""
+
+    def view_token(self) -> str:
+        """Issue a test capability for one readable field on the dynamic customer model."""
+        return PermissionToken(
+            model_label=self.CustomerModel._meta.label_lower,
+            audience=str(self.normal_user.pk), expiry=timezone.now() + timedelta(minutes=5),
+            rule=AccessRule(
+                row_permissions=[RowPolicyRuleContent(permissions=["view"], conditions=[])],
+                field_permissions={"first_name": ["view"]},
+            ),
+        ).sign()
+
+    def attach_view_token(self, scenario: RequestScenario) -> None:
+        """Carry the signed grant in the URL, including when the request body is JSON."""
+        scenario.query_params = {"_permission_token": self.view_token()}
+
+    def test_filter_templates_forward_the_request_token(self) -> None:
+        """Keep all filter subrequests scoped to the same capability as their parent view."""
+        token = self.view_token()
+        request = RequestFactory().get("/calendar/", {"_permission_token": token})
+        request.user = self.normal_user
+        content_type = self.get_content_type_for_model(self.CustomerModel)
+        preference = UserListViewPreference.objects.create(user=self.normal_user, content_type=content_type)
+        context = {"request": request, "scope": "model", "id": content_type.pk, "filter_host": preference}
+        for name in ("container", "rendered"):
+            with self.subTest(template=name), patch("bloomerp.middleware.current_request", return_value=request):
+                html = render_to_string(f"cotton/features/filters/{name}.html", context)
+                urls = re.findall(r'data-[a-z-]+-url="([^"]+)"', html)
+                self.assertTrue(urls)
+                for url in urls:
+                    self.assertEqual(parse_qs(urlsplit(unescape(url)).query).get("_permission_token"), [token])
