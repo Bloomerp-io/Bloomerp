@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -79,6 +79,8 @@ class EmailAttachment(BaseModel):
     content: bytes
     content_type: str = "application/octet-stream"
     calendar_method: str = ""
+    content_id: str = ""
+    disposition: Literal["attachment", "inline"] = "attachment"
 
 
 class BaseEmailAdapter:
