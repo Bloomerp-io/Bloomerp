@@ -1,17 +1,34 @@
 from typing import TYPE_CHECKING
+
 from django.db import models
 from django.urls import reverse
-from bloomerp.models.definition import DetailTab, DetailTabsConfiguration, FieldLayout, LayoutItem, LayoutRow, ModelViewSettings
-from bloomerp.models.definition import BloomerpModelConfig, DetailViewSettings, ObjectModalAction
+from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_noop
+
+from bloomerp.dataviews.table.config import TableDataView
+from bloomerp.models.definition import (
+    BloomerpModelConfig,
+    DetailTab,
+    DetailTabsConfiguration,
+    DetailViewSettings,
+    FieldLayout,
+    LayoutItem,
+    LayoutRow,
+    ModelViewSettings,
+    ObjectModalAction,
+)
+from bloomerp.models.mixins import TimestampModelMixin
 from bloomerp.models.mixins.absolute_url_model_mixin import AbsoluteUrlModelMixin
 from bloomerp.models.mixins.user_stamp_model_mixin import UserStampModelMixin
-from bloomerp.models.mixins import TimestampModelMixin
-from django.utils.translation import gettext_lazy as _, gettext_noop
-from bloomerp.workspaces.analytics_tile.model import AnalyticsTileConfig, AnalyticsTileType, FieldConfig
+from bloomerp.workspaces.analytics_tile.model import (
+    AnalyticsTileConfig,
+    AnalyticsTileType,
+    FieldConfig,
+)
 
 if TYPE_CHECKING:
-    from bloomerp.models.automation.workflow_node import WorkflowNode
     from bloomerp.models.automation.workflow_edge import WorkflowEdge
+    from bloomerp.models.automation.workflow_node import WorkflowNode
 
 
 class Workflow(
@@ -94,7 +111,19 @@ class Workflow(
             kwargs={"pk":x.pk}
         ),
         model_view_settings=ModelViewSettings(
-            
+            default_dataviews=[
+                TableDataView(
+                    name=gettext_noop("Workflows"),
+                    display_fields=[
+                        "name",
+                        "active",
+                        "run_asynchronously",
+                        "enable_logging",
+                        "datetime_updated",
+                    ],
+                    sort_field="name",
+                )
+            ]
         ),
         tiles=[
             AnalyticsTileConfig(

@@ -1,15 +1,26 @@
-from django.db import models
-from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.models import ContentType
-from django.urls import reverse
-from bloomerp.models.application_field import ApplicationField
-from bloomerp.models.definition import FieldLayout, LayoutItem, LayoutRow
-from bloomerp.models import BloomerpModel
-from bloomerp.models.definition import BloomerpModelConfig, ObjectHTMLAction, DetailViewSettings
-from bloomerp.models.mixins.content_layout_model_mixin import ContentLayoutModelMixin
-from django.utils.translation import gettext_lazy as _, gettext_noop
-from bloomerp.services.sectioned_layout_services import create_default_layout
+from django.core.exceptions import ValidationError
+from django.db import models
 from django.db.models.query import QuerySet
+from django.urls import reverse
+from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_noop
+
+from bloomerp.dataviews.table.config import TableDataView
+from bloomerp.models import BloomerpModel
+from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.definition import (
+    BloomerpModelConfig,
+    DetailViewSettings,
+    FieldLayout,
+    LayoutItem,
+    LayoutRow,
+    ModelViewSettings,
+    ObjectHTMLAction,
+)
+from bloomerp.models.mixins.content_layout_model_mixin import ContentLayoutModelMixin
+from bloomerp.services.sectioned_layout_services import create_default_layout
+
 
 class Form(BloomerpModel, ContentLayoutModelMixin, models.Model):
     
@@ -18,6 +29,22 @@ class Form(BloomerpModel, ContentLayoutModelMixin, models.Model):
         verbose_name_plural = _("Forms")
 
     bloomerp_config = BloomerpModelConfig(
+        model_view_settings=ModelViewSettings(
+            default_dataviews=[
+                TableDataView(
+                    name=gettext_noop("Forms"),
+                    display_fields=[
+                        "name",
+                        "content_type",
+                        "requires_review",
+                        "requires_authentication",
+                        "opens_at",
+                        "closes_at",
+                    ],
+                    sort_field="name",
+                )
+            ]
+        ),
         create_redirect_url_func=lambda x: reverse("forms_detail_form_builder", kwargs={"pk" : x.id}),
         detail_view_settings=DetailViewSettings(
             layouts=[FieldLayout(

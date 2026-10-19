@@ -12,6 +12,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.crypto import salted_hmac
 from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_noop
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError as SchemaValidationError
 
@@ -19,6 +20,7 @@ from bloomerp.agents.definition import RunBudgets
 from bloomerp.agents.providers.definition import AIProviderCredentialsSchema
 from bloomerp.agents.providers.registry import AI_PROVIDER_REGISTRY, provider_choices
 from bloomerp.agents.runtime import AgentRuntimeConfig, AgentRuntimeCredentials
+from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models.base_bloomerp_model import BloomerpModel
 from bloomerp.models.definition import (
     ActivityLogSettings,
@@ -30,6 +32,7 @@ from bloomerp.models.definition import (
     FieldLayout,
     LayoutItem,
     LayoutRow,
+    ModelViewSettings,
     StringSearchSettings,
 )
 from bloomerp.modules.bloomai import BloomAIModule
@@ -54,6 +57,15 @@ class AIAgent(BloomerpModel):
 
     # Plaintext credentials stay out of generated APIs, generic forms, and activity logs.
     bloomerp_config = BloomerpModelConfig(
+        model_view_settings=ModelViewSettings(
+            default_dataviews=[
+                TableDataView(
+                    name=gettext_noop("AI agents"),
+                    display_fields=["name", "provider", "model_identifier", "enabled"],
+                    sort_field="name",
+                )
+            ]
+        ),
         module=BloomAIModule,
         detail_view_settings=DetailViewSettings(
             layouts=[

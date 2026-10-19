@@ -1,18 +1,29 @@
 from __future__ import annotations
-from django.utils.translation import gettext_lazy as _, gettext_noop
 
 import secrets
 
+from bloomerp.dataviews.table.config import TableDataView
+from bloomerp.models import BloomerpModel
+from bloomerp.models.definition import (
+    ApiSettings,
+    BloomerpModelConfig,
+    DetailViewSettings,
+    FieldLayout,
+    LayoutItem,
+    LayoutRow,
+    ModelViewSettings,
+    ObjectAction,
+)
+from bloomerp.modules.users import UsersModule
 from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
 from django.db import models
 from django.http import HttpResponse
 from django.utils import timezone
-from bloomerp.models import BloomerpModel
-from bloomerp.models.definition import FieldLayout, LayoutItem, LayoutRow
-from bloomerp.models.definition import ApiSettings, BloomerpModelConfig, DetailViewSettings, ModelViewSettings, ObjectAction
-from bloomerp.modules.users import UsersModule
+from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_noop
 from django_htmx.http import HttpResponseClientRefresh
+
 
 def revoke_api_key_action(request, api_key) -> HttpResponse:
     # TODO: Integrate with permissions
@@ -72,9 +83,21 @@ class ApiKey(BloomerpModel):
             ]
         ),
         model_view_settings=ModelViewSettings(
-            skip_views=[
-                
-            ]
+            default_dataviews=[
+                TableDataView(
+                    name=gettext_noop("API keys"),
+                    display_fields=[
+                        "name",
+                        "account",
+                        "is_usable",
+                        "last_used_at",
+                        "expires_at",
+                        "revoked_at",
+                    ],
+                    sort_field="name",
+                )
+            ],
+            skip_views=[],
         )
     )
 
