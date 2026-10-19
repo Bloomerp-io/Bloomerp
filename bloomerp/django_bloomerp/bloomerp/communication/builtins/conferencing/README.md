@@ -131,8 +131,10 @@ event. Scheduling a room must not provision an active media session.
 
 ### Call tab ownership
 
-Starting or accepting a call opens a presentation tab from the initiating browser
-gesture. The original application shell retains the transport, credentials, audio
+Starting or accepting a call keeps the original tab visible until its initial
+microphone/camera requests have resolved or been rejected, then opens a presentation
+tab. Browsers may block this delayed pop-up; the inline controls and **Open call**
+button remain available for an explicit retry. The original application shell retains the transport, credentials, audio
 playback, microphone and camera. Its compact controls include **Open call**;
 closing the presentation tab never leaves or rejoins the call. The presentation
 mirrors authorized controls and existing video streams, with muted video elements
@@ -180,8 +182,10 @@ same reservation. No empty IM conversation is created.
 `IMCallCapabilities.share_links` enables the shared `share_url` control for
 conference sessions. Hosts also receive `admissions_url`; carrier transports
 without these capabilities expose neither control. Links address a public model
-view for `ConferenceSession`, are random per occurrence, and stop resolving
-when the meeting ends, is archived, or its source no longer permits sharing.
+view for `ConferenceSession` and are random per occurrence. Ended, cancelled and
+failed meetings show a styled terminal notice without lobby controls or media
+credentials. Unknown links, archived rooms and sources that no longer permit
+sharing still return 404. Admission and credential endpoints remain live-only.
 Existing sessions receive unique tokens during migration 0097.
 
 `ConferenceAdmission` stores a pending, admitted or rejected visitor separately

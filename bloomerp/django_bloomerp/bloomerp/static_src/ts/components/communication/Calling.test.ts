@@ -38,15 +38,15 @@ const result = await build({
                         /** Observe hardware cleanup. */
                         async disconnect(): Promise<void> { window.calls.push(['disconnect']); },
                         /** Observe microphone consent. */
-                        async microphone(value: boolean): Promise<void> { window.calls.push(['microphone', value]); },
+                        async microphone(value: boolean): Promise<void> { window.calls.push(['microphone', value]); await window.microphonePermission; },
                         /** Reflect browser-native sharing state. */
                         screenSharing(): boolean { return Boolean(window.sharing); },
                         /** Observe screen capture consent. */
                         async screenShare(value: boolean): Promise<void> { if (window.cancelScreen) throw new Error('Screen selection cancelled'); window.sharing = value; window.calls.push(['screen', value]); },
                         /** Observe camera consent. */
-                        async camera(value: boolean): Promise<void> { window.calls.push(['camera', value]); },
+                        async camera(value: boolean): Promise<void> { window.calls.push(['camera', value]); await window.cameraPermission; },
                         /** Observe explicit audio playback. */
-                        async playAudio(): Promise<void> { window.calls.push(['audio']); }
+                        async playAudio(): Promise<void> { window.calls.push(['audio']); if (window.failPlayback) throw new Error('Audio playback blocked'); }
                     };
                 }
             `;
@@ -70,6 +70,9 @@ const template = readFileSync(`${root}/../templates/components/communication/cal
 interface FixtureWindow extends DOMWindow {
     calls: unknown[][];
     failConnect: boolean;
+    failPlayback: boolean;
+    microphonePermission?: Promise<void>;
+    cameraPermission?: Promise<void>;
     sharing: boolean;
     cancelScreen: boolean;
     roster: { id: string; displayName: string; avatar?: string; initials?: string; local?: boolean; video?: HTMLVideoElement; screenVideo?: HTMLVideoElement }[];
@@ -312,12 +315,12 @@ test('call tab closes and reopens while original tab keeps the transport', async
     } finally { f.component.destroy(); f.dom.window.close(); }
 });
 
-/** Verify popup creation precedes requests and a blocked popup never prevents calling. */
-test('popup opens in the initial gesture and blocked tabs have an inline fallback', async function (): Promise<void> {
+/** Verify delayed popup blocking never prevents an otherwise connected call. */
+test('blocked delayed tabs have an inline fallback', async function (): Promise<void> {
     const f = fixture(false);
     try {
-        /** Assert opening is synchronous with the click, before any request starts. */
-        f.w.open = function blocked(): null { assert.equal(f.requests.length, 0); return null; };
+        /** Assert opening occurs after requests and microphone permission have settled. */
+        f.w.open = function blocked(): null { assert.equal(f.requests.length, 2); assert.ok(f.w.calls.some(function microphone(call: unknown[]): boolean { return call[0] === 'microphone'; })); return null; };
         await click(f, 'start');
         assert.match(f.shell.querySelector('[data-call-error]')!.textContent!, /Allow pop-ups/);
         assert.equal(f.shell.querySelector<HTMLElement>('[data-call-media]')!.hidden, false);
@@ -515,4 +518,41 @@ test('owner controls collapse and expand independently of the call tab', async f
         assert.equal(f.requests.length, requestCount);
         assert.equal(f.w.calls.length, operationCount);
     } finally { f.component.destroy(); f.dom.window.close(); }
+});
+
+/** Keep the permission owner visible until acceptance or rejection settles capture. */
+test('start, join and answer delay the call tab until media permissions settle', async function (): Promise<void> {
+    for (const action of ['start', 'join', 'answer']) {
+        for (const denied of [false, true]) {
+            const f = fixture();
+            // An autoplay rejection must not bypass the initial capture prompts.
+            f.w.failPlayback = !denied;
+            let allowMicrophone!: () => void;
+            let settleCamera!: () => void;
+            f.w.microphonePermission = new Promise<void>(function pending(resolve: () => void): void { allowMicrophone = resolve; });
+            f.w.cameraPermission = new Promise<void>(function pending(resolve: () => void, reject: (error: Error) => void): void {
+                /** Resolve the simulated browser prompt only when the test supplies consent. */
+                settleCamera = (): void => { if (denied) reject(new f.w.Error('Camera permission denied')); else resolve(); };
+            });
+            try {
+                if (action === 'answer') notify(f, 'ringing');
+                if (action === 'join') {
+                    const button = f.w.document.createElement('button');
+                    button.dataset.callAction = 'join'; button.dataset.joinUrl = '/join';
+                    f.w.document.body.append(button);
+                }
+                await click(f, action);
+                assert.equal(f.children.length, 0);
+                allowMicrophone();
+                await new Promise<void>(function settle(resolve: () => void): void { setTimeout(resolve, 0); });
+                assert.equal(f.children.length, 0);
+                settleCamera();
+                await new Promise<void>(function settle(resolve: () => void): void { setTimeout(resolve, 0); });
+                assert.equal(f.children.length, 1);
+                assert.equal(f.shell.querySelector<HTMLElement>('[data-call-action="leave"]')!.hidden, false);
+                if (denied) assert.match(f.shell.querySelector('[data-call-error]')!.textContent!, /Camera permission denied/);
+                else assert.match(f.shell.querySelector('[data-call-error]')!.textContent!, /Audio playback blocked/);
+            } finally { f.component.destroy(); f.dom.window.close(); }
+        }
+    }
 });
