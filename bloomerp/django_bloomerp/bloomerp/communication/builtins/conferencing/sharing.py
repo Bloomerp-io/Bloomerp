@@ -70,12 +70,15 @@ def sharing_controls(
     return result
 
 
-def shared_session(token: UUID) -> ConferenceSession:
-    """Resolve live or calendar-reserved links without exposing closed or cancelled meetings."""
+def shared_session(token: UUID, *, allow_ended: bool = False) -> ConferenceSession:
+    """Resolve live and calendar-reserved links, optionally presenting terminal calls."""
+    statuses = ["ringing", "active"]
+    if allow_ended:
+        statuses.extend(["ended", "cancelled", "failed"])
     session = (
         ConferenceSession.objects.select_related("room__conversation")
         .filter(
-            Q(status__in=["ringing", "active"])
+            Q(status__in=statuses)
             | Q(status="pending", calendar_event__isnull=False),
             share_token=token,
             room__archived=False,

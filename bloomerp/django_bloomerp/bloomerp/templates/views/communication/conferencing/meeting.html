@@ -2,8 +2,12 @@
 <!doctype html>
 <html><head>{% include 'snippets/head.html' %}<meta name="referrer" content="no-referrer"></head>
 <body class="bg-base text-gray-800 min-h-screen p-6">
-<main {% if not direct_join %}bloomerp-component="bloomerp:meeting-lobby"{% endif %} class="mx-auto max-w-xl bg-white rounded-xl border border-gray-200 p-6 shadow-sm" data-status-url="{% url 'components_conferencing_admission_status' token=token %}">
+<main class="mx-auto max-w-xl bg-white rounded-xl border border-gray-200 p-6 shadow-sm" {% if not ended and not direct_join %}bloomerp-component="bloomerp:meeting-lobby" data-status-url="{% url 'components_conferencing_admission_status' token=token %}"{% endif %}>
     <img src="{% static 'bloomerp/img/bloomerp-background-trans.png' %}" alt="Bloomerp" class="h-12 mb-6">
+    {% if ended %}
+    <h1 class="text-2xl font-semibold mb-3">{% translate 'This call has ended' %}</h1>
+    <p class="text-gray-500">{% translate 'You can close this tab. Ask the host for a new meeting link to join another call.' %}</p>
+    {% else %}
     <h1 class="text-2xl font-semibold mb-3">{% translate 'Join meeting' %}</h1>
     {% if direct_join %}
     <p class="text-gray-500 mb-6">{% translate 'Joining as' %} <strong>{{ joining_name }}</strong></p>
@@ -22,7 +26,10 @@
     <p data-meeting-status role="status" class="my-4"></p>
     <button type="button" hidden class="btn btn-primary" data-meeting-join data-call-action="join" data-join-url="{% url 'components_conferencing_guest_join' token=token %}"><i class="fa-solid fa-video" aria-hidden="true"></i> {% translate 'Join meeting' %}</button>
     {% endif %}
+    {% endif %}
 </main>
+{% if not ended %}
 {% include 'components/communication/calling/controls.html' %}
 {% include 'snippets/vite_bundle.html' %}
+{% endif %}
 </body></html>

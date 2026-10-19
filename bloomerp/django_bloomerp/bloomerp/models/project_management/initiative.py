@@ -6,13 +6,16 @@ from django.db import models
 from django.db.models import Count
 from django.utils import timezone
 from django.utils.functional import cached_property
-from django.utils.translation import gettext_lazy as _, gettext_noop
+from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_noop
 
+from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.form_fields.behavior import BehaviorAction, BehaviorConfig, BehaviorRule
 from bloomerp.models import BloomerpModel, FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.definition import (
     BloomerpModelConfig,
     DetailViewSettings,
+    ModelViewSettings,
     StringSearchSettings,
 )
 from bloomerp.workspaces.analytics_tile.model import (
@@ -38,6 +41,21 @@ class Initiative(BloomerpModel):
 
     bloomerp_config = BloomerpModelConfig(
         module="todos_and_initiatives",
+        model_view_settings=ModelViewSettings(
+            default_dataviews=[
+                TableDataView(
+                    name=gettext_noop("Initiatives"),
+                    display_fields=[
+                        "name",
+                        "status",
+                        "owner",
+                        "start_date",
+                        "target_date",
+                    ],
+                    sort_field="name",
+                )
+            ],
+        ),
         detail_view_settings=DetailViewSettings(
             layouts=[FieldLayout(
                 rows=[

@@ -1,6 +1,7 @@
 import json
 from typing import Any
 from django.urls import reverse
+from django.utils.html import escape
 from bloomerp.communication.definition import InboxFolderTypeFilterDefinition
 from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
 from bloomerp.permissions.definition import BloomerpPermission
@@ -29,6 +30,12 @@ class InboxView(BaseBloomerpView, TemplateView):
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         """Present accessible folders, mailbox labels, and authorized Inbox calendar navigation."""
         ctx = super().get_context_data(**kwargs)
+        ctx.update(self.get_inbox_context())
+        return ctx
+
+    def get_inbox_context(self) -> dict[str, Any]:
+        """Build the shared inbox fragment context without the surrounding page."""
+        ctx: dict[str, Any] = {}
         preference_manager = PreferenceManager(self.request.user)
         inbox = preference_manager.get_or_create_selected(
             Inbox,
@@ -55,6 +62,7 @@ class InboxView(BaseBloomerpView, TemplateView):
         if inbox and inbox_preference and inbox_preference.selected_inbox_folder:
             folders = inbox.folders.all()
             selected_folder = inbox_preference.selected_inbox_folder
+            ctx["selected_folder_label"] = escape(selected_folder.name)
             folder_type = selected_folder.inbox_folder_type()
             filters = folder_type.resolve_filters(selected_folder)
             ctx["folder_options"] = [
