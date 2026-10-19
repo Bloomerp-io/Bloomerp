@@ -2,7 +2,7 @@ import json
 
 from django import forms
 from django.core import signing
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.core.exceptions import FieldDoesNotExist
@@ -23,13 +23,13 @@ from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.utils.models import get_model_and_content_type_or_404
 from bloomerp.router import router
-from django.http import HttpRequest
+from django.http import Http404, HttpRequest
 from django.http import HttpResponse
 from bloomerp.services.user_services import get_data_view_fields
 from bloomerp.services.object_services import string_search_on_queryset
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.models import ApplicationField
-from django.db.models import Model, QuerySet
+from django.db.models import Model, Q, QuerySet
 import uuid
 from pydantic import ValidationError as PydanticValidationError
 from bloomerp.dataviews.definition import (
@@ -46,8 +46,10 @@ SHELL_RESERVED_QUERY_KEYS = {
     "page",
     "_component_id",
     "_dataview_operation_context",
+    "_dataview_preference_id",
 }
 
+DATAVIEW_PREFERENCE_PARAM = "_dataview_preference_id"
 DATAVIEW_OPERATION_CONTEXT_PARAM = "_dataview_operation_context"
 DATAVIEW_OPERATION_CONTEXT_SALT = "bloomerp.dataview.renderer-operation"
 DATAVIEW_OPERATION_CONTEXT_MAX_AGE = 60 * 60 * 24
@@ -97,6 +99,36 @@ def _valid_dataview_operation_context(
         "content_type_id": content_type_id,
         "preference_id": preference_id,
     }
+
+
+def _resolve_dataview_preference(
+    request: HttpRequest,
+    *,
+    content_type_id: int,
+    preference_id: int,
+) -> UserListViewPreference:
+    """Resolve an available or signed embedded preference without selecting it."""
+    available_preference = (
+        PreferenceManager(request.user).get_available(
+            UserListViewPreference,
+            {"content_type_id": content_type_id},
+        )
+        .filter(Q(pk=preference_id) | Q(source_object_id=preference_id))
+        .first()
+    )
+    if available_preference is not None:
+        return available_preference.effective_preference
+    if _valid_dataview_operation_context(
+        request,
+        content_type_id=content_type_id,
+        preference_id=preference_id,
+    ):
+        return get_object_or_404(
+            UserListViewPreference,
+            pk=preference_id,
+            content_type_id=content_type_id,
+        )
+    raise Http404
 
 
 def _build_dataview_state(
@@ -468,6 +500,17 @@ def dataview(
     """
     
     preference_was_explicit = preference is not None
+    requested_preference_id = request.GET.get(DATAVIEW_PREFERENCE_PARAM)
+    if preference is None and requested_preference_id is not None:
+        try:
+            preference_id = int(requested_preference_id)
+        except (TypeError, ValueError):
+            raise Http404("Invalid list view preference") from None
+        preference = _resolve_dataview_preference(
+            request,
+            content_type_id=content_type_id,
+            preference_id=preference_id,
+        )
     state = _build_dataview_state(
         request,
         content_type_id,
@@ -483,6 +526,8 @@ def dataview(
             request,
             state.preference,
         )
+    elif requested_preference_id is not None:
+        state.operation_context_token = request.GET.get(DATAVIEW_OPERATION_CONTEXT_PARAM)
     
     
     
@@ -497,9 +542,16 @@ def dataview(
         state.options,
     )
     
-    page_querystring = request.GET.copy()
+    # Keep the embedding's preference in every subsequent shell request. A copy
+    # leaves the caller's request unchanged, including when rendering two tiles.
+    data_view_querydict = request.GET.copy()
+    if preference_was_explicit or requested_preference_id is not None:
+        data_view_querydict[DATAVIEW_PREFERENCE_PARAM] = str(state.preference.pk)
+    if state.operation_context_token:
+        data_view_querydict[DATAVIEW_OPERATION_CONTEXT_PARAM] = state.operation_context_token
+    page_querystring = data_view_querydict.copy()
     page_querystring.pop('page', None)
-    search_querystring = request.GET.copy()
+    search_querystring = data_view_querydict.copy()
     search_querystring.pop('page', None)
     search_querystring.pop('q', None)
     create_querystring = request.GET.copy()
@@ -508,6 +560,9 @@ def dataview(
     export_querystring = request.GET.copy()
     export_querystring.pop('page', None)
     export_querystring.pop('_component_id', None)
+    for key in (DATAVIEW_PREFERENCE_PARAM, DATAVIEW_OPERATION_CONTEXT_PARAM):
+        create_querystring.pop(key, None)
+        export_querystring.pop(key, None)
     for key in definition.renderer_cls.get_reserved_query_params():
         search_querystring.pop(key, None)
         create_querystring.pop(key, None)
@@ -522,7 +577,7 @@ def dataview(
         "components_dataview",
         kwargs={"content_type_id": content_type_id},
     )
-    data_view_querystring = request.GET.urlencode()
+    data_view_querystring = data_view_querydict.urlencode()
     renderer_operation_querydict = request.GET.copy()
     if state.operation_context_token:
         renderer_operation_querydict[DATAVIEW_OPERATION_CONTEXT_PARAM] = (

@@ -1,15 +1,11 @@
 from bloomerp.components.objects.dataviews.dataview import (
     DATAVIEW_OPERATION_CONTEXT_PARAM,
     _build_dataview_state,
-    _valid_dataview_operation_context,
+    _resolve_dataview_preference,
 )
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
-from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.router import router
-from bloomerp.services.preference_services import PreferenceManager
-from django.db.models import Q
-from django.http import Http404, HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404
+from django.http import HttpRequest, HttpResponse
 
 
 @router.register(
@@ -26,28 +22,11 @@ def dataview_action(
     action: str,
 ) -> HttpResponse:
     """Dispatch an operation to the renderer of an available preference."""
-    available_preference = (
-        PreferenceManager(request.user).get_available(
-            UserListViewPreference,
-            {"content_type_id": content_type_id},
-        )
-        .filter(Q(pk=preference_id) | Q(source_object_id=preference_id))
-        .first()
-    )
-    if available_preference is not None:
-        preference = available_preference.effective_preference
-    elif _valid_dataview_operation_context(
+    preference = _resolve_dataview_preference(
         request,
         content_type_id=content_type_id,
         preference_id=preference_id,
-    ):
-        preference = get_object_or_404(
-            UserListViewPreference,
-            pk=preference_id,
-            content_type_id=content_type_id,
-        )
-    else:
-        raise Http404
+    )
 
     definition = DATAVIEW_REGISTRY.get(preference.view_type)
     if definition is None:
