@@ -194,17 +194,21 @@ def start_phone_address(
         IMConversationParticipant,
         IMIdentity,
     )
+    from bloomerp.models.communication.voip import VoIPNumber
 
     address = normalize_phone_number(address)
     RegexValidator(
         r"^\+[1-9][0-9]{3,14}$",
         _("Enter an international phone number including the country code."),
     )(address)
+    # Keep DISTINCT in the authorization subquery: PostgreSQL cannot lock a
+    # DISTINCT result, while the outer query locks the concrete line row.
     number = (
-        VoIPAccessManager(user)
-        .get_numbers()
+        VoIPNumber.objects.filter(
+            pk=number_id,
+            pk__in=VoIPAccessManager(user).get_numbers().values("pk"),
+        )
         .select_for_update()
-        .filter(pk=number_id)
         .first()
     )
     if number is None:
