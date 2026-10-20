@@ -85,6 +85,12 @@ IN_APP_NOTIFICATIONS = InboxFolderTypeDefinition(
     is_default=True,
     default_sources=[
         InboxEventSource(
+            key="mentions.created",
+            folder_qs_resolver="bloomerp.communication.builtins.in_app_notifications.mention.resolve_mention_folders",
+            handler="bloomerp.communication.builtins.in_app_notifications.mention.handle_mentions",
+            run_async=False,
+        ),
+        InboxEventSource(
             key="workflow.result",
             folder_qs_resolver="bloomerp.communication.builtins.in_app_notifications.workflow.resolve_workflow_notification_folders",
             handler="bloomerp.communication.builtins.in_app_notifications.workflow.handle_workflow_result",

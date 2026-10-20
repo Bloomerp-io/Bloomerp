@@ -217,6 +217,21 @@ def reconcile_references(
         raise ValidationError("File attachment permission denied.")
     with transaction.atomic():
         type(parent)._base_manager.select_for_update().get(pk=parent.pk)
+        submitted_mentions = {
+            (str(get_user_model()._meta.pk.to_python(reference.target_id)), field_id)
+            for field_id, references in [*fields.items(), (None, manual or [])]
+            for reference in references
+            if reference.kind == "user"
+        }
+        existing_mentions = set()
+        if submitted_mentions:
+            existing_mentions = {
+                (str(user_id), field_id)
+                for user_id, field_id in Mention.objects.filter(
+                    content_type=content_type, object_id=str(parent.pk)
+                ).values_list("user_id", "application_field_id")
+            }
+        new_mentions = submitted_mentions - existing_mentions
         for field_id, references in fields.items():
             Mention.objects.filter(
                 content_type=content_type,
@@ -261,6 +276,7 @@ def reconcile_references(
                         occurrence_id=reference.occurrence_id,
                     )
         if manual is None:
+            _notify_new_mentions(parent, new_mentions, request)
             return
         # Retain inaccessible existing entries: this form cannot knowingly remove them.
         for record in Mention.objects.filter(
@@ -328,7 +344,53 @@ def reconcile_references(
                     application_field=None,
                     occurrence_id=None,
                 )
+        _notify_new_mentions(parent, new_mentions, request)
         parent.__dict__.pop("_prefetched_objects_cache", None)
+
+
+def _notify_new_mentions(
+    parent: models.Model,
+    scopes: set[tuple[str, int | None]],
+    request: HttpRequest | None,
+) -> None:
+    """Batch new recipient/field scopes after reconciliation under the parent lock.
+
+    Repeated occurrences in the same field produce one notification. Existing
+    scopes remain silent even when their editor occurrence IDs change. Removing
+    and later reintroducing a scope is a new mention; old inbox items survive.
+    """
+    if not scopes or request is None:
+        return
+    from bloomerp.communication.inbox_sources import publish_event
+    from bloomerp.models.communication.comment import Comment
+    from bloomerp.utils.labels import safe_object_label
+
+    field_names = dict(ApplicationField.objects.filter(
+        pk__in={field_id for _, field_id in scopes if field_id is not None}
+    ).values_list("pk", "field"))
+    is_comment = isinstance(parent, Comment)
+    label_object = parent.content_object if is_comment else parent
+    object_label = safe_object_label(label_object) if label_object is not None else "Deleted object"
+    url = ""
+    try:
+        url = parent.get_absolute_url()
+    except (AttributeError, NoReverseMatch):
+        pass
+    actor_label = safe_object_label(request.user)
+    mentions = []
+    for user_id, field_id in scopes:
+        field_name = field_names.get(field_id, "")
+        field_label = str(parent._meta.get_field(field_name).verbose_name) if field_name else ""
+        if is_comment:
+            field_label = "Comment"
+        mentions.append({
+            "user_id": user_id,
+            "actor_label": actor_label,
+            "object_label": object_label,
+            "field_label": field_label,
+            "url": url,
+        })
+    publish_event("mentions.created", mentions=mentions)
 
 
 def object_reference_state(

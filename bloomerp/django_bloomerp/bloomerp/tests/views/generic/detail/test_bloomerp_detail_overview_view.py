@@ -1,8 +1,12 @@
+import json
+from unittest.mock import patch
+
 from bs4 import BeautifulSoup
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
+from django.test import RequestFactory
 from django.urls import reverse
 
 from bloomerp.filters.definition import FilterCondition
@@ -59,6 +63,12 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         """Return the permission, layout, persistence, and activity scenarios."""
         customer_kwargs = {"pk": self.customer.pk}
         return [
+            ModelRequestScenario(
+                name="Saving an existing manual mention does not duplicate its inbox item",
+                model=self.CustomerModel, method="POST", user=self.admin_user,
+                view_kwargs=customer_kwargs, prepare=self.prepare_existing_mention,
+                expected=ExpectedResult(status_code=302, response_validators=self.mention_not_duplicated),
+            ),
             ModelRequestScenario(
                 name="Split view opens the detail tab frame without page addendum",
                 model=self.CustomerModel,
@@ -983,3 +993,36 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         """Verify a rejected forged upload preserves the existing avatar value."""
         self.customer.refresh_from_db()
         return self.customer.avatar.name == "avatars/existing-avatar.gif"
+
+
+    def prepare_existing_mention(self, scenario: ModelRequestScenario) -> None:
+        """Seed one notification, then submit the same mention through the detail view."""
+        from bloomerp.models.communication.inbox.inbox import Inbox
+        from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
+        from bloomerp.services.object_reference_services import (
+            Reference,
+            reconcile_references,
+        )
+
+        self.normal_user.is_staff = True
+        self.normal_user.save(update_fields=["is_staff"])
+        inbox = Inbox.objects.create(user=self.normal_user, name="Mentions", selected=True)
+        self.mention_folder = InboxFolder.objects.create(inbox=inbox, type="in_app_notifications")
+        transport = patch("bloomerp.communication.inbox_sources.send_user_inbox_message")
+        transport.start()
+        self.addCleanup(transport.stop)
+        request = RequestFactory().post("/")
+        request.user = self.admin_user
+        reconcile_references(self.customer, {}, [Reference("user", str(self.normal_user.pk))], request)
+        scenario.data = {
+            "first_name": "Allowed", "last_name": "Person", "age": 30,
+            "object_references": json.dumps({"fields": {}, "manual": [
+                {"kind": "user", "target_id": str(self.normal_user.pk)}
+            ]}),
+        }
+
+    def mention_not_duplicated(self, _response: HttpResponse) -> bool:
+        """Ensure the detail save retained exactly the original notification."""
+        from bloomerp.models.communication.inbox.inbox_item import InboxItem
+
+        return InboxItem.objects.filter(folder=self.mention_folder).count() == 1
