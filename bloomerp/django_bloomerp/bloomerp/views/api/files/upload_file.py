@@ -39,7 +39,9 @@ def upload_input_schema() -> dict[str, Any]:
         description=(
             "Upload new file bytes using filename and content_base64. Optionally attach "
             "to an object with model_label and object_id, creating a file reference. "
-            "Omit the object identity to upload without a reference."
+            "Omit the object identity to upload without a reference. Optional field must be "
+            "a BloomerpFileField on that object; uploads append and never replace existing files. "
+            "Default upload limit: 20 MiB decoded bytes, base64 at most 4*ceil(limit/3) characters."
         ),
         input_schema=upload_input_schema,
         output_schema=serializer_output_schema(UploadedFilePlacementSerializer),
