@@ -88,8 +88,14 @@ actual bytes, never a local path for the server to open or an arbitrary URL.
   bytes are stored. A populated single-file field returns 400; multi-file fields
   append within their configured limits. Existing files are never replaced.
 - `api_assistant_file_link` accepts an existing `file_id`, `model_label` and
-  `object_id`. It adds an idempotent generic object reference while preserving
-  existing references and bytes. It does not assign a dedicated field.
+  `object_id`, optionally `field`. Without `field` it adds a generic object
+  reference. With `field` it targets a `BloomerpFileField` using the same row,
+  VIEW/CHANGE, extension, actual stored size and cardinality checks as upload.
+  An occupied single-file field rejects a different file; multi-file fields append.
+  Repeating the same link is a no-op, including when the field is at capacity.
+  The source file must remain readable to the caller. Existing references and
+  bytes are preserved; no bytes are copied. Validation or reference-write failure
+  leaves the source and destination unchanged.
 - `api_file_read` / `POST /api/files/read/`: supply `file_id`, optionally
   `include_content: false` for metadata only. The default returns complete
   original bytes as base64, for both text and binary files, within the inline
@@ -101,7 +107,7 @@ actual bytes, never a local path for the server to open or an arbitrary URL.
 
 Upload results contain `file_id`, `name`, `model_label`, `object_id` and `field`
 (null when no dedicated field was assigned). Link results contain `file_id`,
-`name`, `model_label` and `object_id`. Folder placement is unsupported by these
+`name`, `model_label`, `object_id` and nullable `field`. Folder placement is unsupported by these
 operations; `folder_id` is rejected. Linking adds a reference rather than moving
 or copying the original file. Source and destination permissions are independent.
 

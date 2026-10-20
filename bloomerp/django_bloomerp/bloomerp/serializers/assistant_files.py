@@ -88,6 +88,7 @@ class LinkFileSerializer(FileDestinationSerializer):
     """Identify an already uploaded file without resending its bytes."""
 
     file_id = serializers.UUIDField()
+    field = serializers.CharField(required=False, max_length=255)
     model_label = serializers.CharField(max_length=255)
     object_id = serializers.CharField(max_length=100)
 
@@ -117,3 +118,4 @@ class FilePlacementSerializer(serializers.Serializer):
     name = serializers.CharField(allow_null=True)
     model_label = serializers.CharField(allow_null=True)
     object_id = serializers.CharField(allow_null=True)
+    field = serializers.CharField(allow_null=True)
