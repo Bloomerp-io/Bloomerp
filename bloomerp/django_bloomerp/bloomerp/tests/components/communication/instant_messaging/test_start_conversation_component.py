@@ -3,27 +3,33 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 from typing import Any
+from unittest.mock import patch
 from uuid import UUID
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser
+from django.core.exceptions import PermissionDenied
 from django.db import connection, connections, transaction
 from django.http import HttpResponse
 from django.test import skipUnlessDBFeature
 from django.utils import timezone
 
+from bloomerp.communication.builtins.instant_messaging.access import IMAccessManager
+from bloomerp.communication.builtins.instant_messaging.builtins.phone import (
+    start_phone_address,
+)
 from bloomerp.communication.builtins.instant_messaging.controller import IMController
 from bloomerp.models.communication.instant_messaging import (
     IMConnection,
     IMConversation,
     IMConversationParticipant,
 )
-from bloomerp.communication.builtins.instant_messaging.access import IMAccessManager
+from bloomerp.models.communication.voip import VoIPNumber
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
     RequestScenario,
 )
-
 
 from .phone_fixtures import PhoneDirectoryFixtures
 
@@ -186,6 +192,79 @@ class TestStartConversationComponent(PhoneDirectoryFixtures, BloomerpComponentTe
             self.assertEqual(competing.result(timeout=5), first.pk)
         self.assertEqual(IMConversation.objects.count(), 1)
 
+    def test_phone_line_authorization(self) -> None:
+        """Recheck line assignment, actor eligibility and carrier status at creation."""
+        self.prepare_voip()
+        address = "+32470000003"
+        with patch("bloomerp.communication.builtins.voip.builtins.twilio.TwilioAdapter.client") as carrier:
+            for actor in (
+                AnonymousUser(),
+                get_user_model().objects.create(username="unassigned", is_staff=True),
+                get_user_model().objects.create(username="inactive", is_staff=True, is_active=False),
+                get_user_model().objects.create(username="nonstaff", is_staff=False),
+            ):
+                with self.subTest(actor=actor):
+                    if actor.is_authenticated:
+                        self.number.assigned_users.add(actor)
+                        if actor.username == "unassigned":
+                            self.number.assigned_users.remove(actor)
+                    with self.assertRaises(PermissionDenied):
+                        start_phone_address(actor, self.number.pk, address)
+            self.number.is_active = False
+            self.number.save(update_fields=["is_active"])
+            with self.assertRaises(PermissionDenied):
+                start_phone_address(self.normal_user, self.number.pk, address)
+            self.number.is_active = True
+            self.number.save(update_fields=["is_active"])
+            self.connection.status = "disabled"
+            self.connection.save(update_fields=["status"])
+            with self.assertRaises(PermissionDenied):
+                start_phone_address(self.normal_user, self.number.pk, address)
+            carrier.assert_not_called()
+        self.assertFalse(IMConversation.objects.filter(phone_address=address).exists())
+
+    @skipUnlessDBFeature("has_select_for_update")
+    def test_concurrent_phone_creation(self) -> None:
+        """Serialize phone creation on its line and reuse the committed conversation."""
+        self.prepare_voip()
+        lock_started = Event()
+        lookup_started = Event()
+        address = "+32470000003"
+
+        def observe_queries(
+            execute: Callable[..., Any],
+            sql: str,
+            params: Any,
+            many: bool,
+            context: dict[str, Any],
+        ) -> Any:
+            """Expose the competing request's line lock and subsequent chat lookup."""
+            if "FOR UPDATE" in sql.upper():
+                lock_started.set()
+            if IMConversation._meta.db_table in sql:
+                lookup_started.set()
+            return execute(sql, params, many, context)
+
+        def start_competing_phone() -> UUID:
+            """Start the same line/address chat on a separate database connection."""
+            try:
+                actor = get_user_model().objects.get(pk=self.normal_user.pk)
+                with connection.execute_wrapper(observe_queries):
+                    return start_phone_address(actor, self.number.pk, address).pk
+            finally:
+                connections.close_all()
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            with transaction.atomic():
+                VoIPNumber.objects.select_for_update().get(pk=self.number.pk)
+                competing = executor.submit(start_competing_phone)
+                self.assertTrue(lock_started.wait(timeout=5))
+                self.assertFalse(lookup_started.wait(timeout=0.1))
+                first = start_phone_address(self.normal_user, self.number.pk, address)
+            self.assertEqual(competing.result(timeout=5), first.pk)
+        self.assertEqual(IMConversation.objects.filter(phone_address=address).count(), 1)
+        self.assertEqual(first.participants.count(), 2)
+
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Exercise creation, duplicate selection, denied access and request methods."""
         return [
@@ -213,7 +292,7 @@ class TestStartConversationComponent(PhoneDirectoryFixtures, BloomerpComponentTe
                 expected=ExpectedResult(
                     response_validators=[
                         self.contains_text("Phone directory contact"),
-                        self.contains_text('data-phone-action="call"'),
+                        self.contains_text('data-call-action="start"'),
                     ]
                 ),
             ),
