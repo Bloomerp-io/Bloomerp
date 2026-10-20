@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 from django.apps import apps
 from django.db import transaction
 from django.db.models import Model, QuerySet
+from django.utils.html import escape
 from django.utils.module_loading import import_string
 
 from bloomerp.celery.utils import is_celery_available, parse_cron_schedule
@@ -64,6 +65,8 @@ class InboxSourceExecutionResult:
     outcome: Literal["completed", "skipped"] = "completed"
     deliveries: tuple[InboxSourceDelivery, ...] = ()
     reason: str | None = None
+    defer_notifications_until_commit: bool = False
+    plain_text_notifications: bool = False
     metrics: Mapping[str, int | float | str] = field(default_factory=dict)
 
     @property
@@ -307,8 +310,8 @@ def _deserialize_source_value(value: Any) -> Any:
 
 def execute_registered_source(
     key: str,
-    *args,
-    **kwargs,
+    *args: Any,
+    **kwargs: Any,
 ) -> InboxSourceExecutionResult:
     """Executes a registered source
 
@@ -335,6 +338,15 @@ def execute_registered_source(
             "InboxSourceExecutionResult."
         )
 
+    if result.defer_notifications_until_commit:
+        transaction.on_commit(partial(_broadcast_source_result, key, result), robust=True)
+    else:
+        _broadcast_source_result(key, result)
+    return result
+
+
+def _broadcast_source_result(key: str, result: InboxSourceExecutionResult) -> None:
+    """Broadcast persisted deliveries, after commit when requested by the source."""
     recipient_items: dict[int, list["InboxItem"]] = {}
     for delivery in result.deliveries:
         if not isinstance(delivery, InboxSourceDelivery):
@@ -348,22 +360,25 @@ def execute_registered_source(
         list(recipient_items.keys())
     )
     for recipient_id, items in recipient_items.items():
+        message = (
+            items[0].snippet or items[0].title
+            if len(items) == 1
+            else f"You have {len(items)} new inbox items."
+        )
+        # The existing toast UI accepts HTML; plain-text sources must opt out.
+        if result.plain_text_notifications:
+            message = str(escape(message))
         send_user_inbox_message(
             recipient_id,
             payload=NotificationPayload(
                 notification_count=notification_counts.get(str(recipient_id), 0),
                 toast_payload=ToastPayload(
                     message_type="info",
-                    message=(
-                        items[0].snippet or items[0].title
-                        if len(items) == 1
-                        else f"You have {len(items)} new inbox items."
-                    )
+                    message=message
                 )
             )
         )
 
-    return result
 
 
 def _dispatch_source(

@@ -52,9 +52,13 @@ class SystemMessageDefinition:
 from bloomerp.communication.builtins.in_app_notifications.general import GeneralSystemMessage  # noqa: E402
 from bloomerp.communication.builtins.in_app_notifications.workflow import WorkflowSystemMessage  # noqa: E402
 from bloomerp.communication.builtins.in_app_notifications.form_submission import FormSubmissionMessage
+from bloomerp.communication.builtins.in_app_notifications.mention import MentionSystemMessage
 
 
 class SystemMessage(BaseTypeDefinition):
+    MENTION = SystemMessageDefinition(
+        key="mention", name="Mention", cls=MentionSystemMessage,
+    )
     GENERAL = SystemMessageDefinition(
         key="general",
         name="General",
