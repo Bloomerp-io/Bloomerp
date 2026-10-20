@@ -27,6 +27,73 @@ def override_factory(application_field: ApplicationField) -> forms.Field:
 class TestDisplayOptionFactories(SimpleTestCase):
     """Pure factory metadata checks outside the request scenario abstraction."""
 
+    def test_char_formatting_options_and_widget_wiring(self) -> None:
+        """
+        Use case: A free-text CharField configures optional frontend input formatting.
+        Expected result: Valid settings reach the input and empty settings stay inert.
+        """
+        # 1. Resolve the real option factories and validate their accepted values.
+        source = ApplicationField(
+            field_type="CharField",
+            field="title",
+            meta={},
+            content_type=ContentType(app_label="bloomerp", model="todo"),
+        )
+        options = {
+            option.id: option for option in CHAR_FIELD.get_display_options(source)
+        }
+        for option_id, values in {
+            "formatting": ["uppercase", "lowercase"],
+            "spaces": ["dash", "underscore", "remove"],
+        }.items():
+            editor = options[option_id].build_form_field(source)
+            self.assertFalse(editor.required)
+            self.assertEqual(editor.clean(""), "")
+            for value in values:
+                self.assertEqual(editor.clean(value), value)
+            with self.assertRaises(ValidationError):
+                editor.clean("unsupported")
+
+        # 2. Only active settings attach the centrally registered input component.
+        for config in [
+            {},
+            {"formatting": None, "spaces": None},
+            {"formatting": "", "spaces": ""},
+        ]:
+            widget = CHAR_FIELD.widget_factory(
+                FieldContext(application_field=source, layout_config=config)
+            )
+            self.assertNotIn(
+                "char-field-formatting", widget.render("title", "Mixed Text")
+            )
+        widget = CHAR_FIELD.widget_factory(
+            FieldContext(
+                application_field=source,
+                layout_config={"formatting": "uppercase", "spaces": "dash"},
+            )
+        )
+        markup = widget.render("title", "Mixed Text")
+        self.assertIn('bloomerp-component="char-field-formatting"', markup)
+        self.assertIn('data-formatting="uppercase"', markup)
+        self.assertIn('data-spaces="dash"', markup)
+        self.assertIn('value="Mixed Text"', markup)
+
+        # 3. Fixed choices ignore stale free-text settings and preserve their keys.
+        source.meta = {"choices": [("mixed key", "Choice label")]}
+        option_ids = {option.id for option in CHAR_FIELD.get_display_options(source)}
+        self.assertNotIn("formatting", option_ids)
+        self.assertNotIn("spaces", option_ids)
+        widget = CHAR_FIELD.widget_factory(
+            FieldContext(
+                application_field=source,
+                attrs=source.meta,
+                layout_config={"formatting": "uppercase", "spaces": "dash"},
+            )
+        )
+        markup = widget.render("title", "mixed key")
+        self.assertIn('value="mixed key" selected', markup)
+        self.assertNotIn("char-field-formatting", markup)
+
     def test_metadata_defaults_and_overrides(self) -> None:
         """
         Use case: Factories supply field-specific behavior and optional metadata overrides.

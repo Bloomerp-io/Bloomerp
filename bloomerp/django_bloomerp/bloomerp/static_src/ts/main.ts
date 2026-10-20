@@ -9,6 +9,7 @@ import ChatComposer from './components/ChatComposer';
 import ReferenceAttachments from "./components/detail_view_components/ReferenceAttachments";
 import ArtifactPicker from './components/agent/ArtifactPicker';
 import ColoredChoices from './components/ColoredChoices';
+import CharFieldFormatting from './components/CharFieldFormatting';
 import MappingWidget from './components/MappingWidget';
 import MailboxSettings from './components/widgets/MailboxSettings';
 /**
@@ -202,6 +203,7 @@ registerComponent('ordered-field-select', OrderedFieldSelect);
 registerComponent('mapping-widget', MappingWidget);
 registerComponent('mailbox-settings', MailboxSettings);
 registerComponent('colored-choices', ColoredChoices);
+registerComponent('char-field-formatting', CharFieldFormatting);
 registerComponent('behavior-builder', BehaviorBuilder);
 
 registerComponent('focus-on-form', FocusOnForm);
