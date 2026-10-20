@@ -18,6 +18,7 @@ from pydantic import (
 )
 
 from bloomerp.config.definition import BloomerpConfig
+from bloomerp.filters.definition import Filters
 from bloomerp.dataviews.definition import BaseDataview
 from bloomerp.permissions.definition import AccessRule, BloomerpPermission
 from bloomerp.workspaces.base import BaseTileConfig
@@ -490,7 +491,9 @@ class StringSearchSettings(BaseModel):
 class ActivityLogSettings(BaseModel):
     """Optional settings for a model's audit functionality."""
 
-    enabled : bool = True
+    enabled: bool = True
+    conditions: Filters = Field(default_factory=list)
+    ignored_change_fields: frozenset[str] = Field(default_factory=frozenset)
 
 
 class DefaultPolicy(BaseModel):

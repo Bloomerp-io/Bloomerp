@@ -3,7 +3,11 @@ from types import SimpleNamespace
 
 from bloomerp.models.audit.activity_log import ActivityLog, ActivityLogAction
 from bloomerp.models.definition import ActivityLogSettings, BloomerpModelConfig
-from bloomerp.serializers.model_serializers import _model_serializers, get_serializer_cls, set_serializer_cls
+from bloomerp.serializers.model_serializers import (
+    _model_serializers,
+    get_serializer_cls,
+    set_serializer_cls,
+)
 from bloomerp.services.activity_log_services import ActivityLogManager
 from bloomerp.tests.base import BaseBloomerpTestCaseWithModels
 
@@ -156,3 +160,151 @@ class ActivityLogManagerTestCase(BaseBloomerpTestCaseWithModels):
             activity_log.summary_string,
             "System changed the fields 'first_name', 'last_name' and more",
         )
+
+    def test_condition_groups_reuse_typed_filter_lookup_evaluation(self) -> None:
+        """AND groups and OR alternatives match typed values using shared lookups."""
+        from bloomerp.filters.definition import Filter, FilterCondition
+
+        settings = self.CustomerModel.bloomerp_config.activity_log_settings
+        settings.conditions = [
+            Filter(connector="OR", conditions=[
+                FilterCondition(field_path="first_name", lookup_id="equals", value="Ada"),
+                FilterCondition(field_path="first_name", lookup_id="equals", value="Grace"),
+            ]),
+            Filter(connector="AND", conditions=[
+                FilterCondition(field_path="age", lookup_id="greater_than", value="20"),
+            ]),
+        ]
+        self.assertTrue(ActivityLogManager(self.customer).matches_conditions())
+        self.customer.age = 18
+        self.assertFalse(ActivityLogManager(self.customer).matches_conditions())
+        self.customer.age = 28
+        self.customer.first_name = "Other"
+        self.assertFalse(ActivityLogManager(self.customer).matches_conditions())
+
+    def test_condition_false_suppresses_real_save_and_delete(self) -> None:
+        """Signal paths honor a rejected model-value condition for changes and deletes."""
+        from bloomerp.filters.definition import Filter, FilterCondition
+
+        self.CustomerModel.bloomerp_config.activity_log_settings.conditions = [
+            Filter(connector="AND", conditions=[
+                FilterCondition(field_path="first_name", lookup_id="equals", value="Grace"),
+            ])
+        ]
+        self.customer.age = 29
+        self.customer.save()
+        self.assertEqual(ActivityLog.objects.count(), 0)
+        self.customer.delete()
+        self.assertEqual(ActivityLog.objects.count(), 0)
+
+    def test_invalid_conditions_preserve_audit_with_diagnostic(self) -> None:
+        """A typo or unsupported relation never silently disables the audit trail."""
+        from bloomerp.filters.definition import Filter, FilterCondition
+
+        for path in ("missing_field", "country__name", "datetime_updated", "datetime_created"):
+            with self.subTest(path=path):
+                self.CustomerModel.bloomerp_config.activity_log_settings.conditions = [
+                    Filter(connector="AND", conditions=[
+                        FilterCondition(field_path=path, lookup_id="equals", value="anything"),
+                    ])
+                ]
+                with self.assertLogs("bloomerp.services.activity_log_services", level="ERROR"):
+                    self.assertTrue(ActivityLogManager(self.customer).matches_conditions())
+
+    def test_default_and_ignored_change_paths_do_not_resolve_filter_metadata(self) -> None:
+        """Absent conditions and ignored-only changes add no metadata or write queries."""
+        manager = ActivityLogManager(self.customer)
+        with self.assertNumQueries(0):
+            self.assertTrue(manager.matches_conditions())
+        self.CustomerModel.bloomerp_config.activity_log_settings.ignored_change_fields = frozenset({"age"})
+        manager.payload = [{"field": "age", "from": 28, "to": 29}]
+        with self.assertNumQueries(0):
+            self.assertIsNone(manager.persist())
+
+    def test_partial_save_uses_persisted_condition_value_and_actual_saved_fields(self) -> None:
+        """Unwritten dirty fields neither change a condition nor create phantom diffs."""
+        from bloomerp.filters.definition import Filter, FilterCondition
+
+        self.CustomerModel.bloomerp_config.activity_log_settings.conditions = [
+            Filter(connector="AND", conditions=[
+                FilterCondition(field_path="first_name", lookup_id="equals", value="Ada"),
+            ])
+        ]
+        self.customer.first_name = "Not saved"
+        self.customer.age = 30
+        self.customer.save(update_fields=["age"])
+        log = ActivityLog.objects.get()
+        self.assertEqual(log.payload, [{"field": "age", "from": 28, "to": 30}])
+
+    def test_conditions_filter_creates_and_empty_group_semantics(self) -> None:
+        """Empty OR rejects creation; empty AND and absent conditions retain it."""
+        from bloomerp.filters.definition import Filter
+
+        settings = self.CustomerModel.bloomerp_config.activity_log_settings
+        settings.conditions = [Filter(connector="OR")]
+        self.create_customer("Blocked", "Creation", 30)
+        self.assertEqual(ActivityLog.objects.count(), 0)
+        settings.conditions = [Filter(connector="AND")]
+        self.create_customer("Allowed", "Creation", 30)
+        self.assertEqual(ActivityLog.objects.count(), 1)
+
+    def test_current_user_condition_uses_activity_actor(self) -> None:
+        """The shared current-user placeholder binds to this manager's request actor."""
+        from bloomerp.filters.definition import Filter, FilterCondition
+
+        self.customer.updated_by = self.admin_user
+        self.customer.save(update_fields=["updated_by"])
+        self.CustomerModel.bloomerp_config.activity_log_settings.conditions = [
+            Filter(connector="AND", conditions=[
+                FilterCondition(field_path="updated_by", lookup_id="equals_user", value="$user"),
+            ])
+        ]
+        self.assertTrue(ActivityLogManager(self.customer, SimpleNamespace(user=self.admin_user)).matches_conditions())
+        self.assertFalse(ActivityLogManager(self.customer, SimpleNamespace(user=self.normal_user)).matches_conditions())
+        with self.assertLogs("bloomerp.services.activity_log_services", level="ERROR"):
+            self.assertTrue(ActivityLogManager(self.customer).matches_conditions())
+
+    def test_unknown_lookup_preserves_audit_with_diagnostic(self) -> None:
+        """Invalid lookup configuration keeps the event instead of silently rejecting it."""
+        from bloomerp.filters.definition import Filter, FilterCondition
+
+        self.CustomerModel.bloomerp_config.activity_log_settings.conditions = [
+            Filter(connector="AND", conditions=[
+                FilterCondition(field_path="first_name", lookup_id="not_a_lookup", value="Ada"),
+            ])
+        ]
+        manager = ActivityLogManager(self.customer)
+        manager.payload = [{"field": "age", "from": 28, "to": 29}]
+        with self.assertLogs("bloomerp.services.activity_log_services", level="ERROR"):
+            manager.persist()
+        self.assertEqual(ActivityLog.objects.count(), 1)
+
+    def test_disabled_setting_precedes_condition_evaluation(self) -> None:
+        """Disabled auditing does not query metadata or write even with conditions set."""
+        from bloomerp.filters.definition import Filter
+
+        settings = self.CustomerModel.bloomerp_config.activity_log_settings
+        settings.enabled = False
+        settings.conditions = [Filter(connector="AND")]
+        manager = ActivityLogManager(self.customer)
+        manager.payload = [{"field": "age", "from": 28, "to": 29}]
+        with self.assertNumQueries(0):
+            self.assertIsNone(manager.persist())
+
+    def test_lookup_without_python_evaluation_keeps_audit(self) -> None:
+        """SQL-only custom lookups fail open with a diagnostic instead of hiding events."""
+        from unittest.mock import patch
+
+        from bloomerp.filters.definition import Filter, FilterCondition
+        from bloomerp.lookups.definition import BoundLookup
+
+        self.CustomerModel.bloomerp_config.activity_log_settings.conditions = [
+            Filter(connector="AND", conditions=[
+                FilterCondition(field_path="first_name", lookup_id="equals", value="Ada"),
+            ])
+        ]
+        with (
+            patch.object(BoundLookup, "get_python_evaluator", return_value=None),
+            self.assertLogs("bloomerp.services.activity_log_services", level="ERROR"),
+        ):
+            self.assertTrue(ActivityLogManager(self.customer).matches_conditions())
