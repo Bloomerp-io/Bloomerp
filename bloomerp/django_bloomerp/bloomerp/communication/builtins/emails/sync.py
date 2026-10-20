@@ -17,8 +17,8 @@ from bloomerp.communication.builtins.emails.email_providers import (
     EmailProviderDefinition,
     EmailSyncMode,
 )
-from bloomerp.communication.builtins.emails.registry import EMAIL_PROVIDER_REGISTRY
 from bloomerp.communication.builtins.emails.mailboxes import normalize_mailboxes
+from bloomerp.communication.builtins.emails.registry import EMAIL_PROVIDER_REGISTRY
 from bloomerp.communication.inbox_sources import (
     InboxSourceDelivery,
     InboxSourceExecutionResult,
@@ -26,7 +26,6 @@ from bloomerp.communication.inbox_sources import (
 )
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
-
 
 DEFAULT_SYNC_LIMIT = 50
 SYNC_LOCK_MINUTES = 15
@@ -82,7 +81,6 @@ def handle_email_account_sync(
         .update(
             sync_locked_until=now + timedelta(minutes=SYNC_LOCK_MINUTES),
             last_sync_started_at=now,
-            last_sync_error="",
         )
     )
     if not lock_acquired:
@@ -184,19 +182,15 @@ def handle_email_account_sync(
         raise
 
     email_account.refresh_from_db()
-    email_account.last_sync_finished_at = timezone.now()
-    email_account.last_sync_error = ""
     email_account.next_sync_at = _next_sync_at(email_account)
     email_account.sync_locked_until = None
-    email_account.save(
-        update_fields=[
-            "last_sync_finished_at",
-            "last_sync_error",
-            "next_sync_at",
-            "sync_locked_until",
-            "datetime_updated",
-        ]
-    )
+    update_fields = ["next_sync_at", "sync_locked_until", "datetime_updated"]
+    if result.outcome == "completed":
+        # Keep the old error until this audited save can record genuine recovery.
+        email_account.last_sync_finished_at = timezone.now()
+        email_account.last_sync_error = ""
+        update_fields.extend(["last_sync_finished_at", "last_sync_error"])
+    email_account.save(update_fields=update_fields)
     return result
 
 

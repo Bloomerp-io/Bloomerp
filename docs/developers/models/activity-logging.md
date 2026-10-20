@@ -68,9 +68,16 @@ EmailAccount uses this gate for `sync_cursor`, `next_sync_at`,
 `last_sync_started_at`, `last_sync_finished_at`, `sync_locked_until`,
 `datetime_updated` and `updated_by`. Repeated successful sync saves produce no
 entries. Changes to `last_sync_error` (including clearing it), status, validation
-results, sync settings and account configuration remain meaningful. As before,
-`QuerySet.update()` bypasses Django save signals; this change does not add audit
-coverage to those writes, including the sync-lock acquisition update.
+results, sync settings and account configuration remain meaningful. The sync
+handler preserves an existing error while acquiring its lock and clears it only
+in the audited completion save after a successful sync. Skipped runs retain the
+error and previous completion timestamp; repeated identical failures introduce
+no error change. A successful recovery records one error-to-empty change, and
+subsequent healthy syncs stay quiet.
+
+As before, `QuerySet.update()` bypasses Django save signals. Sync-lock acquisition
+updates only bookkeeping fields; this change does not add audit coverage to
+arbitrary queryset updates.
 
 ## Performance and scope
 
