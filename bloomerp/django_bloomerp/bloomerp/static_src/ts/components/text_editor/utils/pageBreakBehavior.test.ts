@@ -14,12 +14,12 @@ const { $generateHtmlFromNodes, $generateNodesFromDOM } = await import("@lexical
 const { registerRichText } = await import("@lexical/rich-text");
 const { registerHistory, createEmptyHistoryState } = await import("@lexical/history");
 const { PageBreakNode, PAGE_BREAK_ATTRIBUTE } = await import("../nodes/PageBreakNode.ts");
-const { documentTemplateNodes, insertPageBreak } = await import("./pageBreakBehavior.ts");
+const { insertPageBreak } = await import("./pageBreakBehavior.ts");
 const marker = `<div ${PAGE_BREAK_ATTRIBUTE}="true"></div>`;
 
-/** Create an editor with the same context-specific nodes as the production widget. */
-function makeEditor(text: string = "", context: string | undefined = "document-template"): LexicalEditor {
-    const editor = createEditor({ nodes: documentTemplateNodes(context),
+/** Create an editor with explicit node registration for behavior-level tests. */
+function makeEditor(text: string = "", includePageBreak: boolean = true): LexicalEditor {
+    const editor = createEditor({ nodes: includePageBreak ? [PageBreakNode] : [],
         /** Surface invariant violations as test failures. */
         onError(error: Error): never { throw error; },
     });
@@ -147,18 +147,15 @@ test("marker removal can be undone and redone", async function undoRemoval(): Pr
     editor.setRootElement(null);
 });
 
-test("ordinary and header editors do not register or insert page breaks", async function scopeNodes(): Promise<void> {
-    /** Context opt-in must not affect other rich-text editor instances. */
-    for (const context of ["", "email", "document-template-header", "ordinary"]) {
-        const editor = makeEditor("Unchanged", context);
-        const before = html(editor);
-        assert.equal(editor.hasNodes([PageBreakNode]), false);
-        insertPageBreak(editor);
-        await tick();
-        assert.equal(html(editor), before);
-        editor.setRootElement(null);
-    }
-    assert.deepEqual(documentTemplateNodes(undefined), []);
+test("editors without the page-break node do not insert page breaks", async function scopeNodes(): Promise<void> {
+    /** Insertion requires explicit registration by the specialized editor. */
+    const editor = makeEditor("Unchanged", false);
+    const before = html(editor);
+    assert.equal(editor.hasNodes([PageBreakNode]), false);
+    insertPageBreak(editor);
+    await tick();
+    assert.equal(html(editor), before);
+    editor.setRootElement(null);
 });
 
 test("empty documents and removal of a sole marker stay editable", async function removeSoleMarker(): Promise<void> {

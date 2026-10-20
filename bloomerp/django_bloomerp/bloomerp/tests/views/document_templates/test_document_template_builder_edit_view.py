@@ -32,10 +32,13 @@ class TestDocumentTemplateBuilderEditView(BloomerpDetailViewTestCase):
         template.save(update_fields=["template"])
 
     def validate_loaded_page_break(self, response: HttpResponse) -> bool:
-        """Verify the hidden submission value and document-template editor context."""
+        """Verify the saved HTML is loaded by the specialized template editor."""
         markup = BeautifulSoup(response.content, "html.parser")
-        editor = markup.select_one('[data-editor-context="document-template"]')
+        editor = markup.select_one(
+            '[bloomerp-component="document-template-text-editor"]'
+        )
         self.assertIsNotNone(editor)
+        self.assertNotIn("data-editor-context", editor.attrs)
         field = editor.select_one('input[name="template"]')
         self.assertIsNotNone(field)
         self.assertEqual(field["value"], self.page_break_template)

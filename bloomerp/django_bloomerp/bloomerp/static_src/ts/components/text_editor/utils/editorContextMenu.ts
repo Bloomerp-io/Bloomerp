@@ -2,7 +2,7 @@ import { ContextMenuController, getContextMenu, type ContextMenuItem } from "@/u
 import { $getSelection, $isRangeSelection, $isTextNode, LexicalEditor } from "lexical";
 import { ACTIONS, type Action } from "../actions";
 import { componentIdentifier, getComponent } from "@/components/BaseComponent";
-import type { BloomerpTextEditor } from "../BloomerpTextEditor";
+import { BloomerpTextEditor } from "../BloomerpTextEditor";
 
 function getCaretRect(root: HTMLElement): DOMRect {
     const selection = window.getSelection();
@@ -104,14 +104,16 @@ function getSelectionRect(editor: LexicalEditor): DOMRect {
     return getCaretRect(root);
 }
 
+/** Resolve the owning widget, including specialized rich-text editor components. */
 function getTextEditorComponent(editor: LexicalEditor): BloomerpTextEditor | null {
     const root = editor.getRootElement();
-    const componentElement = root?.closest<HTMLElement>(`[${componentIdentifier}="bloomerp-text-editor"]`);
+    const componentElement = root?.closest<HTMLElement>(`[${componentIdentifier}]`);
     if (!componentElement) {
         return null;
     }
 
-    return getComponent(componentElement) as BloomerpTextEditor | null;
+    const component = getComponent(componentElement);
+    return component instanceof BloomerpTextEditor ? component : null;
 }
 
 /** Show filtered editor actions with reusable child-menu providers at the current selection. */

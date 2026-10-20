@@ -11,6 +11,7 @@ import {
     type LexicalNode,
     type SerializedLexicalNode,
 } from "lexical";
+import { t as _ } from "../../../utils/i18n.ts";
 
 export const PAGE_BREAK_ATTRIBUTE = "data-document-template-page-break";
 
@@ -60,11 +61,11 @@ export class PageBreakNode extends DecoratorNode<null> {
         element.contentEditable = "false";
         element.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:1em;border-top:1px dashed currentColor;margin:1em 0;padding:0.5em 0;font:12px sans-serif;user-select:none";
         const label = document.createElement("span");
-        label.textContent = "Page break";
+        label.textContent = _("Page break");
         const button = document.createElement("button");
         button.type = "button";
-        button.textContent = "Remove";
-        button.setAttribute("aria-label", "Remove page break");
+        button.textContent = _("Remove");
+        button.setAttribute("aria-label", _("Remove page break"));
         button.style.cssText = "color:inherit;background:transparent;border:1px solid currentColor;border-radius:0.25em;padding:0.2em 0.5em;font:inherit;cursor:pointer";
         const key = this.getKey();
 

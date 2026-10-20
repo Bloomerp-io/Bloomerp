@@ -68,6 +68,7 @@ import OrderedFieldSelect from './components/inputs/OrderedFieldSelect';
 import BehaviorBuilder from './components/inputs/BehaviorBuilder';
 import FocusOnForm from './components/FocusOnForm';
 import { BloomerpTextEditor } from './components/text_editor/BloomerpTextEditor';
+import { DocumentTemplateTextEditor } from './components/text_editor/DocumentTemplateTextEditor';
 import { DocumentTemplateBuilder } from './components/DocumentTemplateBuilder';
 import { SetupAnimationListener } from './utils/animations';
 import BaseWizard from './components/BaseWizard';
@@ -169,6 +170,7 @@ registerComponent('code-editor-widget', CodeEditorWidget);
 registerComponent('icon-picker-widget', IconPickerWidget);
 registerComponent('address-field-widget', AddressFieldWidget);
 registerComponent('bloomerp-text-editor', BloomerpTextEditor);
+registerComponent('document-template-text-editor', DocumentTemplateTextEditor);
 
 
 // Messages

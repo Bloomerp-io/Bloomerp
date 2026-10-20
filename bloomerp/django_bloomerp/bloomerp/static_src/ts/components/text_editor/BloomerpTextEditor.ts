@@ -12,7 +12,6 @@ import { registerLinkBehavior } from "./utils/linkBehavior";
 import { registerHtmlBehavior } from "./utils/htmlBehavior";
 import { registerImageBehavior } from "./utils/imageBehavior";
 import { registerTableBehavior } from "./utils/tableBehavior";
-import { documentTemplateNodes } from "./utils/pageBreakBehavior";
 import { $generateHtmlFromNodes, $generateNodesFromDOM } from "@lexical/html";
 
 import {
@@ -34,6 +33,7 @@ import {
     createEditor,
     LexicalEditor,
     type LexicalNode,
+    type Klass,
 } from "lexical";
 
 import {
@@ -96,6 +96,11 @@ export class BloomerpTextEditor extends BaseWidget {
     // Styling for the editor
     public styling: string | null = null;
     public overrideDefaultStyling: boolean = false;
+
+    /** Let specialized editors register extra nodes before the initial HTML load. */
+    protected getAdditionalNodes(): Array<Klass<LexicalNode>> {
+        return [];
+    }
 
     /** Create the Lexical editor and connect its actions to the widget value. */
     public initialize(): void {
@@ -162,7 +167,7 @@ export class BloomerpTextEditor extends BaseWidget {
                 FileImageNode,
                 CodeBlockNode,
                 HtmlNode,
-                ...documentTemplateNodes(this.element.dataset.editorContext),
+                ...this.getAdditionalNodes(),
             ],
             onError: (error: Error) => {
                 throw error;

@@ -6,7 +6,6 @@ import { build } from "vite";
 import type { OutputAsset, OutputChunk } from "rollup";
 import { JSDOM, type DOMWindow } from "jsdom";
 import type { BloomerpTextEditor } from "./BloomerpTextEditor.ts";
-import type { EditorActionSource } from "./actions.ts";
 import type { LexicalEditor } from "lexical";
 import type { ContextMenuController, ContextMenuItem } from "../../utils/contextMenu.ts";
 
@@ -22,18 +21,26 @@ const buildResult = await build({
         load(id: string): string | null {
             return id === entry ? `
                 import { BloomerpTextEditor } from '${root}/ts/components/text_editor/BloomerpTextEditor';
+                import { DocumentTemplateTextEditor } from '${root}/ts/components/text_editor/DocumentTemplateTextEditor';
+                import { PageBreakNode } from '${root}/ts/components/text_editor/nodes/PageBreakNode';
+                import { loadTranslations } from '${root}/ts/utils/i18n';
                 import { $getRoot } from 'lexical';
                 import { registerComponent, initComponents, getComponent } from '${root}/ts/components/BaseComponent';
                 import { insertPageBreak } from '${root}/ts/components/text_editor/utils/pageBreakBehavior';
                 import { launchContextMenu } from '${root}/ts/components/text_editor/utils/editorContextMenu';
                 registerComponent('bloomerp-text-editor', BloomerpTextEditor);
+                registerComponent('document-template-text-editor', DocumentTemplateTextEditor);
+                /** Inspect the actual production node registry. */
+                function hasPageBreakNode(editor: import('lexical').LexicalEditor): boolean {
+                    return editor.hasNodes([PageBreakNode]);
+                }
                 /** Position a real caret for toolbar and menu invocation regressions. */
                 function selectEnd(editor: import('lexical').LexicalEditor): void {
                     /** Select the end of the current document. */
                     function selectDocumentEnd(): void { $getRoot().selectEnd(); }
                     editor.update(selectDocumentEnd, {discrete: true});
                 }
-                export { initComponents, getComponent, insertPageBreak, launchContextMenu, selectEnd };
+                export { initComponents, getComponent, insertPageBreak, launchContextMenu, selectEnd, hasPageBreakNode, loadTranslations };
             ` : null;
         },
     }],
@@ -52,6 +59,8 @@ interface FixtureWindow extends DOMWindow {
         getComponent(element: HTMLElement): BloomerpTextEditor;
         insertPageBreak(editor: LexicalEditor, fromSlashMenu?: boolean): void;
         selectEnd(editor: LexicalEditor): void;
+        hasPageBreakNode(editor: LexicalEditor): boolean;
+        loadTranslations(): Promise<void>;
         launchContextMenu(editor: LexicalEditor, menu: ContextMenuController, keys: string[], query: string): void;
     };
 }
@@ -65,16 +74,15 @@ async function tick(): Promise<void> {
 }
 
 /** Mount an isolated editor through the production component registry. */
-function mount(w: FixtureWindow, id: string, context: string = "", value: string = ""): BloomerpTextEditor {
+function mount(w: FixtureWindow, id: string, componentName: string = "bloomerp-text-editor", value: string = "", lazy: boolean = false): BloomerpTextEditor {
     const host = w.document.createElement("div");
-    host.setAttribute("bloomerp-component", "bloomerp-text-editor");
+    host.setAttribute("bloomerp-component", componentName);
     host.dataset.editorId = id;
-    host.dataset.editorContext = context;
     host.dataset.includeToolbar = "true";
     host.innerHTML = `<style id="text-editor-styling-${id}"></style><div id="actions-toolbar-${id}"></div><div id="editor-${id}" contenteditable="true"></div><input type="hidden" data-text-editor-input="true">`;
     host.querySelector("input")!.value = value;
     w.document.body.appendChild(host);
-    w.PageBreakFixture.initComponents(host);
+    if (!lazy) w.PageBreakFixture.initComponents(host);
     return w.PageBreakFixture.getComponent(host);
 }
 
@@ -97,17 +105,21 @@ test("template marker persists through widget values and actions never leak to o
     w.eval(scriptCode);
     const widgets: BloomerpTextEditor[] = [];
     try {
-        const ordinaryBefore = mount(w, "ordinary-before", "", "<p>Ordinary</p>");
-        const template = mount(w, "template", "document-template", '<p>Before</p><div data-document-template-page-break="true"></div><p>After</p>');
+        const ordinaryBefore = mount(w, "ordinary-before", "bloomerp-text-editor", "<p>Ordinary</p>");
+        const template = mount(w, "template", "document-template-text-editor", '<p>Before</p><div data-document-template-page-break="true"></div><p>After</p>', true);
         widgets.push(ordinaryBefore, template);
-        template.registerAction({ label: "Page break", icon: "fa-solid fa-file-circle-plus",
-            /** Use the same scoped insertion behavior as DocumentTemplateBuilder. */
-            handler(editor: BloomerpTextEditor, source: EditorActionSource = "toolbar"): void { w.PageBreakFixture.insertPageBreak(editor.editor!, source === "slash"); },
-        }, "page_break", true);
+        assert.equal(w.PageBreakFixture.hasPageBreakNode(template.editor!), true);
+        assert.equal(template.element!.hasAttribute("data-editor-context"), false);
+        const originalEditor = template.editor;
+        w.PageBreakFixture.initComponents(template.element!);
+        assert.equal(w.PageBreakFixture.getComponent(template.element!), template);
+        assert.equal(template.editor, originalEditor);
+        assert.equal(template.element!.querySelectorAll('[aria-label="Remove page break"]').length, 1);
         const ordinaryAfter = mount(w, "ordinary-after");
         widgets.push(ordinaryAfter);
         await tick();
         for (const ordinary of [ordinaryBefore, ordinaryAfter]) {
+            assert.equal(w.PageBreakFixture.hasPageBreakNode(ordinary.editor!), false);
             assert.equal(ordinary.getAction("page_break"), undefined);
             assert.equal(ordinary.getActions().some(function isPageBreak(action: { label: string }): boolean {
                 /** Check instance-local toolbar options. */
@@ -132,7 +144,7 @@ test("template marker persists through widget values and actions never leak to o
         assert.match(saved, /<div data-document-template-page-break="true"><\/div>/);
         assert.doesNotMatch(saved, /Page break|Remove|button|dashed/);
         assert.equal(template.element!.querySelector<HTMLInputElement>('input')!.value, saved);
-        const restored = mount(w, "restored", "document-template", saved);
+        const restored = mount(w, "restored", "document-template-text-editor", saved);
         widgets.push(restored);
         await tick();
         assert.equal(restored.getValue(), saved);
@@ -173,6 +185,24 @@ test("template marker persists through widget values and actions never leak to o
         assert.doesNotMatch(template.getValue() as string, /\/page/);
         assert.match(template.getValue() as string, /Path/);
         assert.match(template.getValue() as string, /data-document-template-page-break/);
+        w.BLOOMERP_I18N_CATALOG_URL = "/translations/";
+        /** Return a non-English catalog through the production translation loader. */
+        w.fetch = async function fetchCatalog(): Promise<Response> {
+            return new Response(JSON.stringify({ catalog: {
+                "Page break": "Pagina-einde", "Remove": "Verwijderen", "Remove page break": "Pagina-einde verwijderen",
+            } }), { status: 200, headers: { "Content-Type": "application/json" } });
+        };
+        await w.PageBreakFixture.loadTranslations();
+        const translated = mount(w, "translated", "document-template-text-editor", saved);
+        widgets.push(translated);
+        await tick();
+        assert.equal(translated.getAction("page_break")!.label, "Pagina-einde");
+        const translatedMarker = translated.element!.querySelector<HTMLElement>('[data-document-template-page-break]')!;
+        assert.equal(translatedMarker.querySelector("span")!.textContent, "Pagina-einde");
+        assert.equal(translatedMarker.querySelector("button")!.textContent, "Verwijderen");
+        assert.equal(translatedMarker.querySelector("button")!.getAttribute("aria-label"), "Pagina-einde verwijderen");
+        assert.equal(translated.getValue(), saved);
+        assert.doesNotMatch(translated.getValue() as string, /Pagina-einde|Verwijderen/);
     } finally {
         for (const widget of widgets) widget.destroy();
         dom.window.close();

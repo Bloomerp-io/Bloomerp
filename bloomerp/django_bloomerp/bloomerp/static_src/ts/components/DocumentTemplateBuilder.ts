@@ -1,8 +1,6 @@
 import { $createParagraphNode, $createTextNode, $getSelection, $isNodeSelection, $isRangeSelection, $isTextNode, LexicalNode, ParagraphNode } from "lexical";
 import BaseComponent, { getComponent } from "./BaseComponent";
 import { BloomerpTextEditor } from "./text_editor/BloomerpTextEditor";
-import type { EditorActionSource } from "./text_editor/actions";
-import { insertPageBreak } from "./text_editor/utils/pageBreakBehavior";
 import ForeignFieldWidget from "./widgets/ForeignFieldWidget";
 import getSdk from "@/sdk/getSdk";
 import CodeEditorWidget from "./widgets/CodeEditorWidget";
@@ -14,11 +12,6 @@ import showMessage from "@/utils/messages";
 import { MessageType } from "./UiMessage";
 
 const AUTO_SAVE_INTERVAL_MS = 5000;
-
-/** Insert a printable page boundary in this builder's editor. */
-function handlePageBreak(editor: BloomerpTextEditor, source: EditorActionSource = "toolbar"): void {
-    if (editor.editor) insertPageBreak(editor.editor, source === "slash");
-}
 
 type InjectionMethod = {
     id: string;
@@ -549,7 +542,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
         this.templateTags = this.readTemplateTags();
 
         this.editor = getComponent(
-            this.element.querySelector('[bloomerp-component="bloomerp-text-editor"]') as HTMLElement
+            this.element.querySelector('[bloomerp-component="document-template-text-editor"]') as HTMLElement
         ) as BloomerpTextEditor;
 
         // Get page container
@@ -644,11 +637,6 @@ export class DocumentTemplateBuilder extends BaseComponent {
         })
 
         // Register actions
-        this.editor.registerAction(
-            { label: "Page break", icon: "fa-solid fa-file-circle-plus", handler: handlePageBreak },
-            'page_break',
-            true,
-        );
         this.editor.registerAction(
             {
                 label: "Add variable",

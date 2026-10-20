@@ -6,12 +6,13 @@ The bubbling, cancellable bloomerp:template-selected event carries detail.templa
 (id, name, body) and detail.insert(body). Specialized editors can preventDefault(),
 prepare their variable context, then call insert to preserve the original selection.
 {% endcomment %}
+<c-vars component_name="bloomerp-text-editor" />
 {% load bloomerp %}
 {% generate_uuid as editor_uuid %}
 {% with editor_id=editor_uuid|add:"-"|add:name %}
 
 <div 
-    bloomerp-component="bloomerp-text-editor" 
+    bloomerp-component="{{ component_name }}"
     class="relative rounded-xl {% if not height %}{% if compact %}min-h-36{% else %}min-h-72{% endif %}{% endif %} {% if has_border %}border border-gray-300 {% if not disabled %}focus-within:border-primary focus-within:ring-1 focus-within:ring-primary{% endif %}{% endif %} {% if disabled %}bg-gray-100 cursor-not-allowed{% endif %} {{ class|default:'' }}"
     data-reference-search-url="{% url 'components_objects_references' %}"
     data-reference-upload-url="{% url 'api_assistant_file_upload' %}"
@@ -25,7 +26,6 @@ prepare their variable context, then call insert to preserve the original select
     data-name="{{ name }}"
     data-actions-toolbar-section-id="{{ actions_toolbar_section_id }}"
     data-editor-id="{{ editor_id }}"
-    data-editor-context="{{ editor_context|default:'' }}"
     data-include-toolbar="{{ include_toolbar }}"
     {% if height %}style="height: {{ height }};"{% endif %}
     >

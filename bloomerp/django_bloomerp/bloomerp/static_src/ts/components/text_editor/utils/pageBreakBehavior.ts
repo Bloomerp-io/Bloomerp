@@ -2,11 +2,6 @@ import { $createParagraphNode, $getRoot, $getSelection, $insertNodes, $isElement
 import { $createPageBreakNode, PageBreakNode } from "../nodes/PageBreakNode.ts";
 import { getCurrentWordFromSelection } from "./wordSelector.ts";
 
-/** Register printable page boundaries only in the document-template editor. */
-export function documentTemplateNodes(context: string | undefined): Array<typeof PageBreakNode> {
-    return context === "document-template" ? [PageBreakNode] : [];
-}
-
 /** Remove a validated slash command even when formatting splits its text nodes. */
 function removeSlashTrigger(word: string): void {
     const selection = $getSelection();
