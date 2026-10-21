@@ -73,23 +73,31 @@ class FieldTypeDefinition:
     def resolved_render_value(
         self, application_field: ApplicationField, instance: models.Model,
     ) -> Any:
-        """Apply configured field markup, otherwise retain the registered renderer.
+        """Return configured field markup or the registered renderer's fallback."""
+        value, _ = self.resolved_render_value_with_source(application_field, instance)
+        return value
 
-        Only the selected field's raw value is supplied to the template. Django
-        autoescaping remains enabled, so ordinary record content cannot become
-        markup merely because a field has custom presentation.
+    def resolved_render_value_with_source(
+        self, application_field: ApplicationField, instance: models.Model,
+    ) -> tuple[Any, bool]:
+        """Return the value and whether a trusted advanced template rendered it.
+
+        The source flag reflects successful rendering, including empty output,
+        not merely configured template presence. Ordinary field values retain
+        Django autoescaping; failed overrides use the legacy renderer.
         """
         template_source = application_field.advanced_rendering
         if template_source and template_source.strip():
             try:
-                return engines["django"].from_string(template_source).render(
+                value = engines["django"].from_string(template_source).render(
                     {"value": getattr(instance, application_field.field, None)}
                 )
+                return value, True
             except Exception:  # noqa: BLE001 - presentation failures use the normal renderer.
                 # Invalid legacy templates and data-dependent template failures
                 # must not break an otherwise renderable field.
-                return self.render_value(application_field, instance)
-        return self.render_value(application_field, instance)
+                pass
+        return self.render_value(application_field, instance), False
 
     @property
     def allow_in_model(self) -> bool:

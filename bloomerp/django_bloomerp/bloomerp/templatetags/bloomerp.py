@@ -371,10 +371,16 @@ def render_object_preview_value(
     context["can_view"] = True
     try:
         field_type = application_field.get_field_type()
-        value = field_type.resolved_render_value(application_field, object)
-        # These legacy renderers return HTML as ordinary strings. Other strings
-        # stay autoescaped; format_html-based renderers retain their SafeData.
-        if value is not None and field_type.id in {"TextField", "EmailField", "URLField", "FileField"}:
+        value, used_advanced_template = field_type.resolved_render_value_with_source(
+            application_field, object,
+        )
+        # Only legacy HTML strings need the rich-text sanitizer. Successfully
+        # rendered trusted templates retain their markup and escaped values.
+        if (
+            not used_advanced_template
+            and value is not None
+            and field_type.id in {"TextField", "EmailField", "URLField", "FileField"}
+        ):
             value = mark_safe(sanitize_html(str(value)))
         context["value"] = value
     except Exception:
