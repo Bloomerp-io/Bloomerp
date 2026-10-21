@@ -23,7 +23,8 @@ Lookup-local annotations are isolated in correlated subqueries so independent lo
 
 `compile_sql_filters(groups, model=Customer)` returns `CompiledSQL(clause, parameters)`. Execute the parameters separately from the SQL text. The predicate references the model's physical table name and includes a primary-key subquery when resolving joins; it is not an arbitrary-query security rewriter.
 
-Native SQL compilation invokes the lookup's SQL factory. SQL collection/aggregate targets are rejected until their subquery/HAVING contract is implemented. Missing SQL factories are errors. The model compiler is not yet the workspace analytics executor.
+Native SQL compilation invokes the lookup's SQL factory. SQL collection/aggregate targets are rejected until their subquery/HAVING contract is implemented. Missing SQL factories are errors. Workspace analytics use `compile_sql_field_filters` after projecting shared
+conditions to the tile; see [workspace filters](filter-editor.md#shared-workspace-fields).
 
 ## Row policies
 
@@ -43,13 +44,18 @@ Conditions are actual `FilterCondition` instances. Empty AND groups match all ro
 
 The permission layer selects applicable rules, binds `$user`, and retains the relationship between each row predicate and its field grants. Django permission compilation delegates predicates to the shared Q compiler. Python evaluation reuses the same resolution/cleaning and the lookup's evaluator. SQL permissions retain their table rewriting and field masking, using shared Q predicates through the existing Django SQL generation path.
 
-The legacy `__all__` sentinel becomes an empty AND group; it is not a supported `FilterCondition.field_path`. Mixed legacy OR groups containing both `__all__` and other conditions must be rewritten explicitly, rather than dropping conditions during normalization. Legacy field-ID/operator conditions remain accepted at the permission boundary and are normalized into field paths and lookup IDs. Newly saved rules use the shared shape. The existing permissions wizard receives a legacy presentation adapter until its UI is replaced. Existing stored JSON is normalized on read; no bulk data rewrite is performed. `RowPolicyRuleCondition` remains a legacy input adapter, and the misspelled `FilterCondition` remains an import alias for compatibility.
+New rules use field paths and lookup IDs. The permission boundary accepts
+legacy field-ID/operator rules and normalizes them on read. The permission
+editor uses the [shared FilterWidget](filter-editor.md#permission-rules).
 
 `validate_filters()` walks the same resolved field dependencies as compilation, checks model view grants, and requires field visibility across every row that can influence a predicate. Root fields may use conditional grants when every applicable row grant includes the field. Related rows require explicit unconditional view access; related fields require unconditional field coverage. This includes relation/count lookups whose path ends at the relation itself. Superusers bypass permission restrictions.
 
 These checks deliberately reject some safe but complicated combinations of overlapping policies: they do not try to prove arbitrary predicates equivalent. They never inspect today's row contents to infer that access is unrestricted. Related-row scoping during execution is still future work.
 
-The dataview calls validation after parsing and before applying filters. Other authorization adapters, including the API's public/model-defined access modes, must establish equivalent dependency checks before enabling filter execution; a restricted root queryset alone is insufficient.
+Dataviews validate dependencies before applying filters. Generated APIs use
+`ModelFilterBackend` and `ApiAccessResolver` for the caller's access mode. Custom
+callers must validate dependencies too; a restricted root queryset alone is
+insufficient.
 
 ## Query parameter parsing
 

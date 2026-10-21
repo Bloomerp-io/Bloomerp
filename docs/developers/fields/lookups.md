@@ -8,7 +8,9 @@ A lookup supplies three things:
 
 A lookup does not fetch a queryset, decide the user's permissions, or combine unrelated filter groups.
 
-**Draft status:** the shared compiler now cleans values before invoking lookup factories. Typed model filters execute through Q or parameterized SQL; permission predicates reuse the same resolution and cleaning. Raw GET parsing and workspace execution remain unfinished. See [shared execution](execution.md).
+The shared compiler cleans values before invoking factories. Model filters,
+workspace filters, and row-policy predicates reuse the lookup contracts. See
+[shared execution](execution.md) and the [filter editor](filter-editor.md).
 
 ## Example: text length greater than
 
@@ -17,11 +19,14 @@ The user selects a text field, chooses “Length greater than”, and enters an 
 The ORM example uses an expression directly, avoiding annotation-name allocation.
 
 ```python
+from typing import Any
+
 from django import forms
 from django.db.models import F, Q
 from django.db.models.functions import Length
 from django.db.models.lookups import GreaterThan
 
+from bloomerp.models.application_field import ApplicationField
 from bloomerp.lookups.definition import (
     CompiledLookup,
     CompiledSQL,
@@ -32,23 +37,32 @@ from bloomerp.lookups.definition import (
 
 
 def length_input(context: FilterFieldContext) -> forms.IntegerField:
-    # The input is always an integer; no source-field metadata is needed.
+    """Build the bounded integer editor for a text-length comparison."""
     return forms.IntegerField(min_value=0, label="Length")
 
 
-def clean_length(value) -> int:
-    # Defensive validation for callers invoking this factory directly.
+def clean_length(value: Any) -> int:
+    """Validate a length when a factory is called outside the compiler."""
     return forms.IntegerField(min_value=0).clean(value)
 
 
-def length_q_factory(application_field, field_path, expression, value):
+def length_q_factory(
+    application_field: ApplicationField,
+    field_path: str,
+    expression: str,
+    value: Any,
+) -> CompiledLookup:
+    """Compile a text-length comparison as a Django predicate."""
     length = clean_length(value)
     return CompiledLookup(
         predicate=Q(GreaterThan(Length(F(field_path)), length)),
     )
 
 
-def length_sql_factory(context: SQLLookupContext, expression, value):
+def length_sql_factory(
+    context: SQLLookupContext, expression: str, value: Any,
+) -> CompiledSQL:
+    """Compile a parameterized length comparison for supported SQL dialects."""
     length = clean_length(value)
     if context.dialect not in {"postgres", "sqlite"}:
         raise ValueError("Unsupported SQL dialect")
@@ -58,7 +72,8 @@ def length_sql_factory(context: SQLLookupContext, expression, value):
     )
 
 
-def length_evaluator(actual, expected):
+def length_evaluator(actual: str | None, expected: Any) -> bool:
+    """Evaluate a length comparison against an in-memory string."""
     length = clean_length(expected)
     return actual is not None and len(actual) > length
 
@@ -93,9 +108,10 @@ LOOKUP_REGISTRY.register(
 
 Then include `TEXT_LENGTH_GREATER_THAN` in the target field type's `lookups` tuple. Both steps matter: the registry makes the definition discoverable by ID; the field type declares where it is supported.
 
-For a built-in `CHAR_FIELD` declaration, that means adding the object alongside its existing text lookups. Runtime attachment to an existing registered type still needs a clearer public API; see [Field types](field-type.md#add-an-operator-to-a-field-type).
+For a built-in `CHAR_FIELD` declaration, that means adding the object alongside its existing text lookups. For the constraints on extending an existing registered type, see [Field types](field-type.md#add-an-operator-to-a-field-type).
 
-No special frontend branch should be needed for this integer input. That is the intended framework behavior; the replacement frontend is still being implemented.
+The shared filter editor discovers the integer input from lookup metadata;
+no operator-specific frontend branch is needed.
 
 ## Factory contracts
 
@@ -124,7 +140,10 @@ The default Q factory joins the field path and supplied expression. Only use it 
 - `annotations`: optional expressions that must be attached before applying the predicate.
 - `distinct`: whether duplicate rows must be removed.
 
-The compiler must preserve all three. Annotation names cannot collide between conditions. No framework alias allocator exists yet; prefer a direct expression when possible, as in the example, rather than copying a fixed annotation name.
+The model compiler preserves all three and isolates lookup-local annotations
+in correlated subqueries. Prefer a direct expression when possible, as above.
+If you call a factory directly, you must apply its annotations and `distinct`
+flag as well as its predicate.
 
 ### SQL results
 
@@ -137,7 +156,8 @@ A lookup compiles a predicate fragment, not an entire query. Securing underlying
 Use it when the editor depends on the selected field. An equality editor can delegate to the default input:
 
 ```python
-def equality_input(context: FilterFieldContext):
+def equality_input(context: FilterFieldContext) -> forms.Field:
+    """Use the selected field's default editor for equality input."""
     return context.get_form_field()
 ```
 
@@ -154,7 +174,7 @@ Analytics configuration only maps a column to a field type. For example, `total_
 
 The text-length editor does not need any of this metadata. Its parameter exists because all form factories use the same callable signature.
 
-`FilterFieldContext` holds Python metadata. Its public serializer exposes only field-type and application-field IDs; factories receive the Python context. The public name remains `default_form_factory`, not the proposed `form_field_factory` spelling.
+`FilterFieldContext` holds Python metadata. Its public serializer exposes only field-type and application-field IDs; factories receive the Python context. Use `default_form_factory` when declaring the lookup.
 
 ## Why return a form field instead of a widget?
 
@@ -176,10 +196,6 @@ Its definition declares `nested=True` and a `nested_fields_factory`. The current
 
 Nested lookups cannot define Q factories, SQL factories, or Python evaluators, including through a `BoundLookup` override. The terminal lookup compiles the condition. Discovery factories return structural metadata; the user-facing resolver filters inaccessible fields separately.
 
-This factory signature is still model-oriented. Supporting custom analytics structures cleanly, beyond the current JSON-key mechanism, is a reason to revisit its context argument.
-
-“None of the related records match” is not simple navigation. It can instead be a terminal lookup whose value is an embedded filter expression and whose factory wraps that expression in `NOT EXISTS`. That operator is a future extension, not an existing built-in.
-
 ## Field-specific overrides
 
 `BoundLookup` can override an existing operator's form factory or execution behavior while retaining its ID and label:
@@ -188,26 +204,17 @@ This factory signature is still model-oriented. Supporting custom analytics stru
 from bloomerp.lookups.builtins import EQUALS
 from bloomerp.lookups.definition import BoundLookup
 
-CHOICE_EQUALS = BoundLookup(
-    lookup=EQUALS,
-    form_factory=lambda context: forms.ChoiceField(
+def customer_kind_input(context: FilterFieldContext) -> forms.ChoiceField:
+    """Offer the supported customer kinds for this field-specific binding."""
+    return forms.ChoiceField(
         choices=(("retail", "Retail"), ("wholesale", "Wholesale")),
-    ),
-)
+    )
+
+
+CHOICE_EQUALS = BoundLookup(lookup=EQUALS, form_factory=customer_kind_input)
 ```
 
-Several consumers already normalize through `BoundLookup`, but `FieldTypeDefinition.lookups` is currently annotated as a tuple of `LookupDefinition`. That mismatch should be resolved before presenting field-specific overrides as a stable extension contract. Do not register a `BoundLookup` in the global definition registry.
-
-## Remaining API decisions
-
-These are proposals to evaluate, not APIs available to import:
-
-1. **Structured values:** extend the cleaning contract for custom composite widgets.
-2. **Field metadata:** decide whether editor factories keep `FilterFieldContext` or receive the shared resolved field directly.
-3. **Existing field-type extensions:** provide a supported way to attach a lookup without unregistering a frozen definition.
-4. **Annotation allocation:** supply unique names from compilation context when a direct expression is insufficient.
-5. **Expressions:** decide whether custom factories should need to repeat the lookup ID in `expressions`.
-6. **Nested discovery:** settle a source-independent context and an unambiguous path representation.
-7. **Value-free operators:** explicitly describe operators such as “today” that need no user input; currently some use hidden fields.
-
-The target is a small authoring API: define an input, define supported predicates, register the operator, and declare the field types that allow it. The shared framework should handle the rest.
+Use bound lookups at consumers that accept `BoundLookup`; do not register one
+in the global definition registry. `FieldTypeDefinition.lookups` is annotated
+as a tuple of `LookupDefinition`, so check the target consumer before using a
+binding as a field-type declaration.

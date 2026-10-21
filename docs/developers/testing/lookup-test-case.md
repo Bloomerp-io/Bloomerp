@@ -17,6 +17,7 @@ or `BoundLookup` assignment it finds:
 ```python
 from django.db.models import Q
 
+from bloomerp.lookups.builtins import EQUALS
 from bloomerp.lookups.definition import CompiledLookup, CompiledSQL
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.tests.base import (
@@ -27,9 +28,10 @@ from bloomerp.tests.base import (
 
 
 class TestEqualsLookup(BloomerpLookupTestCase):
-    lookup = equals_lookup
+    lookup = EQUALS
 
     def get_test_scenarios(self) -> list[LookupScenario]:
+        """Describe the observable behavior covered by this test case."""
         return []
 ```
 
@@ -73,14 +75,14 @@ properties must be supplied together.
 
 ```python
 LookupScenario(
-    name="Normalizes an address filter",
-    application_field=lambda: self.get_application_field("description"),
-    field_path="address",
-    expression="address_contains",
-    value={"city": "Ghent"},
-    form_value={"city": " Ghent "},
-    expected_cleaned_form_value={"city": "Ghent"},
-    expected_lookup=CompiledLookup(...),
+    name="Cleans an integer comparison value",
+    application_field=lambda: self.get_application_field("age"),
+    field_path="age",
+    expression="equals",
+    value=25,
+    form_value="25",
+    expected_cleaned_form_value=25,
+    expected_lookup=CompiledLookup(predicate=Q(age=25)),
 )
 ```
 
@@ -92,15 +94,15 @@ with `sql_context` (or a default context using `field_path`) and `sql_value`
 
 ```python
 LookupScenario(
-    name="Compiles case-insensitive matching for SQL and Python",
+    name="Compiles exact matching for SQL and Python",
     application_field=lambda: self.get_application_field("first_name"),
     field_path="first_name",
-    expression="iexact",
-    value="ada",
-    expected_lookup=CompiledLookup(predicate=Q(first_name__iexact="ada")),
+    expression="equals",
+    value="Ada",
+    expected_lookup=CompiledLookup(predicate=Q(first_name="Ada")),
     expected_sql=CompiledSQL(
-        clause="LOWER(first_name) = LOWER(%s)",
-        parameters=("ada",),
+        clause="first_name = %s",
+        parameters=("Ada",),
     ),
     python_evaluations=[
         PythonEvaluation(actual="Ada", expected=True),

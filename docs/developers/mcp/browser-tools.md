@@ -54,11 +54,3 @@ a clear error.
 - Duplicated browser tabs can copy their session-storage identity. Broadcasting
   reaches each connection individually; explicit selection rejects duplicate IDs.
   Open an independent tab for a unique target ID in this initial implementation.
-- Highlight/click handlers and the chat runner remain future integrations.
-
-## Validation
-
-Backend tests exercise real MCP dispatch and the Channels consumer together,
-including acknowledgements, user isolation, explicit tab selection, URL validation,
-permission gates, and origin checks. Frontend tests exercise base-page startup and
-navigation guards with a simulated browser/socket.
