@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
-from django.test import SimpleTestCase
 from django.template.loader import render_to_string
+from django.test import SimpleTestCase
 from django.utils.safestring import mark_safe
 
 from bloomerp.field_types.utils.render_value_functions import (
@@ -80,3 +80,26 @@ class TestRelatedObjectRendering(SimpleTestCase):
         self.assertIn('href="/related/1/"', markup)
         self.assertIn("Review &lt;launch&gt;", markup)
         self.assertNotIn("<launch>", markup)
+
+    def test_missing_relation_with_custom_rendering_does_not_break_cell(self) -> None:
+        """An absent one-to-one target remains an empty cell with an override."""
+        from unittest.mock import PropertyMock, patch
+
+        from django.core.exceptions import ObjectDoesNotExist
+
+        from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
+        from bloomerp.models import ApplicationField
+        from bloomerp.templatetags.bloomerp import render_dataview_value
+
+        field = ApplicationField(
+            field="related", field_type="OneToOneField",
+            advanced_rendering="<b>{{ value }}</b>",
+        )
+        record = RelatedObject()
+        with patch.object(
+            RelatedObject, "related", new_callable=PropertyMock, create=True,
+            side_effect=ObjectDoesNotExist,
+        ), patch.object(field, "get_field_type", return_value=FIELD_TYPE_REGISTRY.ONE_TO_ONE_FIELD):
+            context = render_dataview_value(record, field, None)
+        self.assertIsNone(context["value"])
+        self.assertIsNone(context["data_value"])

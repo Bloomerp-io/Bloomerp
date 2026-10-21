@@ -301,13 +301,19 @@ def render_dataview_value(
     )
     if can_view:
         try:
-            value = application_field.get_field_type().render_value(application_field, object)
+            value = application_field.get_field_type().resolved_render_value(application_field, object)
         except Exception:
             value = None
     else:
         value = ""
     
     data_value = value
+    if can_view and application_field.advanced_rendering:
+        # Cell filtering/copying must use the underlying value, not custom HTML.
+        try:
+            data_value = getattr(object, application_field.field, None)
+        except Exception:  # noqa: BLE001 - match the guarded cell renderer above.
+            data_value = None
     foreign_preview = None
     if can_view and value is not None and (not isinstance(value, str) or value != ""):
         foreign_preview = _foreign_preview_target(object, application_field)
@@ -365,7 +371,7 @@ def render_object_preview_value(
     context["can_view"] = True
     try:
         field_type = application_field.get_field_type()
-        value = field_type.render_value(application_field, object)
+        value = field_type.resolved_render_value(application_field, object)
         # These legacy renderers return HTML as ordinary strings. Other strings
         # stay autoescaped; format_html-based renderers retain their SafeData.
         if value is not None and field_type.id in {"TextField", "EmailField", "URLField", "FileField"}:

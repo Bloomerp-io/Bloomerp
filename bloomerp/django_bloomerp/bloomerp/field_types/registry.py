@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Callable, TYPE_CHECKING, Any
-from bloomerp.field_types.display_options import FieldDisplayOption
-from bloomerp.field_types.construction import FieldConstructionOption
-from bloomerp.lookups.definition import LookupDefinition
-from bloomerp.utils.registry import BaseRegistry
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, Callable
+
 from django import forms
 from django.db import models
+from django.template import engines
+
+from bloomerp.field_types.construction import FieldConstructionOption
+from bloomerp.field_types.display_options import FieldDisplayOption
+from bloomerp.lookups.definition import LookupDefinition
+from bloomerp.utils.registry import BaseRegistry
 
 if TYPE_CHECKING:
     from bloomerp.models import ApplicationField
@@ -67,6 +70,27 @@ class FieldTypeDefinition:
     ) = None
     
     
+    def resolved_render_value(
+        self, application_field: ApplicationField, instance: models.Model,
+    ) -> Any:
+        """Apply configured field markup, otherwise retain the registered renderer.
+
+        Only the selected field's raw value is supplied to the template. Django
+        autoescaping remains enabled, so ordinary record content cannot become
+        markup merely because a field has custom presentation.
+        """
+        template_source = application_field.advanced_rendering
+        if template_source and template_source.strip():
+            try:
+                return engines["django"].from_string(template_source).render(
+                    {"value": getattr(instance, application_field.field, None)}
+                )
+            except Exception:  # noqa: BLE001 - presentation failures use the normal renderer.
+                # Invalid legacy templates and data-dependent template failures
+                # must not break an otherwise renderable field.
+                return self.render_value(application_field, instance)
+        return self.render_value(application_field, instance)
+
     @property
     def allow_in_model(self) -> bool:
         """Whether this type supplies a Django field class for model declarations.
