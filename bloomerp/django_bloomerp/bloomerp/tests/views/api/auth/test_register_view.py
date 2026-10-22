@@ -14,6 +14,7 @@ from bloomerp.config.definition import (
     InteractiveAuthSettings,
     SessionAuthSettings,
 )
+from bloomerp.models import EmailAccount
 from bloomerp.tests.base import (
     BloomerpAPIViewTestCase,
     ExpectedResult,
@@ -126,6 +127,26 @@ class TestRegisterView(BloomerpAPIViewTestCase):
             ))
         scenarios.extend([
             RequestScenario(
+                name="Strict custom email manager accepts normal signup", method="POST",
+                content_type="application/json",
+                data={"email": "jane@example.com", "password": "testpass123"},
+                prepare=self.enable_strict_email_registration, cleanup=self.disable_email_registration,
+                expected=ExpectedResult(status_code=201, response_validators=self.strict_email_user_is_registered),
+            ),
+            RequestScenario(
+                name="Strict custom manager cannot persist privileged signup", method="POST",
+                content_type="application/json",
+                data={"email": "jane@example.com", "password": "testpass123"},
+                prepare=self.enable_privileged_email_registration, cleanup=self.disable_email_registration,
+                expected=ExpectedResult(status_code=400, response_validators=self.no_email_account_created),
+            ),
+            RequestScenario(
+                name="Required relation is normalized by the custom manager", method="POST",
+                content_type="application/json", data=complete_user.copy(),
+                prepare=self.enable_relation_registration, cleanup=self.disable_email_registration,
+                expected=ExpectedResult(status_code=201, response_validators=self.relation_user_is_registered),
+            ),
+            RequestScenario(
                 name="Privileged fields cannot be opted into required registration fields", method="POST",
                 content_type="application/json", data={**complete_user, "is_superuser": True},
                 prepare=self.enable_unsafe_required_field, cleanup=self.disable_unsafe_required_field,
@@ -189,6 +210,65 @@ class TestRegisterView(BloomerpAPIViewTestCase):
         self.email_patches.enter_context(patch.object(user_model, "USERNAME_FIELD", "email"))
         self.email_patches.enter_context(patch.object(user_model, "REQUIRED_FIELDS", []))
         self.email_patches.enter_context(patch.object(user_model._default_manager, "create_user", create_email_user))
+
+    def enable_strict_email_registration(self, scenario: RequestScenario) -> None:
+        """Model a valid custom manager that accepts no arbitrary keyword fields."""
+        user_model = get_user_model()
+        original_create_user = user_model._default_manager.create_user
+        self.enable_email_registration(scenario)
+
+        def create_email_user(email: str, password: str | None = None) -> Any:
+            """Create an ordinary account through a strict email-manager signature."""
+            return original_create_user(username=email, email=email, password=password)
+
+        self.email_patches.enter_context(patch.object(user_model._default_manager, "create_user", create_email_user))
+
+    def enable_privileged_email_registration(self, scenario: RequestScenario) -> None:
+        """Ensure a custom manager's unsafe defaults cannot persist elevated signup."""
+        user_model = get_user_model()
+        original_create_user = user_model._default_manager.create_user
+        self.enable_email_registration(scenario)
+
+        def create_email_user(email: str, password: str | None = None) -> Any:
+            """Model a strict manager with unsafe, server-defined privilege defaults."""
+            return original_create_user(username=email, email=email, password=password, is_staff=True)
+
+        self.email_patches.enter_context(patch.object(user_model._default_manager, "create_user", create_email_user))
+
+    def no_email_account_created(self, response: HttpResponse) -> bool:
+        """Confirm the rejected custom-manager account was rolled back."""
+        return not get_user_model().objects.filter(email="jane@example.com").exists()
+
+    def strict_email_user_is_registered(self, response: HttpResponse) -> bool:
+        """Ensure the strict-manager signup authenticates with no elevated flags."""
+        user = get_user_model().objects.get(email="jane@example.com")
+        return response.json().get("authenticated") is True and not user.is_staff and not user.is_superuser
+
+    def enable_relation_registration(self, scenario: RequestScenario) -> None:
+        """Supply a real relation ID that a custom user manager resolves before saving."""
+        self.enable_registration_settings()
+        user_model = get_user_model()
+        original_create_user = user_model._default_manager.create_user
+        self.registration_account = EmailAccount.objects.create(
+            name="Signup fixture", email_address="fixture@example.com", provider="smtp",
+        )
+        scenario.data["default_email_account"] = str(self.registration_account.pk)
+
+        def create_related_user(password: str, default_email_account: str, **extra_fields: Any) -> Any:
+            """Resolve the incoming foreign key through the custom manager contract."""
+            account = EmailAccount.objects.get(pk=default_email_account)
+            return original_create_user(password=password, default_email_account=account, **extra_fields)
+
+        self.email_patches = ExitStack()
+        self.email_patches.enter_context(patch.object(user_model, "REQUIRED_FIELDS", ["email", "default_email_account"]))
+        self.email_patches.enter_context(patch.object(user_model._default_manager, "create_user", create_related_user))
+
+    def relation_user_is_registered(self, response: HttpResponse) -> bool:
+        """Verify the manager persisted the submitted relation without elevated flags."""
+        user = get_user_model().objects.get(username="janedoe")
+        return (response.json().get("authenticated") is True
+                and user.default_email_account_id == self.registration_account.pk
+                and not user.is_staff and not user.is_superuser)
 
     def disable_email_registration(self, _scenario: RequestScenario) -> None:
         """Restore the user metadata and settings after the email-client scenario."""
