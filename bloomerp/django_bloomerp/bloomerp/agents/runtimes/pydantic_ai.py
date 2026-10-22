@@ -13,7 +13,9 @@ history and must have the same access restrictions as the conversation.
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 from collections.abc import AsyncIterable
 from importlib.metadata import version
 from typing import Any, cast
@@ -51,12 +53,18 @@ from bloomerp.agents.providers.builtins.pydantic_ai_common import (
     ModelFactory,
     PydanticAIProvider,
 )
+from bloomerp.agents.retries import (
+    TRANSIENT_HTTP_STATUSES,
+    model_retry_delay,
+    retry_after_seconds,
+)
 from bloomerp.agents.runtime import (
     AgentRuntimeAttempt,
     AgentRuntimeBudgetExceeded,
     AgentRuntimeCheckpoint,
     AgentRuntimeCredentials,
     AgentRuntimeMessage,
+    AgentRuntimeModelRetryingEvent,
     AgentRuntimePendingToolProposal,
     AgentRuntimeRunFinishedEvent,
     AgentRuntimeRunPausedEvent,
@@ -75,6 +83,15 @@ MAX_TOOL_JSON_CORRECTIONS = 2
 
 class MalformedToolArgumentsError(ValueError):
     """Stop a model that repeatedly emits undecodable tool arguments."""
+
+
+class ModelRequestFailed(Exception):
+    """Carry a portable failure and retry diagnostics while preserving the SDK cause."""
+
+    def __init__(self, error: AgentError) -> None:
+        """Retain the classified failure for the shared runtime's terminal event."""
+        super().__init__(error.message)
+        self.error = error
 
 
 class _State(AgentRuntimeState):
@@ -268,6 +285,8 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
 
     def _classify_error(self, error: Exception) -> AgentError:
         """Map SDK failures to safe portable errors, delegating common classifications."""
+        if isinstance(error, ModelRequestFailed):
+            return error.error
         if isinstance(error, MalformedToolArgumentsError):
             return AgentError(
                 code="malformed_tool_arguments",
@@ -280,11 +299,16 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
         if isinstance(error, httpx.TimeoutException):
             return super()._classify_error(TimeoutError())
         if isinstance(error, ModelHTTPError):
+            retryable = error.status_code in TRANSIENT_HTTP_STATUSES
+            code = "provider_rate_limited" if error.status_code == 429 else "provider_unavailable"
             return AgentError(
-                code="provider_error",
-                message="The model provider rejected the request.",
-                retryable=error.status_code == 429 or error.status_code >= 500,
-                details={"exception_type": type(error).__name__},
+                code=code if retryable else "provider_error",
+                message=(
+                    "The model service is temporarily busy or unavailable. Please try again later."
+                    if retryable else "The model provider rejected the request."
+                ),
+                retryable=retryable,
+                details={"exception_type": type(error).__name__, "status_code": error.status_code},
             )
         return super()._classify_error(error)
 
@@ -411,6 +435,7 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
                 # An omitted output cap must retain the provider's default.
                 message_id = uuid4()
                 visible_part_indexes: dict[int, int] = {}
+                response_started = False
 
                 async def on_event(
                     context: RunContext[None],
@@ -419,8 +444,10 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
                     output_part_indexes: dict[int, int] = visible_part_indexes,
                 ) -> None:
                     """Map visible text to contiguous blocks while retaining reasoning privately."""
+                    nonlocal response_started
                     try:
                         async for event in events:
+                            response_started = True
                             text = None
                             if isinstance(event, PartStartEvent) and isinstance(
                                 event.part, TextPart
@@ -455,16 +482,45 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
 
                 # The SDK run owns its streams/tasks. Cancelling our producer
                 # unwinds it without leaving a detached model or tool operation.
-                attempt.failure_stage = "model_request"
-                result = await agent.run(
-                    message_history=history,
-                    model_settings=cast(ModelSettings, turn_settings),
-                    usage=tokens,
-                    usage_limits=UsageLimits(
-                        total_tokens_limit=remaining, request_limit=50
-                    ),
-                    event_stream_handler=on_event,
-                )
+                retries = 0
+                while True:
+                    attempt.failure_stage = "model_request"
+                    try:
+                        result = await agent.run(
+                            message_history=history,
+                            model_settings=cast(ModelSettings, turn_settings),
+                            usage=tokens,
+                            usage_limits=UsageLimits(
+                                total_tokens_limit=remaining, request_limit=50
+                            ),
+                            event_stream_handler=on_event,
+                        )
+                        break
+                    except ModelHTTPError as error:
+                        classified = self._classify_error(error)
+                        retry_after = retry_after_seconds(error)
+                        delay = model_retry_delay(retries, retry_after)
+                        if not classified.retryable or response_started or delay is None:
+                            classified.details.update({
+                                "retry_attempts": retries,
+                                "retry_after_seconds": retry_after,
+                                "response_started": response_started,
+                            })
+                            raise ModelRequestFailed(classified) from error
+                        retries += 1
+                        attempt.failure_stage = "model_retry_wait"
+                        # History contains completed tool outcomes. Retry only this
+                        # model request, never the surrounding tool execution loop.
+                        await self._save(attempt, state)
+                        logging.getLogger(__name__).warning(
+                            "Retrying model request: run_id=%s attempt_id=%s status=%s retry=%s delay=%.2fs",
+                            request.run_id, request.attempt_id, error.status_code, retries, delay,
+                        )
+                        await attempt.emit(AgentRuntimeModelRetryingEvent(
+                            **identity, retry_number=retries, delay_seconds=delay,
+                            error_code=classified.code,
+                        ))
+                        await asyncio.sleep(delay)
                 attempt.record_tokens(
                     input_tokens=tokens.input_tokens, output_tokens=tokens.output_tokens
                 )

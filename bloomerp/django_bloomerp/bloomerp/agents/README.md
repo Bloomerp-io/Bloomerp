@@ -353,8 +353,21 @@ Attempts renew expiring leases; expired executors cannot publish new committed
 output. `chat.resume` can redispatch queued runs or reclaim an expired running
 attempt. Safe checkpoints restore provider history; interrupted partial messages
 remain visible in storage but are excluded from fresh runtime history. Automatic
-recovery sweeps, retry policy, durable queue/steering, and distributed scheduling
+recovery sweeps, whole-run retry policy, durable queue/steering, and distributed scheduling
 of waits are later orchestration work. Approval waits cannot be bypassed by resume.
+
+Individual model requests retry up to three times for HTTP 408, 429, 500, 502,
+503, 504 and 529 before any response events arrive. The shared HTTP policy uses
+2/4/8-second backoff plus jitter and respects standard `Retry-After` seconds or
+dates from wrapped SDK exceptions. A server wait longer than 30 seconds ends
+with a retryable failure instead of retrying early or tying up the executor.
+Built-in SDK retries remain disabled. Tools are never replayed by this retry
+loop; completed outcomes are checkpointed before waiting. Waiting is cancellable
+and consumes the existing duration budget. Partial streamed responses and
+non-HTTP transport failures are not automatically replayed. A durable
+`model.retrying` progress event exposes the temporary wait without adding chat
+messages. Exhausted failures retain the HTTP status, retry count, server wait
+and original chained traceback; no provider-name or message-text matching is used.
 
 Tests exercise the real PydanticAI loop with a local `FunctionModel`; no real
 provider calls or API keys are required. The application database is not migrated

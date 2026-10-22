@@ -383,6 +383,15 @@ class AgentRuntimeToolStartedEvent(AgentRuntimeEventBase):
     tool_call_id: UUID
 
 
+class AgentRuntimeModelRetryingEvent(AgentRuntimeEventBase):
+    """Expose a temporary model-service wait without adding assistant transcript text."""
+
+    kind: Literal["model.retrying"] = "model.retrying"
+    retry_number: int = Field(ge=1)
+    delay_seconds: float = Field(ge=0)
+    error_code: str
+
+
 class AgentRuntimeArtifactCreatedEvent(AgentRuntimeEventBase):
     """Reference an artifact already persisted by an authorized tool operation."""
 
@@ -456,6 +465,7 @@ class AgentRuntimeRunFailedEvent(AgentRuntimeEventBase):
 
 type AgentRuntimeEvent = Annotated[
     AgentRuntimeTextDeltaEvent
+    | AgentRuntimeModelRetryingEvent
     | AgentRuntimeToolStartedEvent
     | AgentRuntimeToolOutcomeEvent
     | AgentRuntimeArtifactCreatedEvent
