@@ -265,7 +265,7 @@ function handleSlashTrigger(this: BloomerpTextEditor, _event?: KeyboardEvent): b
             return;
         }
         getContextMenu(RANGE_CONTEXT_MENU_ID).hide();
-        launchContextMenu(editor, menu, ["template", "h1", "h2", "h3", "code_block", "image", "unordered_list", "ordered_list", "checklist", "table", "mention", "object_reference"].concat(component.slashExtraActions), currentWord.slice(1));
+        launchContextMenu(editor, menu, ["template", "h1", "h2", "h3", "code_block", "mermaid", "image", "unordered_list", "ordered_list", "checklist", "table", "mention", "object_reference"].concat(component.slashExtraActions), currentWord.slice(1));
     }
     requestAnimationFrame(openSlashAfterInput);
     return false;
