@@ -2,7 +2,7 @@ import inspect
 import json
 import re
 from dataclasses import dataclass
-from typing import Any, Callable, Literal, Optional, Type
+from typing import Any, Callable, Literal, Optional, Type, TypeVar
 from urllib.parse import urlsplit
 
 from django.conf import settings
@@ -19,6 +19,7 @@ from pydantic import (
 
 from bloomerp.config.definition import BloomerpConfig
 from bloomerp.dataviews.definition import BaseDataview
+from bloomerp.filters.definition import Filter
 from bloomerp.permissions.definition import AccessRule, BloomerpPermission
 from bloomerp.workspaces.base import BaseTileConfig
 
@@ -537,6 +538,7 @@ class BloomerpModelConfig(BaseModel):
         - detail_view_settings: detail tabs and named object layouts.
         - tiles: reusable tile configurations associated with this model.
         - permission_settings: default stored policies created by sync_defaults.
+        - base_filter: optional row filter applied before application permissions.
         - string_search_fields: optional field paths used by the shared string search service.
 
     Usage
@@ -561,6 +563,11 @@ class BloomerpModelConfig(BaseModel):
     )
 
     is_internal: bool = False
+
+    base_filter: Filter | None = Field(
+        default=None,
+        description="Optional base row filter for Bloomerp application querysets, including superusers.",
+    )
 
     api_settings: Optional[ApiSettings] = None
     permission_settings: PermissionSettings = Field(default_factory=PermissionSettings)
@@ -665,4 +672,24 @@ def get_model_config(model_or_object:Type[Model]|Model) -> BloomerpModelConfig |
             return config
     
     return None
+
+
+ModelType = TypeVar("ModelType", bound=Model)
+
+
+def apply_model_base_filter(queryset: QuerySet[ModelType]) -> QuerySet[ModelType]:
+    """Narrow an existing queryset by its model's optional application base filter.
+
+    Keep the caller's database, annotations and restrictions intact. This is a
+    model-wide constraint, not a permission grant; callers still enforce access.
+    """
+    config = get_model_config(queryset.model)
+    if config is None or config.base_filter is None:
+        return queryset
+
+    from bloomerp.filters.manager import ModelFilterManager
+
+    return ModelFilterManager(queryset.model).apply(
+        [config.base_filter], queryset=queryset
+    )
     

@@ -11,6 +11,7 @@ from django.db.models.functions import Cast, Replace
 from django.http import HttpRequest
 
 from bloomerp.models import ApplicationField
+from bloomerp.models.definition import apply_model_base_filter, get_model_config
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.permissions.compilers.django_q_permission_compiler import (
     DjangoQPermissionCompiler,
@@ -67,6 +68,12 @@ class FileAccessManager:
         """Authorize node-wide changes across every reference affected by the operation."""
         if not self.user.is_authenticated:
             return False
+        config = get_model_config(file)
+        if config is not None and config.base_filter is not None:
+            if not apply_model_base_filter(
+                type(file).objects.filter(pk=file.pk)
+            ).exists():
+                return False
         if self.user.is_superuser:
             return True
         if file.kind == "FOLDER":
@@ -140,7 +147,9 @@ class FileAccessManager:
         """
         from bloomerp.models import Comment, FileReference
 
-        files = queryset.filter(kind="FILE", content__isnull=False).exclude(content="")
+        files = apply_model_base_filter(queryset).filter(
+            kind="FILE", content__isnull=False
+        ).exclude(content="")
         files = files.filter(
             Q(meta__bulk_upload__isnull=True)
             | Q(meta__bulk_upload=None)

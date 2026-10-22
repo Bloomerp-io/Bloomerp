@@ -5,6 +5,7 @@ from django.http import HttpRequest, HttpResponse
 from django.test import RequestFactory
 
 from bloomerp.components.files.items.preview import preview_file
+from bloomerp.filters.definition import Filter
 from bloomerp.models import FileNode
 from bloomerp.models.definition import ObjectAction
 from bloomerp.templatetags.bloomerp import render_object_action
@@ -39,6 +40,15 @@ class TestActionsExecuteComponent(
             "action_id": "view_file",
         }
         return [
+            RequestScenario(
+                name="Base-filtered object cannot execute an action even for an admin",
+                method="POST",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                prepare=self.exclude_file,
+                cleanup=self.restore_file_filter,
+                expected=ExpectedResult(status_code=404),
+            ),
             RequestScenario(
                 name="Queue VoIP sync with connection change policy",
                 method="POST",
@@ -102,6 +112,17 @@ class TestActionsExecuteComponent(
                 ]),
             ),
         ]
+
+    def exclude_file(self, scenario: RequestScenario) -> None:
+        """Temporarily hide file records from application object lookups."""
+        self.file_filter_patch = patch.object(
+            FileNode.bloomerp_config, "base_filter", Filter(connector="OR")
+        )
+        self.file_filter_patch.start()
+
+    def restore_file_filter(self, scenario: RequestScenario) -> None:
+        """Restore file visibility before subsequent action scenarios run."""
+        self.file_filter_patch.stop()
 
     def prepare_get_action(self, scenario: RequestScenario) -> None:
         """Configure the read-only file preview action to accept GET for one scenario."""
