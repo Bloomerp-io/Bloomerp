@@ -254,6 +254,11 @@ class AssistantMutationCatalogQuerySerializer(AssistantModelIdentitySerializer):
         required=False,
         help_text="Exact Django model label, for example `sales.Customer`.",
     )
+    operation = serializers.ChoiceField(
+        choices=("create", "update", "delete"),
+        required=False,
+        help_text="Return only this operation's contract. Omit to return all permitted operations.",
+    )
 
     def validate_search(self, value: str) -> str:
         """Trim a catalog search without changing its case-insensitive semantics."""
@@ -270,7 +275,8 @@ class AssistantMutationCatalogQuerySerializer(AssistantModelIdentitySerializer):
         title="List available mutations",
         description=(
             "List generated API model labels, operations, and writable fields available "
-            "to the authenticated user."
+            "to the authenticated user. When the intended operation is known, pass "
+            "operation (create, update, or delete) to retrieve only that contract."
         ),
         input_schema=lambda: serializer_input_schema(
             AssistantMutationCatalogQuerySerializer
@@ -319,17 +325,24 @@ class AssistantMutationCatalogView(BaseBloomerpApiView):
                 location=OpenApiParameter.QUERY,
                 description="Exact Django model label from an artifact, for example sales.Customer.",
             ),
+            OpenApiParameter(
+                name="operation",
+                type=OpenApiTypes.STR,
+                enum=["create", "update", "delete"],
+                location=OpenApiParameter.QUERY,
+                description="Return only this operation's contract; omit for all permitted operations.",
+            ),
         ],
         responses={200: AssistantMutationCatalogResponseSerializer},
         description=(
             "List generated API resources, operations, and writable API fields available "
             "to the authenticated user. Results are paginated and can be filtered with "
-            "search or an exact model_label. Use returned model_label and field names with "
+            "search, an exact model_label, or an operation. Use returned model_label and field names with "
             "the Assistant Mutations endpoint."
         ),
     )
     def get(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        """List authorized mutation contracts identified by shared model labels."""
+        """List authorized contracts, optionally limited to one operation before pagination."""
         query_serializer = AssistantMutationCatalogQuerySerializer(
             data=request.query_params
         )
@@ -339,6 +352,7 @@ class AssistantMutationCatalogView(BaseBloomerpApiView):
         page_size = query_serializer.validated_data["page_size"]
         search = query_serializer.validated_data.get("search", "").lower()
         model_filter = query_serializer.validated_data.get("model_label", "").lower()
+        operation = query_serializer.validated_data.get("operation")
         resolver = ApiAccessResolver(request)
         models = [
             model
@@ -347,6 +361,13 @@ class AssistantMutationCatalogView(BaseBloomerpApiView):
             and (not model_filter or model._meta.label_lower == model_filter)
             and self._matches_query(model, search)
         ]
+        filtered_operations = {}
+        if operation is not None:
+            filtered_operations = {
+                model: self._get_operations(request, resolver, model, operation)
+                for model in models
+            }
+            models = [model for model in models if filtered_operations[model]]
         total_resources = len(models)
         total_pages = (total_resources + page_size - 1) // page_size
         page_start = (page - 1) * page_size
@@ -354,7 +375,11 @@ class AssistantMutationCatalogView(BaseBloomerpApiView):
 
         resources = []
         for model in page_models:
-            operations = self._get_operations(request, resolver, model)
+            operations = (
+                filtered_operations[model]
+                if operation is not None
+                else self._get_operations(request, resolver, model)
+            )
             if operations:
                 resources.append(
                     {
@@ -389,6 +414,8 @@ class AssistantMutationCatalogView(BaseBloomerpApiView):
                     "page_size": 10,
                 },
             }
+            if operation is not None:
+                payload["recovery"]["suggested_arguments"]["operation"] = operation
         return Response(payload)
 
     def _has_mutation_access(self, resolver: ApiAccessResolver, model) -> bool:
@@ -415,15 +442,22 @@ class AssistantMutationCatalogView(BaseBloomerpApiView):
         )
         return any(search in value.lower() for value in searchable_values)
 
-    def _get_operations(self, request, resolver: ApiAccessResolver, model) -> dict:
+    def _get_operations(
+        self,
+        request: Request,
+        resolver: ApiAccessResolver,
+        model: type[Model],
+        operation: str | None = None,
+    ) -> dict[str, Any]:
+        """Build only the requested operation contracts after existing access checks."""
         operations = {}
 
-        if self._has_action_access(resolver, model, "create"):
+        if operation in (None, "create") and self._has_action_access(resolver, model, "create"):
             operations["create"] = {
                 "fields": self._get_writable_fields(request, resolver, model, "create"),
             }
 
-        if self._has_action_access(resolver, model, "update"):
+        if operation in (None, "update") and self._has_action_access(resolver, model, "update"):
             fields = self._get_writable_fields(request, resolver, model, "update")
             if fields:
                 operations["update"] = {
@@ -431,7 +465,7 @@ class AssistantMutationCatalogView(BaseBloomerpApiView):
                     "fields": fields,
                 }
 
-        if self._has_action_access(resolver, model, "destroy"):
+        if operation in (None, "delete") and self._has_action_access(resolver, model, "destroy"):
             operations["delete"] = {"object_id": self._primary_key_schema(model)}
 
         return operations

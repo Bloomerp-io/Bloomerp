@@ -41,10 +41,39 @@ arguments and returns the authenticated caller's `id`, `email`, `first_name`,
 
 ## Model identities for assistant tools
 
+### Targeted authoring references
+
+`get_authoring_reference` is a read-only tool backed by the live tile and workflow
+node registries. Pass `kind: "tile"` or `kind: "workflow_node"` without `type` for
+a compact index of registered identities, names and descriptions. Supply a known
+tile type or node `sub_type` as `type` to skip discovery and return only that
+definition. Tile JSON Schemas retain their nested `$defs` and validation metadata.
+The corresponding Workspace or Workflow view permission is required for both
+index and detail requests; references do not grant mutation permission.
+
+Workflow details include `output_ports` and a `connections` contract with a
+string-valued `output_port_schema`, a `multiple_outputs` flag and each port's
+connection limit. These are derived from registered definitions, not node IDs.
+For example, OBJECT_IF_CONDITION exposes both `"true"` and `"false"` as strings.
+Custom `get_output_ports` hooks require explicit `parameters`; without them the
+response reports `requires_parameters` rather than inventing a default port.
+With parameters supplied, only the port metadata hook is invoked. Form and
+executor constructors, runtime defaults, choices and IO-schema factories are
+not evaluated. Input/output schemas remain declared baselines.
+
+Full creation-guide resources remain available for broader authoring guidance.
+
+### Mutation identities
+
 Shared object and model artifacts identify models with Django's `model_label`,
 such as `sales.Customer`. Use that same label in all three assistant tools:
 
-- `api_assistant_mutation_catalog`: optionally filter by `model_label`. Each
+- `api_assistant_mutation_catalog`: optionally filter by `model_label` and
+  `operation` (`create`, `update`, or `delete`). When the intended operation is
+  known, request it to receive only its permitted contract. Omitting `operation`
+  returns all permitted operations. Resources without the selected operation
+  are excluded before pagination, and empty-result recovery preserves the
+  operation filter. Each
   catalog entry returns its `model_label`; relation fields use
   `related_model_label` to identify their target model.
 - `api_assistant_object_retrieve`: supply `model_label` and `object_id` to read

@@ -39,6 +39,11 @@ class McpRouteRegistrationTests(SimpleTestCase):
         catalog = routes["api_assistant_mutation_catalog"].mcp
         self.assertIn("model_label", catalog.get_input_schema()["properties"])
         self.assertNotIn("resource", catalog.get_input_schema()["properties"])
+        catalog_validator = Draft202012Validator(catalog.get_input_schema())
+        self.assertTrue(catalog_validator.is_valid({}))
+        for operation in ("create", "update", "delete"):
+            self.assertTrue(catalog_validator.is_valid({"operation": operation}))
+        self.assertFalse(catalog_validator.is_valid({"operation": "destroy"}))
 
         sql = routes["api_sql_execute"].mcp
         self.assertTrue(sql.read_only_hint)
