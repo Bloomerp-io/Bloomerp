@@ -34,6 +34,12 @@ class TestAssistantMutationCatalogView(BloomerpAPIViewTestCase):
         """Cover model-label catalog discovery, relationships, and access filtering."""
         return [
             RequestScenario(
+                name="Unknown model labels suggest a bounded name search without the exact filter",
+                user=self.admin_user,
+                query_params={"model_label": "unknown.Customer", "search": "unrelated", "page": 3},
+                expected=ExpectedResult(response_validators=self.empty_lookup_has_recovery),
+            ),
+            RequestScenario(
                 name="Catalog lists operations and writable field metadata",
                 description=(
                     "UC: An administrator inspects one generated API resource.\n"
@@ -123,6 +129,7 @@ class TestAssistantMutationCatalogView(BloomerpAPIViewTestCase):
         }
         return (
             payload["page"] == 1
+            and "recovery" not in payload
             and payload["page_size"] == 1
             and payload["total_resources"] == 1
             and payload["total_pages"] == 1
@@ -170,6 +177,7 @@ class TestAssistantMutationCatalogView(BloomerpAPIViewTestCase):
         payload = response.json()
         return (
             payload["resources"] == []
+            and "recovery" not in payload
             and payload["total_resources"] == 1
             and payload["has_previous"]
             and not payload["has_next"]
@@ -218,9 +226,22 @@ class TestAssistantMutationCatalogView(BloomerpAPIViewTestCase):
         payload = response.json()
         return (
             payload["total_resources"] == 0
+            and self.empty_lookup_has_recovery(response)
             and payload["total_pages"] == 0
             and self.resource
             not in [item["model_label"] for item in payload["resources"]]
+        )
+
+    def empty_lookup_has_recovery(self, response: HttpResponse) -> bool:
+        """Give identical recovery for unknown and inaccessible models without revealing existence."""
+        payload = response.json()
+        recovery = payload.get("recovery", {})
+        return (
+            payload["resources"] == []
+            and payload["total_resources"] == 0
+            and recovery.get("suggested_arguments")
+            == {"search": "customer", "page": 1, "page_size": 10}
+            and "omitting model_label" in recovery.get("message", "")
         )
 
     def test_catalog_uses_shared_model_labels(self) -> None:

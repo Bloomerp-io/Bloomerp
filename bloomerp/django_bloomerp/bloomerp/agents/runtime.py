@@ -507,11 +507,14 @@ class AgentRuntime(Protocol):
         """Restore compatible state and recheck durable tool outcomes under a fresh lease."""
         ...
 
-    async def cancel(self, run_id: UUID, *, attempt_id: UUID) -> None:
+    async def cancel(
+        self, run_id: UUID, *, attempt_id: UUID, error: AgentError | None = None
+    ) -> None:
         """Idempotently request local cancellation of this exact attempt.
 
         The service also persists cancel_requested_at for workers in other
-        processes. Cancellation cannot undo effects that already completed.
+        processes. Cancellation cannot undo effects that already completed. An error marks
+        infrastructure interruption instead of user cancellation.
         """
         ...
 
@@ -565,6 +568,7 @@ class AgentRuntimeAttempt:
     abandoned: bool = False
     producer_started: bool = False
     cancellation_requested: bool = False
+    interruption_error: AgentError | None = None
     started: float = field(default_factory=monotonic)
     input_tokens: int = 0
     output_tokens: int = 0
@@ -830,11 +834,25 @@ class BaseAgentRuntime[StateT: AgentRuntimeState](AgentRuntime, ABC):
             # replaces it, ensuring shutdown cannot block on an absent consumer.
             with suppress(asyncio.QueueEmpty):
                 attempt.queue.get_nowait()
-            await attempt.queue.put(
-                AgentRuntimeRunFinishedEvent(
-                    **identity, kind="run.cancelled", usage=attempt.usage()
+            interruption = attempt.interruption_error
+            if interruption is None and not attempt.cancellation_requested:
+                interruption = AgentError(
+                    code="execution_interrupted",
+                    message="Execution was interrupted by the infrastructure.",
+                    retryable=True,
                 )
-            )
+            if interruption is not None:
+                await attempt.queue.put(
+                    AgentRuntimeRunFailedEvent(
+                        **identity, error=interruption, usage=attempt.usage()
+                    )
+                )
+            else:
+                await attempt.queue.put(
+                    AgentRuntimeRunFinishedEvent(
+                        **identity, kind="run.cancelled", usage=attempt.usage()
+                    )
+                )
         except Exception as error:  # noqa: BLE001 - sanitize arbitrary provider/coordinator failures
             if (
                 isinstance(error, TimeoutError)
@@ -995,12 +1013,15 @@ class BaseAgentRuntime[StateT: AgentRuntimeState](AgentRuntime, ABC):
         state.pending = []
         return None
 
-    async def cancel(self, run_id: UUID, *, attempt_id: UUID) -> None:
-        """Cancel only the specified local producer, leaving the consumer task alive."""
+    async def cancel(
+        self, run_id: UUID, *, attempt_id: UUID, error: AgentError | None = None
+    ) -> None:
+        """Stop one producer, emitting failure for infrastructure errors or cancellation for Stop."""
         attempt = self._attempts.get((run_id, attempt_id))
         if attempt is not None and attempt.task is not None and not attempt.task.done():
             if not attempt.cancellation_requested:
                 attempt.cancellation_requested = True
+                attempt.interruption_error = error
                 if attempt.producer_started:
                     attempt.task.cancel()
             with suppress(asyncio.CancelledError):

@@ -6,6 +6,8 @@ from bloomerp.model_fields.icon_field import IconField
 from bloomerp.models import BloomerpModel
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+
+from bloomerp.models.definition import BloomerpModelConfig
 if TYPE_CHECKING:
     from bloomerp.workspaces.base import BaseTileConfig
     from bloomerp.workspaces.base import TileTypeDefinition
@@ -22,6 +24,7 @@ class Tile(BloomerpModel):
     A default tile is one that can be set on models or modules which allow you to create
     default workspaces.
     """
+    
     class Meta(BloomerpModel.Meta):
         verbose_name = _("Tile")
         verbose_name_plural = _("Tiles")

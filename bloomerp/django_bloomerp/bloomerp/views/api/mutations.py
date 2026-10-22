@@ -240,6 +240,7 @@ class AssistantMutationCatalogResponseSerializer(serializers.Serializer):
     total_pages = serializers.IntegerField()
     has_next = serializers.BooleanField()
     has_previous = serializers.BooleanField()
+    recovery = serializers.DictField(required=False)
 
 
 class AssistantMutationCatalogQuerySerializer(AssistantModelIdentitySerializer):
@@ -364,17 +365,31 @@ class AssistantMutationCatalogView(BaseBloomerpApiView):
                     }
                 )
 
-        return Response(
-            {
-                "resources": resources,
-                "page": page,
-                "page_size": page_size,
-                "total_resources": total_resources,
-                "total_pages": total_pages,
-                "has_next": page < total_pages,
-                "has_previous": page > 1 and total_resources > 0,
+        payload = {
+            "resources": resources,
+            "page": page,
+            "page_size": page_size,
+            "total_resources": total_resources,
+            "total_pages": total_pages,
+            "has_next": page < total_pages,
+            "has_previous": page > 1 and total_resources > 0,
+        }
+        if total_resources == 0 and model_filter:
+            payload["recovery"] = {
+                "message": (
+                    "No writable resource matched these filters for the current user. "
+                    "Retry this catalog with the suggested arguments, omitting model_label "
+                    "and replacing any existing search. Use a returned canonical model_label; "
+                    "do not guess another app label or request the entire catalog. "
+                    "If the search also returns no resources, mutation access may be unavailable."
+                ),
+                "suggested_arguments": {
+                    "search": model_filter.rsplit(".", 1)[-1],
+                    "page": 1,
+                    "page_size": 10,
+                },
             }
-        )
+        return Response(payload)
 
     def _has_mutation_access(self, resolver: ApiAccessResolver, model) -> bool:
         if self._has_action_access(resolver, model, "create"):

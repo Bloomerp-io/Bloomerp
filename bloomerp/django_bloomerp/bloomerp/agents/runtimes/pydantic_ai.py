@@ -371,11 +371,8 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
                 if remaining is not None and tokens.total_tokens >= remaining:
                     raise UsageLimitExceeded("Token budget exhausted")
                 turn_settings = dict(settings)
-                if remaining is not None:
-                    output_cap = remaining - tokens.total_tokens
-                    turn_settings["max_tokens"] = min(
-                        settings.get("max_tokens", output_cap), output_cap
-                    )
+                # Provider output settings are independent of cumulative run usage.
+                # An omitted output cap must retain the provider's default.
                 message_id = uuid4()
                 visible_part_indexes: dict[int, int] = {}
 

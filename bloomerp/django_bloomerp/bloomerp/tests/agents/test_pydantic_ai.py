@@ -311,6 +311,30 @@ class PydanticAIRuntimeTests(IsolatedAsyncioTestCase):
         self.assertEqual(events[-1].kind, "run.failed")
         self.assertEqual(self.coordinator.resolved, [])
 
+    async def test_run_budget_does_not_override_provider_output_limit(self) -> None:
+        """Preserve omitted and explicit output caps despite a nearly spent run budget."""
+        for parameters in ({}, {"max_tokens": None}, {"max_tokens": 8192}):
+            with self.subTest(parameters=parameters):
+                async def inspect_settings(
+                    messages: list[ModelMessage],
+                    info: AgentInfo,
+                    expected_limit: int | None = parameters.get("max_tokens"),
+                ) -> AsyncIterator[str]:
+                    """Inspect the actual SDK model settings without a network request."""
+                    if expected_limit is None:
+                        self.assertNotIn("max_tokens", info.model_settings or {})
+                    else:
+                        self.assertEqual(info.model_settings["max_tokens"], 8192)
+                    yield "Done"
+
+                self.model_stream = inspect_settings
+                payload = self.request.model_dump()
+                payload["config"]["parameters"] = parameters
+                payload["budgets"] = {"max_tokens": 250000}
+                payload["usage"] = {"input_tokens": 249000}
+                events = await self.collect(AgentRuntimeRunRequest.model_validate(payload))
+                self.assertEqual(events[-1].kind, "run.completed", events[-1])
+
     async def test_token_budget_accounts_for_previous_attempts(self) -> None:
         """Reject exhausted lifetime usage before opening a provider stream."""
         request = AgentRuntimeRunRequest.model_validate(

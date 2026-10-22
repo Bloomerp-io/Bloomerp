@@ -193,3 +193,43 @@ Decode `structuredContent.content_base64` to recover the exact original bytes.
 Refresh tool discovery after deployment so the optional upload field and new
 read tool appear. Upload/link tools retain mutation annotations; read is
 read-only and idempotent. Asynchronous extraction remains a separate operation.
+
+## Conversation memory hooks
+
+Local tools can opt into agent memory using `McpTool(memory=McpMemoryPolicy(...))`.
+This is server-side metadata, excluded from the public MCP schema. It does not
+change the endpoint's response or enable memory for external MCP clients.
+
+The policy supplies three typed callbacks:
+
+- `extract(result)` returns stable fact keys mapped to JSON object payloads.
+- `merge(previous, current)` combines repeated observations of one fact.
+- `validate(request, records)` returns only facts currently visible to the user,
+  refreshing metadata when appropriate. Returning an empty mapping omits memory.
+
+Policies also provide a model-facing `context_prefix`, a positive format `version`,
+and an optional `ttl`. Bump the version when stored payloads become incompatible.
+Callbacks must treat source data as data, never instructions, and avoid storing
+entire tool outputs or query rows. Validation must check current access rather
+than assuming that historical permission remains valid.
+
+After successful tool execution, the agent coordinator persists facts in the
+private `AIConversationMemory` model. Keys are unique per conversation and tool;
+replayed completions are idempotent and older calls cannot overwrite newer facts.
+The source tool call records provenance. Callback failures are logged without
+turning an already successful action into a retry.
+
+At the next request, the context builder reads up to 100 recent memory records
+from earlier runs, skips expired or incompatible records, and invokes
+their registered validation policies. Combined memory is capped at 12,000
+characters. Checkpoint resumes retain their original context and do not inject
+notes again. Successful calls from endpoints explicitly marked `read_only_hint=True`
+remain eligible even if their run was cancelled, failed, or interrupted. Other
+endpoints still require a completed run. Failed or uncertain source calls are
+always excluded, and every reused fact still passes current-access validation.
+Historical tool results are not automatically backfilled; start a
+fresh conversation when benchmarking the memory implementation.
+
+SQL discovery is the initial producer. Its policy lives next to the SQL endpoint
+in `bloomerp/views/api/sql/memory.py`; the generic memory service contains no SQL
+tool names, response parsing, or SQL authorization logic.

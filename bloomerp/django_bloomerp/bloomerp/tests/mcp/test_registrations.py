@@ -42,6 +42,11 @@ class McpRouteRegistrationTests(SimpleTestCase):
 
         sql = routes["api_sql_execute"].mcp
         self.assertTrue(sql.read_only_hint)
+        self.assertIn("query", sql.get_input_schema()["required"])
+        query_validator = Draft202012Validator(sql.get_input_schema())
+        self.assertFalse(query_validator.is_valid({"page_size": 100}))
+        self.assertFalse(query_validator.is_valid({"query": ""}))
+        self.assertTrue(query_validator.is_valid({"query": "SELECT 1", "page_size": 100}))
         self.assertEqual(
             sorted(sql.get_input_schema()["properties"]),
             ["page", "page_size", "query"],

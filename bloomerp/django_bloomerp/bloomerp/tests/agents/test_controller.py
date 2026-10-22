@@ -3,13 +3,14 @@
 import asyncio
 from collections.abc import AsyncIterator, Callable
 from datetime import timedelta
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 from uuid import uuid4
 
 import httpx
 from asgiref.sync import async_to_sync
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import OperationalError
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from pydantic_ai.messages import ModelMessage
@@ -194,6 +195,28 @@ class AgentControllerTests(TestCase):
         self.request = AgentChatRequest(
             client_message_id=uuid4(), content=[{"type": "text", "text": "Hello"}]
         )
+
+    def test_heartbeat_failure_logs_exception_and_interrupts_runtime(self) -> None:
+        """Preserve heartbeat diagnostics without exposing database error text to users."""
+        run = Mock(pk=uuid4())
+        attempt = Mock(pk=uuid4(), lease_token=uuid4())
+        runtime = Mock(cancel=AsyncMock())
+        heartbeat = AsyncMock(side_effect=OperationalError("database is locked"))
+        with (
+            patch("bloomerp.agents.controller.database_sync_to_async", return_value=heartbeat),
+            patch("bloomerp.agents.controller.asyncio.sleep", new_callable=AsyncMock),
+            self.assertLogs("bloomerp.agents.controller", level="ERROR") as logs,
+        ):
+            async_to_sync(self.controller.monitor)(run, attempt, runtime, timedelta(seconds=60))
+        runtime.cancel.assert_awaited_once()
+        error = runtime.cancel.call_args.kwargs["error"]
+        self.assertEqual(error.code, "heartbeat_failed")
+        self.assertTrue(error.retryable)
+        self.assertEqual(error.details, {"exception_type": "OperationalError"})
+        self.assertNotIn("database is locked", error.model_dump_json())
+        self.assertIn(str(run.pk), logs.output[0])
+        self.assertIn(str(attempt.pk), logs.output[0])
+        self.assertIn("database is locked", logs.output[0])
 
     def test_instance_settings_reject_model_specific_values(self) -> None:
         """Keep model secrets and execution settings out of instance configuration."""

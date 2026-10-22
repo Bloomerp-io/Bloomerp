@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 
 from pydantic import Field
 
+from bloomerp.agents.definition import AgentError
 from bloomerp.agents.runtime import (
     AgentRuntimeAttempt,
     AgentRuntimeCheckpoint,
@@ -311,6 +312,22 @@ class BaseAgentRuntimeTests(IsolatedAsyncioTestCase):
         )
         events = await asyncio.wait_for(consumer, 2)
         self.assertEqual(events[-1].kind, "run.cancelled")
+        self.assertTrue(self.runtime.released.is_set())
+
+    async def test_infrastructure_stop_emits_retryable_failure(self) -> None:
+        """Wake the consumer with failure rather than reporting a user cancellation."""
+        self.runtime = ExampleRuntime(blocked=True)
+        consumer = asyncio.create_task(self.collect(self.request))
+        await asyncio.wait_for(self.runtime.entered.wait(), 2)
+        await self.runtime.cancel(
+            self.request.run_id, attempt_id=self.request.attempt_id,
+            error=AgentError(code="heartbeat_failed", message="Heartbeat failed", retryable=True),
+        )
+        events = await asyncio.wait_for(consumer, 2)
+        self.assertEqual(events[-1].kind, "run.failed")
+        self.assertEqual(events[-1].error.code, "heartbeat_failed")
+        self.assertTrue(events[-1].error.retryable)
+        self.assertFalse(any(event.kind == "run.cancelled" for event in events))
         self.assertTrue(self.runtime.released.is_set())
 
     async def test_failure_is_sanitized(self) -> None:
