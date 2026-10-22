@@ -15,6 +15,8 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
+import traceback
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from contextlib import suppress
@@ -573,6 +575,7 @@ class AgentRuntimeAttempt:
     input_tokens: int = 0
     output_tokens: int = 0
     tool_calls: int = 0
+    failure_stage: str = "execution"
 
     def record_tokens(self, *, input_tokens: int, output_tokens: int) -> None:
         """Retain cumulative attempt usage, including observations from partial streams."""
@@ -809,7 +812,7 @@ class BaseAgentRuntime[StateT: AgentRuntimeState](AgentRuntime, ABC):
         credentials: AgentRuntimeCredentials,
         coordinator: AgentRuntimeToolCoordinator,
     ) -> None:
-        """Own execution tasks and translate terminal failures without leaking secrets."""
+        """Keep failure messages concise while retaining tracebacks in details and logs."""
         request = attempt.request
         identity = {"run_id": request.run_id, "attempt_id": request.attempt_id}
         attempt.producer_started = True
@@ -826,6 +829,7 @@ class BaseAgentRuntime[StateT: AgentRuntimeState](AgentRuntime, ABC):
             deadline = asyncio.timeout(remaining)
             async with deadline:
                 terminal = await self._run(attempt, state, credentials, coordinator)
+            attempt.failure_stage = "terminal_delivery"
             await attempt.emit(terminal)
         except asyncio.CancelledError:
             if attempt.abandoned:
@@ -853,7 +857,7 @@ class BaseAgentRuntime[StateT: AgentRuntimeState](AgentRuntime, ABC):
                         **identity, kind="run.cancelled", usage=attempt.usage()
                     )
                 )
-        except Exception as error:  # noqa: BLE001 - sanitize arbitrary provider/coordinator failures
+        except Exception as error:
             if (
                 isinstance(error, TimeoutError)
                 and deadline is not None
@@ -864,6 +868,28 @@ class BaseAgentRuntime[StateT: AgentRuntimeState](AgentRuntime, ABC):
                 )
             else:
                 classified = self._classify_error(error)
+            classified = classified.model_copy(
+                update={
+                    "details": {
+                        **classified.details,
+                        "trace": "".join(traceback.format_exception(error)),
+                    },
+                },
+            )
+            if classified.code != "budget_exceeded":
+                logging.getLogger(__name__).exception(
+                    "Agent runtime failed: run_id=%s attempt_id=%s runtime=%s stage=%s",
+                    request.run_id,
+                    request.attempt_id,
+                    self.runtime_name,
+                    attempt.failure_stage,
+                    extra={
+                        "run_id": str(request.run_id),
+                        "attempt_id": str(request.attempt_id),
+                        "runtime_name": self.runtime_name,
+                        "failure_stage": attempt.failure_stage,
+                    },
+                )
             await attempt.queue.put(
                 AgentRuntimeRunFailedEvent(
                     **identity,
@@ -889,6 +915,8 @@ class BaseAgentRuntime[StateT: AgentRuntimeState](AgentRuntime, ABC):
 
     async def _save(self, attempt: AgentRuntimeAttempt, state: StateT) -> None:
         """Expose current usage and checkpoint before any subsequent side effect."""
+        previous_stage = attempt.failure_stage
+        attempt.failure_stage = "checkpoint"
         identity = {
             "run_id": attempt.request.run_id,
             "attempt_id": attempt.request.attempt_id,
@@ -901,6 +929,7 @@ class BaseAgentRuntime[StateT: AgentRuntimeState](AgentRuntime, ABC):
                 **identity, checkpoint=self._checkpoint(attempt.request, state)
             )
         )
+        attempt.failure_stage = previous_stage
 
     @staticmethod
     def _tool_validation_error(error: JsonSchemaValidationError) -> AgentError:
@@ -943,6 +972,7 @@ class BaseAgentRuntime[StateT: AgentRuntimeState](AgentRuntime, ABC):
         request = attempt.request
         catalog = {tool.identifier: tool for tool in request.tools}
         for item in state.pending:
+            attempt.failure_stage = "tool_validation"
             old = item.outcome
             if item.validation_error is not None or (
                 old is not None and old.status != "waiting"
@@ -968,18 +998,22 @@ class BaseAgentRuntime[StateT: AgentRuntimeState](AgentRuntime, ABC):
                     item.validation_error = self._tool_validation_error(error)
                     await self._save(attempt, state)
                     continue
+                attempt.failure_stage = "tool_dispatch"
                 outcome = await coordinator.call(proposal)
             else:
                 validator_for(tool.input_schema)(tool.input_schema).validate(
                     proposal.arguments
                 )
+                attempt.failure_stage = "tool_resolution"
                 outcome = await coordinator.resolve(old.tool_call_id)
+            attempt.failure_stage = "tool_outcome_validation"
             if outcome.provider_call_id != proposal.provider_call_id or (
                 old is not None and outcome.tool_call_id != old.tool_call_id
             ):
                 raise ValueError("Coordinator returned another tool call's outcome")
             item.outcome = outcome
             await self._save(attempt, state)
+            attempt.failure_stage = "tool_outcome_delivery"
             await attempt.emit(
                 AgentRuntimeToolOutcomeEvent(
                     run_id=request.run_id,
@@ -1009,6 +1043,7 @@ class BaseAgentRuntime[StateT: AgentRuntimeState](AgentRuntime, ABC):
                     ),
                 ),
             )
+        attempt.failure_stage = "tool_result_serialization"
         self._apply_tool_results(state)
         state.pending = []
         return None

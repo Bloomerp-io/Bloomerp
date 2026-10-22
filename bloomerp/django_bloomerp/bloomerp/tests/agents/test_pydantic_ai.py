@@ -590,22 +590,85 @@ class PydanticAIRuntimeTests(IsolatedAsyncioTestCase):
         self.assertEqual(events[-1].usage.tool_calls, 0)
         self.assertEqual(self.coordinator.calls, [])
 
-    async def test_provider_failure_is_sanitized_and_closes_client(self) -> None:
-        """Keep request bodies and credentials out of persisted failure events."""
+    async def test_provider_failure_retains_trace_and_closes_client(self) -> None:
+        """Preserve the diagnostic exception in details and still close provider resources."""
 
         async def failing_model(
             messages: list[ModelMessage], info: AgentInfo
         ) -> AsyncIterator[str]:
-            """Emulate a provider exception containing sensitive diagnostic text."""
-            raise RuntimeError("never-serialize-me and private request body")
+            """Emulate a provider exception with an actionable diagnostic message."""
+            raise RuntimeError("provider stream decoding failed")
             yield "unreachable"
 
         self.model_stream = failing_model
-        events = await self.collect(self.request)
+        with self.assertLogs("bloomerp.agents.runtime", level="ERROR") as logs:
+            events = await self.collect(self.request)
+        self.assertEqual(logs.records[0].failure_stage, "model_request")
+        self.assertEqual(logs.records[0].run_id, str(self.request.run_id))
+        self.assertIsNotNone(logs.records[0].exc_info[2])
         self.assertEqual(events[-1].kind, "run.failed")
-        self.assertNotIn("never-serialize-me", events[-1].model_dump_json())
-        self.assertNotIn("private request body", events[-1].model_dump_json())
+        self.assertNotIn("provider stream decoding failed", events[-1].error.message)
+        self.assertIn("RuntimeError: provider stream decoding failed", events[-1].error.details["trace"])
         self.assertTrue(all(client.is_closed for client in self.clients))
+
+    async def test_malformed_tool_json_stops_after_two_corrections(self) -> None:
+        """Bound invalid JSON recovery and checkpoint diagnostics without dispatching it."""
+        calls = 0
+        async def malformed_model(
+            messages: list[ModelMessage], info: AgentInfo
+        ) -> AsyncIterator[dict[int, DeltaToolCall]]:
+            """Stream a tool proposal whose incomplete JSON fails during argument decoding."""
+            nonlocal calls
+            calls += 1
+            yield {0: DeltaToolCall(name="lookup", json_args='{"key":', tool_call_id=f"bad-json-{calls}")}
+
+        self.model_stream = malformed_model
+        with self.assertLogs("bloomerp.agents.runtime", level="ERROR") as logs:
+            events = await self.collect(self.request)
+        self.assertEqual(logs.records[0].failure_stage, "tool_proposal_parsing")
+        self.assertEqual(logs.records[0].run_id, str(self.request.run_id))
+        self.assertEqual(events[-1].kind, "run.failed")
+        self.assertEqual(events[-1].error.code, "malformed_tool_arguments")
+        self.assertIn("MalformedToolArgumentsError", events[-1].error.details["trace"])
+        self.assertEqual(calls, 3)
+        checkpoint = [event.checkpoint for event in events if event.kind == "checkpoint.created"][-1]
+        self.assertEqual(checkpoint.state["malformed_tool_turns"], 3)
+        self.assertEqual(checkpoint.state["pending"][0]["validation_error"]["code"], "invalid_tool_json")
+        self.assertEqual(self.coordinator.calls, [])
+
+    async def test_model_can_correct_malformed_tool_arguments(self) -> None:
+        """Return invalid JSON as a tool result and execute only the corrected proposal."""
+        for invalid in ('{"key":', '["answer"]'):
+            with self.subTest(arguments=invalid):
+                self.coordinator.calls.clear()
+
+                async def correcting_model(
+                    messages: list[ModelMessage], info: AgentInfo,
+                    invalid: str = invalid,
+                ) -> AsyncIterator[str | dict[int, DeltaToolCall]]:
+                    """Correct incomplete or non-object JSON when the tool reports rejection."""
+                    returns = [part for message in messages if isinstance(message, ModelRequest)
+                               for part in message.parts if isinstance(part, ToolReturnPart)]
+                    if not returns:
+                        yield {0: DeltaToolCall(name="lookup", json_args=invalid, tool_call_id="bad-json")}
+                    elif returns[-1].content.get("status") == "failed":
+                        self.assertEqual(returns[-1].content["error"]["code"], "invalid_tool_json")
+                        self.assertIn("not executed", returns[-1].content["error"]["message"])
+                        self.assertEqual(returns[-1].content["error"]["details"]["original_arguments"], invalid)
+                        for message in messages:
+                            for part in message.parts:
+                                if getattr(part, "tool_call_id", None) == "bad-json" and hasattr(part, "args_as_dict"):
+                                    self.assertEqual(part.args_as_dict(), {})
+                        self.assertEqual(self.coordinator.calls, [])
+                        yield {0: DeltaToolCall(name="lookup", json_args='{"key":"answer"}', tool_call_id="call-1")}
+                    else:
+                        yield "Done"
+
+                self.model_stream = correcting_model
+                events = await self.collect(self.request.model_copy(update={"attempt_id": uuid4()}))
+                self.assertEqual(events[-1].kind, "run.completed")
+                self.assertEqual(len(self.coordinator.calls), 1)
+                self.assertEqual(self.coordinator.calls[0].arguments, {"key": "answer"})
 
     async def test_duration_budget_unwinds_a_blocked_model(self) -> None:
         """Apply the remaining lifetime duration to a hanging provider request."""
