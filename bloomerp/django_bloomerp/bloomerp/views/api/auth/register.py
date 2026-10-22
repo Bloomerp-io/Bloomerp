@@ -1,4 +1,6 @@
 from django.contrib.auth import authenticate, get_user_model, login
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.http import HttpRequest, JsonResponse
 
@@ -22,21 +24,27 @@ from bloomerp.views.api.auth.common import (
 )
 class RegisterView(BaseSessionAuthApiView):
     def post(self, request: HttpRequest) -> JsonResponse:
+        """Create an unprivileged account from validated public signup fields."""
         if not registration_endpoint_enabled():
             return json_not_found("Registration endpoints are disabled.")
 
         data = parse_request_data(request)
+        if not isinstance(data, dict):
+            return JsonResponse({"detail": "Registration data must be an object."}, status=400)
         password = data.get("password")
         password_confirmation = data.get("passwordConfirm", data.get("password_confirmation"))
 
-        if not password:
+        if not isinstance(password, str) or not password:
             return JsonResponse({"detail": "Password is required."}, status=400)
 
         if password_confirmation is not None and password != password_confirmation:
             return JsonResponse({"detail": "Passwords do not match."}, status=400)
 
         user_model = get_user_model()
-        registration_data, missing_fields = get_registration_payload(data)
+        try:
+            registration_data, missing_fields = get_registration_payload(data)
+        except ValidationError as exc:
+            return JsonResponse({"detail": " ".join(exc.messages)}, status=400)
         if missing_fields:
             field_list = ", ".join(missing_fields)
             return JsonResponse(
@@ -51,6 +59,12 @@ class RegisterView(BaseSessionAuthApiView):
                     {"detail": f"An account with this {field_name} already exists."},
                     status=400,
                 )
+
+        registration_data.update(is_staff=False, is_superuser=False)
+        try:
+            validate_password(password, user=user_model(**registration_data))
+        except ValidationError as exc:
+            return JsonResponse({"detail": " ".join(exc.messages)}, status=400)
 
         try:
             user_model._default_manager.create_user(
