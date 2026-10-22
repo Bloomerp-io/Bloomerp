@@ -71,7 +71,7 @@ class WizardStep:
     template_name: str
     description: str = ""
     context_func: Callable[[HttpRequest, View, BaseStateOrchestrator], dict[str, Any]] | None = None
-    process_func: Callable[[HttpRequest, View, BaseStateOrchestrator], None] | None = None
+    process_func: Callable[[HttpRequest, View, BaseStateOrchestrator], "WizardError | HttpResponse | None"] | None = None
 
 
 @dataclass
@@ -185,6 +185,7 @@ class WizardMixin:
         return self.render_step(step=step, **kwargs)
 
     def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        """Process a wizard step, including a provider-controlled redirect response."""
         step = self.get_current_step_index()
         current_step = self.get_wizard_step(step)
 
@@ -199,6 +200,8 @@ class WizardMixin:
 
         if current_step.process_func:
             process_result = current_step.process_func(request, self, self.orchestrator)
+            if isinstance(process_result, HttpResponse):
+                return process_result
             if isinstance(process_result, WizardError):
                 self.set_wizard_error(process_result, fallback_step=step)
                 return self.render_step(step=process_result.step if process_result.step is not None else step, **kwargs)

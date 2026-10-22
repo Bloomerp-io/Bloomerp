@@ -9,8 +9,10 @@ from pydantic import (
     ConfigDict,
     Field,
     RootModel,
-    ValidationError as SchemaError,
     model_validator,
+)
+from pydantic import (
+    ValidationError as SchemaError,
 )
 
 
@@ -83,10 +85,26 @@ def validate_mailboxes(value: Any) -> None:
     normalize_mailboxes(value)
 
 
-def merge_mailboxes(names: list[str], existing: Any) -> dict[str, dict[str, Any]]:
-    """Preserve surviving mailbox settings and restore defaults for disappeared role holders."""
+def merge_mailboxes(
+    names: list[str],
+    existing: Any,
+    *,
+    provider_defaults: dict[str, dict[str, Any]] | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Merge discovered presentation defaults while preserving configured mailbox roles."""
     previous = normalize_mailboxes(existing)
     defaults = default_mailbox_mapping(names)
+    supplied = normalize_mailboxes(provider_defaults or {})
+    for name in names:
+        if name in supplied:
+            defaults[name] = dict(supplied[name])
+    for role in ("main_folder", "sent_folder"):
+        supplied_role_names = {
+            name for name, settings in supplied.items() if settings[role] and name in defaults
+        }
+        if supplied_role_names:
+            for name, settings in defaults.items():
+                settings[role] = name in supplied_role_names
     merged = {
         name: dict(previous.get(name, settings)) for name, settings in defaults.items()
     }
@@ -101,4 +119,7 @@ def merge_mailboxes(names: list[str], existing: Any) -> dict[str, dict[str, Any]
         elif previous_role_names:
             for name, settings in merged.items():
                 settings[role] = defaults[name][role]
+        elif previous:
+            for settings in merged.values():
+                settings[role] = False
     return merged

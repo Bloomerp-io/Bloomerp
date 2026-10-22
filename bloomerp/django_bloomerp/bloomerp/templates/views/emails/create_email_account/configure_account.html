@@ -1,4 +1,4 @@
-{% load crispy_forms_tags %}
+{% load crispy_forms_tags i18n %}
 
 <div class="space-y-4">
     <div class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
@@ -11,4 +11,10 @@
     </div>
 
     {{ form|crispy }}
+    {% if authorization_callback_uri %}
+        <p class="text-sm break-all">{% translate "Register this exact callback URL in your OAuth application:" %} <code>{{ authorization_callback_uri }}</code></p>
+    {% endif %}
+    {% if can_disconnect %}
+        <button type="button" class="btn btn-secondary btn-sm" hx-post="{% url 'email_accounts_detail_disconnect_email_account' pk=object.pk %}">{% translate "Disconnect account" %}</button>
+    {% endif %}
 </div>

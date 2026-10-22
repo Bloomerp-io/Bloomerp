@@ -274,28 +274,68 @@ def _upsert_email_inbox_item_result(
     email: BloomerpEmail,
     folder: "InboxFolder",
 ) -> tuple["InboxItem", bool]:
-    """Persist provider email metadata and process scheduling content on every sync path."""
+    """Correlate provider and RFC identities, update locations, and process scheduling content."""
     from bloomerp.communication.registry import INBOX_FOLDER_REGISTRY
     from bloomerp.models.communication.inbox.inbox_item import InboxItem
 
     related_item_id = (
         email.message_id.strip()
         if email.message_id and email.message_id.strip()
-        else f"{email.provider}:{email.mailbox}:{email.provider_message_id}"
+        else (
+            f"{email.provider}:{email.provider_message_id}"
+            if email.provider_message_id_scope == "account"
+            else f"{email.provider}:{email.mailbox}:{email.provider_message_id}"
+        )
     )
     provider_metadata = email.retrieval_metadata()
 
     with transaction.atomic():
-        inbox_item, created = InboxItem.objects.get_or_create(
-            item_type=INBOX_FOLDER_REGISTRY.EMAIL.item_type.key,
-            folder=folder,
-            related_item_id=related_item_id,
-            defaults={"title": email.subject or "(No subject)"},
-        )
+        inbox_item = None
+        if email.provider_message_id_scope == "account":
+            inbox_item = InboxItem.objects.select_for_update().filter(
+                item_type=INBOX_FOLDER_REGISTRY.EMAIL.item_type.key,
+                folder=folder,
+                raw_meta_data__provider=email.provider,
+                raw_meta_data__provider_identity=email.provider_message_id,
+            ).first()
+        if inbox_item is None:
+            inbox_item, created = InboxItem.objects.get_or_create(
+                item_type=INBOX_FOLDER_REGISTRY.EMAIL.item_type.key,
+                folder=folder,
+                related_item_id=related_item_id,
+                defaults={"title": email.subject or "(No subject)"},
+            )
+        else:
+            created = False
         if not created:
             inbox_item = InboxItem.objects.select_for_update().get(pk=inbox_item.pk)
+        if email.message_id and inbox_item.related_item_id != related_item_id:
+            canonical = InboxItem.objects.select_for_update().filter(
+                folder=folder,
+                item_type=INBOX_FOLDER_REGISTRY.EMAIL.item_type.key,
+                related_item_id=related_item_id,
+            ).first()
+            if canonical is not None:
+                previous_metadata = dict(inbox_item.raw_meta_data or {})
+                canonical_metadata = dict(canonical.raw_meta_data or {})
+                canonical.raw_meta_data = {
+                    **previous_metadata,
+                    **canonical_metadata,
+                    "locations": {
+                        **(previous_metadata.get("locations") or {}),
+                        **(canonical_metadata.get("locations") or {}),
+                    },
+                }
+                inbox_item.delete()
+                inbox_item = canonical
+            else:
+                inbox_item.related_item_id = related_item_id
+        if email.provider_message_id_scope == "account":
+            provider_metadata["provider_identity"] = email.provider_message_id
 
         metadata = dict(inbox_item.raw_meta_data or {})
+        if not email.is_draft:
+            metadata.pop("outbound_send_pending", None)
         locations = dict(metadata.get("locations") or {})
         locations[email.mailbox] = {
             "mailbox": email.mailbox,
@@ -317,6 +357,15 @@ def _upsert_email_inbox_item_result(
         }
         inbox_item.datetime_received = email.date
         inbox_item.save()
+        if not email.is_draft:
+            from bloomerp.models.communication.email_draft import EmailDraft
+
+            EmailDraft.clear_pending_send(
+                account_id=email.email_account_id,
+                provider_message_id=email.provider_message_id,
+                mailbox=email.mailbox,
+                provider_message_id_scope=email.provider_message_id_scope,
+            )
         if email.calendar_parts:
             from bloomerp.communication.calendar.incoming import process_calendar_email
 
@@ -325,6 +374,47 @@ def _upsert_email_inbox_item_result(
             if email.mailbox not in sent_mailboxes:
                 process_calendar_email(email, folder, inbox_item)
     return inbox_item, created
+
+
+def _remove_email_provider_locations(
+    folders: list["InboxFolder"],
+    *,
+    mailbox: str,
+    provider_message_ids: list[str],
+) -> int:
+    """Remove vanished mailbox references, deleting items only after their last location."""
+    from bloomerp.communication.registry import INBOX_FOLDER_REGISTRY
+    from bloomerp.models.communication.inbox.inbox_item import InboxItem
+
+    if not provider_message_ids:
+        return 0
+    lookup = f"raw_meta_data__locations__{mailbox}__provider_message_id__in"
+    items = InboxItem.objects.select_for_update().filter(
+        folder__in=folders,
+        item_type=INBOX_FOLDER_REGISTRY.EMAIL.item_type.key,
+    ).filter(
+        Q(**{lookup: provider_message_ids})
+        | Q(
+            raw_meta_data__mailbox=mailbox,
+            raw_meta_data__provider_message_id__in=provider_message_ids,
+        )
+    )
+    removed_count = 0
+    for item in items:
+        metadata = dict(item.raw_meta_data or {})
+        locations = dict(metadata.get("locations") or {})
+        locations.pop(mailbox, None)
+        if not locations:
+            item.delete()
+        else:
+            metadata["locations"] = locations
+            if metadata.get("mailbox") == mailbox:
+                for field in ("mailbox", "provider_message_id", "flags", "raw"):
+                    metadata.pop(field, None)
+            item.raw_meta_data = metadata
+            item.save(update_fields=["raw_meta_data"])
+        removed_count += 1
+    return removed_count
 
 
 def _upsert_email_inbox_item(email: BloomerpEmail, folder: "InboxFolder") -> "InboxItem":
@@ -402,9 +492,21 @@ def get_mailboxes_for_account(email_account: EmailAccount) -> list[str]:
 
 
 def refresh_mailboxes_for_account(email_account: EmailAccount, *, save: bool = True) -> list[str]:
-    """Refresh server folder names without discarding user mailbox configuration."""
-    mailboxes = get_mailboxes_for_account(email_account)
-    email_account.mailboxes = merge_mailboxes(mailboxes, email_account.mailboxes)
+    """Discover provider labels and roles without discarding user mailbox configuration."""
+    provider = _resolve_provider(email_account)
+    adapter = _resolve_email_adapter_for_account(email_account)
+    try:
+        mailboxes = adapter.list_mailboxes()
+        defaults = provider.mailbox_defaults(adapter) if provider.mailbox_defaults else None
+        email_account.mailboxes = merge_mailboxes(
+            mailboxes,
+            email_account.mailboxes,
+            provider_defaults=defaults,
+        )
+    finally:
+        close = getattr(adapter, "close", None)
+        if callable(close):
+            close()
     if save:
         email_account.save(update_fields=["mailboxes", "datetime_updated"])
     return mailboxes
