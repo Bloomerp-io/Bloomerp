@@ -129,7 +129,7 @@
 							class="btn btn-secondary btn-sm"
 							data-detail-sidebar-view="activity"
 							hx-get="{% url 'components_activity_log' %}?content_type_id={{ content_type_id }}&object_id={{ object.id }}"
-							hx-target="#object-sidesection"
+							hx-target="next [data-detail-sidebar-content]"
 							hx-animation	
 							>
 							<i class="fa fa-history"></i>
@@ -139,7 +139,7 @@
 							class="btn btn-secondary btn-sm"
 							data-detail-sidebar-view="comments"
 							hx-get="{% url 'components_comments' content_type_id=content_type_id object_id=object.id %}"
-							hx-target="#object-sidesection"
+							hx-target="next [data-detail-sidebar-content]"
 							hx-animation	
 							>
 							<i class="fa fa-comments"></i>
@@ -180,12 +180,12 @@
 					<div
 						data-detail-sidebar-loader
 						hx-get="{% if detail_sidebar_view == 'comments' %}{% url 'components_comments' content_type_id=content_type_id object_id=object.id %}{% if highlight_comment_id %}?highlight={{ highlight_comment_id|urlencode }}{% endif %}{% else %}{% url 'components_activity_log' %}?content_type_id={{ content_type_id }}&object_id={{ object.id }}{% endif %}"
-						hx-target="#object-sidesection" 
+						hx-target="find [data-detail-sidebar-content]"
 						hx-trigger="load"
 						hx-swap="innerHTML"
 						class="mt-8 flex animate-fade-in flex-col overflow-hidden border-t border-gray-200 pt-4 xl:min-h-0 xl:flex-1"
 						>
-						<div id="object-sidesection" class="xl:min-h-0 xl:flex-1 xl:overflow-hidden">
+						<div data-detail-sidebar-content class="xl:min-h-0 xl:flex-1 xl:overflow-hidden">
 							<!-- Activity log will load here -->
 							<div class="text-center text-gray-500">
 								Loading activity...
