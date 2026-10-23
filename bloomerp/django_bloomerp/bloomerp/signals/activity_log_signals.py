@@ -74,7 +74,8 @@ def compute_field_changes(instance: Model, event_id: str) -> list[dict[str, Any]
 
 
 @receiver(pre_save)
-def before_save_of_object(sender, instance: Model, **kwargs):
+def before_save_of_object(sender: type[Model], instance: Model, **kwargs: Any) -> None:
+    """Stamp the user and capture only fields included in this save."""
     manager = ActivityLogManager(instance, current_request())
     manager.set_user_stamp()
     
@@ -82,7 +83,7 @@ def before_save_of_object(sender, instance: Model, **kwargs):
         return
 
     try:
-        manager.set_changes()
+        manager.set_changes(update_fields=kwargs.get("update_fields"))
         event_id = set_transient_attribute(instance)
 
         if event_id is not None:
