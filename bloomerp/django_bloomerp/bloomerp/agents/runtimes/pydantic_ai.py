@@ -13,7 +13,9 @@ history and must have the same access restrictions as the conversation.
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 from collections.abc import AsyncIterable
 from importlib.metadata import version
 from typing import Any, cast
@@ -51,12 +53,18 @@ from bloomerp.agents.providers.builtins.pydantic_ai_common import (
     ModelFactory,
     PydanticAIProvider,
 )
+from bloomerp.agents.retries import (
+    TRANSIENT_HTTP_STATUSES,
+    model_retry_delay,
+    retry_after_seconds,
+)
 from bloomerp.agents.runtime import (
     AgentRuntimeAttempt,
     AgentRuntimeBudgetExceeded,
     AgentRuntimeCheckpoint,
     AgentRuntimeCredentials,
     AgentRuntimeMessage,
+    AgentRuntimeModelRetryingEvent,
     AgentRuntimePendingToolProposal,
     AgentRuntimeRunFinishedEvent,
     AgentRuntimeRunPausedEvent,
@@ -70,6 +78,20 @@ from bloomerp.agents.runtime import (
 
 SDK_VERSION = version("pydantic-ai-slim")
 RUNTIME_VERSION = "1"
+MAX_TOOL_JSON_CORRECTIONS = 2
+
+
+class MalformedToolArgumentsError(ValueError):
+    """Stop a model that repeatedly emits undecodable tool arguments."""
+
+
+class ModelRequestFailed(Exception):
+    """Carry a portable failure and retry diagnostics while preserving the SDK cause."""
+
+    def __init__(self, error: AgentError) -> None:
+        """Retain the classified failure for the shared runtime's terminal event."""
+        super().__init__(error.message)
+        self.error = error
 
 
 class _State(AgentRuntimeState):
@@ -78,6 +100,7 @@ class _State(AgentRuntimeState):
     sdk_version: str = SDK_VERSION
     history: list[JsonValue] = Field(default_factory=list)
     queued_messages: list[JsonValue] = Field(default_factory=list)
+    malformed_tool_turns: int = Field(default=0, ge=0)
 
 
 def _provider(identifier: str) -> PydanticAIProvider:
@@ -262,18 +285,39 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
 
     def _classify_error(self, error: Exception) -> AgentError:
         """Map SDK failures to safe portable errors, delegating common classifications."""
+        if isinstance(error, ModelRequestFailed):
+            return error.error
+        if isinstance(error, MalformedToolArgumentsError):
+            return AgentError(
+                code="malformed_tool_arguments",
+                message="The model repeatedly returned invalid tool-call JSON after two correction attempts.",
+                retryable=False,
+                details={"exception_type": type(error).__name__},
+            )
         if isinstance(error, UsageLimitExceeded):
             return super()._classify_error(AgentRuntimeBudgetExceeded())
         if isinstance(error, httpx.TimeoutException):
             return super()._classify_error(TimeoutError())
         if isinstance(error, ModelHTTPError):
+            retryable = error.status_code in TRANSIENT_HTTP_STATUSES
+            code = "provider_rate_limited" if error.status_code == 429 else "provider_unavailable"
             return AgentError(
-                code="provider_error",
-                message="The model provider rejected the request.",
-                retryable=error.status_code == 429 or error.status_code >= 500,
-                details={"exception_type": type(error).__name__},
+                code=code if retryable else "provider_error",
+                message=(
+                    "The model service is temporarily busy or unavailable. Please try again later."
+                    if retryable else "The model provider rejected the request."
+                ),
+                retryable=retryable,
+                details={"exception_type": type(error).__name__, "status_code": error.status_code},
             )
         return super()._classify_error(error)
+
+    def _serialize_state(self, state: _State) -> dict[str, JsonValue]:
+        """Preserve existing checkpoint shape when no JSON correction is in progress."""
+        payload = super()._serialize_state(state)
+        if not state.malformed_tool_turns:
+            payload.pop("malformed_tool_turns", None)
+        return payload
 
     def _apply_tool_results(self, state: _State) -> None:
         """Convert reconciled outcomes to PydanticAI tool-return message parts."""
@@ -282,6 +326,20 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
         for item in state.pending:
             outcome = item.outcome
             if item.validation_error is not None:
+                if item.validation_error.code == "invalid_tool_json":
+                    # Some provider adapters require object-valued historical inputs.
+                    # Keep the rejected text in the error result, never as executable input.
+                    for message in reversed(history):
+                        if not isinstance(message, ModelResponse):
+                            continue
+                        rejected = [
+                            part for part in message.parts
+                            if isinstance(part, ToolCallPart)
+                            and part.tool_call_id == item.proposal.provider_call_id
+                        ]
+                        if rejected:
+                            rejected[-1].args = {}
+                            break
                 content = {
                     "error": item.validation_error.model_dump(mode="json"),
                     "status": "failed",
@@ -317,6 +375,7 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
         coordinator: AgentRuntimeToolCoordinator,
     ) -> AgentRuntimeRunFinishedEvent | AgentRuntimeRunPausedEvent:
         """Alternate SDK model turns and durable external-tool reconciliation."""
+        attempt.failure_stage = "model_setup"
         tokens = ProviderUsage()
         request = attempt.request
         identity = {"run_id": request.run_id, "attempt_id": request.attempt_id}
@@ -357,6 +416,7 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
                     paused = await self._dispatch(attempt, state, coordinator)
                     if paused is not None:
                         return paused
+                attempt.failure_stage = "history_preparation"
                 state.history.extend(state.queued_messages)
                 state.queued_messages = []
                 history = ModelMessagesTypeAdapter.validate_python(state.history)
@@ -371,13 +431,11 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
                 if remaining is not None and tokens.total_tokens >= remaining:
                     raise UsageLimitExceeded("Token budget exhausted")
                 turn_settings = dict(settings)
-                if remaining is not None:
-                    output_cap = remaining - tokens.total_tokens
-                    turn_settings["max_tokens"] = min(
-                        settings.get("max_tokens", output_cap), output_cap
-                    )
+                # Provider output settings are independent of cumulative run usage.
+                # An omitted output cap must retain the provider's default.
                 message_id = uuid4()
                 visible_part_indexes: dict[int, int] = {}
+                response_started = False
 
                 async def on_event(
                     context: RunContext[None],
@@ -386,8 +444,10 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
                     output_part_indexes: dict[int, int] = visible_part_indexes,
                 ) -> None:
                     """Map visible text to contiguous blocks while retaining reasoning privately."""
+                    nonlocal response_started
                     try:
                         async for event in events:
+                            response_started = True
                             text = None
                             if isinstance(event, PartStartEvent) and isinstance(
                                 event.part, TextPart
@@ -422,22 +482,55 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
 
                 # The SDK run owns its streams/tasks. Cancelling our producer
                 # unwinds it without leaving a detached model or tool operation.
-                result = await agent.run(
-                    message_history=history,
-                    model_settings=cast(ModelSettings, turn_settings),
-                    usage=tokens,
-                    usage_limits=UsageLimits(
-                        total_tokens_limit=remaining, request_limit=50
-                    ),
-                    event_stream_handler=on_event,
-                )
+                retries = 0
+                while True:
+                    attempt.failure_stage = "model_request"
+                    try:
+                        result = await agent.run(
+                            message_history=history,
+                            model_settings=cast(ModelSettings, turn_settings),
+                            usage=tokens,
+                            usage_limits=UsageLimits(
+                                total_tokens_limit=remaining, request_limit=50
+                            ),
+                            event_stream_handler=on_event,
+                        )
+                        break
+                    except ModelHTTPError as error:
+                        classified = self._classify_error(error)
+                        retry_after = retry_after_seconds(error)
+                        delay = model_retry_delay(retries, retry_after)
+                        if not classified.retryable or response_started or delay is None:
+                            classified.details.update({
+                                "retry_attempts": retries,
+                                "retry_after_seconds": retry_after,
+                                "response_started": response_started,
+                            })
+                            raise ModelRequestFailed(classified) from error
+                        retries += 1
+                        attempt.failure_stage = "model_retry_wait"
+                        # History contains completed tool outcomes. Retry only this
+                        # model request, never the surrounding tool execution loop.
+                        await self._save(attempt, state)
+                        logging.getLogger(__name__).warning(
+                            "Retrying model request: run_id=%s attempt_id=%s status=%s retry=%s delay=%.2fs",
+                            request.run_id, request.attempt_id, error.status_code, retries, delay,
+                        )
+                        await attempt.emit(AgentRuntimeModelRetryingEvent(
+                            **identity, retry_number=retries, delay_seconds=delay,
+                            error_code=classified.code,
+                        ))
+                        await asyncio.sleep(delay)
                 attempt.record_tokens(
                     input_tokens=tokens.input_tokens, output_tokens=tokens.output_tokens
                 )
+                attempt.failure_stage = "model_response_serialization"
                 state.history = _serialize(result.all_messages())
                 if isinstance(result.output, DeferredToolRequests):
+                    attempt.failure_stage = "tool_proposal_parsing"
                     catalog = {tool.identifier: tool for tool in request.tools}
                     seen: set[str] = set()
+                    malformed = False
                     for call in result.output.calls:
                         if call.tool_call_id in seen:
                             raise ValueError(
@@ -445,20 +538,43 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
                             )
                         seen.add(call.tool_call_id)
                         tool = catalog[call.tool_name]
+                        validation_error = None
+                        try:
+                            arguments = call.args_as_dict()
+                        except (ValueError, AssertionError):
+                            # Keep raw provider arguments in history, but never dispatch
+                            # a guessed repair or the placeholder empty arguments.
+                            malformed = True
+                            arguments = {}
+                            validation_error = AgentError(
+                                code="invalid_tool_json",
+                                message=(
+                                    "The tool was not executed: arguments must be a complete, valid "
+                                    "JSON object. Resend this call with complete JSON matching its "
+                                    "input schema. Do not repeat calls that already succeeded."
+                                ),
+                                retryable=True,
+                                details={"original_arguments": call.args},
+                            )
                         state.pending.append(
                             AgentRuntimePendingToolProposal(
                                 proposal=AgentRuntimeToolProposal(
                                     provider_call_id=call.tool_call_id,
                                     tool_identifier=call.tool_name,
                                     tool_version=tool.version,
-                                    arguments=call.args_as_dict(),
-                                )
+                                    arguments=arguments,
+                                ),
+                                validation_error=validation_error,
                             )
                         )
                     if not state.pending or result.output.approvals:
                         raise ValueError(
                             "Unexpected SDK approval request outside the coordinator"
                         )
+                    state.malformed_tool_turns = state.malformed_tool_turns + 1 if malformed else 0
+                    if state.malformed_tool_turns > MAX_TOOL_JSON_CORRECTIONS:
+                        await self._save(attempt, state)
+                        raise MalformedToolArgumentsError("Tool JSON correction limit exhausted")
                 else:
                     state.finished = True
                 # Commit full provider history and all proposed calls before tools.

@@ -7,6 +7,9 @@ from urllib.parse import unquote, urlsplit
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
+from bloomerp.mcp.memory import McpMemoryPolicy
+
+
 McpSchema: TypeAlias = dict[str, Any]
 McpSchemaFactory: TypeAlias = Callable[[], McpSchema]
 McpSchemaSource: TypeAlias = McpSchema | McpSchemaFactory
@@ -58,6 +61,8 @@ class McpTool(BaseModel):
         exclude=True,
         description="Optional JSON Schema, or factory, for structured tool output.",
     )
+
+    memory: McpMemoryPolicy | None = Field(default=None, exclude=True)
 
     read_only_hint: bool | None = None
     destructive_hint: bool | None = None

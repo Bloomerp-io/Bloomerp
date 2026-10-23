@@ -27,6 +27,7 @@ class DatabaseTable(BaseModel):
     name:str
     icon:str = "fa-solid fa-table"
     content_type_id:int | None = None
+    model_label: str | None = None
     fields:list[Field]
 
     def model_dump(self, *args, include_field_icons: bool = True, **kwargs) -> dict:
@@ -100,6 +101,7 @@ class SqlExecutor:
             tables.append(
                 DatabaseTable(
                     name=table_name,
+                    model_label=None if model._meta.auto_created else model._meta.label,
                     fields=field_list,
                 )
             )

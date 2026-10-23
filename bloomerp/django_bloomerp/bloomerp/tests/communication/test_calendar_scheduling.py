@@ -3,13 +3,18 @@
 from datetime import timedelta
 from email.message import EmailMessage
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase
 
-from bloomerp.communication.builtins.emails.base_adapter import EmailAttachment
+from bloomerp.communication.builtins.emails.base_adapter import (
+    BloomerpEmail,
+    EmailAttachment,
+    EmailSendResult,
+    EmailSendUnconfirmed,
+)
 from bloomerp.communication.builtins.emails.providers.imap_smtp import ImapSmtpAdapter
 from bloomerp.communication.builtins.emails.sync import handle_email_account_sync
 from bloomerp.communication.calendar.ical import parse_scheduling_message
@@ -20,6 +25,7 @@ from bloomerp.communication.calendar.mime import (
 from bloomerp.communication.calendar.outgoing import (
     respond_to_calendar_invitation,
     send_calendar_request,
+    send_removed_calendar_cancellations,
 )
 from bloomerp.models.communication.calendar import (
     CalendarEvent,
@@ -27,7 +33,7 @@ from bloomerp.models.communication.calendar import (
 )
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
-from bloomerp.communication.calendar.outgoing import send_removed_calendar_cancellations
+from bloomerp.models.communication.inbox.inbox_item import InboxItem
 from bloomerp.views.communication.calendar.cancel import cancel_calendar_event
 
 from .calendar_fixtures import STAMP, UID, SchedulingFixtures
@@ -125,6 +131,153 @@ class CalendarSchedulingIntegrationTests(SchedulingFixtures, TestCase):
         super().setUp()
         self.prepare_calendar()
 
+    def _sync_calendar_delivery(self, result: EmailSendResult, *, is_draft: bool = False) -> None:
+        """Reconcile a retained outbound identity through the real email persistence boundary."""
+        email = BloomerpEmail(
+            provider=self.account.provider,
+            provider_message_id=result.provider_message_id,
+            provider_message_id_scope="account",
+            email_account_id=str(self.account.pk),
+            mailbox="Drafts" if is_draft else "Sent",
+            message_id=result.message_id or "<calendar-confirmed@test>",
+            sender=self.account.email_address,
+            subject="Calendar delivery",
+            is_draft=is_draft,
+        )
+        for folder in (self.folder, self.second_folder):
+            self.index_email(email, folder)
+
+    def test_uncertain_reply_retains_identity_and_resumes_after_sent_sync(self) -> None:
+        """Keep attendance unchanged until sync confirms the original reply without resending it."""
+        self.index_email(self.make_email())
+        event = CalendarEvent.objects.get(calendar_uid=UID)
+        result = EmailSendResult(provider_message_id="uncertain-reply")
+        adapter = Mock()
+        adapter.send_email.side_effect = EmailSendUnconfirmed(result)
+        arguments = {
+            "user": self.actor, "event_id": event.pk,
+            "response_status": "accepted", "expected_sequence": 0,
+        }
+        locks = Mock()
+        preparation_adapter = Mock()
+        prepare = Mock()
+        provider = SimpleNamespace(
+            adapter_class=Mock(return_value=preparation_adapter),
+            authorization=SimpleNamespace(prepare=prepare),
+        )
+        with (
+            patch("bloomerp.communication.calendar.outgoing._resolve_email_adapter_for_account", return_value=adapter),
+            patch("bloomerp.communication.calendar.outgoing.EMAIL_PROVIDER_REGISTRY.get", return_value=provider),
+            patch.object(EmailAccount.objects, "select_for_update", wraps=EmailAccount.objects.select_for_update) as account_lock,
+            patch.object(CalendarEvent.objects, "select_for_update", wraps=CalendarEvent.objects.select_for_update) as event_lock,
+        ):
+            locks.attach_mock(account_lock, "account")
+            locks.attach_mock(event_lock, "event")
+            locks.attach_mock(prepare, "prepare")
+            with self.assertRaises(PermissionDenied):
+                respond_to_calendar_invitation(
+                    **{**arguments, "user": self.outsider},
+                    email_account_id=self.account.pk, inbox_id=self.inbox.pk,
+                )
+            prepare.assert_not_called()
+            with patch("bloomerp.communication.calendar.outgoing._calendar_delivery_account_id", return_value=None), self.assertRaisesMessage(ValidationError, "sending account changed"):
+                respond_to_calendar_invitation(**arguments)
+            adapter.send_email.assert_not_called()
+            locks.reset_mock()
+            with self.assertRaisesMessage(ValidationError, "did not confirm delivery"):
+                respond_to_calendar_invitation(**arguments)
+            self.assertEqual(locks.mock_calls[:3], [call.prepare(preparation_adapter), call.account(), call.event()])
+            participant = event.participants.get(email=self.account.email_address)
+            self.assertEqual(participant.response_status, "awaiting_response")
+            self.assertIsNone(participant.last_sent_reply_sequence)
+            pending = InboxItem.objects.filter(raw_meta_data__provider_identity=result.provider_message_id)
+            self.assertEqual(pending.count(), 2)
+            self.assertTrue(all(item.raw_meta_data["outbound_send_pending"] for item in pending))
+            self._sync_calendar_delivery(result, is_draft=True)
+            with self.assertRaisesMessage(ValidationError, "did not confirm delivery"):
+                respond_to_calendar_invitation(**arguments)
+            self._sync_calendar_delivery(result)
+            with patch("bloomerp.communication.calendar.outgoing.timezone.now", return_value=STAMP + timedelta(days=20)):
+                self.assertEqual(respond_to_calendar_invitation(**arguments), "<calendar-confirmed@test>")
+            self.assertIsNone(respond_to_calendar_invitation(**arguments))
+        adapter.send_email.assert_called_once()
+        participant.refresh_from_db()
+        self.assertEqual(participant.response_status, "accepted")
+        self.assertEqual(participant.last_sent_reply_sequence, 0)
+
+    def test_uncertain_request_and_nested_cancellation_keep_the_saved_event(self) -> None:
+        """Preserve initial and cancellation send guards across their different transaction depths."""
+        event = self.local_event()
+        request = EmailSendResult(provider_message_id="uncertain-request", message_id="<request@test>")
+        cancellation = EmailSendResult(provider_message_id="uncertain-cancel", message_id="<cancel@test>")
+        adapter = Mock()
+        adapter.send_email.side_effect = [EmailSendUnconfirmed(request), EmailSendUnconfirmed(cancellation)]
+        arguments = {"user": self.actor, "event_id": event.pk, "email_account_id": self.account.pk}
+        locks = Mock()
+        with (
+            patch("bloomerp.communication.calendar.outgoing._resolve_email_adapter_for_account", return_value=adapter),
+            patch.object(EmailAccount.objects, "select_for_update", wraps=EmailAccount.objects.select_for_update) as account_lock,
+            patch.object(CalendarEvent.objects, "select_for_update", wraps=CalendarEvent.objects.select_for_update) as event_lock,
+        ):
+            locks.attach_mock(account_lock, "account")
+            locks.attach_mock(event_lock, "event")
+            with patch("bloomerp.communication.calendar.outgoing._attendees", return_value=list(event.participants.order_by("email"))):
+                for _attempt in range(2):
+                    with self.assertRaisesMessage(ValidationError, "did not confirm delivery"):
+                        send_calendar_request(**arguments)
+            self.assertEqual(locks.mock_calls[:2], [call.account(), call.event()])
+            event.refresh_from_db()
+            self.assertIsNone(event.invitation_sent_at)
+            self.assertEqual(event.sequence, 0)
+            self.assertEqual(adapter.send_email.call_count, 1)
+            self._sync_calendar_delivery(request)
+            with patch("bloomerp.communication.calendar.outgoing._attendees", return_value=list(event.participants.order_by("-email"))):
+                self.assertEqual(send_calendar_request(**arguments), "<request@test>")
+            locks.reset_mock()
+            for _attempt in range(2):
+                with self.assertRaisesMessage(ValidationError, "did not confirm delivery"):
+                    cancel_calendar_event(user=self.actor, event_id=event.pk)
+            self.assertEqual(locks.mock_calls[:2], [call.account(), call.event()])
+            event.refresh_from_db()
+            self.assertFalse(event.cancelled)
+            self.assertEqual(event.sequence, 0)
+            self.assertEqual(InboxItem.objects.filter(
+                raw_meta_data__provider_identity=cancellation.provider_message_id,
+                raw_meta_data__outbound_send_pending=True,
+            ).count(), 2)
+            self._sync_calendar_delivery(cancellation)
+            cancel_calendar_event(user=self.actor, event_id=event.pk)
+        self.assertEqual(adapter.send_email.call_count, 2)
+        event.refresh_from_db()
+        self.assertTrue(event.cancelled)
+        self.assertEqual(event.sequence, 1)
+
+    def test_later_uncertainty_keeps_an_earlier_recipient_cancellation_checkpoint(self) -> None:
+        """Resume a partially delivered revision without repeating its successful first message."""
+        event = self.local_event()
+        event.invitation_sent_at = STAMP
+        event.save()
+        event.participants.filter(email="first@example.com").update(invitation_cancelled=True)
+        cancellation = EmailSendResult(provider_message_id="removed-guest", message_id="<removed@test>")
+        update = EmailSendResult(provider_message_id="remaining-guests", message_id="<update@test>")
+        adapter = Mock()
+        adapter.send_email.side_effect = [cancellation, EmailSendUnconfirmed(update)]
+        arguments = {"user": self.actor, "event_id": event.pk, "email_account_id": self.account.pk}
+        with patch("bloomerp.communication.calendar.outgoing._resolve_email_adapter_for_account", return_value=adapter):
+            with self.assertRaisesMessage(ValidationError, "did not confirm delivery"):
+                send_calendar_request(**arguments)
+            self.assertTrue(event.participants.filter(email="first@example.com").exists())
+            self.assertEqual(InboxItem.objects.filter(
+                raw_meta_data__provider_identity=cancellation.provider_message_id,
+                raw_meta_data__outbound_send_pending=False,
+            ).count(), 2)
+            self._sync_calendar_delivery(update)
+            self.assertEqual(send_calendar_request(**arguments), "<update@test>")
+        self.assertEqual(adapter.send_email.call_count, 2)
+        self.assertFalse(event.participants.filter(email="first@example.com").exists())
+        event.refresh_from_db()
+        self.assertEqual(event.sequence, 1)
+
     def test_removed_guest_cancellation_is_sent_before_remaining_guest_update(self) -> None:
         """Retain removed recipients until their targeted cancellation succeeds without cancelling everyone."""
         event = self.local_event()
@@ -151,9 +304,8 @@ class CalendarSchedulingIntegrationTests(SchedulingFixtures, TestCase):
         event.invitation_sent_at = STAMP
         event.save()
         event.participants.filter(email="first@example.com").update(invitation_cancelled=True)
-        with patch("bloomerp.communication.calendar.outgoing._send", side_effect=RuntimeError("offline")):
-            with self.assertRaises(RuntimeError):
-                send_calendar_request(user=self.actor, event_id=event.pk, email_account_id=self.account.pk)
+        with patch("bloomerp.communication.calendar.outgoing._send", side_effect=RuntimeError("offline")), self.assertRaises(RuntimeError):
+            send_calendar_request(user=self.actor, event_id=event.pk, email_account_id=self.account.pk)
         event.refresh_from_db()
         self.assertEqual(event.sequence, 0)
         self.assertTrue(event.participants.filter(email="first@example.com", invitation_cancelled=True).exists())
@@ -189,9 +341,8 @@ class CalendarSchedulingIntegrationTests(SchedulingFixtures, TestCase):
         event = self.local_event()
         event.invitation_sent_at = STAMP
         event.save()
-        with patch("bloomerp.communication.calendar.outgoing._send", side_effect=RuntimeError("offline")):
-            with self.assertRaises(RuntimeError):
-                cancel_calendar_event(user=self.actor, event_id=event.pk)
+        with patch("bloomerp.communication.calendar.outgoing._send", side_effect=RuntimeError("offline")), self.assertRaises(RuntimeError):
+            cancel_calendar_event(user=self.actor, event_id=event.pk)
         event.refresh_from_db()
         self.assertFalse(event.cancelled)
         with patch("bloomerp.communication.calendar.outgoing._send", return_value="sent") as send:
@@ -205,12 +356,21 @@ class CalendarSchedulingIntegrationTests(SchedulingFixtures, TestCase):
         self.assertTrue(event.cancelled)
 
     def test_local_email_only_invitee_can_resolve_their_connected_mailbox(self) -> None:
-        """Local organization must not bypass connected-mailbox identity checks for non-hosts."""
+        """Resolve local invitees without requiring provider authorization for an attendance update."""
         event = self.local_event()
         participant = event.participants.create(email=self.account.email_address)
         self.assertEqual(event.get_participant(self.actor).pk, participant.pk)
         self.assertIsNone(event.get_participant(self.outsider))
         self.assertIsNone(event.get_participant(self.owner))
+        with patch(
+            "bloomerp.communication.calendar.outgoing._prepare_calendar_authorization",
+            side_effect=AssertionError("A local response must not refresh remote credentials."),
+        ):
+            self.assertIsNone(respond_to_calendar_invitation(
+                user=self.actor, event_id=event.pk, response_status="accepted", expected_sequence=0,
+            ))
+        participant.refresh_from_db()
+        self.assertEqual(participant.response_status, "accepted")
 
     def test_event_can_be_cancelled_after_all_guest_removals_were_delivered(self) -> None:
         """Cancel the remaining local record when all formerly emailed guests have already been removed."""
@@ -218,7 +378,14 @@ class CalendarSchedulingIntegrationTests(SchedulingFixtures, TestCase):
         event.invitation_sent_at = STAMP
         event.save()
         event.participants.all().delete()
-        with patch("bloomerp.communication.calendar.outgoing._send") as send:
+        with (
+            patch("bloomerp.communication.calendar.outgoing._send") as send,
+            patch(
+                "bloomerp.communication.calendar.outgoing._prepare_calendar_authorization",
+                side_effect=AssertionError("A local cancellation must not refresh remote credentials."),
+            ),
+        ):
+            cancel_calendar_event(user=self.actor, event_id=event.pk)
             cancel_calendar_event(user=self.actor, event_id=event.pk)
         send.assert_not_called()
         event.refresh_from_db()

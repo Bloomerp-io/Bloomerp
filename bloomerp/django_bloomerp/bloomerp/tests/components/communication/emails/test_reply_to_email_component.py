@@ -3,10 +3,18 @@ from unittest.mock import Mock, patch
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.utils import timezone
 from django.http import HttpResponse
+from django.utils import timezone
 
-from bloomerp.communication.builtins.emails.actions import _resolve_email_access, delete_email
+from bloomerp.communication.builtins.emails.actions import (
+    _resolve_email_access,
+    _upsert_email_inbox_item_result,
+    delete_email,
+)
+from bloomerp.communication.builtins.emails.base_adapter import (
+    BloomerpEmail,
+    EmailSendResult,
+)
 from bloomerp.communication.registry import INBOX_FOLDER_REGISTRY
 from bloomerp.components.communication.execute_inbox_action import _get_item_action
 from bloomerp.models.communication.email_account import EmailAccount
@@ -87,6 +95,7 @@ class TestReplyToEmailComponent(EmailReplyFixtureMixin, BloomerpComponentTestCas
     view_name = "components_reply_to_email"
 
     def get_test_scenarios(self) -> list[RequestScenario]:
+        """Cover reply rendering, recipient selection, sending and provider reconciliation."""
         return [
             RequestScenario(
                 name="render sanitized quoted email",
@@ -156,6 +165,16 @@ class TestReplyToEmailComponent(EmailReplyFixtureMixin, BloomerpComponentTestCas
                 ),
             ),
             RequestScenario(
+                name="Provider identity reconciles sent replies without replacing RFC threading",
+                method="POST", user=self.user,
+                data={"reply_to_item_id": self.item.pk, "to": "alice@example.com",
+                      "subject": "Re: Quarterly report", "body": "Thanks"},
+                prepare=self._prepare_typed_send,
+                expected=ExpectedResult(response_validators=[
+                    self.contains_text("Reply accepted for sending."), self._typed_reply_reconciles,
+                ]),
+            ),
+            RequestScenario(
                 name="reject item without valid recipient",
                 user=self.user,
                 query_params={"item_id": self.item.pk},
@@ -222,6 +241,7 @@ class TestReplyToEmailComponent(EmailReplyFixtureMixin, BloomerpComponentTestCas
         self.item.save(update_fields=["raw_meta_data"])
 
     def _prepare_send(self, _setup: RequestScenario) -> None:
+        """Replace remote delivery and body retrieval for one reply scenario."""
         self._patch_content("<p><strong>Original body</strong></p>")
         adapter_patch = patch(
             "bloomerp.components.communication.emails.reply_to_email."
@@ -230,6 +250,32 @@ class TestReplyToEmailComponent(EmailReplyFixtureMixin, BloomerpComponentTestCas
         self.adapter = adapter_patch.start().return_value
         self.adapter.send_email.return_value = "<reply@example.com>"
         self.addCleanup(adapter_patch.stop)
+
+    def _prepare_typed_send(self, scenario: RequestScenario) -> None:
+        """Return separate remote retrieval and RFC message identifiers."""
+        self._prepare_send(scenario)
+        self.adapter.send_email.return_value = EmailSendResult(
+            provider_message_id="remote-sent-id", message_id="<typed-reply@example.com>",
+        )
+
+    def _typed_reply_reconciles(self, _response: HttpResponse) -> bool:
+        """Reuse the local reply even when the remote service rewrites its RFC Message-ID."""
+        sent = InboxItem.objects.get(folder=self.folder, related_item_id="<typed-reply@example.com>")
+        original_id = sent.pk
+        metadata = sent.raw_meta_data
+        synchronized, created = _upsert_email_inbox_item_result(BloomerpEmail(
+            provider=self.email_account.provider,
+            provider_message_id="remote-sent-id", provider_message_id_scope="account",
+            email_account_id=str(self.email_account.pk), mailbox="Outgoing archive",
+            message_id="<server-reply@example.com>", subject="Re: Quarterly report", is_read=True,
+        ), self.folder)
+        return (
+            not created and synchronized.pk == original_id
+            and metadata["message_id"] == "<typed-reply@example.com>"
+            and metadata["provider_identity"] == "remote-sent-id"
+            and synchronized.raw_meta_data["message_id"] == "<server-reply@example.com>"
+            and synchronized.raw_meta_data["parent_item_id"] == str(self.item.pk)
+        )
 
     def _prepare_invalid_recipient(self, _setup: RequestScenario) -> None:
         self.item.refresh_from_db()

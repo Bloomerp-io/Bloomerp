@@ -64,6 +64,13 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         customer_kwargs = {"pk": self.customer.pk}
         return [
             ModelRequestScenario(
+                name="Initiative todos follow multiple default ordering levels",
+                model=Initiative,
+                user=self.admin_user,
+                prepare=self.configure_ordered_todos,
+                expected=ExpectedResult(response_validators=self.todos_follow_default_order),
+            ),
+            ModelRequestScenario(
                 name="Saving an existing manual mention does not duplicate its inbox item",
                 model=self.CustomerModel, method="POST", user=self.admin_user,
                 view_kwargs=customer_kwargs, prepare=self.prepare_existing_mention,
@@ -533,6 +540,38 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
     def activity_sidebar_is_selected(self, response):
         expected = f'{reverse("components_activity_log")}?content_type_id={self.content_type.pk}&object_id={self.customer.pk}'
         return self.sidebar_url(response) == expected
+
+    def configure_ordered_todos(self, scenario: ModelRequestScenario) -> None:
+        """Persist a two-level mapping and todos whose primary sort values tie."""
+        from bloomerp.field_types.builtins.relations import inline_ordering_option
+
+        initiative = Initiative.objects.create(name="Ordered work")
+        scenario.view_kwargs = {"pk": initiative.pk}
+        for title, effort in [("Alpha", 1), ("Beta", 2), ("Zulu", 1)]:
+            Todo.objects.create(initiative=initiative, title=title, effort=effort)
+        request = RequestFactory().get("/")
+        request.user = self.admin_user
+        with patch("bloomerp.middleware.current_request", return_value=request):
+            ordering = inline_ordering_option(
+                ApplicationField.get_by_field(Initiative, "todos")
+            ).clean([["effort", "ascending"], ["title", "descending"]])
+        UserObjectLayoutPreference.objects.create(
+            user=self.admin_user,
+            content_type=ContentType.objects.get_for_model(Initiative),
+            selected=True,
+            layout=FieldLayout(rows=[LayoutRow(columns=1, items=[LayoutItem(
+                id=ApplicationField.get_by_field(Initiative, "todos").pk,
+                config={"inline_fields": ["title"], "ordering": ordering},
+            )])]).model_dump(mode="json"),
+        )
+
+    def todos_follow_default_order(self, response: HttpResponse) -> bool:
+        """Check ascending effort then descending title, including a non-displayed key."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        titles = soup.select(
+            '[data-one-to-many-body] [data-one-to-many-cell="title"] input'
+        )
+        return [title.get("value") for title in titles] == ["Zulu", "Alpha", "Beta"]
 
     def target_todo(self, scenario):
         scenario.view_kwargs = {"pk": Todo.objects.create(title="No recursive action").pk}

@@ -1,13 +1,21 @@
 """Private composer snapshots, independent from provider-side IMAP drafts."""
 
+from typing import Literal
+
 from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from bloomerp.filters.definition import FilterCondition
-from bloomerp.permissions.definition import AccessRule, RowPolicyRuleContent
 from bloomerp.models.base_bloomerp_model import BloomerpModel
-from bloomerp.models.definition import ActivityLogSettings, ApiAccessSettings, ApiSettings, BloomerpModelConfig, StringSearchSettings
+from bloomerp.models.definition import (
+    ActivityLogSettings,
+    ApiAccessSettings,
+    ApiSettings,
+    BloomerpModelConfig,
+    StringSearchSettings,
+)
+from bloomerp.permissions.definition import AccessRule, RowPolicyRuleContent
 
 
 class EmailDraft(BloomerpModel):
@@ -44,6 +52,22 @@ class EmailDraft(BloomerpModel):
     content_type = models.ForeignKey("contenttypes.ContentType", on_delete=models.SET_NULL, null=True)
     object_id = models.CharField(max_length=255, blank=True)
     payload = models.JSONField(default=dict)
+    pending_send = models.JSONField(default=dict, blank=True, editable=False)
+
+    @classmethod
+    def clear_pending_send(
+        cls, *, account_id: str, provider_message_id: str, mailbox: str,
+        provider_message_id_scope: Literal["mailbox", "account"],
+    ) -> int:
+        """Remove saved drafts only when their uncertain provider send is confirmed."""
+        pending = cls.objects.filter(
+            pending_send__email_account_id=account_id,
+            pending_send__provider_message_id=provider_message_id,
+            pending_send__provider_message_id_scope=provider_message_id_scope,
+        )
+        if provider_message_id_scope == "mailbox":
+            pending = pending.filter(pending_send__mailbox=mailbox)
+        return pending.delete()[0]
 
     class Meta:
         db_table = "bloomerp_email_draft"

@@ -31,8 +31,14 @@ class TestAssistantMutationCatalogView(BloomerpAPIViewTestCase):
         self.resource = self.CustomerModel._meta.label
 
     def get_test_scenarios(self) -> list[RequestScenario]:
-        """Cover model-label catalog discovery, relationships, and access filtering."""
+        """Cover catalog discovery, operation selection, relationships, and access filtering."""
         return [
+            RequestScenario(
+                name="Unknown model labels suggest a bounded name search without the exact filter",
+                user=self.admin_user,
+                query_params={"model_label": "unknown.Customer", "search": "unrelated", "page": 3},
+                expected=ExpectedResult(response_validators=self.empty_lookup_has_recovery),
+            ),
             RequestScenario(
                 name="Catalog lists operations and writable field metadata",
                 description=(
@@ -55,6 +61,50 @@ class TestAssistantMutationCatalogView(BloomerpAPIViewTestCase):
                 query_params={"model_label": self.resource, "page_size": 1},
                 expected=ExpectedResult(
                     response_validators=self.foreign_key_uses_resource
+                ),
+            ),
+            RequestScenario(
+                name="Create filter returns only the required creation contract",
+                user=self.admin_user,
+                query_params={"model_label": self.resource, "operation": "create"},
+                expected=ExpectedResult(response_validators=self.only_create_contract),
+            ),
+            RequestScenario(
+                name="Update filter returns only the partial update contract",
+                user=self.admin_user,
+                query_params={"model_label": self.resource, "operation": "update"},
+                expected=ExpectedResult(response_validators=self.only_update_contract),
+            ),
+            RequestScenario(
+                name="Filtered pagination distinguishes a later page from no matching models",
+                user=self.admin_user,
+                query_params={
+                    "model_label": self.resource,
+                    "operation": "update",
+                    "page": 2,
+                    "page_size": 1,
+                },
+                expected=ExpectedResult(response_validators=self.second_page_is_empty),
+            ),
+            RequestScenario(
+                name="Empty filtered lookup preserves the operation in recovery",
+                user=self.admin_user,
+                query_params={"model_label": "unknown.Customer", "operation": "update"},
+                expected=ExpectedResult(response_validators=self.recovery_preserves_operation),
+            ),
+            RequestScenario(
+                name="Delete filter returns only the object identifier contract",
+                user=self.admin_user,
+                query_params={"model_label": self.resource, "operation": "delete"},
+                expected=ExpectedResult(response_validators=self.only_delete_contract),
+            ),
+            RequestScenario(
+                name="Unknown operation is rejected instead of expanding the catalog",
+                user=self.admin_user,
+                query_params={"model_label": self.resource, "operation": "destroy"},
+                expected=ExpectedResult(
+                    status_code=400,
+                    response_validators=self.key_in_json("operation"),
                 ),
             ),
             RequestScenario(
@@ -101,6 +151,32 @@ class TestAssistantMutationCatalogView(BloomerpAPIViewTestCase):
                 query_params={"model_label": self.resource},
                 expected=ExpectedResult(response_validators=self.catalog_is_empty),
             ),
+            RequestScenario(
+                name="Operation filter preserves writable field restrictions",
+                user=self.normal_user,
+                query_params={"model_label": self.resource, "operation": "update"},
+                prepare=self.grant_first_name_write_access,
+                expected=ExpectedResult(
+                    response_validators=self.filtered_update_is_permission_scoped
+                ),
+            ),
+            RequestScenario(
+                name="Unavailable operation omits a model with other write permissions",
+                user=self.normal_user,
+                query_params={"model_label": self.resource, "operation": "delete"},
+                prepare=self.grant_first_name_write_access,
+                expected=ExpectedResult(
+                    response_validators=self.filtered_catalog_is_empty
+                ),
+            ),
+            RequestScenario(
+                name="Operation filter cannot reveal a model without write permission",
+                user=self.normal_user,
+                query_params={"model_label": self.resource, "operation": "update"},
+                expected=ExpectedResult(
+                    response_validators=self.filtered_catalog_is_empty
+                ),
+            ),
         ]
 
     def get_customer_resource(self, response: HttpResponse) -> dict[str, Any]:
@@ -123,6 +199,7 @@ class TestAssistantMutationCatalogView(BloomerpAPIViewTestCase):
         }
         return (
             payload["page"] == 1
+            and "recovery" not in payload
             and payload["page_size"] == 1
             and payload["total_resources"] == 1
             and payload["total_pages"] == 1
@@ -152,6 +229,41 @@ class TestAssistantMutationCatalogView(BloomerpAPIViewTestCase):
             and "choices" not in country
         )
 
+    def only_create_contract(self, response: HttpResponse) -> bool:
+        """Keep required creation fields while excluding unrelated operation contracts."""
+        resource = self.get_customer_resource(response)
+        operations = resource["operations"]
+        fields = {
+            field["name"]: field for field in operations.get("create", {}).get("fields", [])
+        }
+        return (
+            set(operations) == {"create"}
+            and fields["first_name"]["required"]
+            and fields["age"]["type"] == "integer"
+            and response.json()["total_resources"] == 1
+        )
+
+    def only_update_contract(self, response: HttpResponse) -> bool:
+        """Keep optional update fields and target identity without creation or deletion metadata."""
+        resource = self.get_customer_resource(response)
+        operations = resource["operations"]
+        update = operations.get("update", {})
+        fields = {field["name"]: field for field in update.get("fields", [])}
+        return (
+            set(operations) == {"update"}
+            and update["object_id"] == resource["object_id"]
+            and not fields["first_name"]["required"]
+            and response.json()["total_resources"] == 1
+        )
+
+    def only_delete_contract(self, response: HttpResponse) -> bool:
+        """Expose the deletion identity without unrelated writable-field schemas."""
+        resource = self.get_customer_resource(response)
+        return (
+            resource["operations"] == {"delete": {"object_id": resource["object_id"]}}
+            and response.json()["total_resources"] == 1
+        )
+
     def search_returns_customer(self, response: HttpResponse) -> bool:
         """Confirm display-name searches return canonical identities."""
         payload = response.json()
@@ -170,6 +282,7 @@ class TestAssistantMutationCatalogView(BloomerpAPIViewTestCase):
         payload = response.json()
         return (
             payload["resources"] == []
+            and "recovery" not in payload
             and payload["total_resources"] == 1
             and payload["has_previous"]
             and not payload["has_next"]
@@ -213,14 +326,57 @@ class TestAssistantMutationCatalogView(BloomerpAPIViewTestCase):
             == ["first_name"]
         )
 
+    def filtered_update_is_permission_scoped(self, response: HttpResponse) -> bool:
+        """Ensure selecting an operation never expands its permitted writable fields."""
+        resource = self.get_customer_resource(response)
+        return (
+            set(resource["operations"]) == {"update"}
+            and [field["name"] for field in resource["operations"]["update"]["fields"]]
+            == ["first_name"]
+        )
+
+    @staticmethod
+    def filtered_catalog_is_empty(response: HttpResponse) -> bool:
+        """Exclude unavailable operations from resources and pagination counts."""
+        payload = response.json()
+        return (
+            payload["resources"] == []
+            and payload["total_resources"] == 0
+            and payload["total_pages"] == 0
+            and not payload["has_next"]
+            and not payload["has_previous"]
+        )
+
     def catalog_is_empty(self, response: HttpResponse) -> bool:
         """Ensure unauthorized models are absent from catalog results."""
         payload = response.json()
         return (
             payload["total_resources"] == 0
+            and self.empty_lookup_has_recovery(response)
             and payload["total_pages"] == 0
             and self.resource
             not in [item["model_label"] for item in payload["resources"]]
+        )
+
+    def empty_lookup_has_recovery(self, response: HttpResponse) -> bool:
+        """Give identical recovery for unknown and inaccessible models without revealing existence."""
+        payload = response.json()
+        recovery = payload.get("recovery", {})
+        return (
+            payload["resources"] == []
+            and payload["total_resources"] == 0
+            and recovery.get("suggested_arguments")
+            == {"search": "customer", "page": 1, "page_size": 10}
+            and "omitting model_label" in recovery.get("message", "")
+        )
+
+    def recovery_preserves_operation(self, response: HttpResponse) -> bool:
+        """Keep recovery searches limited to the originally requested operation."""
+        payload = response.json()
+        return (
+            self.filtered_catalog_is_empty(response)
+            and payload.get("recovery", {}).get("suggested_arguments")
+            == {"search": "customer", "page": 1, "page_size": 10, "operation": "update"}
         )
 
     def test_catalog_uses_shared_model_labels(self) -> None:

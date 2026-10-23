@@ -1,37 +1,44 @@
 import re
 from email.utils import getaddresses
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import bleach
 from bleach.css_sanitizer import CSSSanitizer
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.db import transaction
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import formats, timezone
-from django.utils.html import strip_tags
 from django.utils.translation import gettext as _
 
 from bloomerp.communication.builtins.emails.actions import (
     _resolve_email_adapter_for_account,
     fetch_email_content,
 )
+from bloomerp.communication.builtins.emails.base_adapter import (
+    EmailSendResult,
+    EmailSendUnconfirmed,
+)
+from bloomerp.communication.builtins.emails.sending import (
+    UNCONFIRMED_SEND_MESSAGE,
+    store_outbound_email,
+)
 from bloomerp.communication.utils.permissions import accessible_inbox_items
+from bloomerp.router import router
 from bloomerp.services.email_composer_requests import (
     _get_attachments,
     _get_form_data,
     _join_recipients,
     _validate_form_data,
 )
-from bloomerp.router import router
 from bloomerp.utils.requests import render_message
 
 if TYPE_CHECKING:
     from bloomerp.models.communication.email_account import EmailAccount
+    from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
     from bloomerp.models.communication.inbox.inbox_item import InboxItem
 
 
@@ -157,7 +164,7 @@ def reply_recipient_emails(inbox_item: "InboxItem") -> list[str]:
             candidates = [candidates]
 
         recipients = []
-        for _, email_address in getaddresses([str(value) for value in candidates]):
+        for _display_name, email_address in getaddresses([str(value) for value in candidates]):
             try:
                 validate_email(email_address)
             except ValidationError:
@@ -250,8 +257,8 @@ def _send_reply(
     request: HttpRequest,
     *,
     inbox_item: "InboxItem",
-    inbox_folder,
-    email_account,
+    inbox_folder: "InboxFolder",
+    email_account: "EmailAccount",
     quoted_email: dict[str, str],
 ) -> HttpResponse:
     """Validate, send, and persist one reply."""
@@ -278,6 +285,7 @@ def _send_reply(
     body_html = f'{form_data["body"]}{quoted_html}'
     attachments = _get_attachments(request)
     adapter = _resolve_email_adapter_for_account(email_account)
+    pending = False
     try:
         sent_message_id = adapter.send_email(
             to=form_data["to"],
@@ -289,6 +297,9 @@ def _send_reply(
             in_reply_to=in_reply_to,
             references=references,
         )
+    except EmailSendUnconfirmed as exc:
+        sent_message_id = exc.result
+        pending = True
     except ValidationError as exc:
         return _render_reply_composer(
             request,
@@ -312,8 +323,12 @@ def _send_reply(
         body_html=body_html,
         in_reply_to=in_reply_to,
         references=references,
+        pending=pending,
     )
-    return render_message(request, _("Reply sent successfully."), "success")
+    if pending:
+        return render_message(request, str(UNCONFIRMED_SEND_MESSAGE), "warning")
+    message = _("Reply accepted for sending.") if isinstance(sent_message_id, EmailSendResult) else _("Reply sent successfully.")
+    return render_message(request, message, "success")
 
 
 def _render_reply_composer(
@@ -417,50 +432,16 @@ def _store_sent_reply(
     *,
     inbox_item: "InboxItem",
     email_account: "EmailAccount",
-    sent_message_id: str,
-    form_data: dict[str, object],
+    sent_message_id: str | EmailSendResult,
+    form_data: dict[str, Any],
     body_html: str,
     in_reply_to: str | None,
     references: list[str],
+    pending: bool = False,
 ) -> "InboxItem":
-    """Store a sent reply and link it to the original BloomERP conversation."""
-    from bloomerp.models.communication.inbox.inbox_item import InboxItem
-
-    from bloomerp.communication.builtins.emails.mailboxes import normalize_mailboxes
-
-    sent_mailbox = next((name for name, settings in normalize_mailboxes(email_account.mailboxes).items() if settings["sent_folder"]), "")
-    original_metadata = dict(inbox_item.raw_meta_data or {})
-    conversation_id = str(original_metadata.get("conversation_id") or inbox_item.pk)
-    original_metadata["conversation_id"] = conversation_id
-
-    with transaction.atomic():
-        InboxItem.objects.filter(pk=inbox_item.pk).update(
-            raw_meta_data=original_metadata,
-        )
-        sent_item, _ = InboxItem.objects.update_or_create(
-            folder=inbox_item.folder,
-            item_type="email",
-            related_item_id=sent_message_id,
-            defaults={
-                "actor": email_account.email_address,
-                "is_read": True,
-                "datetime_received": timezone.now(),
-                "title": str(form_data["subject"]),
-                "snippet": strip_tags(str(form_data["body"]))[:500],
-                "raw_meta_data": {
-                    "provider": "smtp",
-                    "mailbox": sent_mailbox,
-                    "message_id": sent_message_id,
-                    "email_account_id": str(email_account.pk),
-                    "to": form_data["to"],
-                    "cc": form_data["cc"],
-                    "in_reply_to": in_reply_to,
-                    "references": references,
-                    "conversation_id": conversation_id,
-                    "parent_item_id": str(inbox_item.pk),
-                    "outbound_body_html": body_html,
-                },
-            },
-        )
-    inbox_item.raw_meta_data = original_metadata
-    return sent_item
+    """Link a confirmed or uncertain reply to its conversation and remote identity."""
+    return store_outbound_email(
+        account=email_account, result=sent_message_id, form_data=form_data,
+        body_html=body_html, folders=[inbox_item.folder], original=inbox_item,
+        in_reply_to=in_reply_to, references=references, pending=pending,
+    )[0]
