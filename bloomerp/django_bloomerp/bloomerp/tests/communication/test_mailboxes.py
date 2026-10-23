@@ -1,7 +1,10 @@
 """Pure schema and refresh contracts for mailbox configuration."""
 
+from typing import Any
+
 from django.core.exceptions import ValidationError
 from django.test import SimpleTestCase
+
 from bloomerp.communication.builtins.emails.mailboxes import (
     default_mailbox_mapping,
     merge_mailboxes,
@@ -40,6 +43,7 @@ class TestMailboxMapping(SimpleTestCase):
     def test_configured_sent_folder_overrides_discovery(self) -> None:
         """Use case: A custom Sent role is configured. Expected result: IMAP uses that folder."""
         from unittest.mock import patch
+
         from bloomerp.communication.builtins.emails.providers.imap_smtp import (
             ImapSmtpAdapter,
         )
@@ -120,3 +124,55 @@ class TestMailboxMapping(SimpleTestCase):
         cleared["INBOX"]["main_folder"] = False
         cleared["Sent"]["sent_folder"] = False
         self.assertEqual(merge_mailboxes(["INBOX", "Sent"], cleared), cleared)
+
+    def test_provider_defaults_preserve_custom_and_explicitly_cleared_roles(self) -> None:
+        """Use stable-ID presentation defaults without restoring roles the user cleared."""
+        discovered = normalize_mailboxes({
+            "main-id": {"label": "Inbox", "main_folder": True},
+            "sent-id": {"label": "Sent", "sent_folder": True},
+            "custom-id": {"label": "Custom"},
+            "new-id": {"label": "New archive"},
+        })
+        previous = {name: dict(settings) for name, settings in discovered.items() if name != "new-id"}
+        previous["sent-id"]["sent_folder"] = False
+        previous["custom-id"].update(sent_folder=True, label="My sent mail", color="#123456")
+        merged = merge_mailboxes(list(discovered), previous, provider_defaults=discovered)
+        self.assertEqual(merged["custom-id"], previous["custom-id"])
+        self.assertFalse(merged["sent-id"]["sent_folder"])
+        self.assertEqual(merged["new-id"]["label"], "New archive")
+        normalize_mailboxes(merged)
+        previous["custom-id"]["sent_folder"] = False
+        merged = merge_mailboxes(list(discovered), previous, provider_defaults=discovered)
+        self.assertFalse(any(settings["sent_folder"] for settings in merged.values()))
+        self.assertEqual(merge_mailboxes(list(discovered), {}, provider_defaults=discovered), discovered)
+
+    def test_refresh_reads_registered_defaults_before_closing_adapter(self) -> None:
+        """Populate labels for new provider folder IDs through the registered discovery hook."""
+        from unittest.mock import Mock, patch
+
+        from bloomerp.communication.builtins.emails.actions import (
+            refresh_mailboxes_for_account,
+        )
+        from bloomerp.communication.builtins.emails.base_adapter import BaseEmailAdapter
+        from bloomerp.models.communication.email_account import EmailAccount
+
+        account = EmailAccount(mailboxes={})
+        adapter = Mock()
+        adapter.list_mailboxes.return_value = ["opaque-folder"]
+
+        def provider_defaults(provider_adapter: BaseEmailAdapter) -> dict[str, dict[str, Any]]:
+            """Read the discovery result while the shared service still owns the connection."""
+            self.assertIs(provider_adapter, adapter)
+            adapter.close.assert_not_called()
+            return {"opaque-folder": {"label": "Inbox", "main_folder": True}}
+
+        provider = Mock(mailbox_defaults=provider_defaults)
+        with (
+            patch("bloomerp.communication.builtins.emails.actions._resolve_provider", return_value=provider),
+            patch("bloomerp.communication.builtins.emails.actions._resolve_email_adapter_for_account", return_value=adapter),
+        ):
+            names = refresh_mailboxes_for_account(account, save=False)
+        self.assertEqual(names, ["opaque-folder"])
+        self.assertEqual(account.mailboxes["opaque-folder"]["label"], "Inbox")
+        self.assertTrue(account.mailboxes["opaque-folder"]["main_folder"])
+        adapter.close.assert_called_once()

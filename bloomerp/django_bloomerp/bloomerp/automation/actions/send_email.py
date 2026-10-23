@@ -2,13 +2,9 @@ import html
 import re
 from typing import Any
 
-from bloomerp.communication.builtins.emails.email_providers import EmailProviderDefinition
-from bloomerp.communication.builtins.emails.registry import EMAIL_PROVIDER_REGISTRY
-from bloomerp.models.communication.email_account import EmailAccount
-from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
-from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
+from django import forms
+from django.forms import Form
 
-from ..base_executor import BaseExecutor
 from bloomerp.automation.schema import (
     WorkflowInputRequirement,
     WorkflowIOSchema,
@@ -16,8 +12,21 @@ from bloomerp.automation.schema import (
     remap_schema_field_paths,
 )
 from bloomerp.automation.values import TEMPLATE_PATTERN, get_path_value, stringify_value
-from django.forms import Form
-from django import forms
+from bloomerp.communication.builtins.emails.base_adapter import (
+    EmailSendResult,
+    EmailSendUnconfirmed,
+)
+from bloomerp.communication.builtins.emails.email_providers import (
+    EmailProviderDefinition,
+)
+from bloomerp.communication.builtins.emails.registry import EMAIL_PROVIDER_REGISTRY
+from bloomerp.communication.builtins.emails.sending import UNCONFIRMED_SEND_MESSAGE
+from bloomerp.models.communication.email_account import EmailAccount
+from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
+from bloomerp.widgets.text_editor import BloomerpTextEditorWidget
+
+from ..base_executor import BaseExecutor
+
 
 class SendEmailForm(Form):
     from_account = forms.CharField(
@@ -83,6 +92,9 @@ class SendEmailExecutor(BaseExecutor):
             WorkflowValueField("input.email.subject", "Email Subject", "string"),
             WorkflowValueField("input.email.body", "Email Body", "string"),
             WorkflowValueField("input.email.status", "Email Status", "string"),
+            WorkflowValueField("input.email.message_id", "RFC Message-ID", "string"),
+            WorkflowValueField("input.email.provider_message_id", "Provider Message ID", "string"),
+            WorkflowValueField("input.email.warning", "Delivery Warning", "string"),
         ],
     )
 
@@ -140,13 +152,31 @@ class SendEmailExecutor(BaseExecutor):
             email_account
         )
         
-        # Send the email using the adapter
-        adapter.send_email(
-            to=[recipient],
-            subject=subject,
-            body_text=None if is_html_body else body,
-            body_html=body if is_html_body else None,
-        )
+        delivery: dict[str, Any] = {"status": "sent"}
+        try:
+            result = adapter.send_email(
+                to=[recipient],
+                subject=subject,
+                body_text=None if is_html_body else body,
+                body_html=body if is_html_body else None,
+            )
+            if isinstance(result, EmailSendResult):
+                delivery = {
+                    "status": "accepted",
+                    "message_id": result.message_id or "",
+                    "provider_message_id": result.provider_message_id,
+                }
+        except EmailSendUnconfirmed as exc:
+            delivery = {
+                "status": "unconfirmed",
+                "message_id": exc.result.message_id or "",
+                "provider_message_id": exc.result.provider_message_id,
+                "warning": str(UNCONFIRMED_SEND_MESSAGE),
+            }
+        finally:
+            close = getattr(adapter, "close", None)
+            if callable(close):
+                close()
         
         
         output_data = input_data if isinstance(input_data, dict) else {"input": input_data}
@@ -156,6 +186,6 @@ class SendEmailExecutor(BaseExecutor):
                 "recipient": recipient,
                 "subject": subject,
                 "body": body,
-                "status": "sent",
+                **delivery,
             },
         }

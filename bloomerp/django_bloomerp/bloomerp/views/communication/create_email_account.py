@@ -1,20 +1,27 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, ClassVar
 
 from django import forms
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import HttpRequest, HttpResponse
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import TemplateView
 
-from bloomerp.communication.builtins.emails.mailboxes import merge_mailboxes, normalize_mailboxes
-from bloomerp.form_fields.mapping_field import MappingField
-from bloomerp.form_fields.mailbox_settings_field import MailboxSettingsField
-from bloomerp.communication.utils.crypto import encrypt_email_secret
-from bloomerp.communication.builtins.emails.email_providers import EmailProviderDefinition
+from bloomerp.communication.builtins.emails.email_providers import (
+    EmailProviderDefinition,
+)
+from bloomerp.communication.builtins.emails.mailboxes import (
+    merge_mailboxes,
+    normalize_mailboxes,
+)
 from bloomerp.communication.builtins.emails.registry import EMAIL_PROVIDER_REGISTRY
+from bloomerp.communication.utils.crypto import encrypt_email_secret
+from bloomerp.form_fields.mailbox_settings_field import MailboxSettingsField
+from bloomerp.form_fields.mapping_field import MappingField
 from bloomerp.models.communication import EmailAccount
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
@@ -26,7 +33,6 @@ from bloomerp.views.mixins.wizard_mixin import (
     WizardMixin,
     WizardStep,
 )
-
 
 CREATE_EMAIL_ACCOUNT_SESSION_KEY = "email_account_create_wizard"
 PROVIDER_SESSION_KEY = "provider"
@@ -41,7 +47,7 @@ class EmailAccountSettingsForm(forms.ModelForm):
 
     class Meta:
         model = EmailAccount
-        fields = [
+        fields: ClassVar[list[str]] = [
             "name",
             "email_address",
             "username",
@@ -59,7 +65,7 @@ class EmailAccountSettingsForm(forms.ModelForm):
             "oauth_tenant_id",
             "oauth_scopes",
         ]
-        widgets = {
+        widgets: ClassVar[dict[str, forms.Widget]] = {
             "password": forms.PasswordInput(render_value=False),
             "oauth_client_secret": forms.PasswordInput(render_value=False),
             "oauth_scopes": forms.Textarea(attrs={"rows": 2}),
@@ -143,7 +149,7 @@ class EmailAccountSettingsForm(forms.ModelForm):
 
 def get_provider_context(
     request: HttpRequest,
-    view: "CRUDEmailAccountMixin",
+    view: CRUDEmailAccountMixin,
     orchestrator: BaseStateOrchestrator,
 ) -> dict[str, Any]:
     """Present available providers and the current wizard selection."""
@@ -165,7 +171,7 @@ def get_provider_context(
 
 def process_provider(
     request: HttpRequest,
-    view: "CRUDEmailAccountMixin",
+    view: CRUDEmailAccountMixin,
     orchestrator: BaseStateOrchestrator,
 ) -> WizardError | None:
     """Validate the selected provider before advancing to connection settings."""
@@ -188,7 +194,7 @@ def _get_settings_initial(orchestrator: BaseStateOrchestrator) -> dict[str, Any]
 
 def get_settings_context(
     request: HttpRequest,
-    view: "CRUDEmailAccountMixin",
+    view: CRUDEmailAccountMixin,
     orchestrator: BaseStateOrchestrator,
 ) -> dict[str, Any]:
     """Render editable connection settings without exposing stored secrets."""
@@ -204,19 +210,30 @@ def get_settings_context(
         instance=view.get_account(),
         initial=initial,
     )
+    callback_uri = ""
+    if provider is not None and provider.authorization is not None:
+        from bloomerp.communication.builtins.emails.authorization import (
+            authorization_callback_uri,
+        )
+
+        try:
+            callback_uri = authorization_callback_uri(request)
+        except ValidationError:
+            pass
     return {
         "form": form,
         "provider": provider.key if provider else "",
         "provider_label": provider.name if provider else "",
         "provider_definition": provider,
+        "authorization_callback_uri": callback_uri,
     }
 
 
 def process_settings(
     request: HttpRequest,
-    view: "CRUDEmailAccountMixin",
+    view: CRUDEmailAccountMixin,
     orchestrator: BaseStateOrchestrator,
-) -> WizardError | None:
+) -> WizardError | HttpResponse | None:
     """Validate the connection and discover mailboxes before presenting their mapping."""
     provider = EMAIL_PROVIDER_REGISTRY.get(
         orchestrator.get_session_data(PROVIDER_SESSION_KEY)
@@ -246,25 +263,60 @@ def process_settings(
             step=1,
         )
 
-    cleaned_data = form.cleaned_data.copy()
+    cleaned_data = {**provider.initial, **form.cleaned_data}
     for field_name in EmailAccount.SECRET_FIELDS:
         if cleaned_data.get(field_name):
             cleaned_data[field_name] = encrypt_email_secret(cleaned_data[field_name])
 
     orchestrator.set_session_data(SETTINGS_SESSION_KEY, cleaned_data)
+    orchestrator.set_session_data(MAILBOXES_SESSION_KEY, None)
+    orchestrator.set_session_data("authorization_complete", None)
     account = form.instance
     for name, value in cleaned_data.items():
         if name != "set_as_default":
             setattr(account, name, value)
     try:
+        if provider.authorization is not None:
+            from bloomerp.communication.builtins.emails.authorization import (
+                begin_authorization,
+            )
+
+            original = view.get_account()
+            if original is not None:
+                original = EmailAccount.objects.get(pk=original.pk)
+            return begin_authorization(
+                request,
+                provider=provider,
+                candidate=account,
+                account=original,
+                wizard_key=view.session_key,
+                account_settings=cleaned_data,
+            )
         adapter = provider.adapter_class(account)
-        names = adapter.validate_connection()
-        mapping = merge_mailboxes(
-            names,
-            orchestrator.get_session_data(MAILBOXES_SESSION_KEY) or account.mailboxes,
+        try:
+            names = adapter.validate_connection()
+            defaults = (
+                provider.mailbox_defaults(adapter) if provider.mailbox_defaults else {}
+            )
+            mapping = merge_mailboxes(
+                names, normalize_mailboxes(account.mailboxes), provider_defaults=defaults
+            )
+        finally:
+            close = getattr(adapter, "close", None)
+            if callable(close):
+                close()
+    except ValidationError as exc:
+        return WizardError(
+            message="; ".join(exc.messages), title=_("Email connection failed"), step=1
         )
-    except Exception as exc:
-        return WizardError(message=str(exc), title=_("Email connection failed"), step=1)
+    except Exception:  # noqa: BLE001 -- arbitrary transport errors can contain credentials.
+        return WizardError(
+            message=_(
+                "The email provider could not complete setup. Check its configuration and try again."
+            ),
+            title=_("Email connection failed"),
+            step=1,
+        )
     orchestrator.set_session_data(MAILBOXES_SESSION_KEY, mapping)
 
 
@@ -297,7 +349,7 @@ class EmailAccountMailboxesForm(forms.Form):
 
 def get_mailboxes_context(
     request: HttpRequest,
-    view: "CRUDEmailAccountMixin",
+    view: CRUDEmailAccountMixin,
     orchestrator: BaseStateOrchestrator,
 ) -> dict[str, Any]:
     """Render the final mapping step, retaining invalid submitted values for correction."""
@@ -311,7 +363,7 @@ def get_mailboxes_context(
 
 def process_mailboxes(
     request: HttpRequest,
-    view: "CRUDEmailAccountMixin",
+    view: CRUDEmailAccountMixin,
     orchestrator: BaseStateOrchestrator,
 ) -> WizardError | None:
     """Validate and retain mailbox settings before persisting the email account."""
@@ -388,6 +440,16 @@ class CRUDEmailAccountMixin(WizardMixin):
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         """Label the final step according to creation or reconfiguration."""
         context = super().get_context_data(**kwargs)
+        provider = EMAIL_PROVIDER_REGISTRY.get(
+            self.orchestrator.get_session_data(PROVIDER_SESSION_KEY)
+        )
+        if (
+            context.get("step_index") == 1
+            and provider is not None
+            and provider.authorization is not None
+        ):
+            context["wizard_submit_label"] = provider.authorization.label
+            context["can_disconnect"] = bool(self.get_account())
         if context.get("step_index") == 2:
             context["wizard_submit_label"] = (
                 _("Save account") if self.get_account() else _("Create account")
@@ -410,22 +472,82 @@ class CRUDEmailAccountMixin(WizardMixin):
             )
 
         settings = dict(settings)
+        if provider.authorization is not None and not payload.get(
+            "authorization_complete"
+        ):
+            return WizardError(
+                message=_("Connect the account before saving its mailbox mapping."),
+                step=1,
+            )
+        if provider.authorization is not None:
+            expires = parse_datetime(payload.get("authorization_expires", ""))
+            if expires is None or expires <= timezone.now():
+                return WizardError(
+                    message=_(
+                        "Authorization setup expired. Connect the account again."
+                    ),
+                    step=1,
+                )
+        if isinstance(settings.get("token_expires_at"), str):
+            settings["token_expires_at"] = parse_datetime(settings["token_expires_at"])
         set_as_default = settings.pop("set_as_default", False)
         try:
             email_account = self.get_account() or EmailAccount(
                 created_by=self.request.user
             )
+            provider_changed = email_account.provider != provider.key
             email_account.provider = provider.key
             email_account.updated_by = self.request.user
             for name, value in settings.items():
                 setattr(email_account, name, value)
+            if provider_changed:
+                email_account.sync_cursor = {}
+                if provider.authorization is None:
+                    email_account.access_token = ""
+                    email_account.refresh_token = ""
+                    email_account.token_expires_at = None
+                    email_account.extra_settings = {}
+            if provider.authorization is not None:
+                email_account.sync_enabled = True
             email_account.mailboxes = normalize_mailboxes(
                 payload.get(MAILBOXES_SESSION_KEY, {})
             )
             email_account.full_clean()
             email_account.mark_validated(save=False)
             with transaction.atomic():
-                email_account.save()
+                if (
+                    provider.authorization is not None
+                    and not email_account._state.adding
+                ):
+                    from bloomerp.communication.builtins.emails.authorization import (
+                        account_configuration_fingerprint,
+                    )
+
+                    current = EmailAccount.objects.select_for_update().get(
+                        pk=email_account.pk
+                    )
+                    if payload.get(
+                        "authorization_configuration"
+                    ) != account_configuration_fingerprint(current):
+                        raise ValidationError(
+                            _(
+                                "The account changed during setup. Connect again before saving."
+                            )
+                        )
+                if email_account._state.adding:
+                    email_account.save()
+                else:
+                    update_fields = {
+                        *settings, "provider", "mailboxes", "status",
+                        "validation_error", "last_validated_at", "updated_by",
+                        "datetime_updated",
+                    }
+                    if provider.authorization is not None:
+                        email_account.next_sync_at = timezone.now()
+                        update_fields.update({"sync_enabled", "next_sync_at"})
+                    if provider_changed:
+                        update_fields.update({"sync_cursor", "access_token", "refresh_token", "token_expires_at", "extra_settings"})
+                    email_account.save(update_fields=update_fields)
                 if set_as_default:
                     self.request.user.default_email_account = email_account
                     self.request.user.save(update_fields=["default_email_account"])
@@ -435,9 +557,9 @@ class CRUDEmailAccountMixin(WizardMixin):
                 title=_("Email connection failed"),
                 step=1,
             )
-        except Exception as exc:
+        except Exception:  # noqa: BLE001 -- persistence diagnostics must not expose account secrets.
             return WizardError(
-                message=str(exc),
+                message=_("The email account could not be saved. Please try again."),
                 title=_("Email connection failed"),
                 step=1,
             )
@@ -448,6 +570,7 @@ class CRUDEmailAccountMixin(WizardMixin):
             type="success",
         )
         return None
+
 
 @router.register(
     path="create",
