@@ -1,15 +1,18 @@
 """Cancel a local calendar event without deleting its scheduling identity."""
 
 import logging
-from typing import Any
+from typing import Any, ClassVar
 from uuid import UUID
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import transaction
 from django.http import HttpRequest, HttpResponse
 from django.utils.translation import gettext as _
 
-from bloomerp.communication.calendar.outgoing import calendar_sender, send_calendar_request
+from bloomerp.communication.calendar.outgoing import (
+    calendar_sender,
+    preserve_calendar_delivery,
+    send_calendar_request,
+)
 from bloomerp.models.communication.calendar import CalendarEvent
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.permissions.manager import UserPolicyManager
@@ -17,7 +20,7 @@ from bloomerp.router import router
 from bloomerp.views.communication.calendar.update import CalendarEventUpdateView
 
 
-@transaction.atomic
+@preserve_calendar_delivery
 def cancel_calendar_event(*, user: AbstractBloomerpUser, event_id: UUID) -> None:
     """Cancel once, delivering emailed cancellations before marking the local event cancelled."""
     event = CalendarEvent.objects.select_for_update().get(pk=event_id)
@@ -44,7 +47,7 @@ def cancel_calendar_event(*, user: AbstractBloomerpUser, event_id: UUID) -> None
 class CalendarEventCancelView(CalendarEventUpdateView):
     """Handle cancellation separately while reusing the event editor for recoverable errors."""
 
-    http_method_names = ["post"]
+    http_method_names: ClassVar[list[str]] = ["post"]
 
     def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
         """Cancel the saved event independently of any unfinished composer edits."""

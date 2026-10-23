@@ -3,7 +3,12 @@
 from django.http import HttpResponse
 
 from bloomerp.models import EmailDraft
-from bloomerp.tests.base import BloomerpAPIDetailViewTestCase, BloomerpAPIModelViewTestCase, ExpectedResult, RequestScenario
+from bloomerp.tests.base import (
+    BloomerpAPIDetailViewTestCase,
+    BloomerpAPIModelViewTestCase,
+    ExpectedResult,
+    RequestScenario,
+)
 
 
 class TestEmailDraftApi(BloomerpAPIModelViewTestCase):
@@ -81,6 +86,20 @@ class TestEmailDraftDetailApi(BloomerpAPIDetailViewTestCase):
                 expected=ExpectedResult(status_code=403),
             ),
             RequestScenario(
+                name="Autosave preserves server-owned pending delivery state",
+                view_kwargs={"pk": self.owned.pk}, method="PATCH", user=self.normal_user,
+                content_type="application/json", data={"payload": self.snapshot},
+                prepare=self.prepare_pending_send,
+                expected=ExpectedResult(response_validators=self.pending_send_is_preserved),
+            ),
+            RequestScenario(
+                name="Draft owner cannot clear pending delivery through the generated API",
+                view_kwargs={"pk": self.owned.pk}, method="PATCH", user=self.normal_user,
+                content_type="application/json", data={"pending_send": {}},
+                prepare=self.prepare_pending_send,
+                expected=ExpectedResult(status_code=403, response_validators=self.pending_send_is_preserved),
+            ),
+            RequestScenario(
                 name="Cannot update another user's draft",
                 view_name="email_drafts-detail", view_kwargs={"pk": self.foreign.pk},
                 method="PATCH", user=self.normal_user, content_type="application/json",
@@ -99,3 +118,13 @@ class TestEmailDraftDetailApi(BloomerpAPIDetailViewTestCase):
         self.owned.refresh_from_db()
         self.foreign.refresh_from_db()
         return self.owned.payload == self.snapshot and self.foreign.payload == {"body": "private"}
+
+    def prepare_pending_send(self, _scenario: RequestScenario) -> None:
+        """Persist an uncertain send reference outside the editable composer payload."""
+        self.owned.pending_send = {"provider_message_id": "pending-id", "provider_message_id_scope": "account"}
+        self.owned.save(update_fields=["pending_send"])
+
+    def pending_send_is_preserved(self, _response: HttpResponse) -> bool:
+        """Ensure editing or attempting to forge a snapshot cannot reset its send guard."""
+        self.owned.refresh_from_db()
+        return self.owned.pending_send.get("provider_message_id") == "pending-id"
