@@ -5,6 +5,7 @@ from .ai_agent_access import AIAgentAccess
 from .ai_approval import AIApproval
 from .ai_artifact import AIArtifact
 from .ai_conversation import AIConversation
+from .ai_conversation_memory import AIConversationMemory
 from .ai_message import AIMessage
 from .ai_message_artifact import AIMessageArtifact
 from .ai_run import AIRun
@@ -20,6 +21,7 @@ __all__ = [
     "AIApproval",
     "AIArtifact",
     "AIConversation",
+    "AIConversationMemory",
     "AIMessage",
     "AIMessageArtifact",
     "AIRun",

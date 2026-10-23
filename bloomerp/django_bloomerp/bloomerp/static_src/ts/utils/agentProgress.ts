@@ -7,6 +7,7 @@ export function updateAgentProgress(current: AgentProgressState, event: Record<s
     const data = payload?.data;
     let key: string | null;
     switch (event.event_type) {
+        case 'model.retrying': key = 'model-retrying'; break;
         case 'tool.started': key = 'tool-running'; break;
         case 'tool.outcome':
             if (data?.status === 'waiting') key = 'approval';

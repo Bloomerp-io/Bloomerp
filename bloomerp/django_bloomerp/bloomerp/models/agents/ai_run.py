@@ -235,6 +235,7 @@ class AIRun(AgentModel):
         event = (
             self.events.filter(
                 event_type__in=[
+                    "model.retrying",
                     "tool.started",
                     "tool.outcome",
                     "text.delta",
@@ -254,7 +255,7 @@ class AIRun(AgentModel):
             "payload": {
                 "data": {
                     key: data[key]
-                    for key in ("tool_title", "status", "wait_kind")
+                    for key in ("tool_title", "status", "wait_kind", "retry_number", "delay_seconds", "error_code")
                     if key in data
                 }
             },
@@ -453,7 +454,13 @@ class AIRun(AgentModel):
                 raise ValidationError("Runtime event belongs to another execution")
             kind = event.kind
             payload = {"data": {}}
-            if kind == "tool.started":
+            if kind == "model.retrying":
+                payload = {"data": {
+                    "retry_number": event.retry_number,
+                    "delay_seconds": event.delay_seconds,
+                    "error_code": event.error_code,
+                }}
+            elif kind == "tool.started":
                 tool = run.tool_calls.get(pk=event.tool_call_id)
                 if (
                     tool.status != "running"

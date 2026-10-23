@@ -419,6 +419,14 @@ class McpToolCoordinator:
                 raise
             tool.complete(result, self.attempt.lease_token)
         if tool.status == "completed":
+            from bloomerp.agents.memory import remember_tool_result
+
+            try:
+                remember_tool_result(tool)
+            except Exception:
+                logging.getLogger(__name__).exception(
+                    "Memory extraction failed for tool call %s", tool.pk
+                )
             from django.http import HttpRequest
 
             from bloomerp.models.agents import AIArtifact

@@ -14,9 +14,10 @@ from rest_framework.response import Response
 
 class ExecuteSqlRequestSerializer(serializers.Serializer):
     query = serializers.CharField(
-        required=False,
-        allow_blank=True,
-        help_text="The SQL query to execute.",
+        required=True,
+        allow_blank=False,
+        min_length=1,
+        help_text="Required nonblank read-only SELECT/WITH SQL query. Always supply query, including when setting pagination.",
         style={"base_template": "textarea.html"},
     )
     page = serializers.IntegerField(
