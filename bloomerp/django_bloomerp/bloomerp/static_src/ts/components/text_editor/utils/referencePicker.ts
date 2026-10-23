@@ -12,10 +12,15 @@ export async function uploadReferenceFile(host: HTMLElement, file: File, signal?
     const data = new FormData();
     data.append("file", file);
     const csrf = document.querySelector<HTMLInputElement>('[name="csrfmiddlewaretoken"]')?.value ?? "";
-    const response = await fetch(host.dataset.referenceUploadUrl!, { method: "POST", body: data, headers: { "X-CSRFToken": csrf }, signal });
-    if (!response.ok) throw new Error(t("File upload failed"));
-    const result = await response.json() as { file_id: string; name: string };
-    return { kind: "file", target_id: result.file_id, label: result.name };
+    host.dispatchEvent(new CustomEvent("bloomerp:file-upload-state", { bubbles: true, detail: { delta: 1 } }));
+    try {
+        const response = await fetch(host.dataset.referenceUploadUrl!, { method: "POST", body: data, headers: { "X-CSRFToken": csrf }, signal });
+        if (!response.ok) throw new Error(t("File upload failed"));
+        const result = await response.json() as { file_id: string; name: string };
+        return { kind: "file", target_id: result.file_id, label: result.name };
+    } finally {
+        host.dispatchEvent(new CustomEvent("bloomerp:file-upload-state", { bubbles: true, detail: { delta: -1 } }));
+    }
 }
 
 /** Share searchable target selection between the toolbar and editor commands. */
@@ -196,7 +201,10 @@ export class ReferencePicker {
     private async uploadSelection(input: HTMLInputElement): Promise<void> {
         const file = input.files?.[0];
         if (!file) return;
-        try { this.insert(await uploadReferenceFile(this.host, file, this.lifecycle.signal)); }
+        try {
+            const target = await uploadReferenceFile(this.host, file, this.lifecycle.signal);
+            if (!this.lifecycle.signal.aborted) this.insert(target);
+        }
         catch (error) { if (!this.lifecycle.signal.aborted) window.alert(String(error)); }
     }
     /** Cancel requests and dismiss this editor's menu when removed. */
