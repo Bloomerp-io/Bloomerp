@@ -19,6 +19,7 @@ class TestCreateObjectNode(BloomerpWorkflowNodeTestCase):
     executor_class = CreateObjectExecutor
 
     def get_test_scenarios(self) -> list[WorkflowNodeScenario]:
+        """Describe the observable behavior covered by this test case."""
         return []
 ```
 

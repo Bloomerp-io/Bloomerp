@@ -43,7 +43,11 @@ component helpers or individual registry internals.
 Create `my_app/dataviews.py`:
 
 ```python
-from typing import Literal
+from typing import Any, Literal
+
+from django.db.models import QuerySet
+from django.http import HttpRequest
+from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 
 from bloomerp.dataviews import (
     BaseDataview,
@@ -69,11 +73,12 @@ class TimelineDataviewRenderer(BaseDataviewRenderer):
     @classmethod
     def paginate_queryset(
         cls,
-        queryset,
-        preference,
-        request,
-        options=None,
+        queryset: QuerySet,
+        preference: UserListViewPreference,
+        request: HttpRequest,
+        options: TimelineDataview | None = None,
     ) -> DataviewPagination:
+        """Paginate the authorized records using the timeline's page parameter."""
         page = cls.paginate_object_list(
             queryset,
             getattr(options, "page_size", 25),
@@ -81,7 +86,8 @@ class TimelineDataviewRenderer(BaseDataviewRenderer):
         )
         return DataviewPagination(queryset=page, page_obj=page)
 
-    def get_context_data(self, pagination):
+    def get_context_data(self, pagination: DataviewPagination) -> dict[str, Any]:
+        """Add the configured date-field identifier to the renderer context."""
         context = super().get_context_data(pagination)
         context["timeline_date_field"] = getattr(
             self.options,
@@ -135,8 +141,15 @@ the display-options panel and when it validates a submitted options form. The
 method must return a Django **form class**, not a form instance:
 
 ```python
+from typing import Any
+
+from django import forms
+from bloomerp.dataviews import DataviewState
+
+
 @classmethod
 def form_factory(cls, state: DataviewState) -> type[forms.Form]:
+    """Return the Django form class used to edit this dataview's options."""
     ...
 ```
 
@@ -179,9 +192,10 @@ the generated form and only particular fields need model-aware choices:
 from typing import Literal
 
 from django import forms
+from pydantic.fields import FieldInfo
 from django.utils.translation import gettext_lazy as _
 
-from bloomerp.dataviews import BaseDataview, application_field_choices
+from bloomerp.dataviews import BaseDataview, DataviewState, application_field_choices
 
 
 class TimelineDataview(BaseDataview):
@@ -192,7 +206,10 @@ class TimelineDataview(BaseDataview):
     application_field_options = {"date_field": "single"}
 
     @classmethod
-    def create_form_field(cls, name, field_info, state):
+    def create_form_field(
+        cls, name: str, field_info: FieldInfo, state: DataviewState,
+    ) -> forms.Field:
+        """Restrict the date option to readable date and datetime fields."""
         if name == "date_field":
             return forms.TypedChoiceField(
                 choices=application_field_choices(
@@ -225,8 +242,15 @@ shape differs from individual form inputs, or the complete form needs custom
 validation:
 
 ```python
+from typing import Any
+
+from django import forms
+from bloomerp.dataviews import DataviewState
+
+
 @classmethod
 def form_factory(cls, state: DataviewState) -> type[forms.Form]:
+    """Build an options form with cross-field validation."""
     class TimelineOptionsForm(forms.Form):
         start_field = forms.ChoiceField(
             choices=application_field_choices(state.accessible_fields)
@@ -235,7 +259,8 @@ def form_factory(cls, state: DataviewState) -> type[forms.Form]:
             choices=application_field_choices(state.accessible_fields)
         )
 
-        def clean(self):
+        def clean(self) -> dict[str, Any]:
+            """Require different start and end fields for the timeline."""
             cleaned_data = super().clean()
             if cleaned_data.get("start_field") == cleaned_data.get("end_field"):
                 raise forms.ValidationError(
@@ -307,8 +332,13 @@ toolbar actions, and an end-to-end Kanban example.
 Interactive dataviews may override:
 
 ```python
+from django.http import HttpRequest, HttpResponse
+from bloomerp.dataviews import DataviewState
+
+
 @classmethod
-def handle_action(cls, action, request, state):
+def handle_action(cls, action: str, request: HttpRequest, state: DataviewState) -> HttpResponse:
+    """Dispatch a renderer operation using the authorized dataview state."""
     ...
 ```
 
@@ -329,10 +359,21 @@ permission-filtered view queryset does not itself grant write access.
 `DataviewTypeDefinition` accepts two optional controls:
 
 ```python
-DataviewTypeDefinition(
-    ...,
+from django.db.models import Model
+
+
+def supports_timeline(model: type[Model]) -> bool:
+    """Offer the timeline only to models with a start timestamp."""
+    return hasattr(model, "starts_at")
+
+
+timeline_definition = DataviewTypeDefinition(
+    key="timeline",
+    label="Timeline",
+    renderer_cls=TimelineDataviewRenderer,
+    config_cls=TimelineDataview,
     requires_display_fields=False,
-    available_for_model=lambda model: hasattr(model, "starts_at"),
+    available_for_model=supports_timeline,
 )
 ```
 
@@ -374,8 +415,7 @@ interaction. See [Dataview test cases](../testing/dataview-test-case.md).
 
 List preferences save `view_mode` as `normal`, `split`, or `drawer`. The Display
 menu exposes these through a select. `view_type` still selects the result layout
-(table, board, calendar, etc.). Migration `0093_list_view_mode` preserves the old
-split flag and supports rollback. Developer-configured default dataviews also
+(table, board, calendar, etc.). Developer-configured default dataviews also
 use `view_mode`; the file browser defaults to `split`.
 
 Drawer mode reuses the detail tabs, activity, comments, and form-save targets.

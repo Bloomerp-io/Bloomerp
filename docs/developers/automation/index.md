@@ -5,6 +5,8 @@ BloomERP workflow nodes are extensions of `BaseExecutor`. The workflow runtime d
 ## A minimal node
 
 ```python
+from typing import Any
+
 from django import forms
 
 from bloomerp.automation import (
@@ -22,7 +24,8 @@ class AddGreetingForm(forms.Form):
 class AddGreetingExecutor(BaseExecutor):
     config_form = AddGreetingForm
 
-    def execute(self, input_data):
+    def execute(self, input_data: dict[str, Any]) -> dict[str, Any]:
+        """Add the configured greeting to the workflow input."""
         config = self.resolve_config(input_data)
         return {
             **input_data,
@@ -32,10 +35,11 @@ class AddGreetingExecutor(BaseExecutor):
     @classmethod
     def get_output_schema(
         cls,
-        config=None,
-        input_schema=None,
-        port_id="default",
-    ):
+        config: dict[str, Any] | None = None,
+        input_schema: WorkflowIOSchema | None = None,
+        port_id: str = "default",
+    ) -> WorkflowIOSchema:
+        """Describe the greeting node's object output."""
         return WorkflowIOSchema(value_type="object", label="Greeting data")
 
 
@@ -64,7 +68,13 @@ The `port_id` argument is part of the node API even for single-output nodes. It 
 
 ```python
 @classmethod
-def get_output_schema(cls, config=None, input_schema=None, port_id="default"):
+def get_output_schema(
+    cls,
+    config: dict[str, Any] | None = None,
+    input_schema: WorkflowIOSchema | None = None,
+    port_id: str = "default",
+) -> WorkflowIOSchema:
+    """Describe either the validation errors or the forwarded input."""
     if port_id == "invalid":
         return WorkflowIOSchema(value_type="object", label="Validation errors")
     return input_schema or WorkflowIOSchema(value_type="any")
@@ -98,7 +108,8 @@ class ApprovalExecutor(BaseExecutor):
         WorkflowNodeOutputPort("rejected", "Rejected"),
     )
 
-    def execute(self, input_data):
+    def execute(self, input_data: dict[str, Any]) -> RouteResult:
+        """Route the input through its approval outcome."""
         return RouteResult(
             port_id="approved" if input_data["approved"] else "rejected",
             output=input_data,
@@ -113,7 +124,8 @@ Override `get_output_ports(config)` when users define branches in node configura
 
 ```python
 @classmethod
-def get_output_ports(cls, config=None):
+def get_output_ports(cls, config: dict[str, Any] | None = None) -> tuple[WorkflowNodeOutputPort, ...]:
+    """Build ports from stable branch IDs in the saved configuration."""
     return tuple(
         WorkflowNodeOutputPort(
             id=branch["id"],
@@ -140,50 +152,11 @@ Most executors should return a normal value. Use a result object only to request
 
 ## Testing a node
 
-Use `BloomerpWorkflowNodeTestCase` for executor contract tests:
+Generate the workflow-node test case and add `WorkflowNodeScenario` entries to
+`get_test_scenarios()`. Set exact `expected_output` and `expected_output_schema`
+values when possible; use validators for results that cannot be compared directly.
+See [workflow node test cases](../testing/workflow-node-test-case.md).
 
-```python
-from bloomerp.automation import WorkflowIOSchema
-from bloomerp.tests.base import (
-    BloomerpWorkflowNodeTestCase,
-    WorkflowNodeScenario,
-)
-
-
-class TestAddGreetingNode(BloomerpWorkflowNodeTestCase):
-    node_id = "ADD_GREETING"
-    executor_class = AddGreetingExecutor
-
-    def get_test_scenarios(self):
-        input_schema = WorkflowIOSchema(value_type="object")
-        return [
-            WorkflowNodeScenario(
-                parameters={"greeting": "Hello"},
-                trigger_data={"name": "Ada"},
-                expected_output={"name": "Ada", "greeting": "Hello"},
-                output_validators=[
-                    lambda output: "greeting" in output,
-                    lambda output: output["name"] == "Ada",
-                ],
-                input_schema=input_schema,
-                output_schema_validators=[
-                    lambda schema: schema.value_type == "object",
-                ],
-            )
-        ]
-```
-
-Simulations call the node directly so failures identify the executor contract precisely. `input_schema` is supplied independently because output-schema resolution depends on upstream shape, not on a runtime value. Both validator fields accept one callable or a list.
-
-For failure cases, set `expected_exception` and optionally `expected_exception_message`. Use `nodes` only when a direct simulation needs additional persisted nodes as fixtures; select orchestration behavior for a full workflow integration test instead.
-
-Add a full `run_workflow()` integration test when the behavior involves routing, fan-out, pausing, joins, nested workflow execution, persistence, or edge cardinality. Those are runtime behaviors rather than isolated executor outputs.
-
-At minimum, test:
-
-- representative outputs and failures;
-- input requirements and configuration-dependent output schemas;
-- every named route and any dynamic port configuration;
-- connection limits;
-- orchestration results returned by the executor;
-- side effects, retries, and transaction behavior where applicable.
+Use a full `run_workflow()` integration test for routing, fan-out, pausing, joins,
+nested execution, persistence, and edge cardinality. These contracts involve the
+runtime rather than an isolated executor.

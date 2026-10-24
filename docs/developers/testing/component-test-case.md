@@ -18,6 +18,7 @@ class TestQrCodeComponent(BloomerpComponentTestCase):
     view_name = "components_forms_qr_code"
 
     def get_test_scenarios(self) -> list[RequestScenario]:
+        """Describe the observable behavior covered by this test case."""
         return []
 ```
 

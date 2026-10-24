@@ -1,12 +1,6 @@
 # `c-ui.dropdown.divider`
 
-- Tag: `<c-ui.dropdown.divider />`
-- Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/dropdown/divider.html`
+Insert a horizontal separator between dropdown items. This component has
+no parameters or content slot.
 
-## Description
-
-No component docstring found.
-
-## Documentation Status
-
-Add a `{% comment %}` block at the top of the component template to populate this page.
+Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/dropdown/divider.html`.

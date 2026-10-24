@@ -1,12 +1,6 @@
 # `c-ui.text.title`
 
-- Tag: `<c-ui.text.title />`
-- Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/text/title.html`
+Render the default slot as a prominent `h2` heading. Accepts `class` for
+additional styling.
 
-## Description
-
-No component docstring found.
-
-## Documentation Status
-
-Add a `{% comment %}` block at the top of the component template to populate this page.
+Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/text/title.html`.

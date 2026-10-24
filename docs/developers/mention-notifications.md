@@ -30,8 +30,3 @@ Mention sources opt into `defer_notifications_until_commit` and
 atomic, while realtime delivery is a robust post-commit callback. The HTML-capable
 toast boundary escapes plain-text snapshots; inbox templates also escape them.
 These options preserve the existing behavior of other notification sources.
-
-Focused coverage lives in `tests/services/test_mention_notifications.py`, the
-existing object-reference service tests, generated create-view scenarios, and
-comment redirect scenarios. All transport calls in mention-delivery tests are
-mocked; tests use local database records only.

@@ -24,6 +24,7 @@ class TestAddressField(BloomerpModelFieldTestCase[AddressField]):
     field_class = AddressField
 
     def get_test_scenarios(self) -> list[ModelFieldScenario[AddressField]]:
+        """Describe the observable behavior covered by this test case."""
         return []
 ```
 
