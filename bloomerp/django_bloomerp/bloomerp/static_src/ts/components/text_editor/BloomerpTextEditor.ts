@@ -8,6 +8,8 @@ import { t as _ } from "@/utils/i18n";
 import { Command, COMMANDS, registerCommands } from "./commands";
 import { ImageNode } from "./nodes/ImageNode";
 import { CodeBlockNode } from "./nodes/CodeBlockNode";
+import { MermaidNode } from "./nodes/MermaidNode";
+import { registerMermaidBehavior } from "./utils/mermaidBehavior";
 import { registerLinkBehavior } from "./utils/linkBehavior";
 import { registerHtmlBehavior } from "./utils/htmlBehavior";
 import { registerImageBehavior } from "./utils/imageBehavior";
@@ -159,6 +161,7 @@ export class BloomerpTextEditor extends BaseWidget {
                 ReferenceNode,
                 FileImageNode,
                 CodeBlockNode,
+                MermaidNode,
                 HtmlNode,
             ],
             onError: (error: Error) => {
@@ -201,6 +204,7 @@ export class BloomerpTextEditor extends BaseWidget {
             registerHistory(this.editor, historyState, 300),
             registerTableBehavior(this.editor, this.element),
             registerHtmlBehavior(this.editor),
+            registerMermaidBehavior(this.editor, this.element),
             registerImageBehavior(this.editor, this.element),
             this.editor.registerCommand(CLICK_COMMAND, this.handleChecklistClick.bind(this), COMMAND_PRIORITY_LOW),
             this.editor.registerCommand(KEY_SPACE_COMMAND, this.handleChecklistSpace.bind(this), COMMAND_PRIORITY_LOW),
@@ -583,9 +587,11 @@ export class BloomerpTextEditor extends BaseWidget {
         return rootNodes;
     }
 
+    /** Keep imported Mermaid blocks alongside the editor's existing block nodes. */
     private isRootCompatibleImportedNode(node: LexicalNode): boolean {
         const type = node.getType();
-        return ['paragraph', 'heading', 'quote', 'list', 'table'].includes(type) || $isBlockElementNode(node);
+        return ['paragraph', 'heading', 'quote', 'list', 'table'].includes(type)
+            || $isBlockElementNode(node) || node instanceof MermaidNode;
     }
 
     public getValue(): string {

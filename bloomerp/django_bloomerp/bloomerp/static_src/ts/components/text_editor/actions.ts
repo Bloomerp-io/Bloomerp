@@ -23,6 +23,7 @@ import type { BloomerpTextEditor } from "./BloomerpTextEditor";
 import { promptImageUpload } from "./utils/imageBehavior";
 import { promptLinkInsert } from "./utils/linkPicker";
 import { promptHtmlInsert } from "./utils/htmlBehavior";
+import { promptMermaidInsert } from "./utils/mermaidBehavior";
 import { $createCodeBlockNode } from "./nodes/CodeBlockNode";
 
 
@@ -162,7 +163,22 @@ function handleLink(textEditor: BloomerpTextEditor): void {
     queueMicrotask(openLink);
 }
 
+/** Open Mermaid source editing after the toolbar restores editor focus. */
+function handleMermaid(textEditor: BloomerpTextEditor): void {
+    /** Preserve the insertion selection before the dialog takes focus. */
+    function openDiagram(): void {
+        if (textEditor.editor) promptMermaidInsert(textEditor.editor, textEditor.element);
+    }
+    queueMicrotask(openDiagram);
+}
+
 export let ACTIONS: Record<string, Action> = {
+    mermaid: {
+        /** Make the slash action searchable by both diagram and Mermaid. */
+        get label(): string { return _("Mermaid diagram"); },
+        icon: "fa-solid fa-diagram-project",
+        handler: handleMermaid,
+    },
     link: {
         /** Resolve the named-link action label. */
         get label(): string { return _("Link"); },
