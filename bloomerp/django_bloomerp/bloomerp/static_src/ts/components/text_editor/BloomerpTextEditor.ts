@@ -19,6 +19,7 @@ import {
     $createParagraphNode,
     $getRoot,
     $isElementNode,
+    $isDecoratorNode,
     PASTE_COMMAND,
     $getNearestNodeFromDOMNode,
     $getSelection,
@@ -32,6 +33,7 @@ import {
     createEditor,
     LexicalEditor,
     type LexicalNode,
+    type Klass,
 } from "lexical";
 
 import {
@@ -72,7 +74,7 @@ export class BloomerpTextEditor extends BaseWidget {
     private templatePicker: TemplatePicker | null = null;
     private unregister: (() => void) | null = null;
     private commands: Array<Command> = [];
-    private actions: Array<Action> = [];
+    private actions: Record<string, Action> = {};
     
     private actionsToolbar: HTMLElement | null = null;
     private toolbarToggleButton: HTMLButtonElement | null = null;
@@ -94,6 +96,11 @@ export class BloomerpTextEditor extends BaseWidget {
     // Styling for the editor
     public styling: string | null = null;
     public overrideDefaultStyling: boolean = false;
+
+    /** Let specialized editors register extra nodes before the initial HTML load. */
+    protected getAdditionalNodes(): Array<Klass<LexicalNode>> {
+        return [];
+    }
 
     /** Create the Lexical editor and connect its actions to the widget value. */
     public initialize(): void {
@@ -160,6 +167,7 @@ export class BloomerpTextEditor extends BaseWidget {
                 FileImageNode,
                 CodeBlockNode,
                 HtmlNode,
+                ...this.getAdditionalNodes(),
             ],
             onError: (error: Error) => {
                 throw error;
@@ -327,7 +335,12 @@ export class BloomerpTextEditor extends BaseWidget {
      * Returns the actions available for this editor
      */
     public getActions() : Array<Action> {
-        return Array.from(new Set([...Object.values(ACTIONS), ...this.actions]))
+        return Object.values({ ...ACTIONS, ...this.actions });
+    }
+
+    /** Resolve a scoped action without exposing it to other editor instances. */
+    public getAction(key: string): Action | undefined {
+        return this.actions[key] ?? ACTIONS[key];
     }
 
     /**
@@ -583,9 +596,12 @@ export class BloomerpTextEditor extends BaseWidget {
         return rootNodes;
     }
 
+    /** Preserve block decorators alongside standard imported document blocks. */
     private isRootCompatibleImportedNode(node: LexicalNode): boolean {
         const type = node.getType();
-        return ['paragraph', 'heading', 'quote', 'list', 'table'].includes(type) || $isBlockElementNode(node);
+        return ['paragraph', 'heading', 'quote', 'list', 'table'].includes(type)
+            || $isBlockElementNode(node)
+            || ($isDecoratorNode(node) && !node.isInline());
     }
 
     public getValue(): string {
@@ -677,18 +693,15 @@ export class BloomerpTextEditor extends BaseWidget {
      * @param addToSlash whether to add the action to the slash menu
      * @param addToRange whether to add the action to the range menu
      */
-    public registerAction(action:Action, key:string, addToSlash:boolean=false, addToRange:boolean=false) {
-        this.actions.push(action);
+    public registerAction(action:Action, key:string, addToSlash:boolean=false, addToRange:boolean=false): void {
+        this.actions[key] = action;
 
         if (this.actionsToolbar) {
             this.registerActionsToolbar();
         }
 
-        // Add command to repo
-        ACTIONS[key] = action
-
-        if (addToSlash) {this.slashExtraActions.push(key)}
-        if (addToRange) {this.rangeExtraActions.push(key)}
+        if (addToSlash && !this.slashExtraActions.includes(key)) {this.slashExtraActions.push(key)}
+        if (addToRange && !this.rangeExtraActions.includes(key)) {this.rangeExtraActions.push(key)}
     }
 
     /**

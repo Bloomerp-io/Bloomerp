@@ -8,6 +8,14 @@ from bloomerp.tests.base import BloomerpModelTestCase, ModelScenario
 
 class TestDocumentTemplateModel(BloomerpModelTestCase):
     model = DocumentTemplate
+    page_break_template = (
+        '<p>Before</p><div data-document-template-page-break="true"></div><p>After</p>'
+    )
+
+    def validate_persisted_page_break(self, document_template: DocumentTemplate) -> bool:
+        """Verify that a fresh database value preserves the semantic break HTML."""
+        self.assertEqual(document_template.template, self.page_break_template)
+        return True
 
     def prepare_document_template_scenario(self) -> None:
         self.template_header = DocumentTemplateHeader.objects.create(
@@ -36,6 +44,7 @@ class TestDocumentTemplateModel(BloomerpModelTestCase):
         return document_template.name == "Updated scenario template"
 
     def get_test_scenarios(self) -> list[ModelScenario[DocumentTemplate]]:
+        """Cover template lifecycle and lossless page-break persistence."""
         return [
             ModelScenario(
                 name="Create and rename a document template",
@@ -44,5 +53,12 @@ class TestDocumentTemplateModel(BloomerpModelTestCase):
                 create_validators=self.validate_created_document_template,
                 update_args={"name": "Updated scenario template"},
                 update_validators=self.validate_updated_document_template,
+            ),
+            ModelScenario(
+                name="Retain semantic page breaks when creating and updating a template",
+                create_args={"name": "Page break template", "template": self.page_break_template},
+                create_validators=self.validate_persisted_page_break,
+                update_args={"name": "Renamed page break template"},
+                update_validators=self.validate_persisted_page_break,
             ),
         ]

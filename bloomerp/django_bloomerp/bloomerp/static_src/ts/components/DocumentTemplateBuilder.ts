@@ -534,6 +534,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
     private previewUrl: string | null = null;
 
 
+    /** Connect document editing controls, scoped actions, and autosave. */
     public initialize(): void {
         // Get dataset
         this.documentTemplateId = this.element.dataset.documentTemplateId || null;
@@ -541,7 +542,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
         this.templateTags = this.readTemplateTags();
 
         this.editor = getComponent(
-            this.element.querySelector('[bloomerp-component="bloomerp-text-editor"]') as HTMLElement
+            this.element.querySelector('[bloomerp-component="document-template-text-editor"]') as HTMLElement
         ) as BloomerpTextEditor;
 
         // Get page container

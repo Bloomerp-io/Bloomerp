@@ -26,11 +26,14 @@ import { promptHtmlInsert } from "./utils/htmlBehavior";
 import { $createCodeBlockNode } from "./nodes/CodeBlockNode";
 
 
+/** Identify the UI that invoked an editor action without changing existing handlers. */
+export type EditorActionSource = "toolbar" | "slash" | "selection";
+
 export type Action = {
     label: string,
     icon: string,
     submenu?: (textEditor: BloomerpTextEditor) => ContextMenuSubmenu;
-    handler: (textEditor: BloomerpTextEditor) => void
+    handler: (textEditor: BloomerpTextEditor, source?: EditorActionSource) => void
 }
 
 
