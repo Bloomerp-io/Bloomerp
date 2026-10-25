@@ -17,3 +17,6 @@ bloomerp_config = BloomerpModelConfig(
 metadata. A declared setting with `advanced_rendering=None` or an empty string
 clears the override. Fields without a declaration retain their saved rendering.
 Templates use the same syntax validation as ApplicationField overrides.
+Their context contains `value` (the raw field value) and `object` (the owning
+model instance), so templates can also reference attributes such as
+`{{ object.status }}`.
