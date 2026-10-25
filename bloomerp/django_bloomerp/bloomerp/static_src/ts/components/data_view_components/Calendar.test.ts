@@ -350,3 +350,54 @@ test('double-clicking an event opens its update URL inside the shared drawer', (
     assert.equal(container.querySelector('[data-dataview-detail-drawer]')!.classList.contains('hidden'), false);
     f.dom.window.close();
 });
+
+
+/** The shared toolbar must send the checkbox selection that exists when the action is clicked. */
+function toolbarSelection(): void {
+    const f = fixture('month', true, true, true, { filter: 'old-filter', _permission_token: 'view-token' });
+    try {
+        const container = f.w.document.getElementById('data-view-1')!;
+        container.insertAdjacentHTML('beforeend', `
+            <input type="checkbox" data-bulk-checkbox data-object-id="first">
+            <input type="checkbox" data-bulk-checkbox data-object-id="second">
+            <div data-data-view-button="reconcile" data-dataview-action="true"><button id="reconcile">Reconcile</button></div>
+            <div data-data-view-button="export"><button id="export">Export</button></div>
+            <div data-base-url="/nested/" data-content-type-id="2">
+                <div data-data-view-button="nested" data-dataview-action="true"><button id="nested">Nested</button></div>
+            </div>`);
+        const checkbox = container.querySelector<HTMLInputElement>('[data-object-id="first"]')!;
+        checkbox.checked = true;
+        checkbox.dispatchEvent(new f.w.Event('change', { bubbles: true }));
+
+        /** Emit HTMX's request configuration boundary and inspect its parameters. */
+        function parameters(id: string): Record<string, unknown> {
+            const button = f.w.document.getElementById(id)!;
+            const detail = { elt: button, path: '/action/?filter=old-filter&_permission_token=action-token', parameters: {} as Record<string, unknown> };
+            button.dispatchEvent(new f.w.CustomEvent('htmx:configRequest', { bubbles: true, detail }));
+            return { ...detail.parameters, path: detail.path };
+        }
+        assert.equal(JSON.stringify(parameters('reconcile').selected_ids), '["first"]');
+        assert.equal(parameters('nested').selected_ids, undefined);
+        assert.equal(parameters('export').selected_ids, undefined);
+        const dataSection = f.w.document.getElementById('data-view-data-section')!;
+        dataSection.dispatchEvent(new f.w.CustomEvent('htmx:afterSwap', {
+            bubbles: true, detail: { target: dataSection, xhr: { responseURL: 'https://app.example/dataview/?filter=current-filter&q=search' } },
+        }));
+        const updated = new URL(parameters('reconcile').path as string, f.w.location.origin);
+        assert.equal(updated.searchParams.get('filter'), 'current-filter');
+        assert.equal(updated.searchParams.get('q'), 'search');
+        assert.equal(updated.searchParams.get('_permission_token'), 'action-token');
+        dataSection.dispatchEvent(new f.w.CustomEvent('htmx:afterSwap', {
+            bubbles: true, detail: { target: dataSection, xhr: { responseURL: 'https://app.example/dataview/' } },
+        }));
+        assert.equal(new URL(parameters('reconcile').path as string, f.w.location.origin).searchParams.has('filter'), false);
+        checkbox.checked = false;
+        checkbox.dispatchEvent(new f.w.Event('change', { bubbles: true }));
+        assert.equal(JSON.stringify(parameters('reconcile').selected_ids), '[]');
+
+        // Teardown releases the listener even if the old DOM still exists.
+        f.w.CalendarFixture.getComponent(container)!.destroy();
+        assert.equal(parameters('reconcile').selected_ids, undefined);
+    } finally { f.dom.window.close(); }
+}
+test('toolbar requests carry the current checkbox selection and stay scoped to their container', toolbarSelection);
