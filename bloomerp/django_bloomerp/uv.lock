@@ -458,7 +458,7 @@ wheels = [
 
 [[package]]
 name = "bloomerp"
-version = "1.18.8"
+version = "1.18.12"
 source = { editable = "." }
 dependencies = [
     { name = "annotated-types" },
@@ -568,6 +568,7 @@ dependencies = [
     { name = "pypdf" },
     { name = "pypdf2" },
     { name = "pyphen" },
+    { name = "pypi-cleanup" },
     { name = "pypng" },
     { name = "pytest-cov" },
     { name = "pytest-django" },
@@ -747,6 +748,7 @@ requires-dist = [
     { name = "pypdf", specifier = "==5.0.0" },
     { name = "pypdf2", specifier = "==3.0.1" },
     { name = "pyphen", specifier = "==0.16.0" },
+    { name = "pypi-cleanup", specifier = ">=0.1.12" },
     { name = "pypng", specifier = "==0.20220715.0" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
     { name = "pytest-django", specifier = ">=4.11.1" },
@@ -3736,6 +3738,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/33/87/493fc9e2597923a2b02a1facc376a3bf8e682698ae177b340c0c5fd1fdec/pyphen-0.16.0.tar.gz", hash = "sha256:2c006b3ddf072c9571ab97606d9ab3c26a92eaced4c0d59fd1d26988f308f413", size = 2072790, upload-time = "2024-07-30T11:43:12.755Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/52/34/839a8cb56f145abf2da52ba4607b0e45b79fa018cb154fcba149fb76f179/pyphen-0.16.0-py3-none-any.whl", hash = "sha256:b4a4c6d7d5654b698b5fc68123148bb799b3debe0175d1d5dc3edfe93066fc4c", size = 2073300, upload-time = "2024-07-30T11:43:08.608Z" },
+]
+
+[[package]]
+name = "pypi-cleanup"
+version = "0.1.12"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/50/1a/74f54a319bc44a489ee005ff961370005b1d739d6b2214198732da36daf8/pypi_cleanup-0.1.12.tar.gz", hash = "sha256:620601a8cede1a866c43872a65cf2182652d7b308580f661a209e5bf5fbf037f", size = 21139, upload-time = "2026-10-11T00:19:37.771Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9f/95/1d263614c8afd9ac4dc08418a482d3f85f68d06e0724fbcb45f43a27169a/pypi_cleanup-0.1.12-py3-none-any.whl", hash = "sha256:9721aa963de6f5170e9216470815cfa6891850aee421a107bcf33c9aa93519ad", size = 16210, upload-time = "2026-10-11T00:19:36.712Z" },
 ]
 
 [[package]]

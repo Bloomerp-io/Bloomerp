@@ -1,4 +1,4 @@
-# Developer documentation
+# BloomERP Developer documentation
 
 Use these guides when building a Django application with Bloomerp or extending
 the framework. Commands in the guides run from your generated project directory

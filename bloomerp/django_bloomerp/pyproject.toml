@@ -163,6 +163,7 @@ dependencies = [
     "twilio>=9,<10",
     "livekit-api>=1,<2",
     "icalendar>=6,<8",
+    "pypi-cleanup>=0.1.12",
 ]
 
 [project.optional-dependencies]

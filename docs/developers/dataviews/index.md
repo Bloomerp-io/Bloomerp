@@ -1,4 +1,4 @@
-# Dataviews
+# BloomERP Dataviews
 
 Dataviews are pluggable collection renderers for Bloomerp models. A dataview
 definition combines:
@@ -383,6 +383,12 @@ a model. Keep the availability callable deterministic and free of request- or
 database-specific state.
 
 ## Model defaults
+
+When you're building an application, it's important to set sensible defaults to improve user experience. For an employee table, we could for example want a couple of fields to be shown per default.
+(TODO):
+- Explain that it is permission bounded
+- Explain that they will be used to set a preference, but can always be overriden later
+- Give an easy example
 
 Registered config subclasses can be used directly in a model's
 `ModelViewSettings.default_dataviews`:
