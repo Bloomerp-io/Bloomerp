@@ -1,7 +1,11 @@
+from argparse import ArgumentParser
+from typing import Any
+
 from django.core.management.base import BaseCommand, CommandError
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
 from bloomerp.models import ApplicationField
+from bloomerp.models.definition import get_model_config
 from django.db import models
 from django import db
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
@@ -29,7 +33,8 @@ def get_registered_field_type_id(field) -> str:
 class Command(BaseCommand):
     help = 'Sync properties with @property decorator and fields in a Django model to ApplicationField'
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser: ArgumentParser) -> None:
+        """Register output controls for application-field synchronization."""
         parser.add_argument(
             '--suppress-output',
             '--surpress-output',
@@ -38,7 +43,8 @@ class Command(BaseCommand):
             help='Do not write non-error command output.',
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args: Any, **options: Any) -> None:
+        """Synchronize field metadata and explicitly configured rendering overrides."""
         suppress_output = bool(options.get('suppress_output'))
 
         if not suppress_output:
@@ -59,7 +65,8 @@ class Command(BaseCommand):
             
             try:
                 if hasattr(Model, '_meta'):
-                    def serialize_choice_value(value):
+                    def serialize_choice_value(value: Any) -> Any:
+                        """Convert nested choice values into JSON-compatible data."""
                         if value is None or isinstance(value, (bool, int, float, str)):
                             return value
                         if isinstance(value, (list, tuple)):
@@ -71,7 +78,7 @@ class Command(BaseCommand):
                             }
                         return force_str(value)
 
-                    def serialize_choices(choices):
+                    def serialize_choices(choices: Any) -> Any:
                         """Convert choices to JSON-serializable values.
 
                         Handles choices of form (value, label) and colored choices
@@ -200,6 +207,11 @@ class Command(BaseCommand):
                     content_type_id = ContentType.objects.get_for_model(Model).id
                     all_fields = property_list + field_list
 
+                    config = get_model_config(Model)
+                    field_settings = {
+                        item.field: item for item in config.field_settings
+                    } if config else {}
+
                     # Sync fields to ApplicationField
                     for field_info in all_fields:
                         field_name = field_info['field_name']
@@ -215,11 +227,16 @@ class Command(BaseCommand):
                         if meta and 'related_model' in meta:
                             related_model = ContentType.objects.get(pk=meta['related_model'])
                         
+                        rendering_defaults = {}
+                        if field_name in field_settings:
+                            rendering_defaults["advanced_rendering"] = field_settings[field_name].advanced_rendering
+
                         try:
                             ApplicationField.objects.update_or_create(
                                 content_type_id=content_type_id,
                                 field=field_name,
                                 defaults={
+                                    **rendering_defaults,
                                     'field_type': field_type,
                                     'meta': meta,
                                     'related_model': related_model,

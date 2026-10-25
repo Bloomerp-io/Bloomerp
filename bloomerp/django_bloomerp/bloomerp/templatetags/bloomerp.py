@@ -9,7 +9,7 @@ from django.conf import settings
 from django.core.exceptions import FieldDoesNotExist, ImproperlyConfigured, ObjectDoesNotExist
 from django.db.models import ForeignKey, Model
 from django.http import HttpRequest
-from bloomerp.models.definition import ObjectAction, ObjectHTMLAction, ObjectModalAction
+from bloomerp.models.definition import DataviewActionContext, ObjectAction, ObjectHTMLAction, ObjectModalAction
 from bloomerp.models.users.base_preference import BasePreference
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.utils.models import get_initials, get_detail_view_url, get_delete_view_url
@@ -461,15 +461,29 @@ def render_object_action(
         return ""
 
     if isinstance(action, ObjectHTMLAction):
+        context = {
+            "action": action,
+            "object": object,
+            "request": request,
+            "content_type_id": content_type_id,
+        }
+        if action.context_func is not None:
+            from bloomerp.permissions.manager import UserPolicyManager
+
+            queryset = UserPolicyManager(request.user).get_queryset(type(object), "view").filter(pk=object.pk)
+            context.update(action.context_func(DataviewActionContext(
+                request=request,
+                model=type(object),
+                content_type=ContentType.objects.get_for_model(object),
+                preference=None,
+                queryset=queryset,
+                querystring=request.GET.urlencode(),
+                selected_ids=[str(pk) for pk in queryset.values_list("pk", flat=True)],
+            )))
         return mark_safe(
             render_to_string(
                 action.template_name,
-                {
-                    "action": action,
-                    "object": object,
-                    "request": request,
-                    "content_type_id": content_type_id,
-                },
+                context,
                 request=request,
             )
         )
