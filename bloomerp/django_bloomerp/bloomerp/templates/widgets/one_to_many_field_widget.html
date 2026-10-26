@@ -1,7 +1,8 @@
 {% load i18n %}
 
+{# Keep wide tables from contributing to the surrounding form's intrinsic width. #}
 <div
-    class="one-to-many-field-widget rounded-xl border border-gray-200 overflow-hidden bg-white focus:outline-none focus:ring-0"
+    class="one-to-many-field-widget w-full min-w-0 max-w-full [contain:inline-size] rounded-xl border border-gray-200 overflow-hidden bg-white focus:outline-none focus:ring-0"
     bloomerp-component="one-to-many-field-widget"
     data-one-to-many-name="{{ widget.attrs.name }}"
     data-related-content-type-id="{{ content_type_id|default:'' }}"
