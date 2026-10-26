@@ -22,6 +22,7 @@ from bloomerp.communication.utils.crypto import (
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models import BloomerpModel
 from bloomerp.models.definition import (
+    ActivityLogSettings,
     ApiSettings,
     BloomerpModelConfig,
     DetailViewSettings,
@@ -61,6 +62,7 @@ class EmailAccount(BloomerpModel):
         ]
     
     bloomerp_config = BloomerpModelConfig(
+        activity_log_settings=ActivityLogSettings(enabled=False),
         model_view_settings=ModelViewSettings(
             default_dataviews=[
                 TableDataView(

@@ -3,7 +3,7 @@ import uuid
 
 from django import forms
 from django.core import signing
-from django.core.exceptions import FieldDoesNotExist
+from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db.models import Model, QuerySet
 from django.forms.utils import flatatt
 from django.http import HttpRequest, HttpResponse
@@ -47,6 +47,7 @@ from bloomerp.utils.models import get_model_and_content_type_or_404
 # -----------------------------------
 SHELL_RESERVED_QUERY_KEYS = {
     "q",
+    "selected_ids",
     "page",
     "_component_id",
     "_permission_token",
@@ -369,6 +370,16 @@ def _build_dataview_action_context(
     request: HttpRequest,
     state: DataviewState,
 ) -> DataviewActionContext:
+    """Expose applied filters and selections limited to the accessible filtered rows."""
+    values = request.POST if request.method == "POST" else request.GET
+    selected_ids = values.getlist("selected_ids")
+    try:
+        normalized_ids = [state.model._meta.pk.to_python(value) for value in selected_ids]
+    except (ValidationError, ValueError, TypeError):
+        normalized_ids = []
+    accessible_ids = {
+        str(value) for value in state.queryset.filter(pk__in=normalized_ids).values_list("pk", flat=True)
+    } if normalized_ids else set()
     return DataviewActionContext(
         request=request,
         model=state.model,
@@ -376,6 +387,8 @@ def _build_dataview_action_context(
         preference=state.preference,
         queryset=state.queryset,
         querystring=request.GET.urlencode(),
+        filters=state.filters,
+        selected_ids=list(dict.fromkeys(str(value) for value in normalized_ids if str(value) in accessible_ids)),
     )
 
 
@@ -411,6 +424,8 @@ def _render_dataview_actions(
         }
         if isinstance(action, DataviewHTMLAction):
             template_name = action.template_name
+            if action.context_func is not None:
+                action_template_context.update(action.context_func(action_context))
         elif isinstance(action, DataviewModalAction):
             template_name = "components/objects/dataview_actions/modal_action.html"
             action_template_context["endpoint"] = permission_token_url(request, action.endpoint(action_context))

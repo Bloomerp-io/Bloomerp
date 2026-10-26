@@ -38,6 +38,14 @@ before returning its terminal event. The base publishes that event and manages
 the producer's lifetime. The PydanticAI checkpoint format remains version one;
 this extraction does not require checkpoint or database migration.
 
+Malformed provider tool JSON is rejected before dispatch and returned to the model
+as `invalid_tool_json`. The adapter allows two correction turns, tracked across
+checkpoints; repeated malformed responses then fail with `malformed_tool_arguments`.
+No guessed JSON repair is executed. Original arguments are retained in rejection
+details. Historical rejected calls use an empty object paired with the failure
+result so providers requiring object-valued history can process the correction.
+Correction turns consume the normal token and duration budgets.
+
 ## Instance configuration
 
 Resolve instance settings into `AgentRuntimeConfig`, and resolve its current API
@@ -140,6 +148,16 @@ Replay is bounded and sequence-based; it excludes private checkpoints. The front
 replays missed events after reconnect and deduplicates live/replayed deltas. Socket
 closure does not cancel durable work. Cancellation is persisted and observed by a
 lease heartbeat, including while a model request is waiting for output.
+
+Runtime exceptions are logged by `bloomerp.agents.runtime` with a traceback,
+`run_id`, `attempt_id`, runtime name and `failure_stage`. Stages distinguish model
+setup/request, response serialization, tool-proposal parsing, tool dispatch or
+resolution, and checkpoint delivery. The stage is local to each attempt, including
+concurrent runs, and is not added to provider messages. Expected budget exhaustion
+and user cancellation do not produce exception logs. Caught runtime exceptions
+also populate `error.details.trace` with the formatted traceback, including chained
+exceptions and diagnostic messages. The short error message remains generic;
+the detailed trace is retained in failure events and run/attempt error records.
 
 One unfinished run occupies each conversation. Concurrent new messages are
 explicitly rejected for now; `active_run_behavior` reserves queue/steer policies
@@ -335,8 +353,21 @@ Attempts renew expiring leases; expired executors cannot publish new committed
 output. `chat.resume` can redispatch queued runs or reclaim an expired running
 attempt. Safe checkpoints restore provider history; interrupted partial messages
 remain visible in storage but are excluded from fresh runtime history. Automatic
-recovery sweeps, retry policy, durable queue/steering, and distributed scheduling
+recovery sweeps, whole-run retry policy, durable queue/steering, and distributed scheduling
 of waits are later orchestration work. Approval waits cannot be bypassed by resume.
+
+Individual model requests retry up to three times for HTTP 408, 429, 500, 502,
+503, 504 and 529 before any response events arrive. The shared HTTP policy uses
+2/4/8-second backoff plus jitter and respects standard `Retry-After` seconds or
+dates from wrapped SDK exceptions. A server wait longer than 30 seconds ends
+with a retryable failure instead of retrying early or tying up the executor.
+Built-in SDK retries remain disabled. Tools are never replayed by this retry
+loop; completed outcomes are checkpointed before waiting. Waiting is cancellable
+and consumes the existing duration budget. Partial streamed responses and
+non-HTTP transport failures are not automatically replayed. A durable
+`model.retrying` progress event exposes the temporary wait without adding chat
+messages. Exhausted failures retain the HTTP status, retry count, server wait
+and original chained traceback; no provider-name or message-text matching is used.
 
 Tests exercise the real PydanticAI loop with a local `FunctionModel`; no real
 provider calls or API keys are required. The application database is not migrated

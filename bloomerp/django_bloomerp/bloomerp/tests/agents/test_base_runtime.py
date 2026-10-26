@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 
 from pydantic import Field
 
+from bloomerp.agents.definition import AgentError
 from bloomerp.agents.runtime import (
     AgentRuntimeAttempt,
     AgentRuntimeCheckpoint,
@@ -313,12 +314,40 @@ class BaseAgentRuntimeTests(IsolatedAsyncioTestCase):
         self.assertEqual(events[-1].kind, "run.cancelled")
         self.assertTrue(self.runtime.released.is_set())
 
-    async def test_failure_is_sanitized(self) -> None:
-        """Keep arbitrary framework exception content out of persistence events."""
-        self.runtime = ExampleRuntime(failure=RuntimeError("private-key"))
-        events = await self.collect(self.request)
+    async def test_infrastructure_stop_emits_retryable_failure(self) -> None:
+        """Wake the consumer with failure rather than reporting a user cancellation."""
+        self.runtime = ExampleRuntime(blocked=True)
+        consumer = asyncio.create_task(self.collect(self.request))
+        await asyncio.wait_for(self.runtime.entered.wait(), 2)
+        await self.runtime.cancel(
+            self.request.run_id, attempt_id=self.request.attempt_id,
+            error=AgentError(code="heartbeat_failed", message="Heartbeat failed", retryable=True),
+        )
+        events = await asyncio.wait_for(consumer, 2)
         self.assertEqual(events[-1].kind, "run.failed")
-        self.assertNotIn("private-key", events[-1].model_dump_json())
+        self.assertEqual(events[-1].error.code, "heartbeat_failed")
+        self.assertTrue(events[-1].error.retryable)
+        self.assertFalse(any(event.kind == "run.cancelled" for event in events))
+        self.assertTrue(self.runtime.released.is_set())
+
+    async def test_failure_details_preserve_traceback(self) -> None:
+        """Retain diagnostics in error details and logs without expanding the short message."""
+        self.runtime = ExampleRuntime(failure=RuntimeError("diagnostic failure"))
+        with self.assertLogs("bloomerp.agents.runtime", level="ERROR") as logs:
+            events = await self.collect(self.request)
+        record = logs.records[0]
+        self.assertEqual(record.run_id, str(self.request.run_id))
+        self.assertEqual(record.attempt_id, str(self.request.attempt_id))
+        self.assertEqual(record.failure_stage, "execution")
+        self.assertIsNotNone(record.exc_info[2])
+        self.assertIn("Traceback", logs.output[0])
+        self.assertEqual(events[-1].kind, "run.failed")
+        error = events[-1].error
+        self.assertEqual(error.message, "The agent could not continue this attempt.")
+        self.assertEqual(error.details["exception_type"], "RuntimeError")
+        self.assertIn("Traceback (most recent call last)", error.details["trace"])
+        self.assertIn("test_base_runtime.py", error.details["trace"])
+        self.assertIn("RuntimeError: diagnostic failure", error.details["trace"])
         self.assertTrue(self.runtime.released.is_set())
 
     async def test_resume_rejects_invalid_shared_checkpoint_metadata(self) -> None:

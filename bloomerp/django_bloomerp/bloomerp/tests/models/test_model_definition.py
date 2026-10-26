@@ -6,6 +6,9 @@ from bloomerp.dataviews.kanban.config import KanbanDataView
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models.definition import (
     BloomerpModelConfig,
+    DataviewModalAction,
+    ObjectModalAction,
+    FieldSettings,
     FieldLayout,
     LayoutItem,
     LayoutRow,
@@ -364,3 +367,42 @@ class DetailViewSettingsTests(SimpleTestCase):
                     )
                 ]
             )
+
+
+class ModelConfigExtensionTests(SimpleTestCase):
+    """Validate the public configuration additions without database setup."""
+
+    def test_field_settings_are_typed_and_independent(self) -> None:
+        """
+        Use case: Models declare optional application-field rendering settings.
+        Expected result: Dictionaries become typed settings with independent defaults.
+        """
+        # 1. Build typed settings from the supported dictionary configuration.
+        config = BloomerpModelConfig(field_settings=[{"field": "title"}])
+        self.assertIsInstance(config.field_settings[0], FieldSettings)
+        self.assertIsNone(config.field_settings[0].advanced_rendering)
+        # 2. Other model configurations start with an independent empty list.
+        self.assertEqual(BloomerpModelConfig().field_settings, [])
+
+    def test_modal_title_defaults_to_label(self) -> None:
+        """
+        Use case: Object and dataview actions omit or supply a modal title.
+        Expected result: Missing, empty and null titles use the label; explicit titles win.
+        """
+        # 1. Validate both action types against the same fallback contract.
+        for action_type in (ObjectModalAction, DataviewModalAction):
+            for title in ("", None, "Explicit title"):
+                with self.subTest(action_type=action_type, title=title):
+                    action = action_type(
+                        id="review", label="Review", endpoint=self.modal_endpoint,
+                        modal_title=title,
+                    )
+                    self.assertEqual(action.modal_title, title or "Review")
+            # 2. Omitting the argument also uses the label.
+            action = action_type(id="review", label="Review", endpoint=self.modal_endpoint)
+            self.assertEqual(action.modal_title, "Review")
+
+    @staticmethod
+    def modal_endpoint(context: object) -> str:
+        """Provide a compatible endpoint callback for configuration validation."""
+        return "/review/"

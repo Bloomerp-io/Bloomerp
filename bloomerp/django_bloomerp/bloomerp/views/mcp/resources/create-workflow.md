@@ -1,5 +1,13 @@
 # Create a workflow
 
+For focused schema discovery, use `get_authoring_reference` with
+`kind="workflow_node"`. Omit `type` for a compact index, or pass the known node
+`sub_type` as `type` to retrieve only its definition. The targeted reference
+includes exact string output-port IDs, connection limits and whether multiple
+outputs exist. Supply `parameters` when it reports configuration-dependent ports.
+Do not replace string port IDs such as `"true"` with booleans, and do not assume
+every node has a `"default"` port. New node types are discovered from the registry.
+
 ## Understand the user's goal
 
 Start by asking in user-facing language: "What would you like this workflow to

@@ -1,7 +1,7 @@
 import inspect
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field as dataclass_field
 from typing import Any, Callable, Literal, Optional, Type, TypeVar
 from urllib.parse import urlsplit
 
@@ -19,7 +19,7 @@ from pydantic import (
 
 from bloomerp.config.definition import BloomerpConfig
 from bloomerp.dataviews.definition import BaseDataview
-from bloomerp.filters.definition import Filter
+from bloomerp.filters.definition import Filter, Filters
 from bloomerp.permissions.definition import AccessRule, BloomerpPermission
 from bloomerp.workspaces.base import BaseTileConfig
 
@@ -255,6 +255,7 @@ class ApiSettings(BaseModel):
 
 class ObjectHTMLAction(BaseModel):
     template_name:str
+    context_func: Callable[["DataviewActionContext"], dict[str, Any]] | None = None
 
     should_render_func:Callable[[HttpRequest, Model], bool] = lambda req, obj : True
 
@@ -298,6 +299,13 @@ class ObjectModalAction(BaseModel):
     
     modal_title:Optional[str] = ""
 
+    @model_validator(mode="after")
+    def default_modal_title(self) -> "ObjectModalAction":
+        """Use the button label when no modal title was supplied."""
+        if not self.modal_title:
+            self.modal_title = self.label
+        return self
+
     modal_size:Literal["sm", "md", "lg", "xl", "full"] = "md"
 
 @dataclass(frozen=True)
@@ -308,9 +316,12 @@ class DataviewActionContext:
     preference: Any
     queryset: QuerySet
     querystring: str = ""
+    filters: Filters = dataclass_field(default_factory=list)
+    selected_ids: list[str] = dataclass_field(default_factory=list)
 
 
 class DataviewHTMLAction(BaseModel):
+    context_func: Callable[[DataviewActionContext], dict[str, Any]] | None = None
     id: str
     template_name: str
     shortcut: str | None = None
@@ -338,7 +349,14 @@ class DataviewModalAction(BaseModel):
     should_render_func: Callable[[DataviewActionContext], bool] = lambda context: True
     icon: str | None = None
     style: Literal["primary", "secondary"] = "secondary"
-    modal_title: str = ""
+    modal_title: str | None = ""
+
+    @model_validator(mode="after")
+    def default_modal_title(self) -> "DataviewModalAction":
+        """Use the button label when no modal title was supplied."""
+        if not self.modal_title:
+            self.modal_title = self.label
+        return self
     modal_size: Literal["sm", "md", "lg", "xl", "full"] = "md"
 
 
@@ -529,6 +547,17 @@ class PermissionSettings(BaseModel):
             raise ValueError("Default policy IDs must be unique within a model")
         return value
 
+# Resolve the HTML action callback after its shared context has been declared.
+ObjectHTMLAction.model_rebuild()
+
+
+class FieldSettings(BaseModel):
+    """Declare application-field rendering managed by model metadata sync."""
+
+    field: str
+    advanced_rendering: str | None = None
+
+
 class BloomerpModelConfig(BaseModel):
     """
     Used to define certain bloomerp related meta data on a model. 
@@ -561,6 +590,8 @@ class BloomerpModelConfig(BaseModel):
         default_factory=list,
         description="Optional list of reusable tile configurations associated with this model."
     )
+
+    field_settings: list[FieldSettings] = Field(default_factory=list)
 
     is_internal: bool = False
 

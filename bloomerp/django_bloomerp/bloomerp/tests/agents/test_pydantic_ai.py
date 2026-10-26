@@ -6,11 +6,12 @@ import asyncio
 import json
 from collections.abc import AsyncIterator
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 from uuid import UUID, uuid4
 
 import httpx
 from pydantic import JsonValue
+from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import (
     ModelMessage,
     ModelRequest,
@@ -311,6 +312,30 @@ class PydanticAIRuntimeTests(IsolatedAsyncioTestCase):
         self.assertEqual(events[-1].kind, "run.failed")
         self.assertEqual(self.coordinator.resolved, [])
 
+    async def test_run_budget_does_not_override_provider_output_limit(self) -> None:
+        """Preserve omitted and explicit output caps despite a nearly spent run budget."""
+        for parameters in ({}, {"max_tokens": None}, {"max_tokens": 8192}):
+            with self.subTest(parameters=parameters):
+                async def inspect_settings(
+                    messages: list[ModelMessage],
+                    info: AgentInfo,
+                    expected_limit: int | None = parameters.get("max_tokens"),
+                ) -> AsyncIterator[str]:
+                    """Inspect the actual SDK model settings without a network request."""
+                    if expected_limit is None:
+                        self.assertNotIn("max_tokens", info.model_settings or {})
+                    else:
+                        self.assertEqual(info.model_settings["max_tokens"], 8192)
+                    yield "Done"
+
+                self.model_stream = inspect_settings
+                payload = self.request.model_dump()
+                payload["config"]["parameters"] = parameters
+                payload["budgets"] = {"max_tokens": 250000}
+                payload["usage"] = {"input_tokens": 249000}
+                events = await self.collect(AgentRuntimeRunRequest.model_validate(payload))
+                self.assertEqual(events[-1].kind, "run.completed", events[-1])
+
     async def test_token_budget_accounts_for_previous_attempts(self) -> None:
         """Reject exhausted lifetime usage before opening a provider stream."""
         request = AgentRuntimeRunRequest.model_validate(
@@ -566,22 +591,226 @@ class PydanticAIRuntimeTests(IsolatedAsyncioTestCase):
         self.assertEqual(events[-1].usage.tool_calls, 0)
         self.assertEqual(self.coordinator.calls, [])
 
-    async def test_provider_failure_is_sanitized_and_closes_client(self) -> None:
-        """Keep request bodies and credentials out of persisted failure events."""
+    async def test_provider_failure_retains_trace_and_closes_client(self) -> None:
+        """Preserve the diagnostic exception in details and still close provider resources."""
 
         async def failing_model(
             messages: list[ModelMessage], info: AgentInfo
         ) -> AsyncIterator[str]:
-            """Emulate a provider exception containing sensitive diagnostic text."""
-            raise RuntimeError("never-serialize-me and private request body")
+            """Emulate a provider exception with an actionable diagnostic message."""
+            raise RuntimeError("provider stream decoding failed")
             yield "unreachable"
 
         self.model_stream = failing_model
+        with self.assertLogs("bloomerp.agents.runtime", level="ERROR") as logs:
+            events = await self.collect(self.request)
+        self.assertEqual(logs.records[0].failure_stage, "model_request")
+        self.assertEqual(logs.records[0].run_id, str(self.request.run_id))
+        self.assertIsNotNone(logs.records[0].exc_info[2])
+        self.assertEqual(events[-1].kind, "run.failed")
+        self.assertNotIn("provider stream decoding failed", events[-1].error.message)
+        self.assertIn("RuntimeError: provider stream decoding failed", events[-1].error.details["trace"])
+        self.assertTrue(all(client.is_closed for client in self.clients))
+
+    async def test_rate_limit_retries_only_model_request_after_tool(self) -> None:
+        """Recover from a transient rejection with identical history and no repeated tool effect."""
+        original = self.model_stream
+        rejected_histories: list[list[ModelMessage]] = []
+
+        async def busy_model(
+            messages: list[ModelMessage], info: AgentInfo
+        ) -> AsyncIterator[str | dict[int, DeltaToolCall]]:
+            """Reject the first request after the tool, then accept the same continuation."""
+            if self.coordinator.calls:
+                rejected_histories.append(list(messages))
+                if len(rejected_histories) == 1:
+                    raise ModelHTTPError(429, model_name="any-provider-model")
+            async for part in original(messages, info):
+                yield part
+
+        self.model_stream = busy_model
+        with patch("bloomerp.agents.runtimes.pydantic_ai.asyncio.sleep", new_callable=AsyncMock) as sleep:
+            events = await self.collect(self.request)
+        self.assertEqual(events[-1].kind, "run.completed")
+        self.assertEqual(len(self.coordinator.calls), 1)
+        self.assertEqual(
+            [message.parts for message in rejected_histories[0]],
+            [message.parts for message in rejected_histories[1]],
+        )
+        retries = [event for event in events if event.kind == "model.retrying"]
+        self.assertEqual(len(retries), 1)
+        self.assertEqual(retries[0].error_code, "provider_rate_limited")
+        sleep.assert_awaited_once_with(retries[0].delay_seconds)
+        self.assertGreater(events[-1].usage.input_tokens, 0)
+
+    async def test_http_retries_are_bounded_and_nontransient_errors_fail_immediately(self) -> None:
+        """Classify failures by HTTP semantics and retain diagnostics after bounded recovery."""
+        for status, expected_retries in ((429, 3), (503, 3), (401, 0), (400, 0)):
+            with self.subTest(status=status):
+                calls = 0
+
+                async def rejected_model(
+                    messages: list[ModelMessage], info: AgentInfo, status: int = status
+                ) -> AsyncIterator[str]:
+                    """Reject a request before streaming any model content."""
+                    nonlocal calls
+                    calls += 1
+                    raise ModelHTTPError(status, model_name="any-model")
+                    yield "unreachable"
+
+                self.model_stream = rejected_model
+                with patch("bloomerp.agents.runtimes.pydantic_ai.asyncio.sleep", new_callable=AsyncMock) as sleep:
+                    events = await self.collect(self.request)
+                error = events[-1].error
+                self.assertEqual(events[-1].kind, "run.failed")
+                self.assertEqual(calls, expected_retries + 1)
+                self.assertEqual(sleep.await_count, expected_retries)
+                self.assertEqual(error.retryable, bool(expected_retries))
+                self.assertEqual(error.details["status_code"], status)
+                self.assertEqual(error.details["retry_attempts"], expected_retries)
+                self.assertIn("ModelHTTPError", error.details["trace"])
+                self.assertEqual(self.coordinator.calls, [])
+
+    async def test_partial_model_response_is_not_retried(self) -> None:
+        """Avoid duplicating assistant output when a stream fails after emitting text."""
+        async def interrupted_model(
+            messages: list[ModelMessage], info: AgentInfo
+        ) -> AsyncIterator[str]:
+            """Emit a partial answer followed by an upstream failure."""
+            yield "Partial answer"
+            raise ModelHTTPError(503, model_name="any-model")
+
+        self.model_stream = interrupted_model
         events = await self.collect(self.request)
         self.assertEqual(events[-1].kind, "run.failed")
-        self.assertNotIn("never-serialize-me", events[-1].model_dump_json())
-        self.assertNotIn("private request body", events[-1].model_dump_json())
+        self.assertEqual(events[-1].error.details["retry_attempts"], 0)
+        self.assertTrue(events[-1].error.details["response_started"])
+        self.assertFalse(any(event.kind == "model.retrying" for event in events))
+
+    async def test_retry_after_is_honored_or_reported_when_too_long(self) -> None:
+        """Respect wrapped HTTP headers without holding the executor for a lengthy cooldown."""
+        for seconds, expected_retries in ((12, 3), (120, 0)):
+            with self.subTest(seconds=seconds):
+                async def rejected_model(
+                    messages: list[ModelMessage], info: AgentInfo, seconds: int = seconds
+                ) -> AsyncIterator[str]:
+                    """Wrap the HTTP response exactly as SDK errors expose it to the adapter."""
+                    request = httpx.Request("POST", "https://example.test/model")
+                    response = httpx.Response(
+                        429, request=request, headers={"Retry-After": str(seconds)}
+                    )
+                    cause = httpx.HTTPStatusError("busy", request=request, response=response)
+                    raise ModelHTTPError(429, model_name="any-model") from cause
+                    yield "unreachable"
+
+                self.model_stream = rejected_model
+                with patch("bloomerp.agents.runtimes.pydantic_ai.asyncio.sleep", new_callable=AsyncMock) as sleep:
+                    events = await self.collect(self.request)
+                self.assertEqual(events[-1].kind, "run.failed")
+                self.assertEqual(events[-1].error.details["retry_after_seconds"], seconds)
+                self.assertEqual(sleep.await_count, expected_retries)
+                for invocation in sleep.await_args_list:
+                    self.assertEqual(invocation.args[0], seconds)
+
+    async def test_cancel_during_retry_wait(self) -> None:
+        """Cancellation interrupts backoff immediately without making another model call."""
+        async def rejected_model(
+            messages: list[ModelMessage], info: AgentInfo
+        ) -> AsyncIterator[str]:
+            """Reject a model request so the runtime enters its cancellable wait."""
+            raise ModelHTTPError(429, model_name="any-model")
+            yield "unreachable"
+
+        self.model_stream = rejected_model
+        events = []
+        async for event in self.runtime.execute(
+            self.request, credentials=AgentRuntimeCredentials(), coordinator=self.coordinator
+        ):
+            events.append(event)
+            if event.kind == "model.retrying":
+                await self.runtime.cancel(self.request.run_id, attempt_id=self.request.attempt_id)
+        self.assertEqual(events[-1].kind, "run.cancelled")
+        self.assertEqual(len([event for event in events if event.kind == "model.retrying"]), 1)
         self.assertTrue(all(client.is_closed for client in self.clients))
+
+    async def test_duration_budget_includes_retry_wait(self) -> None:
+        """Backoff consumes the existing time budget instead of extending the run indefinitely."""
+        async def rejected_model(
+            messages: list[ModelMessage], info: AgentInfo
+        ) -> AsyncIterator[str]:
+            """Reject before response streaming so normal backoff begins."""
+            raise ModelHTTPError(429, model_name="any-model")
+            yield "unreachable"
+
+        self.model_stream = rejected_model
+        request = AgentRuntimeRunRequest.model_validate({
+            **self.request.model_dump(),
+            "budgets": {"max_duration_seconds": 1},
+            "usage": {"duration_seconds": 0.8},
+        })
+        events = await self.collect(request)
+        self.assertTrue(any(event.kind == "model.retrying" for event in events))
+        self.assertEqual(events[-1].kind, "run.failed")
+        self.assertEqual(events[-1].error.code, "budget_exceeded")
+
+    async def test_malformed_tool_json_stops_after_two_corrections(self) -> None:
+        """Bound invalid JSON recovery and checkpoint diagnostics without dispatching it."""
+        calls = 0
+        async def malformed_model(
+            messages: list[ModelMessage], info: AgentInfo
+        ) -> AsyncIterator[dict[int, DeltaToolCall]]:
+            """Stream a tool proposal whose incomplete JSON fails during argument decoding."""
+            nonlocal calls
+            calls += 1
+            yield {0: DeltaToolCall(name="lookup", json_args='{"key":', tool_call_id=f"bad-json-{calls}")}
+
+        self.model_stream = malformed_model
+        with self.assertLogs("bloomerp.agents.runtime", level="ERROR") as logs:
+            events = await self.collect(self.request)
+        self.assertEqual(logs.records[0].failure_stage, "tool_proposal_parsing")
+        self.assertEqual(logs.records[0].run_id, str(self.request.run_id))
+        self.assertEqual(events[-1].kind, "run.failed")
+        self.assertEqual(events[-1].error.code, "malformed_tool_arguments")
+        self.assertIn("MalformedToolArgumentsError", events[-1].error.details["trace"])
+        self.assertEqual(calls, 3)
+        checkpoint = [event.checkpoint for event in events if event.kind == "checkpoint.created"][-1]
+        self.assertEqual(checkpoint.state["malformed_tool_turns"], 3)
+        self.assertEqual(checkpoint.state["pending"][0]["validation_error"]["code"], "invalid_tool_json")
+        self.assertEqual(self.coordinator.calls, [])
+
+    async def test_model_can_correct_malformed_tool_arguments(self) -> None:
+        """Return invalid JSON as a tool result and execute only the corrected proposal."""
+        for invalid in ('{"key":', '["answer"]'):
+            with self.subTest(arguments=invalid):
+                self.coordinator.calls.clear()
+
+                async def correcting_model(
+                    messages: list[ModelMessage], info: AgentInfo,
+                    invalid: str = invalid,
+                ) -> AsyncIterator[str | dict[int, DeltaToolCall]]:
+                    """Correct incomplete or non-object JSON when the tool reports rejection."""
+                    returns = [part for message in messages if isinstance(message, ModelRequest)
+                               for part in message.parts if isinstance(part, ToolReturnPart)]
+                    if not returns:
+                        yield {0: DeltaToolCall(name="lookup", json_args=invalid, tool_call_id="bad-json")}
+                    elif returns[-1].content.get("status") == "failed":
+                        self.assertEqual(returns[-1].content["error"]["code"], "invalid_tool_json")
+                        self.assertIn("not executed", returns[-1].content["error"]["message"])
+                        self.assertEqual(returns[-1].content["error"]["details"]["original_arguments"], invalid)
+                        for message in messages:
+                            for part in message.parts:
+                                if getattr(part, "tool_call_id", None) == "bad-json" and hasattr(part, "args_as_dict"):
+                                    self.assertEqual(part.args_as_dict(), {})
+                        self.assertEqual(self.coordinator.calls, [])
+                        yield {0: DeltaToolCall(name="lookup", json_args='{"key":"answer"}', tool_call_id="call-1")}
+                    else:
+                        yield "Done"
+
+                self.model_stream = correcting_model
+                events = await self.collect(self.request.model_copy(update={"attempt_id": uuid4()}))
+                self.assertEqual(events[-1].kind, "run.completed")
+                self.assertEqual(len(self.coordinator.calls), 1)
+                self.assertEqual(self.coordinator.calls[0].arguments, {"key": "answer"})
 
     async def test_duration_budget_unwinds_a_blocked_model(self) -> None:
         """Apply the remaining lifetime duration to a hanging provider request."""

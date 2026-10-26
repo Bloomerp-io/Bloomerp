@@ -115,7 +115,7 @@ class RunUsage(AgentPayload):
 
 
 class AgentError(AgentPayload):
-    """Store a safe, structured failure without requiring a traceback."""
+    """Store a structured failure with optional diagnostic details and traceback."""
 
     code: str = Field(min_length=1)
     message: str

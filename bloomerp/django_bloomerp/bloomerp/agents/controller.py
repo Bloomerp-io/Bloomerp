@@ -755,8 +755,21 @@ class AgentController:
                 cancel = await database_sync_to_async(run.heartbeat)(
                     attempt.lease_token, lease_duration=lease
                 )
-            except Exception:  # noqa: BLE001 - stop local work when its durable lease cannot be renewed
-                await runtime.cancel(run.pk, attempt_id=attempt.pk)
+            except Exception as error:
+                logger.exception(
+                    "Agent heartbeat failed for run %s attempt %s; stopping execution",
+                    run.pk, attempt.pk,
+                )
+                await runtime.cancel(
+                    run.pk,
+                    attempt_id=attempt.pk,
+                    error=AgentError(
+                        code="heartbeat_failed",
+                        message="Execution was interrupted because its heartbeat could not be renewed.",
+                        retryable=True,
+                        details={"exception_type": type(error).__name__},
+                    ),
+                )
                 return
             if cancel:
                 await runtime.cancel(run.pk, attempt_id=attempt.pk)
