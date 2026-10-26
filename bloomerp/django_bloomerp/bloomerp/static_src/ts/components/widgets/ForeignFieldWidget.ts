@@ -520,21 +520,16 @@ export default class ForeignFieldWidget extends BaseWidget {
     }
 
 
-    /**
-     * Creates badge element for a selected object with click handler to remove selection
-     * @param id the id of the selected object
-     * @param label the label of the selected element
-     * @returns the badge
-     */
+    /** Render a selected object as primary-colored plain text with a remove control. */
     private createBadge(id: string, label: string, url: string = ''): HTMLElement {
         const badge = document.createElement('span');
-        badge.className = 'foreign-field-badge inline-flex items-center gap-1 rounded-full bg-primary px-2 py-1 text-xs text-white mr-2';
+        badge.className = 'foreign-field-badge inline-flex items-center gap-1 text-sm text-primary mr-1';
         badge.dataset.id = id;
 
         const content = document.createElement(url ? 'a' : 'span');
         content.className = url
-            ? 'max-w-56 truncate rounded-full px-1 hover:underline focus:outline-none focus:underline'
-            : 'max-w-56 truncate px-1';
+            ? 'max-w-56 truncate focus:outline-none focus:underline'
+            : 'max-w-56 truncate';
         content.textContent = label;
         this.attachPreview(content, id);
         if (url) {
@@ -548,7 +543,7 @@ export default class ForeignFieldWidget extends BaseWidget {
         } else {
             const removeButton = document.createElement('button');
             removeButton.type = 'button';
-            removeButton.className = 'rounded-full px-1 leading-none hover:bg-white/20 focus:outline-none';
+            removeButton.className = 'px-1 leading-none hover:text-primary focus:outline-none focus:text-primary';
             removeButton.setAttribute('aria-label', _('Remove {label}').replace('{label}', label));
             removeButton.textContent = '×';
             /** Remove this token without navigating its preview link. */

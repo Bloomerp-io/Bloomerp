@@ -350,7 +350,11 @@ def bloomerp_modelform_factory(
         form_field = _build_registered_form_field(application_field)
 
         # Lifecycle-managed values remain visible, but ignore submitted changes.
-        if managed_by_application or form_field.disabled:
+        if (
+            managed_by_application
+            or (model_field is not None and not getattr(model_field, "editable", True))
+            or form_field.disabled
+        ):
             form_field.disabled = True
             read_only_field_names.add(field_name)
 
@@ -375,12 +379,14 @@ def bloomerp_modelform_factory(
             if isinstance(form_field, (OneToManyField, BloomerpFileFormField)):
                 form_field.bind_parent(instance)
 
-        if instance is None or instance._state.adding:
+        if instance is None:
             return
         for field_name in self.bloomerp_non_model_field_names:
-            value = getattr(instance, field_name, None) or getattr(
-                instance, f"{field_name}_set", None
-            )
+            if instance._state.adding and field_name not in self.bloomerp_read_only_field_names:
+                continue
+            value = getattr(instance, field_name, None)
+            if value is None:
+                value = getattr(instance, f"{field_name}_set", None)
             if hasattr(value, "all"):
                 value = list(value.all())
             self.initial[field_name] = value

@@ -13,6 +13,10 @@ from bloomerp.models.application_field import ApplicationField
 class RegisteredFormModel(models.Model):
     name = models.CharField(max_length=12)
     created_by = models.CharField(max_length=30, blank=True)
+    status = models.CharField(
+        max_length=20, choices=[("draft", "Draft"), ("posted", "Posted")],
+        default="draft", editable=False,
+    )
 
     class Meta:
         app_label = "bloomerp"
@@ -24,6 +28,22 @@ class RegisteredFormModel(models.Model):
 
 
 class RegisteredModelFormTests(SimpleTestCase):
+    def test_noneditable_choice_is_disabled_and_ignores_submitted_changes(self) -> None:
+        """Custom forms display backend-owned choices without allowing input to replace them."""
+
+        form_class = self.build_form(self.application_field("status", "ChoiceField"))
+        for adding, status in ((True, "draft"), (False, "posted")):
+            with self.subTest(adding=adding):
+                instance = RegisteredFormModel(status=status)
+                instance._state.adding = adding
+                form = form_class(data={"status": "posted" if adding else "draft"}, instance=instance)
+                self.assertTrue(form.fields["status"].disabled)
+                self.assertIn("disabled", str(form["status"]))
+                self.assertEqual(form["status"].value(), status)
+                self.assertTrue(form.is_valid(), form.errors)
+                self.assertEqual(form.cleaned_data["status"], status)
+                self.assertEqual(form.save(commit=False).status, status)
+
     def application_field(self, name, type_id):
         return SimpleNamespace(
             field=name,
