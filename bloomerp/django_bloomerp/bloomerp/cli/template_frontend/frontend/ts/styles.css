@@ -1,0 +1,4 @@
+/* App-owned CSS is emitted beside the JavaScript and loaded by Bloomerp. */
+[bloomerp-component="__APP_LABEL__:example"] {
+    min-height: 1rem;
+}

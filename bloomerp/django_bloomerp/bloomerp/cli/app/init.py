@@ -6,9 +6,8 @@ from pathlib import Path
 
 import click
 
-from ..base import BloomerpAppManifest, BloomerpAppDjango
+from ..base import BloomerpAppDjango, BloomerpAppManifest
 from ..toml import write_toml_model
-
 
 APP_TEMPLATE_DIR = (
     Path(__file__).resolve().parent.parent / "template_project" / "<app-name>"
@@ -50,7 +49,8 @@ def _copy_app_template(target_dir: Path, replacements: dict[str, str]) -> None:
         )
 
 
-def create_app(name: str, parent_dir: Path) -> Path:
+def create_app(name: str, parent_dir: Path, *, frontend: bool = False) -> Path:
+    """Create a reusable app, optionally including a TypeScript frontend workspace."""
     app_name = normalize_app_name(name)
     app_import_path = f"apps.{app_name}"
     apps_dir = parent_dir / "apps"
@@ -75,13 +75,18 @@ def create_app(name: str, parent_dir: Path) -> Path:
         target_dir / "app.bloomerp.toml",
         BloomerpAppManifest(name=app_name, django=BloomerpAppDjango(app_config=f"{app_import_path}.apps.{replacements['__APP_CLASS_NAME__']}")),
     )
+    if frontend:
+        from ..frontend import create_frontend
+
+        create_frontend(target_dir)
     return target_dir
 
 
 @click.command()
 @click.argument("name")
-def init(name: str) -> None:
+@click.option("--frontend", is_flag=True, help="Include a TypeScript/Vite frontend workspace.")
+def init(name: str, frontend: bool) -> None:
     """Create a reusable Django app package."""
 
-    target_dir = create_app(name, Path.cwd())
+    target_dir = create_app(name, Path.cwd(), frontend=frontend)
     click.echo(f"Created Bloomerp app at {target_dir}")

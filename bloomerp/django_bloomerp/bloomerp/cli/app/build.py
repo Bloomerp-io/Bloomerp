@@ -9,15 +9,18 @@ from pathlib import Path
 
 import click
 
+from ..frontend import build_frontend
 from ._utils import read_app_manifest, read_app_state
 
 
 def build_app_wheel(app_dir: Path, output_dir: Path) -> Path:
+    """Build app assets and package the app with its compiled static files."""
     manifest = read_app_manifest(app_dir)
     app_id = read_app_state(app_dir).app_id
     distribution = "bloomerp-app-" + app_id.replace("-", "") if app_id else manifest.name.replace("_", "-")
     output_dir = output_dir.expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
+    build_frontend(app_dir)
 
     with tempfile.TemporaryDirectory(prefix="bloomerp-app-build-") as temporary_dir:
         staging_root = Path(temporary_dir)
@@ -27,8 +30,9 @@ def build_app_wheel(app_dir: Path, output_dir: Path) -> Path:
         shutil.copytree(
             app_dir,
             staging_app,
-            ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
+            ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "node_modules"),
         )
+        shutil.rmtree(staging_app / "frontend", ignore_errors=True)
         (staging_root / "pyproject.toml").write_text(
             "\n".join(
                 [
