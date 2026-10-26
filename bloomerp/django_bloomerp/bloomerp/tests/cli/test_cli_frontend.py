@@ -17,6 +17,21 @@ from bloomerp.cli.frontend import build_frontend, create_frontend
 from bloomerp.cli.main import main
 
 
+@pytest.fixture(autouse=True)
+def bundled_api(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Provide a local framework API independently of repository build artifacts."""
+    package = tmp_path / "framework-api"
+    (package / "dist").mkdir(parents=True)
+    (package / "package.json").write_text(
+        json.dumps({"name": "@bloomerp/frontend", "version": "1.2.3"})
+    )
+    (package / "dist/index.js").write_text("export {};\n")
+    (package / "dist/index.d.ts").write_text("export {};\n")
+    (package / "dist/BaseComponent.d.ts").write_text("export {};\n")
+    monkeypatch.setattr("bloomerp.cli.frontend.FRONTEND_API_PACKAGE", package)
+    return package
+
+
 @pytest.mark.parametrize("frontend", [False, True])
 def test_app_frontend_is_opt_in(tmp_path: Path, frontend: bool) -> None:
     """Only apps explicitly opting in receive a typed frontend and descriptor."""
@@ -25,12 +40,16 @@ def test_app_frontend_is_opt_in(tmp_path: Path, frontend: bool) -> None:
     assert (app / "static/sales_tools/frontend.json").is_file() is frontend
     if frontend:
         manifest = json.loads((app / "frontend/package.json").read_text())
-        assert "@bloomerp/frontend" in manifest["dependencies"]
+        assert (
+            manifest["dependencies"]["@bloomerp/frontend"]
+            == "file:./.bloomerp/frontend-api"
+        )
+        assert (app / "frontend/.bloomerp/frontend-api/dist/index.d.ts").is_file()
         assert "sales_tools:example" in (app / "frontend/ts/main.ts").read_text()
         assert "__APP_LABEL__" not in (app / "frontend/vite.config.ts").read_text()
 
 
-def test_frontend_cli_supports_new_and_existing_apps() -> None:
+def test_frontend_cli_supports_new_and_existing_apps(bundled_api: Path) -> None:
     """Both creation paths produce discoverable assets and preserve authored files."""
     runner = CliRunner()
     with runner.isolated_filesystem():
@@ -52,17 +71,43 @@ def test_frontend_cli_supports_new_and_existing_apps() -> None:
         assert repeated.exit_code != 0
         assert "no files were changed" in repeated.output
         assert entry.read_text() == "// authored component registration\n"
+        (bundled_api / "dist/index.d.ts").write_text("// upgraded framework API\n")
+        stale = Path("apps/reports/frontend/.bloomerp/frontend-api/dist/removed.d.ts")
+        stale.write_text("// obsolete API\n")
+        refreshed = runner.invoke(main, ["app", "frontend", "reports", "--sync-api"])
+        assert refreshed.exit_code == 0, refreshed.output
+        assert not stale.exists()
+        assert (
+            Path(
+                "apps/reports/frontend/.bloomerp/frontend-api/dist/index.d.ts"
+            ).read_text()
+            == "// upgraded framework API\n"
+        )
+        assert entry.read_text() == "// authored component registration\n"
+
+
+def test_scaffold_reports_missing_bundled_api(
+    tmp_path: Path, bundled_api: Path
+) -> None:
+    """Explain source-build requirements without writing a partial frontend scaffold."""
+    (bundled_api / "dist/index.d.ts").unlink()
+    with pytest.raises(click.ClickException, match="packages/frontend"):
+        create_frontend(tmp_path / "planner")
+    assert not (tmp_path / "planner/frontend").exists()
 
 
 @pytest.mark.parametrize("locked", [False, True])
 def test_frontend_build_uses_lockfile_when_present(
-    tmp_path: Path, locked: bool
+    tmp_path: Path, locked: bool, bundled_api: Path
 ) -> None:
     """Builds use npm ci for locked workspaces and always compile before packaging."""
     create_frontend(tmp_path / "planner")
     workspace = tmp_path / "planner/frontend"
     if locked:
         (workspace / "package-lock.json").write_text("{}")
+    (bundled_api / "dist/index.d.ts").write_text(
+        "// API from newly installed framework\n"
+    )
     with (
         patch("bloomerp.cli.frontend.shutil.which", return_value="/usr/bin/npm"),
         patch("bloomerp.cli.frontend.subprocess.run") as run,
@@ -74,6 +119,9 @@ def test_frontend_build_uses_lockfile_when_present(
     ]
     assert run.call_args_list[1].args[0] == ["/usr/bin/npm", "run", "build"]
     assert run.call_args_list[1].kwargs == {"cwd": workspace, "check": True}
+    assert (
+        workspace / ".bloomerp/frontend-api/dist/index.d.ts"
+    ).read_text() == "// API from newly installed framework\n"
 
 
 def test_failed_frontend_build_stops_packaging(tmp_path: Path) -> None:

@@ -1,8 +1,9 @@
 # @bloomerp/frontend
 
-Public TypeScript component API for Bloomerp implementation apps. Requires a
-Bloomerp release with frontend-extension support. Package versions follow the
-Python release; use the same version in your app and deployment.
+Public TypeScript component API for Bloomerp implementation apps. The built API
+ships inside the Python framework distribution; it is not published to npm.
+The CLI copies it into each app's generated local dependency and refreshes it
+before app wheel builds, keeping declarations aligned with the installed framework.
 
 ```typescript
 import { BaseComponent, registerComponent } from '@bloomerp/frontend';
@@ -29,5 +30,11 @@ instance lookup in the same registry as the framework. Do not bundle framework
 source files or initialize a second component lifecycle.
 
 Build from the repository with `npm install && npm run build`. Declarations are
-generated from the actual core component implementation. The published package
-contains only its runtime facade and declarations, without framework dependencies.
+generated from the actual core component implementation. The build writes a
+ready-to-install package under `bloomerp/frontend/api` in the Python source tree.
+The Python release includes that package, containing only the runtime facade,
+declarations, documentation, and package metadata. No npm account is required.
+
+After checking out an app or upgrading Bloomerp, run
+`bloomerp app frontend APP_NAME --sync-api` from the project, then run `npm install`
+in the app's frontend directory. The generated local copy is excluded from Git.

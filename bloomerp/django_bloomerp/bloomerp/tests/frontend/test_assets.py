@@ -7,9 +7,11 @@ from unittest.mock import patch
 
 import pytest
 from django.core.exceptions import ImproperlyConfigured
+from django.http import HttpRequest
 from django.template.loader import render_to_string
 from django.test import override_settings
 
+from bloomerp.context_processors import debug_mode
 from bloomerp.frontend.assets import (
     get_frontend_assets,
     resolve_bundle,
@@ -78,9 +80,12 @@ def test_missing_build_has_actionable_error() -> None:
         resolve_bundle("planner/frontend/manifest.json", "ts/main.ts")
 
 
-@pytest.mark.parametrize("development", [False, True])
+@pytest.mark.parametrize(
+    "development,core_dev_url",
+    [(False, "http://localhost:5173"), (True, "http://localhost:5173"), (True, "")],
+)
 def test_installed_app_uses_the_shared_core_runtime(
-    tmp_path: Path, development: bool
+    tmp_path: Path, development: bool, core_dev_url: str
 ) -> None:
     """Map extension imports to the same core API in production and development."""
     write_json(tmp_path / "static/planner/frontend.json", {})
@@ -105,8 +110,9 @@ def test_installed_app_uses_the_shared_core_runtime(
             DEBUG=development,
             STATIC_URL="/static/",
             BLOOMERP_CONFIG=SimpleNamespace(
-                vite_dev_server_url="http://localhost:5173"
+                vite_dev_server_url="http://localhost:9999"
             ),
+            BLOOMERP_VITE_DEV_SERVER_URL=core_dev_url,
             BLOOMERP_FRONTEND_DEV_SERVERS={"planner": "http://localhost:5174"},
         ),
         patch(
@@ -117,14 +123,11 @@ def test_installed_app_uses_the_shared_core_runtime(
         assets = get_frontend_assets()
         rendered = render_to_string(
             "snippets/vite_bundle.html",
-            {
-                "DEBUG": development,
-                "BLOOMERP_VITE_DEV_SERVER_URL": "http://localhost:5173",
-            },
+            debug_mode(HttpRequest()),
         )
     runtime = (
         "http://localhost:5173/ts/frontend.ts"
-        if development
+        if development and core_dev_url
         else "/static/bloomerp/js/dist/frontend-a.js"
     )
     assert assets["imports"] == {

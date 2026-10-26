@@ -198,6 +198,7 @@ bloomerp = [
     "cli/template_frontend/**/*",
     "cli/template_frontend/frontend/.gitignore",
     "cli/template_frontend/static/*/.gitignore",
+    "frontend/api/**/*",
     "cli/template_project/.env",
     "cli/template_project/.gitignore",
     "cli/template_project/.python-version",

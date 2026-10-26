@@ -1,20 +1,51 @@
 """Scaffold and build optional app-owned frontend bundles."""
 
+import json
 import shutil
 import subprocess
-from importlib.metadata import version
 from pathlib import Path
 
 import click
+
+FRONTEND_API_PACKAGE = Path(__file__).resolve().parents[1] / "frontend" / "api"
+
+
+def require_frontend_api_package() -> Path:
+    """Locate the built API included in the installed Python framework package."""
+    required = (
+        "package.json",
+        "dist/index.js",
+        "dist/index.d.ts",
+        "dist/BaseComponent.d.ts",
+    )
+    if not all((FRONTEND_API_PACKAGE / filename).is_file() for filename in required):
+        raise click.ClickException(
+            "The installed framework has no bundled frontend API. When working from source, "
+            "run npm install and npm run build in packages/frontend first."
+        )
+    return FRONTEND_API_PACKAGE
+
+
+def sync_frontend_api(app_dir: Path) -> None:
+    """Refresh the generated local dependency from the installed Python framework."""
+    workspace = app_dir / "frontend"
+    manifest = json.loads((workspace / "package.json").read_text(encoding="utf-8"))
+    if (
+        manifest.get("dependencies", {}).get("@bloomerp/frontend")
+        != "file:./.bloomerp/frontend-api"
+    ):
+        return
+    source = require_frontend_api_package()
+    target = workspace / ".bloomerp" / "frontend-api"
+    if target.exists():
+        shutil.rmtree(target)
+    shutil.copytree(source, target)
 
 
 def create_frontend(app_dir: Path) -> None:
     """Create a frontend workspace and discovery descriptor without overwriting files."""
     template_root = Path(__file__).parent / "template_frontend"
-    replacements = {
-        "__APP_LABEL__": app_dir.name,
-        "__BLOOMERP_VERSION__": version("Bloomerp"),
-    }
+    replacements = {"__APP_LABEL__": app_dir.name}
     targets: dict[Path, str] = {}
     for source in template_root.rglob("*"):
         if not source.is_file() or "__pycache__" in source.parts:
@@ -29,9 +60,11 @@ def create_frontend(app_dir: Path) -> None:
         raise click.ClickException(
             f"Frontend files already exist in {app_dir}; no files were changed."
         )
+    require_frontend_api_package()
     for destination, contents in targets.items():
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(contents, encoding="utf-8")
+    sync_frontend_api(app_dir)
 
 
 def build_frontend(app_dir: Path) -> None:
@@ -39,6 +72,7 @@ def build_frontend(app_dir: Path) -> None:
     workspace = app_dir / "frontend"
     if not (workspace / "package.json").is_file():
         return
+    sync_frontend_api(app_dir)
     npm = shutil.which("npm")
     if npm is None:
         raise click.ClickException(

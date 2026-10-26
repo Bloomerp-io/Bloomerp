@@ -12,6 +12,8 @@ from django.contrib.staticfiles import finders
 from django.core.exceptions import ImproperlyConfigured
 from django.templatetags.static import static
 
+from .settings import get_core_vite_dev_server_url
+
 
 def read_json_object(path: Path) -> dict[str, Any]:
     """Read an asset descriptor or manifest and report actionable errors."""
@@ -113,10 +115,7 @@ def get_frontend_assets() -> dict[str, Any]:
     if not extensions:
         return {"imports": {}, "extensions": []}
 
-    core_config = getattr(settings, "BLOOMERP_CONFIG", None)
-    core_dev_server = getattr(
-        core_config, "vite_dev_server_url", "http://localhost:5173"
-    )
+    core_dev_server = get_core_vite_dev_server_url()
     if settings.DEBUG and core_dev_server:
         runtime = f"{core_dev_server.rstrip('/')}/ts/frontend.ts"
     else:
