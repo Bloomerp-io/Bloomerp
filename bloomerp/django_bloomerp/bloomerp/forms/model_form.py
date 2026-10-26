@@ -6,7 +6,7 @@ from typing import Any, Type
 from django import forms
 from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db import transaction
-from django.db.models import Model, QuerySet
+from django.db.models import Field, Model, QuerySet
 from django.utils.datastructures import MultiValueDict
 
 from bloomerp.form_fields.bloomerp_file_field import BloomerpFileFormField
@@ -350,9 +350,11 @@ def bloomerp_modelform_factory(
         form_field = _build_registered_form_field(application_field)
 
         # Lifecycle-managed values remain visible, but ignore submitted changes.
+        # Reverse relations report editable=False but their registered structured
+        # editors own persistence; only actual model fields use Django's flag.
         if (
             managed_by_application
-            or (model_field is not None and not getattr(model_field, "editable", True))
+            or (isinstance(model_field, Field) and not model_field.editable)
             or form_field.disabled
         ):
             form_field.disabled = True

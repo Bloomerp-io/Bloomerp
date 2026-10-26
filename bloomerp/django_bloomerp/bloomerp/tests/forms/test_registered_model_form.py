@@ -8,6 +8,7 @@ from django.test import SimpleTestCase
 from bloomerp.field_types.registry import FieldTypeDefinition, load_builtin_field_types
 from bloomerp.forms.model_form import bloomerp_modelform_factory
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.tests.base.core_test_case import BaseBloomerpTestCaseWithModels
 
 
 class RegisteredFormModel(models.Model):
@@ -116,3 +117,52 @@ class RegisteredModelFormTests(SimpleTestCase):
         self.assertIs(
             registry.resolve("Unknown", models.IntegerField()), registry.INTEGER_FIELD
         )
+
+
+class ReverseRelationModelFormTests(BaseBloomerpTestCaseWithModels):
+    """Exercise registered reverse editors through real parent and child persistence."""
+
+    create_foreign_models = True
+    auto_create_customers = False
+
+    def test_unsaved_parent_can_render_and_save_inline_children(self) -> None:
+        """An unsaved parent renders its reverse editor and saves submitted children."""
+        form_class = bloomerp_modelform_factory(self.CountryModel, fields=["name", "customers"])
+        parent = self.CountryModel(planet=self.PlanetModel.objects.get(name="Earth"))
+        form = form_class(instance=parent)
+        self.assertFalse(form.fields["customers"].disabled)
+        self.assertNotIn("customers", form.bloomerp_read_only_field_names)
+        self.assertIn('data-one-to-many-name="customers"', str(form["customers"]))
+
+        form = form_class(data={
+            "name": "New country",
+            "customers__0__first_name": "Ada",
+            "customers__0__last_name": "Lovelace",
+            "customers__0__age": "36",
+        }, instance=parent)
+        form.fields["customers"].widget.fields = ["first_name", "last_name", "age"]
+        self.assertTrue(form.is_valid(), form.errors)
+        saved = form.save()
+        self.assertEqual(saved.customers.get().first_name, "Ada")
+
+    def test_saved_parent_accepts_inline_child_changes(self) -> None:
+        """A reverse editor retains initial children and persists submitted changes."""
+        parent = self.CountryModel.objects.get(name="Belgium")
+        child = self.CustomerModel.objects.create(
+            first_name="Original", last_name="Customer", age=20, country=parent,
+        )
+        form_class = bloomerp_modelform_factory(self.CountryModel, fields=["customers"])
+        form = form_class(data={
+            "customers__0__id": str(child.pk),
+            "customers__0__first_name": "Updated",
+            "customers__0__last_name": "Customer",
+            "customers__0__age": "21",
+        }, instance=parent)
+        form.fields["customers"].widget.fields = ["first_name", "last_name", "age"]
+        self.assertFalse(form.fields["customers"].disabled)
+        self.assertEqual([item.pk for item in form.initial["customers"]], [child.pk])
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        child.refresh_from_db()
+        self.assertEqual(child.first_name, "Updated")
+        self.assertEqual(child.age, 21)
