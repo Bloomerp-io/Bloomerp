@@ -1,0 +1,11 @@
+{
+  "name": "__APP_LABEL__-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build"
+  },
+  "dependencies": { "@bloomerp/frontend": "__BLOOMERP_VERSION__" },
+  "devDependencies": { "typescript": "~5.7.3", "vite": "^6.0.1" }
+}

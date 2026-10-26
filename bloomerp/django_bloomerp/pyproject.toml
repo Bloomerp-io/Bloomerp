@@ -195,6 +195,9 @@ exclude = ["bloomerp.tests", "bloomerp.tests.*"]
 [tool.setuptools.package-data]
 bloomerp = [
     "cli/template_project/**/*",
+    "cli/template_frontend/**/*",
+    "cli/template_frontend/frontend/.gitignore",
+    "cli/template_frontend/static/*/.gitignore",
     "cli/template_project/.env",
     "cli/template_project/.gitignore",
     "cli/template_project/.python-version",
