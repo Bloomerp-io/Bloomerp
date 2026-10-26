@@ -247,7 +247,17 @@ export default class ForeignFieldWidget extends BaseWidget {
 
     }
 
-    private onKeyDown(e: KeyboardEvent) {
+    /** Edit selected tokens without leaving the searchable relationship control. */
+    private onKeyDown(e: KeyboardEvent): void {
+        if (this.isDisabled || e.isComposing) return;
+        if ((e.key === 'Backspace' || e.key === 'Delete') && this.input?.value === '') {
+            const selection = this.getSelections().at(-1);
+            if (selection) {
+                e.preventDefault();
+                this.removeSelection(selection.id);
+                return;
+            }
+        }
         if (!this.dropdown || this.dropdown.classList.contains('hidden')) return;
         const items = this.getSelectableItems();
         if (!items.length) return;
@@ -262,11 +272,10 @@ export default class ForeignFieldWidget extends BaseWidget {
             this.highlightItem(items, this.currentIndex);
         } else if (e.key === 'Enter') {
             e.preventDefault();
-            if (this.currentIndex >= 0 && items[this.currentIndex]) {
-                // trigger click on the currently highlighted item
-                const el = items[this.currentIndex];
-                el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-            }
+            const item = this.currentIndex >= 0
+                ? items[this.currentIndex]
+                : items.find((candidate: HTMLElement): boolean => Boolean(candidate.dataset.id));
+            item?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
         } else if (e.key === 'Escape') {
             e.preventDefault();
             this.hideDropdown();
@@ -419,6 +428,7 @@ export default class ForeignFieldWidget extends BaseWidget {
     private renderResults(objects: Array<{id:number, string_representation:string, detail_url?: string}>): void {
         if (!this.resultsList || !this.dropdown) return;
         this.resultsList.innerHTML = '';
+        this.currentIndex = -1;
         if (!objects.length) {
             const li = document.createElement('li');
             li.textContent = _('No results');
@@ -442,7 +452,8 @@ export default class ForeignFieldWidget extends BaseWidget {
         this.showDropdown();
     }
 
-    private onResultClick(e: Event) {
+    /** Select a search result while retaining the input cursor. */
+    private onResultClick(e: Event): void {
         const target = e.target as HTMLElement;
         const li = target.closest('li');
         if (!li || !li.dataset.id) return;
@@ -451,14 +462,11 @@ export default class ForeignFieldWidget extends BaseWidget {
         const url = li.dataset.url || '';
         this.selectObject(id, label, url);
         this.clearResults();
-        if (e instanceof MouseEvent && e.detail > 0) {
-            this.input?.blur();
-        }
     }
 
     /** Select an object and replace any control representing an explicitly cleared value. */
     private selectObject(id: string, label: string, url: string = '', emitChange: boolean = true): void {
-        if (!this.fieldName || !this.selectedContainer) return;
+        if (!this.fieldName || !this.selectedContainer || (emitChange && this.isDisabled)) return;
 
         const previousValue = this.getValue();
         this.removeEmptyValueInputs();
@@ -466,8 +474,12 @@ export default class ForeignFieldWidget extends BaseWidget {
         if (this.isM2M) {
             // prevent duplicates
             if (this.getSelectionInputs().some((input) => input.value === id)) {
-                this.input && (this.input.value = '');
+                if (this.input) this.input.value = '';
                 this.hideDropdown();
+                if (emitChange && document.activeElement !== this.input) {
+                    this.input?.focus({ preventScroll: true });
+                    this.hideDropdown();
+                }
                 return;
             }
             const hidden = document.createElement('input');
@@ -492,11 +504,15 @@ export default class ForeignFieldWidget extends BaseWidget {
             hidden.dataset.url = url;
             hidden.disabled = this.isDisabled;
             this.element.appendChild(hidden);
-            if (this.input) this.input.value = label;
+            if (this.input) this.input.value = '';
         }
 
         this.renderSelectedState();
         this.hideDropdown();
+        if (emitChange && document.activeElement !== this.input) {
+            this.input?.focus({ preventScroll: true });
+            this.hideDropdown();
+        }
 
         if (emitChange && !this.valuesEqual(previousValue, this.getValue())) {
             this.onChange();
@@ -535,7 +551,8 @@ export default class ForeignFieldWidget extends BaseWidget {
             removeButton.className = 'rounded-full px-1 leading-none hover:bg-white/20 focus:outline-none';
             removeButton.setAttribute('aria-label', _('Remove {label}').replace('{label}', label));
             removeButton.textContent = '×';
-            removeButton.addEventListener('click', (ev) => {
+            /** Remove this token without navigating its preview link. */
+            removeButton.addEventListener('click', (ev: MouseEvent): void => {
                 ev.preventDefault();
                 ev.stopPropagation();
                 this.removeSelection(id);
@@ -545,7 +562,8 @@ export default class ForeignFieldWidget extends BaseWidget {
         return badge;
     }
 
-    private removeSelection(id: string) {
+    /** Remove one selected token and keep the control ready for further editing. */
+    private removeSelection(id: string): void {
         if (this.isDisabled) return;
         if (!this.fieldName) return;
         const previousValue = this.getValue();
@@ -563,14 +581,17 @@ export default class ForeignFieldWidget extends BaseWidget {
             if (this.input) this.input.value = '';
         }
         this.renderSelectedState();
+        this.input?.focus({ preventScroll: true });
+        this.hideDropdown();
 
         if (!this.valuesEqual(previousValue, this.getValue())) {
             this.onChange();
         }
     }
 
+    /** Submit an explicit empty value only after the final selected token is removed. */
     private ensureEmptyValueInput(): void {
-        if (!this.fieldName) return;
+        if (!this.fieldName || this.getSelectionInputs().length) return;
         if (this.element.querySelector(`input[type=hidden][name="${this.fieldName}"][data-empty-value="true"]`)) {
             return;
         }
@@ -847,7 +868,7 @@ export default class ForeignFieldWidget extends BaseWidget {
         });
 
         if (this.input) {
-            this.input.value = this.isM2M ? "" : (nextValues[0] ? existingSelections.find((selection) => selection.id === nextValues[0])?.label || nextValues[0] : "");
+            this.input.value = "";
         }
 
         this.renderSelectedState();
@@ -886,9 +907,6 @@ export default class ForeignFieldWidget extends BaseWidget {
                 if (!selection) continue;
                 selection.dataset.label = object.string_representation;
                 selection.dataset.url = object.detail_url ?? '';
-            }
-            if (this.input && !this.isM2M) {
-                this.input.value = this.getSelections()[0]?.label ?? '';
             }
             this.renderSelectedState();
         } catch (error) {
@@ -1070,7 +1088,8 @@ export default class ForeignFieldWidget extends BaseWidget {
     private positionDropdown(): void {
         if (!this.dropdown || !this.input || this.dropdown.classList.contains('hidden')) return;
 
-        const inputRect = this.input.getBoundingClientRect();
+        const control = this.element.querySelector<HTMLElement>('.foreign-field-control') || this.input;
+        const inputRect = control.getBoundingClientRect();
         const host = this.dropdownPopoverHost;
         if (host) {
             const rect = host.getBoundingClientRect();
