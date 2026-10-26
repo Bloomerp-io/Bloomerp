@@ -91,6 +91,7 @@ import { FileBrowser } from './components/data_view_components/FileBrowser';
 import { initBrowserAgent } from './utils/agent';
 import AgentChat from './components/agent/AgentChat';
 import MessagingPanel from './components/communication/MessagingPanel';
+import { setupMermaidDisplay } from './utils/mermaidDisplay';
 
 
 Object.assign(window, { showMessage });
@@ -224,6 +225,7 @@ loadTranslations()
         // Components may synchronously render translated frontend labels.
         registerComponent("bloomerp:calling", Calling);
         setupComponentAutoInit();
+        setupMermaidDisplay();
         initMessagesWebsocket();
         SetupAnimationListener();
     });

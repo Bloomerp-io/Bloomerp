@@ -66,16 +66,20 @@ export function registerMermaidBehavior(editor: LexicalEditor, host: HTMLElement
         if (!canEditDiagram(editor, host)) return;
         if (!["Enter", " ", "Backspace", "Delete"].includes(event.key)) return;
         let nodeKey: NodeKey | null = null;
-        /** Resolve an explicitly selected diagram or its keyboard-focused wrapper. */
+        /** Prefer the keyboard-focused diagram over a stale Lexical node selection. */
         function readSelectedDiagram(): void {
+            if (event.target instanceof HTMLElement) {
+                const diagram = event.target.closest<HTMLElement>("[data-mermaid-node-key]");
+                const key = diagram?.dataset.mermaidNodeKey;
+                if (key && root?.contains(diagram) && $isMermaidNode($getNodeByKey(key))) {
+                    nodeKey = key;
+                    return;
+                }
+            }
             const selection = $getSelection();
             if ($isNodeSelection(selection)) {
                 const nodes = selection.getNodes();
                 if (nodes.length === 1 && $isMermaidNode(nodes[0])) nodeKey = nodes[0].getKey();
-            }
-            if (!nodeKey && event.target instanceof HTMLElement) {
-                const key = event.target.closest<HTMLElement>("[data-mermaid-node-key]")?.dataset.mermaidNodeKey;
-                if (key && $isMermaidNode($getNodeByKey(key))) nodeKey = key;
             }
         }
         editor.getEditorState().read(readSelectedDiagram);
