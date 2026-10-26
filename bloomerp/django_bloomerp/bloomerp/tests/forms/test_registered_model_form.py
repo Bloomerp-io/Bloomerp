@@ -8,11 +8,16 @@ from django.test import SimpleTestCase
 from bloomerp.field_types.registry import FieldTypeDefinition, load_builtin_field_types
 from bloomerp.forms.model_form import bloomerp_modelform_factory
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.tests.base.core_test_case import BaseBloomerpTestCaseWithModels
 
 
 class RegisteredFormModel(models.Model):
     name = models.CharField(max_length=12)
     created_by = models.CharField(max_length=30, blank=True)
+    status = models.CharField(
+        max_length=20, choices=[("draft", "Draft"), ("posted", "Posted")],
+        default="draft", editable=False,
+    )
 
     class Meta:
         app_label = "bloomerp"
@@ -24,6 +29,22 @@ class RegisteredFormModel(models.Model):
 
 
 class RegisteredModelFormTests(SimpleTestCase):
+    def test_noneditable_choice_is_disabled_and_ignores_submitted_changes(self) -> None:
+        """Custom forms display backend-owned choices without allowing input to replace them."""
+
+        form_class = self.build_form(self.application_field("status", "ChoiceField"))
+        for adding, status in ((True, "draft"), (False, "posted")):
+            with self.subTest(adding=adding):
+                instance = RegisteredFormModel(status=status)
+                instance._state.adding = adding
+                form = form_class(data={"status": "posted" if adding else "draft"}, instance=instance)
+                self.assertTrue(form.fields["status"].disabled)
+                self.assertIn("disabled", str(form["status"]))
+                self.assertEqual(form["status"].value(), status)
+                self.assertTrue(form.is_valid(), form.errors)
+                self.assertEqual(form.cleaned_data["status"], status)
+                self.assertEqual(form.save(commit=False).status, status)
+
     def application_field(self, name, type_id):
         return SimpleNamespace(
             field=name,
@@ -96,3 +117,52 @@ class RegisteredModelFormTests(SimpleTestCase):
         self.assertIs(
             registry.resolve("Unknown", models.IntegerField()), registry.INTEGER_FIELD
         )
+
+
+class ReverseRelationModelFormTests(BaseBloomerpTestCaseWithModels):
+    """Exercise registered reverse editors through real parent and child persistence."""
+
+    create_foreign_models = True
+    auto_create_customers = False
+
+    def test_unsaved_parent_can_render_and_save_inline_children(self) -> None:
+        """An unsaved parent renders its reverse editor and saves submitted children."""
+        form_class = bloomerp_modelform_factory(self.CountryModel, fields=["name", "customers"])
+        parent = self.CountryModel(planet=self.PlanetModel.objects.get(name="Earth"))
+        form = form_class(instance=parent)
+        self.assertFalse(form.fields["customers"].disabled)
+        self.assertNotIn("customers", form.bloomerp_read_only_field_names)
+        self.assertIn('data-one-to-many-name="customers"', str(form["customers"]))
+
+        form = form_class(data={
+            "name": "New country",
+            "customers__0__first_name": "Ada",
+            "customers__0__last_name": "Lovelace",
+            "customers__0__age": "36",
+        }, instance=parent)
+        form.fields["customers"].widget.fields = ["first_name", "last_name", "age"]
+        self.assertTrue(form.is_valid(), form.errors)
+        saved = form.save()
+        self.assertEqual(saved.customers.get().first_name, "Ada")
+
+    def test_saved_parent_accepts_inline_child_changes(self) -> None:
+        """A reverse editor retains initial children and persists submitted changes."""
+        parent = self.CountryModel.objects.get(name="Belgium")
+        child = self.CustomerModel.objects.create(
+            first_name="Original", last_name="Customer", age=20, country=parent,
+        )
+        form_class = bloomerp_modelform_factory(self.CountryModel, fields=["customers"])
+        form = form_class(data={
+            "customers__0__id": str(child.pk),
+            "customers__0__first_name": "Updated",
+            "customers__0__last_name": "Customer",
+            "customers__0__age": "21",
+        }, instance=parent)
+        form.fields["customers"].widget.fields = ["first_name", "last_name", "age"]
+        self.assertFalse(form.fields["customers"].disabled)
+        self.assertEqual([item.pk for item in form.initial["customers"]], [child.pk])
+        self.assertTrue(form.is_valid(), form.errors)
+        form.save()
+        child.refresh_from_db()
+        self.assertEqual(child.first_name, "Updated")
+        self.assertEqual(child.age, 21)

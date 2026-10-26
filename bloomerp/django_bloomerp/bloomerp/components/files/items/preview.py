@@ -10,6 +10,9 @@ from io import StringIO
 from pathlib import PurePath
 from typing import TYPE_CHECKING, Any, TypedDict
 
+import bleach
+import mistune
+from bs4 import BeautifulSoup
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.handlers.asgi import ASGIRequest
@@ -22,6 +25,7 @@ from django.http import (
 )
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
+from django.utils.safestring import SafeString, mark_safe
 
 from bloomerp.router import router
 
@@ -166,6 +170,33 @@ def _text_preview(file: FileNode) -> tuple[str, bool]:
     return decoder.decode(data[:MAX_TEXT_BYTES], final=not truncated), truncated
 
 
+def _markdown_preview(text: str) -> SafeString:
+    """Format uploaded Markdown without evaluating templates or loading images."""
+    from bloomerp.views.generic.markdown import MARKDOWN_CLASSES
+
+    renderer = mistune.create_markdown(
+        escape=True, plugins=["strikethrough", "table", "url"]
+    )
+    soup = BeautifulSoup(renderer(text), "html.parser")
+    for image in soup.find_all("img"):
+        image.replace_with(image.get("alt", ""))
+    for tag_name, classes in MARKDOWN_CLASSES.items():
+        for element in soup.find_all(tag_name):
+            element["class"] = classes
+    # Uploaded files never inherit MarkdownView's template or local-media handling.
+    return mark_safe(bleach.clean(
+        str(soup),
+        tags=[
+            "a", "blockquote", "br", "code", "del", "em", "h1", "h2", "h3",
+            "h4", "h5", "h6", "hr", "li", "ol", "p", "pre", "strong",
+            "table", "tbody", "td", "th", "thead", "tr", "ul",
+        ],
+        attributes={"*": ["class"], "a": ["href", "title"]},
+        protocols=["http", "https", "mailto"],
+        strip=True,
+    ))
+
+
 @router.register(
     path="components/files/preview_file/<str:file_id>/",
     name="components_preview_file",
@@ -260,6 +291,8 @@ def preview_file(
         try:
             text, truncated = _text_preview(file)
             context.update(kind="text", text=text, truncated=truncated)
+            if extension == "md":
+                context.update(kind="markdown", markdown=_markdown_preview(text))
         except (UnicodeError, OSError):
             context["kind"] = "unsupported"
     if request.GET.get("raw") == "1":

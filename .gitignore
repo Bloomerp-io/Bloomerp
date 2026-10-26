@@ -91,6 +91,7 @@ bloomerp/django_bloomerp/bloomerp/static/bloomerp/js/dist/
 bloomerp/django_bloomerp/bloomerp/static/css/dist/
 bloomerp/django_bloomerp/bloomerp/static_src/.vite/
 *.tsbuildinfo
+bloomerp/django_bloomerp/bloomerp/frontend/api/
 
 # Package the built CSS that Django templates reference.
 !bloomerp/django_bloomerp/bloomerp/static/bloomerp/css/

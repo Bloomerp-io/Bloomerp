@@ -70,7 +70,7 @@ interface Fixture {
     buttons: HTMLElement;
     errors: unknown[];
 }
-interface FixtureOptions { restoreAtEnd?: boolean; initiallySelected?: boolean; }
+interface FixtureOptions { restoreAtEnd?: boolean; initiallySelected?: boolean; isM2M?: boolean; disabled?: boolean; }
 
 /** Flush the mocked search response without opening a browser or a network connection. */
 async function flushResults(w: DOMWindow): Promise<void> {
@@ -93,7 +93,7 @@ async function fixture(popover: boolean = true, options: FixtureOptions = {}): P
             <div id="panel" data-dropdown-panel data-layout-row data-row-columns="1"><div data-layout-grid>
                 <div id="cell" bloomerp-component="detail-view-value" data-field-name="owner" data-application-field-id="owner">
                     <div data-layout-item-body>
-                        <div id="widget" bloomerp-component="foreign-field-widget" data-content-type-id="1" data-field-name="owner" ${selectedAttributes}>
+                        <div id="widget" bloomerp-component="foreign-field-widget" data-content-type-id="1" data-field-name="owner" data-is-m2m="${Boolean(options.isM2M)}" data-disabled="${Boolean(options.disabled)}" ${selectedAttributes}>
                             <input type="text"><div class="foreign-field-dropdown hidden"><ul class="foreign-field-results"></ul></div><span id="sibling"></span><div class="foreign-field-selected"></div>
                         </div>
                     </div>
@@ -369,7 +369,8 @@ function assertFormState(f: Fixture, value: string, label: string, dirty: boolea
     assert.deepEqual(f.errors, [], 'selection and its change events must not throw');
     assert.equal(f.component.getValue(), value);
     assert.equal(f.cell.value, value, 'the real cell receives the widget change');
-    assert.equal(f.input.value, label);
+    assert.equal(f.input.value, '', 'labels are tokens rather than editable query text');
+    assert.equal(f.widget.querySelector('.foreign-field-badge span, .foreign-field-badge a')?.textContent || '', label);
     assert.deepEqual(Array.from(new f.w.FormData(f.form).getAll('owner')), value ? [value] : []);
     assert.equal(f.buttons.classList.contains('hidden'), !dirty, 'form history controls reflect the change');
     assert.equal(f.w.document.getElementById('save')!.closest('.hidden') === null, dirty, 'Save is visible exactly while form history is dirty');
@@ -548,3 +549,84 @@ test('replacing and reinitializing a form fragment preserves selection events an
         dispose(f);
     }
 });
+
+/** Type a query and commit the first search result without moving the cursor. */
+async function enterResult(f: Fixture, query: string): Promise<void> {
+    f.input.value = query;
+    f.input.dispatchEvent(new f.w.Event('input', { bubbles: true }));
+    /** Wait for the production search debounce and its local response. */
+    await new Promise<void>(function afterSearch(resolve: () => void): void { f.w.setTimeout(resolve, 275); });
+    const enter = new f.w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    f.input.dispatchEvent(enter);
+    assert.equal(enter.defaultPrevented, true);
+    assert.equal(f.w.document.activeElement, f.input);
+    assert.equal(f.input.value, '');
+}
+
+/** Exercise both cardinalities through real input events and the form history pipeline. */
+for (const isM2M of [false, true]) {
+    test(`Enter ${isM2M ? 'appends' : 'replaces'} selected tokens and deletion retains the cursor`, async (): Promise<void> => {
+        const f = await fixture(false, { initiallySelected: true, isM2M });
+        try {
+            await enterResult(f, 'Alice');
+            const expected = isM2M ? ['3', '7'] : ['7'];
+            assert.deepEqual(Array.from(new f.w.FormData(f.form).getAll('owner')), expected);
+            assert.equal(f.widget.querySelectorAll('.foreign-field-badge').length, expected.length);
+            if (isM2M) {
+                await enterResult(f, 'Alice');
+                assert.deepEqual(Array.from(new f.w.FormData(f.form).getAll('owner')), expected, 'duplicate entries are ignored');
+            }
+            f.input.value = 'uncommitted query';
+            const editing = new f.w.KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true });
+            f.input.dispatchEvent(editing);
+            assert.equal(editing.defaultPrevented, false, 'query text can be edited without removing tokens');
+            assert.deepEqual(Array.from(new f.w.FormData(f.form).getAll('owner')), expected);
+            f.input.value = '';
+            const backspace = new f.w.KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true });
+            f.input.dispatchEvent(backspace);
+            assert.equal(backspace.defaultPrevented, true);
+            assert.deepEqual(Array.from(new f.w.FormData(f.form).getAll('owner')), isM2M ? ['3'] : ['']);
+            assert.equal(f.w.document.activeElement, f.input);
+            if (isM2M) {
+                f.input.dispatchEvent(new f.w.KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true }));
+                assert.deepEqual(Array.from(new f.w.FormData(f.form).getAll('owner')), ['']);
+                assert.equal(f.w.document.activeElement, f.input);
+            }
+            assert.deepEqual(f.errors, []);
+        } finally { dispose(f); }
+    });
+}
+
+/** Preserve the cursor for the initial selection, pointer changes, and remove buttons. */
+test('empty and pointer selections keep the input focused and deletions work with a closed dropdown', async (): Promise<void> => {
+    const f = await fixture(false);
+    try {
+        await enterResult(f, 'Alice');
+        assertFormState(f, '7', 'Alice', true);
+        await reopen(f);
+        selectResult(f, '8');
+        assert.equal(f.w.document.activeElement, f.input);
+        assertFormState(f, '8', 'Bob', true);
+        f.widget.querySelector<HTMLButtonElement>('.foreign-field-selected button')!.click();
+        assert.equal(f.w.document.activeElement, f.input);
+        assert.equal(f.component.getValue(), '');
+        f.component.setSerializableState({ value: '7', inputValue: '', selections: [{ id: '7', label: 'Alice', url: '' }] } as ReturnType<ForeignFieldWidget['getSerializableState']>);
+        f.input.dispatchEvent(new f.w.KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true }));
+        assert.equal(f.component.getValue(), '');
+        assert.deepEqual(Array.from(new f.w.FormData(f.form).getAll('owner')), ['']);
+        assert.equal(f.w.document.activeElement, f.input);
+    } finally { dispose(f); }
+});
+
+/** Protect selected values while the user composes text or the widget is disabled. */
+for (const disabled of [false, true]) {
+    test(`${disabled ? 'disabled' : 'composing'} input does not remove selected tokens`, async (): Promise<void> => {
+        const f = await fixture(false, { initiallySelected: true, disabled });
+        try {
+            const event = new f.w.KeyboardEvent('keydown', { key: 'Backspace', isComposing: !disabled, bubbles: true, cancelable: true });
+            f.input.dispatchEvent(event);
+            assert.equal(f.component.getValue(), '3');
+            assert.equal(event.defaultPrevented, false);
+        } finally { dispose(f); }
+    });
+}

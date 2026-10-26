@@ -103,3 +103,24 @@ class TestRelatedObjectRendering(SimpleTestCase):
             context = render_dataview_value(record, field, None)
         self.assertIsNone(context["value"])
         self.assertIsNone(context["data_value"])
+
+    def test_advanced_rendering_receives_the_owning_object(self) -> None:
+        """
+        Use case: A field template needs another attribute of its owning record.
+        Expected result: Object attributes and the raw value are available and escaped.
+        """
+        from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
+        from bloomerp.models import ApplicationField
+        from bloomerp.models.project_management.todo import Todo
+
+        # 1. Configure a template using both the object and the existing value.
+        record = Todo(title="Invoice <draft>", priority="high")
+        field = ApplicationField(
+            field="title", field_type="CharField",
+            advanced_rendering="<b>{{ object.priority }}</b>: {{ value }}",
+        )
+
+        # 2. Render through the shared field-type path and preserve autoescaping.
+        markup, used_template = FIELD_TYPE_REGISTRY.CHAR_FIELD.resolved_render_value_with_source(field, record)
+        self.assertTrue(used_template)
+        self.assertEqual(markup, "<b>high</b>: Invoice &lt;draft&gt;")

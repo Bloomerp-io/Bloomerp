@@ -244,3 +244,29 @@ This is the same pattern used by KPI and table.
   - supports label override, formatter, prefix, and suffix
 
 These two are the best current references when implementing more analytics tile types.
+## Pivot table tiles
+
+Choose `PIVOT_TABLE` in the analytics builder. Configure one or more `rows`,
+optional `columns`, and one or more `values` from the query's output columns.
+Each value has an `aggregator` option: `count` (default), `sum`, `min`, `max`, or
+`avg`. As in the pivot dataview, numbers support every aggregation, booleans
+support count and sum, and other types use count.
+
+The renderer uses the framework-filtered query and permission-aware SQL executor.
+Like the dataview, it groups and aggregates measures in SQL, then arranges only
+those aggregated results into cells in Python. Root page keys are fetched once
+and reused in aggregate filters. Row and column totals are calculated separately
+in SQL, preserving weighted averages. `page_size` supports 10, 25 (default), 50,
+or 100 top-level row groups. Column groups multiplied by value fields must fit
+within the dataview's shared 100-leaf-column limit. A page may render at most 1,000
+rows across all hierarchy levels, including collapsed descendants. Row totals are
+bounded before fetching cell aggregates; each cell query is limited to the number
+of accepted rows multiplied by discovered column groups (at most 100,000 grouped
+records across all hierarchy levels). Queries fetch one extra record to detect
+overflow. Oversized hierarchies show a message instead of materializing an
+unbounded result or silently truncating totals.
+
+Tiles render the existing dataview pivot template and registered `pivot-table`
+frontend component. Row expansion, nested headers, horizontal scrolling, and
+initially collapsed children therefore share the dataview behavior. Pagination
+reloads only the current tile and preserves the framework's query parameters.

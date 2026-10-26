@@ -84,13 +84,17 @@ class FieldTypeDefinition:
 
         The source flag reflects successful rendering, including empty output,
         not merely configured template presence. Ordinary field values retain
-        Django autoescaping; failed overrides use the legacy renderer.
+        Django autoescaping; failed overrides use the legacy renderer. Templates
+        receive the raw field value and the owning model instance as ``object``.
         """
         template_source = application_field.advanced_rendering
         if template_source and template_source.strip():
             try:
                 value = engines["django"].from_string(template_source).render(
-                    {"value": getattr(instance, application_field.field, None)}
+                    {
+                        "value": getattr(instance, application_field.field, None),
+                        "object": instance,
+                    }
                 )
                 return value, True
             except Exception:  # noqa: BLE001 - presentation failures use the normal renderer.

@@ -164,6 +164,13 @@ jobs:
           git commit -m "chore: bump package version to ${PROJECT_VERSION}"
           git push origin HEAD:main
 
+      - name: Build bundled frontend API
+        if: steps.pypi.outputs.exists != 'true'
+        working-directory: packages/frontend
+        run: |
+          npm install
+          npm test
+
       - name: Build distribution
         if: steps.pypi.outputs.exists != 'true'
         working-directory: .
