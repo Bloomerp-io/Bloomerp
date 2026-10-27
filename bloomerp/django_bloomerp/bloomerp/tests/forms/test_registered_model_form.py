@@ -2,8 +2,11 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from django import forms
+from django.contrib.contenttypes.fields import GenericRelation
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import models
 from django.test import SimpleTestCase
+from django.utils.datastructures import MultiValueDict
 
 from bloomerp.field_types.registry import FieldTypeDefinition, load_builtin_field_types
 from bloomerp.forms.model_form import bloomerp_modelform_factory
@@ -13,6 +16,7 @@ from bloomerp.tests.base.core_test_case import BaseBloomerpTestCaseWithModels
 
 class RegisteredFormModel(models.Model):
     name = models.CharField(max_length=12)
+    files = GenericRelation("bloomerp.FileReference")
     created_by = models.CharField(max_length=30, blank=True)
     status = models.CharField(
         max_length=20, choices=[("draft", "Draft"), ("posted", "Posted")],
@@ -29,6 +33,24 @@ class RegisteredFormModel(models.Model):
 
 
 class RegisteredModelFormTests(SimpleTestCase):
+    def test_generic_file_relation_renders_and_accepts_uploads(self) -> None:
+        """Keep the generic attachment editor usable on unsaved parent forms."""
+        form_class = self.build_form(self.application_field("files", "FilesRelationField"))
+        self.assertFalse(form_class.base_fields["files"].disabled)
+        upload = SimpleUploadedFile("receipt.pdf", b"receipt", "application/pdf")
+        form = form_class(
+            data={},
+            files=MultiValueDict({"files": [upload]}),
+            instance=RegisteredFormModel(name="Expense"),
+        )
+        self.assertFalse(form.fields["files"].disabled)
+        self.assertNotIn("files", form.bloomerp_read_only_field_names)
+        self.assertNotIn("files", form_class._meta.fields)
+        self.assertIn('type="file"', str(form["files"]))
+        self.assertIn('name="files"', str(form["files"]))
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data["files"].files, [upload])
+
     def test_noneditable_choice_is_disabled_and_ignores_submitted_changes(self) -> None:
         """Custom forms display backend-owned choices without allowing input to replace them."""
 
