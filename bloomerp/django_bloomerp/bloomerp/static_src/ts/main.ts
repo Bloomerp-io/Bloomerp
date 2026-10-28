@@ -1,3 +1,4 @@
+import ChoiceWidget from './components/widgets/ChoiceWidget';
 import CalendarAvailability from "./components/inbox/CalendarAvailability";
 import InboxCalendarOverlay from "./components/inbox/InboxCalendarOverlay";
 import CalendarEventEditor from "./components/inbox/CalendarEventEditor";
@@ -165,6 +166,7 @@ registerComponent('selectable-cards', SelectableCards);
 // Form widgets
 registerComponent('url-widget', URLWidget);
 registerComponent('foreign-field-widget', ForeignFieldWidget);
+registerComponent('choice-widget', ChoiceWidget);
 registerComponent('list-filter-widget', ListFilterWidget);
 registerComponent('one-to-many-field-widget', OneToManyFieldWidget);
 registerComponent('code-editor-widget', CodeEditorWidget);
