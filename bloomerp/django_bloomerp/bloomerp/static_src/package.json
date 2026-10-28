@@ -16,6 +16,7 @@
     "build:js": "tsc && vite build",
     "test:text-editor-links": "node --experimental-strip-types --test ts/components/text_editor/utils/linkBehavior.test.ts",
     "test:url-widget": "node --experimental-strip-types --test ts/components/widgets/URLWidget.test.ts",
+    "test:document-header": "node --experimental-strip-types --test ts/components/DocumentTemplateBuilder.test.ts",
     "test:sdk": "node --experimental-transform-types --test ts/sdk/sdk.test.ts",
     "test:foreign-field": "node --experimental-strip-types --test ts/components/widgets/ForeignFieldWidget.test.ts",
     "test:calendar": "node --experimental-strip-types --test ts/components/data_view_components/Calendar.test.ts ts/components/inbox/CalendarEventEditor.test.ts",
