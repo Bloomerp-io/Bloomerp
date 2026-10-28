@@ -6,7 +6,7 @@ from uuid import UUID
 from django.apps import apps
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import FieldDoesNotExist
+from django.core.exceptions import FieldDoesNotExist, SuspiciousFileOperation
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
@@ -16,6 +16,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from bloomerp.files.access import FileAccessManager
+from bloomerp.model_fields.file_field import BloomerpFileField
 from bloomerp.models.files.file_node import FileNode
 from bloomerp.models.files.file_reference import FileReference
 from bloomerp.permissions.definition import BloomerpPermission
@@ -31,16 +32,24 @@ def require_object_files_access(
 
 
 def resolve_upload_target(
-    request: HttpRequest, *, model_label: str | None, object_id: str | None
+    request: HttpRequest,
+    *,
+    model_label: str | None,
+    object_id: str | None,
+    field_name: str | None = None,
 ) -> Model | None:
     """Authorize an optional reference target before storing any uploaded bytes."""
+    if field_name and not model_label:
+        raise ValidationError("field requires model_label and object_id")
     if bool(model_label) != bool(object_id):
         raise ValidationError("Provide model_label and object_id together")
     if model_label:
         try:
             model = apps.get_model(model_label)
-            field = model._meta.get_field("files")
-            if (
+            field = model._meta.get_field(field_name or "files")
+            if field_name and not isinstance(field, BloomerpFileField):
+                raise TypeError("field must be a BloomerpFileField")
+            if not field_name and (
                 not isinstance(field, GenericRelation)
                 or field.related_model is not FileReference
             ):
@@ -53,13 +62,25 @@ def resolve_upload_target(
             FieldDoesNotExist,
         ) as error:
             raise ValidationError(
-                "Unknown model or model does not support files"
+                "Unknown model or unsupported file field; field must be a BloomerpFileField"
             ) from error
         try:
             obj = get_object_or_404(model, pk=object_id)
         except (ValueError, DjangoValidationError) as error:
             raise ValidationError("Invalid object_id") from error
-        require_object_files_access(request, obj, BloomerpPermission.ADD)
+        if field_name:
+            access = FileAccessManager(request.user)
+            if not all(
+                access.has_access_to_linked_object(
+                    obj, permission, field_name=field_name
+                )
+                for permission in (BloomerpPermission.VIEW, BloomerpPermission.CHANGE)
+            ):
+                raise PermissionDenied(
+                    "Permission to view and change this file field is required"
+                )
+        else:
+            require_object_files_access(request, obj, BloomerpPermission.ADD)
         return obj
     manager = UserPolicyManager(request.user)
     if not all(
@@ -76,11 +97,14 @@ def upload_assistant_file(
     *,
     model_label: str | None = None,
     object_id: str | None = None,
+    field: str | None = None,
 ) -> FileNode:
     """Save uploaded bytes and an optional reference atomically, cleaning failed writes."""
     target = resolve_upload_target(
-        request, model_label=model_label, object_id=object_id
+        request, model_label=model_label, object_id=object_id, field_name=field
     )
+    if field is not None and target is not None:
+        return upload_to_file_field(request, target, field, upload)
     record = FileNode(
         content=upload,
         kind="FILE",
@@ -105,6 +129,60 @@ def upload_assistant_file(
     return record
 
 
+def upload_to_file_field(
+    request: HttpRequest, target: Model, field_name: str, upload: UploadedFile
+) -> FileNode:
+    """Append a validated field reference atomically, cleaning bytes on failed writes."""
+    record = FileNode(
+        content=upload,
+        kind="FILE",
+        name=upload.name,
+        created_by=request.user,
+        updated_by=request.user,
+    )
+    try:
+        with transaction.atomic():
+            target = get_object_or_404(
+                type(target)._base_manager.select_for_update(), pk=target.pk
+            )
+            access = FileAccessManager(request.user)
+            if not all(
+                access.has_access_to_linked_object(
+                    target, permission, field_name=field_name
+                )
+                for permission in (BloomerpPermission.VIEW, BloomerpPermission.CHANGE)
+            ):
+                raise PermissionDenied(
+                    "Permission to view and change this file field is required"
+                )
+            field = target._meta.get_field(field_name)
+            retained = [str(file.pk) for file in getattr(target, field_name)]
+            if not field.multiple and retained:
+                raise ValidationError(
+                    {"field": "This single-file field already has a file"}
+                )
+            form_field = field.formfield()
+            form_field.bind_parent(target)
+            try:
+                form_field.clean({"retained": retained, "uploads": [upload]})
+            except DjangoValidationError as error:
+                raise ValidationError({"field": error.messages}) from error
+            application_field = field.get_application_field(target)
+            record.save()
+            FileReference.objects.create(
+                file=record,
+                content_object=target,
+                application_field=application_field,
+                created_by=request.user,
+                updated_by=request.user,
+            )
+    except Exception:
+        if record.content and record.content._committed:
+            record.content.delete(save=False)
+        raise
+    return record
+
+
 def describe_uploaded_file(file: FileNode) -> dict[str, Any]:
     """Describe a newly uploaded node and the optional reference created with it."""
     reference = file.references.select_related("content_type").first()
@@ -115,12 +193,20 @@ def describe_uploaded_file(file: FileNode) -> dict[str, Any]:
             reference.content_type.model_class()._meta.label if reference else None
         ),
         "object_id": reference.object_id if reference else None,
+        "field": reference.application_field.field
+        if reference and reference.application_field
+        else None,
     }
 
 
 @transaction.atomic
 def link_assistant_file(
-    request: HttpRequest, file_id: UUID, *, model_label: str, object_id: str
+    request: HttpRequest,
+    file_id: UUID,
+    *,
+    model_label: str,
+    object_id: str,
+    field: str | None = None,
 ) -> FileNode:
     """Add an idempotent object reference without moving bytes or existing references."""
     file = get_object_or_404(
@@ -129,15 +215,59 @@ def link_assistant_file(
     if not FileAccessManager(request.user).can_read_file_node(file):
         raise PermissionDenied("File unavailable")
     target = resolve_upload_target(
-        request, model_label=model_label, object_id=object_id
+        request, model_label=model_label, object_id=object_id, field_name=field
     )
     if target is None:
         raise ValidationError("Provide an object destination")
+    application_field = None
+    if field is not None:
+        target = get_object_or_404(
+            type(target)._base_manager.select_for_update(), pk=target.pk
+        )
+        access = FileAccessManager(request.user)
+        if not all(
+            access.has_access_to_linked_object(target, permission, field_name=field)
+            for permission in (BloomerpPermission.VIEW, BloomerpPermission.CHANGE)
+        ):
+            raise PermissionDenied(
+                "Permission to view and change this file field is required"
+            )
+        if not access.can_read_file_node(file):
+            raise PermissionDenied("File unavailable")
+        model_field = target._meta.get_field(field)
+        application_field = model_field.get_application_field(target)
+        retained = [str(item.pk) for item in getattr(target, field)]
+        # An existing exact reference is a no-op, including at the field's limit.
+        if str(file.pk) not in retained:
+            if not model_field.multiple and retained:
+                raise ValidationError(
+                    {"field": "This single-file field already has a file"}
+                )
+            form_field = model_field.formfield()
+            form_field.bind_parent(target)
+            try:
+                # Use storage's actual size, not potentially stale FileNode metadata.
+                # Validation only inspects name/size: no bytes are copied or persisted.
+                try:
+                    size = file.content.size
+                except (OSError, ValueError) as error:
+                    raise ValidationError(
+                        {"file_id": "File content is unavailable"}
+                    ) from error
+                try:
+                    candidate = UploadedFile(name=file.name, size=size)
+                except SuspiciousFileOperation as error:
+                    raise ValidationError(
+                        {"file_id": "File name is invalid"}
+                    ) from error
+                form_field.clean({"retained": retained, "uploads": [candidate]})
+            except DjangoValidationError as error:
+                raise ValidationError({"field": error.messages}) from error
     reference, _ = FileReference.objects.get_or_create(
         file=file,
         content_type=ContentType.objects.get_for_model(target),
         object_id=str(target.pk),
-        application_field=None,
+        application_field=application_field,
         occurrence_id=None,
         defaults={"created_by": request.user, "updated_by": request.user},
     )
@@ -153,4 +283,7 @@ def describe_file_placement(file: FileNode) -> dict[str, Any]:
         "name": file.name,
         "model_label": reference.content_type.model_class()._meta.label,
         "object_id": reference.object_id,
+        "field": reference.application_field.field
+        if reference.application_field
+        else None,
     }

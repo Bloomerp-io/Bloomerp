@@ -150,6 +150,8 @@ def generate_pdf(
         page_margin (int): The margin of the page in inches.
         is_landscape (bool): Whether the page should be in landscape mode.
         header_url (str): The URL to the header image.
+        header_height (float): Maximum header image height in inches; wide images
+            are proportionally reduced to fit between the header side margins.
         header_margin_top (int): The top margin of the header in inches.
         header_margin_bottom (int): The bottom margin of the header in inches.
         header_margin_left (int): The left margin of the header in inches.
@@ -173,23 +175,35 @@ def generate_pdf(
     footer_text = footer or ""
     orientation = "landscape" if is_landscape else "portrait"
 
+    # Physical page dimensions in inches, matching the named CSS page sizes.
+    page_dimensions = {
+        "A4": (210 / 25.4, 297 / 25.4),
+        "A3": (297 / 25.4, 420 / 25.4),
+        "letter": (8.5, 11.0),
+    }
+    page_width = page_dimensions[page_size][1 if is_landscape else 0]
+
     # Get header image from URL
     if header_url:
         header_path = _as_weasyprint_url(header_url, '')
 
         # Get the image dimensions
         header_image_path = _resolve_image_path_for_dimensions(header_url)
-        header_image = Image.open(header_image_path)
-        w, h = header_image.size
+        with Image.open(header_image_path) as header_image:
+            w, h = header_image.size
 
         # Calculate the aspect ratio for the header image
         aspect_ratio = w / h
 
-        # Calculate width based on aspect ratio
-        header_width = header_height * aspect_ratio
-
-        # Create the header content
-        header_content = f'<img src="{header_path}" width="{header_width}in" height="{header_height}in"/>'
+        # Fit proportionally inside the header margins; HTML dimension attributes
+        # do not accept inches and otherwise leave the image at its intrinsic size.
+        available_header_width = max(0, page_width - header_margin_left - header_margin_right)
+        header_width = min(header_height * aspect_ratio, available_header_width)
+        header_height = header_width / aspect_ratio
+        header_content = (
+            f'<img src="{html.escape(header_path, quote=True)}" '
+            f'style="display: block; width: {header_width}in; height: {header_height}in;"/>'
+        )
     else:
         header_content = ""
         header_height = 0
@@ -206,10 +220,14 @@ def generate_pdf(
     page_margin_css = f"{page_margin_top}in {page_margin}in {page_margin}in {page_margin}in"
     header_page_css = ""
     if header_content:
-        header_page_css = """
-            @top-left {
+        header_page_css = f"""
+            @top-left {{
                 content: element(headerContent);
-            }
+                vertical-align: top;
+                padding-top: {header_margin_top}in;
+                margin-left: {header_margin_left - page_margin}in;
+                width: {available_header_width}in;
+            }}
         """
 
     footer_content_css = ""

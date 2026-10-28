@@ -1,5 +1,6 @@
 """Exercise read-only object previews using the selected, permission-filtered layout."""
 from dataclasses import replace
+from functools import partial
 from unittest.mock import patch
 
 from bs4 import BeautifulSoup
@@ -103,6 +104,19 @@ class TestObjectPreviewComponent(BloomerpComponentTestCase):
                 view_kwargs=route, prepare=self._unsafe_url_value, cleanup=self._restore_field_renderer,
                 expected=ExpectedResult(response_validators=self._unsafe_link),
             ),
+            *[
+                RequestScenario(
+                    name=f"{field_type} advanced preview {mode}", user=self.admin_user,
+                    view_kwargs=route,
+                    prepare=partial(self._advanced_preview, field_type_id=field_type, mode=mode),
+                    cleanup=self._restore_field_renderer,
+                    expected=ExpectedResult(response_validators=partial(
+                        self._advanced_preview_result, mode=mode,
+                    )),
+                )
+                for field_type in ("TextField", "EmailField", "URLField", "FileField")
+                for mode in ("styled", "empty", "invalid", "runtime_failure")
+            ],
             RequestScenario(
                 name="One broken field preserves the other values and layout", user=self.admin_user,
                 view_kwargs=route, prepare=self._break_field_renderer,
@@ -285,4 +299,56 @@ class TestObjectPreviewComponent(BloomerpComponentTestCase):
         self.assertIsNone(failed.select_one("[data-preview-copy]"))
         self.assertEqual(len(soup.select("[data-preview-copy]")), 3)
         self.assertNotIn("Preview is not available for this object type.", soup.get_text())
+        return True
+
+    def _advanced_preview(
+        self, scenario: RequestScenario, *, field_type_id: str, mode: str,
+    ) -> None:
+        """Configure each legacy HTML type with trusted markup or a failing override."""
+        original_get_field_type = ApplicationField.get_field_type
+
+        def legacy_renderer(field: ApplicationField, instance: Model) -> str:
+            """Return unsafe legacy markup that must be sanitized after fallback."""
+            return '<p onclick="alert(1)">Legacy fallback</p><script>alert(1)</script>'
+
+        def get_field_type(field: ApplicationField) -> FieldTypeDefinition:
+            """Exercise all legacy HTML sanitization branches on one preview field."""
+            if field.pk == self.fields["description"].pk:
+                return replace(
+                    FIELD_TYPE_REGISTRY.from_id(field_type_id), render_value=legacy_renderer,
+                )
+            return original_get_field_type(field)
+
+        self.renderer_patch = patch.object(ApplicationField, "get_field_type", get_field_type)
+        self.renderer_patch.start()
+        self.customer.description = '<img src=x onerror="alert(1)">'
+        self.customer.save(update_fields=["description"])
+        templates = {
+            "styled": '<span class="text-red-600">{{ value }}</span>',
+            "empty": '{% if False %}hidden{% endif %}',
+            "invalid": '{% if value %}',
+            "runtime_failure": '{% include "missing-advanced-preview-template.html" %}',
+        }
+        # Simulate legacy invalid storage without bypassing validation in normal saves.
+        ApplicationField.objects.filter(pk=self.fields["description"].pk).update(
+            advanced_rendering=templates[mode],
+        )
+
+    def _advanced_preview_result(self, response: HttpResponse, *, mode: str) -> bool:
+        """Keep trusted template styling, escape values, and sanitize only fallbacks."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        value = soup.select_one(
+            f'[data-preview-field="{self.fields["description"].pk}"] [data-preview-value]',
+        )
+        self.assertIsNotNone(value)
+        self.assertFalse(value.select("script, img, [onclick], [onerror]"))
+        if mode == "styled":
+            styled = value.select_one("span.text-red-600")
+            self.assertIsNotNone(styled)
+            self.assertEqual(styled.get_text(), self.customer.description)
+        elif mode == "empty":
+            self.assertEqual(value.get_text(), "")
+        else:
+            self.assertEqual(value.get_text(), "Legacy fallback")
+            self.assertIsNotNone(value.select_one("p"))
         return True

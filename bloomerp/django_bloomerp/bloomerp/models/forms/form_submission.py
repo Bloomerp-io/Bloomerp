@@ -1,11 +1,21 @@
 from django.db import models
 from django.http import HttpRequest, HttpResponse
+from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_noop
 
-from bloomerp.models.definition import FieldLayout, LayoutItem, LayoutRow
+from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models import BloomerpModel
-from bloomerp.models.definition import BloomerpModelConfig, DetailViewSettings, ObjectAction
-from django.utils.translation import gettext_lazy as _, gettext_noop
+from bloomerp.models.definition import (
+    BloomerpModelConfig,
+    DetailViewSettings,
+    FieldLayout,
+    LayoutItem,
+    LayoutRow,
+    ModelViewSettings,
+    ObjectAction,
+)
 from bloomerp.utils.requests import render_message
+
 
 def execute_persist(request:HttpRequest, obj:"FormSubmission") -> HttpResponse:
     from bloomerp.services.form_services import FormManager
@@ -33,6 +43,16 @@ class FormSubmission(BloomerpModel):
         verbose_name_plural = _("Form Submissions")
 
     bloomerp_config = BloomerpModelConfig(
+        model_view_settings=ModelViewSettings(
+            default_dataviews=[
+                TableDataView(
+                    name=gettext_noop("Form submissions"),
+                    display_fields=["form", "persisted", "datetime_created"],
+                    sort_field="datetime_created",
+                    sort_direction="desc",
+                )
+            ]
+        ),
         detail_view_settings=DetailViewSettings(
             layouts=[FieldLayout(
                 rows=[

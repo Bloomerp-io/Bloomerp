@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
@@ -14,16 +14,32 @@ from django.urls import reverse
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_http_methods
 
+from bloomerp.communication.builtins.emails.base_adapter import (
+    EmailSendResult,
+    EmailSendUnconfirmed,
+)
 from bloomerp.communication.builtins.emails.registry import EMAIL_PROVIDER_REGISTRY
+from bloomerp.communication.builtins.emails.sending import (
+    UNCONFIRMED_SEND_MESSAGE,
+    store_outbound_email,
+)
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.router import router
 from bloomerp.services.email_composer_requests import (
-    _get_attachments, _get_form_data, _join_recipients, _resolve_account,
-    _resolve_draft, _validate_form_data, resolve_inbox_folder,
+    _get_attachments,
+    _get_form_data,
+    _join_recipients,
+    _resolve_account,
+    _resolve_draft,
+    _validate_form_data,
+    resolve_inbox_folder,
 )
 from bloomerp.services.email_composer_services import (
-    accessible_email_accounts, email_fields_for_object, render_email_body,
-    resolve_email_object, resolve_email_templates,
+    accessible_email_accounts,
+    email_fields_for_object,
+    render_email_body,
+    resolve_email_object,
+    resolve_email_templates,
 )
 from bloomerp.utils.requests import render_message
 
@@ -72,25 +88,53 @@ def _send_new_email(
         raise ValidationError(errors)
     templates = resolve_email_templates(request.user, obj, request.POST)
     draft = _resolve_draft(request)
+    if draft is not None and draft.pending_send:
+        return _unconfirmed_response(request)
     body = render_email_body(request.user, obj, templates, request.POST)
     provider = EMAIL_PROVIDER_REGISTRY.get(email_account.provider)
     if provider is None:
         raise ValidationError(_("This email account has an unsupported provider."))
     adapter = provider.adapter_class(email_account)
     try:
-        adapter.send_email(
+        result = adapter.send_email(
             to=form_data["to"], cc=form_data["cc"], bcc=form_data["bcc"],
             subject=form_data["subject"], body_html=body, attachments=_get_attachments(request),
         )
+    except EmailSendUnconfirmed as exc:
+        store_outbound_email(
+            account=email_account, result=exc.result, form_data=form_data,
+            body_html=body, pending=True,
+        )
+        if draft is not None:
+            draft.pending_send = {
+                **exc.result.model_dump(mode="json"),
+                "email_account_id": str(email_account.pk),
+            }
+            draft.email_account = email_account
+            draft.save(update_fields=["pending_send", "email_account"])
+        return _unconfirmed_response(request)
     finally:
         close = getattr(adapter, "close", None)
         if callable(close):
             close()
+    if isinstance(result, EmailSendResult):
+        store_outbound_email(account=email_account, result=result, form_data=form_data, body_html=body)
     if draft is not None:
         draft.delete()
+    message = _("Email accepted for sending.") if isinstance(result, EmailSendResult) else _("Email sent successfully.")
     if "application/json" in request.headers.get("Accept", ""):
-        return JsonResponse({"message": _("Email sent successfully.")})
-    return render_message(request, _("Email sent successfully."), "success")
+        response_data = {"message": message}
+        if isinstance(result, EmailSendResult):
+            response_data["status"] = "accepted"
+        return JsonResponse(response_data)
+    return render_message(request, message, "success")
+
+
+def _unconfirmed_response(request: HttpRequest) -> HttpResponse:
+    """Stop duplicate submission while clearly distinguishing uncertain delivery."""
+    if "application/json" in request.headers.get("Accept", ""):
+        return JsonResponse({"message": str(UNCONFIRMED_SEND_MESSAGE), "status": "unconfirmed"}, status=202)
+    return render_message(request, str(UNCONFIRMED_SEND_MESSAGE), "warning")
 
 
 def _render_email_composer(

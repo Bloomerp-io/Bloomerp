@@ -4,14 +4,13 @@ from uuid import uuid4
 
 from django.apps import apps
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 from django.utils import timezone
 from django_celery_beat.models import PeriodicTask
 
 from bloomerp.celery.tasks.inbox_source_task import execute_inbox_source_task
 from bloomerp.communication.builtins.emails.actions import query_emails, render_email
 from bloomerp.communication.builtins.emails.base_adapter import BloomerpEmail
-from bloomerp.communication.registry import INBOX_FOLDER_REGISTRY
 from bloomerp.communication.inbox_sources import (
     InboxEventSource,
     InboxJobSource,
@@ -21,6 +20,7 @@ from bloomerp.communication.inbox_sources import (
     publish_event,
     synchronize_job_schedules,
 )
+from bloomerp.communication.registry import INBOX_FOLDER_REGISTRY
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.models.communication.inbox.inbox import Inbox
 from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
@@ -269,9 +269,9 @@ class EmailInboxSourceTests(TestCase):
     )
     def test_same_message_in_multiple_mailboxes_has_one_inbox_item(
         self,
-        resolve_adapter,
-        send_user_inbox_message,
-    ):
+        resolve_adapter: MagicMock,
+        send_user_inbox_message: MagicMock,
+    ) -> None:
         """
         Use case: IMAP exposes one Message-ID under INBOX and All Mail UIDs.
         Expected result: One inbox item retains both retrieval locations.
@@ -346,7 +346,9 @@ class EmailInboxSourceTests(TestCase):
             resolve_render_adapter.return_value.fetch_email_content.return_value = (
                 "rendered email"
             )
-            self.assertIn("rendered email", render_email(item, None))
+            request = RequestFactory().get("/")
+            request.user = self.user
+            self.assertIn("rendered email", render_email(item, request))
             resolve_render_adapter.return_value.fetch_email_content.assert_called_once_with(
                 email_id="2587",
                 mailbox="INBOX",

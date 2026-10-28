@@ -1,18 +1,40 @@
-from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, Permission
 from django.contrib.contenttypes.models import ContentType
+from django.db import models
 from django.db.models import Q, QuerySet
-from django.contrib.auth.models import Permission
-from django.utils.translation import gettext_lazy as _, gettext_noop
-from bloomerp.models import BloomerpModel
+from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_noop
 
-from bloomerp.models.definition import BloomerpModelConfig, DetailViewSettings, FieldLayout, LayoutItem, LayoutRow
+from bloomerp.dataviews.table.config import TableDataView
+from bloomerp.models import BloomerpModel
+from bloomerp.models.definition import (
+    BloomerpModelConfig,
+    DetailViewSettings,
+    FieldLayout,
+    LayoutItem,
+    LayoutRow,
+    ModelViewSettings,
+)
 from bloomerp.models.mixins.absolute_url_model_mixin import AbsoluteUrlModelMixin
 from bloomerp.models.mixins.avatar_model_mixin import AvatarModelMixin
 
-
-
 USER_CONFIG = BloomerpModelConfig(
+    model_view_settings=ModelViewSettings(
+        default_dataviews=[
+            TableDataView(
+                name=gettext_noop("Users"),
+                display_fields=[
+                    "username",
+                    "first_name",
+                    "last_name",
+                    "email",
+                    "is_active",
+                    "is_staff",
+                ],
+                sort_field="username",
+            )
+        ]
+    ),
     module="users",
     icon="fa fa-user",
     detail_view_settings=DetailViewSettings(

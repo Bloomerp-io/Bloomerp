@@ -1,21 +1,29 @@
-from django.db import models
-from django.utils.translation import gettext_lazy as _, gettext_noop
-from django.contrib.auth.models import Group, Permission
-from django.contrib.auth import get_user_model
 from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group, Permission
+from django.contrib.contenttypes.models import ContentType
+from django.db import models
+from django.db.models import QuerySet
+from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_noop
 
+from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models.access_control import RowPolicy
 from bloomerp.models.access_control.field_policy import FieldPolicy
-from bloomerp.models.definition import FieldLayout, LayoutItem, LayoutRow
-from bloomerp.models.definition import BloomerpModelConfig, DetailViewSettings
-from bloomerp.models.mixins import TimestampModelMixin
-from django.contrib.contenttypes.models import ContentType
-from django.db.models import QuerySet
+from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.definition import (
+    BloomerpModelConfig,
+    DetailViewSettings,
+    FieldLayout,
+    LayoutItem,
+    LayoutRow,
+    ModelViewSettings,
+)
+from bloomerp.models.mixins import TimestampModelMixin, absolute_url_model_mixin
 from bloomerp.models.mixins.user_stamp_model_mixin import UserStampModelMixin
 from bloomerp.models.users.user import AbstractBloomerpUser
-from bloomerp.models.mixins import absolute_url_model_mixin
-from bloomerp.models.application_field import ApplicationField
 from bloomerp.permissions.definition import AccessRule, RowPolicyRuleContent
+
 
 class Policy(
     TimestampModelMixin,
@@ -31,6 +39,15 @@ class Policy(
         verbose_name_plural = _("Access Control Policies")
     
     bloomerp_config = BloomerpModelConfig(
+        model_view_settings=ModelViewSettings(
+            default_dataviews=[
+                TableDataView(
+                    name=gettext_noop("Access control policies"),
+                    display_fields=["name", "row_policy", "field_policy", "datetime_updated"],
+                    sort_field="name",
+                )
+            ]
+        ),
         detail_view_settings=DetailViewSettings(
             layouts=[FieldLayout(
                 rows=[

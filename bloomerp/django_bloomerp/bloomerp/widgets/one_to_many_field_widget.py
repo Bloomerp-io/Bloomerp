@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import FieldDoesNotExist
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.db.models import Model
@@ -47,14 +48,50 @@ class OneToManyFieldWidget(widgets.Widget):
             return DEFAULT_PAGE_SIZE
         return min(MAX_PAGE_SIZE, max(1, page_size))
 
-    def _get_related_objects(self, value):
+    def _get_related_objects(self, value: Any) -> list[Any]:
+        """Apply default ordering to persisted rows, preserving submitted row order."""
         if value is None:
             return []
-        if hasattr(value, 'all'):
-            return list(value.all())
-        if isinstance(value, (list, tuple, set)):
-            return list(value)
-        return [value]
+        if hasattr(value, "all"):
+            rows = list(value.all())
+        elif isinstance(value, (list, tuple, set)):
+            rows = list(value)
+        else:
+            rows = [value]
+        ordering = self.layout_config.get("ordering") or []
+        if not self.related_model or any(not isinstance(row, models.Model) for row in rows):
+            return rows
+        if not isinstance(ordering, list):
+            return rows
+        columns = []
+        for pair in ordering:
+            if not isinstance(pair, (list, tuple)) or len(pair) != 2:
+                continue
+            field_name, direction = pair
+            if (
+                not isinstance(field_name, str)
+                or not isinstance(direction, str)
+                or direction not in {"ascending", "descending"}
+            ):
+                continue
+            try:
+                field = self.related_model._meta.get_field(field_name)
+            except FieldDoesNotExist:
+                continue
+            if getattr(field, "concrete", False):
+                columns.append(f"{'-' if direction == 'descending' else ''}{field.attname}")
+        if columns and rows:
+            ordered_ids = self.related_model._default_manager.filter(
+                pk__in=[row.pk for row in rows]
+            ).order_by(*columns, "pk").values_list("pk", flat=True)
+            positions = {pk: index for index, pk in enumerate(ordered_ids)}
+
+            def sort_key(row: models.Model) -> int:
+                """Apply database ordering without replacing or exposing the row objects."""
+                return positions.get(row.pk, len(positions))
+
+            rows.sort(key=sort_key)
+        return rows
 
     def get_columns(self):
         if not self.related_model:

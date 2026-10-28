@@ -1,5 +1,5 @@
-from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from datetime import date, datetime
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -30,6 +30,7 @@ class BloomerpEmail(BaseModel):
     """
     provider: str
     provider_message_id: str
+    provider_message_id_scope: Literal["mailbox", "account"] = "mailbox"
     email_account_id: str
     mailbox: str = "INBOX"
     subject: str = ""
@@ -42,6 +43,7 @@ class BloomerpEmail(BaseModel):
     in_reply_to: str | None = None
     references: list[str] = Field(default_factory=list)
     is_read: bool = False
+    is_draft: bool = False
     flags: list[str] = Field(default_factory=list)
     snippet: str = ""
     raw: dict[str, Any] = Field(default_factory=dict)
@@ -49,17 +51,20 @@ class BloomerpEmail(BaseModel):
     calendar_parts: list[CalendarEmailPart] = Field(default_factory=list)
 
     def retrieval_metadata(self) -> dict[str, Any]:
+        """Serialize provider references needed to retrieve and reconcile this email."""
         return self.model_dump(
             mode="json",
             include={
                 "provider",
                 "provider_message_id",
+                "provider_message_id_scope",
                 "email_account_id",
                 "mailbox",
                 "message_id",
                 "in_reply_to",
                 "references",
                 "reply_to",
+                "is_draft",
                 "date",
                 "to",
                 "cc",
@@ -69,6 +74,16 @@ class BloomerpEmail(BaseModel):
             },
             exclude_none=True,
         )
+
+
+class EmailSyncBatch(BaseModel):
+    """One durable mailbox page; cursors become valid only after local persistence."""
+
+    messages: list[BloomerpEmail] = Field(default_factory=list)
+    deleted_message_ids: list[str] = Field(default_factory=list)
+    cursor: dict[str, Any] | None = None
+    has_more: bool = False
+    reset: bool = False
 
 
 class EmailAttachment(BaseModel):
@@ -81,11 +96,30 @@ class EmailAttachment(BaseModel):
     calendar_method: str = ""
 
 
+class EmailSendResult(BaseModel):
+    """Correlate provider acceptance and message identity, without claiming recipient delivery."""
+
+    provider_message_id: str
+    message_id: str | None = None
+    mailbox: str = "Sent"
+    provider_message_id_scope: Literal["mailbox", "account"] = "account"
+
+
+class EmailSendUnconfirmed(Exception):
+    """Expose a provider reference when a send may have succeeded without confirmation."""
+
+    def __init__(self, result: EmailSendResult) -> None:
+        """Keep the pending message reference so callers can reconcile before retrying."""
+        self.result = result
+        super().__init__("Email send outcome is uncertain; synchronize Sent mail before retrying.")
+
+
 class BaseEmailAdapter:
     """
     Base class for email synchronization adapters.
     """
-    def __init__(self, email_account:"EmailAccount"):
+    def __init__(self, email_account: "EmailAccount") -> None:
+        """Bind provider operations to one configured email account."""
         self.email_account = email_account
     
     
@@ -93,14 +127,14 @@ class BaseEmailAdapter:
         """Verify incoming and outgoing connections and return available mailboxes."""
         raise NotImplementedError("Subclasses must implement account connection validation.")
 
-    def mark_as_read(self, email_id: str, *, mailbox: str = "INBOX"):
+    def mark_as_read(self, email_id: str, *, mailbox: str = "INBOX") -> None:
         """
         Mark an email as read in the external service.
         This method should be implemented by subclasses.
         """
         raise NotImplementedError("Subclasses must implement this method.")
     
-    def delete_email(self, email_id: str, *, mailbox: str = "INBOX"):
+    def delete_email(self, email_id: str, *, mailbox: str = "INBOX") -> None:
         """
         Delete an email from the external service.
         This method should be implemented by subclasses.
@@ -120,7 +154,7 @@ class BaseEmailAdapter:
         reply_to: str | None = None,
         in_reply_to: str | None = None,
         references: list[str] | None = None,
-    ) -> str:
+    ) -> str | EmailSendResult:
         """
         Send an email using the external service.
         This method should be implemented by subclasses.
@@ -174,6 +208,25 @@ class BaseEmailAdapter:
         """
         raise NotImplementedError("Subclasses must implement this method.")
 
+
+    def sync_batch(
+        self,
+        *,
+        mailbox: str = "INBOX",
+        cursor: dict[str, Any] | None = None,
+        limit: int = 50,
+        from_date: date | datetime | None = None,
+        to_date: date | datetime | None = None,
+    ) -> EmailSyncBatch:
+        """Wrap legacy synchronization without changing its saved mailbox cursor."""
+        return EmailSyncBatch(
+            messages=self.sync_emails(
+                from_date=from_date,
+                to_date=to_date,
+                limit=limit,
+                mailbox=mailbox,
+            ),
+        )
 
     def list_mailboxes(self) -> list[str]:
         """

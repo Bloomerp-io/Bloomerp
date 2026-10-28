@@ -1,6 +1,8 @@
+from functools import partial
 from importlib import import_module
 from unittest.mock import patch
 
+from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.db import connections, models
@@ -9,7 +11,11 @@ from django.db.migrations.state import ModelState, ProjectState
 from bloomerp.dataviews.kanban.config import KanbanDataView
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models.application_field import ApplicationField
-from bloomerp.models.definition import BloomerpModelConfig, ModelViewSettings
+from bloomerp.models.definition import (
+    BloomerpModelConfig,
+    ModelViewSettings,
+    get_model_config,
+)
 from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.models.files.file_node import FileNode
 from bloomerp.models.project_management.todo import Todo
@@ -66,7 +72,73 @@ class TestUserListViewPreferenceModel(BloomerpModelTestCase, BaseBloomerpTestCas
 
     def get_test_scenarios(self) -> list[ModelScenario[UserListViewPreference]]:
         """Cover default views and ownership rules using live application models."""
+        builtin_columns = {
+            "User": ("username", "first_name", "last_name", "email", "is_active", "is_staff"),
+            "Policy": ("name", "row_policy", "field_policy", "datetime_updated"),
+            "ApiKey": (
+                "name",
+                "account",
+                "is_usable",
+                "last_used_at",
+                "expires_at",
+                "revoked_at",
+            ),
+            "Form": (
+                "name",
+                "content_type",
+                "requires_review",
+                "requires_authentication",
+                "opens_at",
+                "closes_at",
+            ),
+            "FormSubmission": ("form", "persisted", "datetime_created"),
+            "EmailAccount": (
+                "name",
+                "email_address",
+                "provider",
+                "status",
+                "sync_enabled",
+                "next_sync_at",
+            ),
+            "AIAgent": ("name", "provider", "model_identifier", "enabled"),
+            "Workflow": (
+                "name",
+                "active",
+                "run_asynchronously",
+                "enable_logging",
+                "datetime_updated",
+            ),
+            "WorkflowRun": ("workflow", "status", "started_at", "finished_at"),
+            "DocumentTemplateStyling": ("name", "datetime_updated"),
+            "SqlQuery": ("name", "datetime_updated"),
+            "AIAgentAccess": ("name", "model", "all_staff_users", "all_authenticated_users"),
+            "MCPIntegration": ("name", "enabled", "connection_mode", "authentication_type"),
+            "CalendarBooking": (
+                "title",
+                "organizing_inbox",
+                "meeting_duration_minutes",
+                "timezone",
+                "active",
+            ),
+            "CalendarBookingSubmission": ("name", "email", "calendar_booking", "submitted_at"),
+            "CalendarEventParticipant": (
+                "display_name",
+                "email",
+                "user",
+                "event",
+                "response_status",
+                "responded_at",
+            ),
+        }
         return [
+            *[
+                ModelScenario(
+                    name=f"{model_name} materializes safe summary columns and preserves customization",
+                    create_operation=partial(self.get_builtin_preference, model_name),
+                    create_validators=partial(self.builtin_defaults_are_materialized, columns),
+                )
+                for model_name, columns in builtin_columns.items()
+            ],
             *default_filter_scenarios(self, lambda: {
                 'user': self.owner, 'content_type': self.content_type, 'name': 'List',
             }),
@@ -132,6 +204,50 @@ class TestUserListViewPreferenceModel(BloomerpModelTestCase, BaseBloomerpTestCas
                 ],
             ),
         ]
+
+    def get_builtin_preference(self, model_name: str) -> UserListViewPreference:
+        """Open a built-in model list through the normal preference manager."""
+        content_type = ContentType.objects.get_for_model(
+            apps.get_model("bloomerp", model_name)
+        )
+        selected = PreferenceManager(self.admin_user).get_or_create_selected(
+            UserListViewPreference, {"content_type_id": content_type.pk}
+        )
+        self.assertIsInstance(selected, UserListViewPreference)
+        return selected
+
+    def builtin_defaults_are_materialized(
+        self, columns: tuple[str, ...], selected: UserListViewPreference
+    ) -> bool:
+        """Resolve explicit safe columns, then preserve a user's changed list on reopen."""
+        model = selected.content_type.model_class()
+        view = get_model_config(model).model_view_settings.default_dataviews[0]
+        expected_ids = [ApplicationField.get_by_field(model, name).pk for name in columns]
+        self.assertEqual(selected.display_fields["table"], expected_ids)
+        self.assertEqual(selected.name, view.name)
+        self.assertEqual(selected.view_type, "table")
+        self.assertTrue(selected.selected)
+        self.assertEqual(selected.options["table"]["sort_field"], view.sort_field)
+        self.assertEqual(selected.options["table"]["sort_direction"], view.sort_direction)
+        self.assertEqual(self.get_builtin_preference(model.__name__).pk, selected.pk)
+        selected.name = "My summary"
+        selected.view_mode = "drawer"
+        selected.display_fields = {"table": expected_ids[:1]}
+        selected.options = {"table": {"page_size": 50}}
+        selected.save()
+        reopened = self.get_builtin_preference(model.__name__)
+        self.assertEqual(reopened.pk, selected.pk)
+        self.assertEqual(reopened.name, "My summary")
+        self.assertEqual(reopened.view_mode, "drawer")
+        self.assertEqual(reopened.display_fields, {"table": expected_ids[:1]})
+        self.assertEqual(reopened.options, {"table": {"page_size": 50}})
+        self.assertEqual(
+            UserListViewPreference.objects.filter(
+                user=self.admin_user, content_type=selected.content_type
+            ).count(),
+            1,
+        )
+        return True
 
     def get_document_template_preference(self) -> UserListViewPreference:
         """Open the template list through its ordinary preference lifecycle."""
@@ -358,7 +474,9 @@ class TestUserListViewPreferenceModel(BloomerpModelTestCase, BaseBloomerpTestCas
         settings = ModelViewSettings(
             default_dataviews=[
                 TableDataView(name="Valid", display_fields=["first_name"]),
-                TableDataView(name="Invalid", is_default=False, display_fields=["does_not_exist"]),
+                TableDataView(
+                    name="Invalid", is_default=False, display_fields=["does_not_exist"]
+                ),
             ]
         )
         with patch.object(

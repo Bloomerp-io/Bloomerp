@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from django import forms
-from django.core.exceptions import ValidationError
+from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db import models
 from django.db.models import QuerySet
 from django.db.models.fields.reverse_related import ManyToManyRel
@@ -45,6 +45,7 @@ from bloomerp.field_types.utils.widget_factories import (
     widget,
 )
 from bloomerp.form_fields.files_relation_field import FilesRelationField
+from bloomerp.form_fields.mapping_field import MappingField
 from bloomerp.form_fields.one_to_many_field import OneToManyField
 from bloomerp.form_fields.ordered_multiple_choice_field import (
     OrderedMultipleChoiceField,
@@ -233,6 +234,41 @@ def inline_fields_option(application_field: "ApplicationField") -> forms.Field:
     return OrderedMultipleChoiceField(**get_related_model_field_choices(application_field))
 
 
+class InlineOrderingField(MappingField):
+    """Preserve mapping priority through JSON storage as an ordered list of pairs."""
+
+    def to_python(self, value: Any) -> list[list[str]]:
+        """Validate the mapping while retaining order independently of JSON object keys."""
+        return [[key, direction] for key, direction in super().to_python(value).items()]
+
+
+def inline_ordering_option(application_field: "ApplicationField") -> forms.Field:
+    """Offer viewable related columns without restricting saved ordering at render time."""
+    from bloomerp.middleware import current_request
+    from bloomerp.permissions.definition import BloomerpPermission
+    from bloomerp.permissions.manager import UserPolicyManager
+
+    related_model = application_field.get_related_model()
+    request = current_request()
+    choices = []
+    if related_model is not None:
+        fields = UserPolicyManager(getattr(request, "user", None)).get_accessible_fields(
+            related_model, permissions=BloomerpPermission.VIEW
+        )
+        for field in fields.order_by("field"):
+            try:
+                model_field = field._get_model_field()
+            except FieldDoesNotExist:
+                continue
+            if getattr(model_field, "concrete", False):
+                choices.append((field.field, field.title))
+    return InlineOrderingField(
+        left=choices,
+        right=[("ascending", "Ascending"), ("descending", "Descending")],
+        allow_adding_groups=True,
+    )
+
+
 def totals_option(application_field: "ApplicationField") -> forms.Field:
     """Create a toggle for inline numeric totals."""
     return forms.BooleanField()
@@ -254,6 +290,12 @@ def inline_display_options(
             label="Inline fields",
             form_factory=inline_fields_option,
             help_text="Choose which related fields appear as editable columns.",
+        ),
+        FieldDisplayOption(
+            id="ordering",
+            label="Default sort order",
+            form_factory=inline_ordering_option,
+            help_text="Sort by these columns in order; move rows to change priority.",
         ),
         FieldDisplayOption(
             id="show_totals",

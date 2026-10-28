@@ -1,5 +1,10 @@
 # Create a workspace
 
+For a type index or one tile's configuration schema, prefer
+`get_authoring_reference` with `kind="tile"`. Omit `type` for the compact index;
+pass the saved tile's `type` directly when editing it. The targeted schema retains
+its nested definitions and does not require loading every other tile schema.
+
 Understand what the user wants to see and do on the workspace. Use the live
 `tile_types` names and descriptions to choose suitable tiles. Ask only for
 missing user preferences, such as the workspace's name, module scope, or who

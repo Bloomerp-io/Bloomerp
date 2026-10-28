@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
     url_name="delete",
     description="Delete an object from {model}",
     route_type="detail",
-    exclude_models=[FileNode, Tile, SqlQuery, User],
+    exclude_models=[FileNode,],
 )
 class BloomerpDeleteView(BaseBloomerpDetailView):
     template_name = "views/generic/detail/delete.html"

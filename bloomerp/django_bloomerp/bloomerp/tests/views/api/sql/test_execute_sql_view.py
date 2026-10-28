@@ -16,8 +16,27 @@ class TestExecuteSqlView(BloomerpAPIViewTestCase):
     view_name = 'api_sql_execute'
 
     def get_test_scenarios(self) -> list[RequestScenario]:
+        """Cover valid SQL execution and rejection of incomplete requests."""
         table = self.CustomerModel._meta.db_table
         return [
+            *[
+                RequestScenario(
+                    name=f"SQL execution rejects {label} query",
+                    method="POST",
+                    user=self.admin_user,
+                    content_type="application/json",
+                    data=json.dumps(payload),
+                    expected=ExpectedResult(
+                        status_code=400,
+                        response_validators=self.key_in_json("query"),
+                    ),
+                )
+                for label, payload in (
+                    ("missing", {"page_size": 100}),
+                    ("empty", {"query": ""}),
+                    ("whitespace-only", {"query": " \n\t "}),
+                )
+            ],
             RequestScenario(
                 name="Permitted user can execute a paginated read-only query",
                 description=(

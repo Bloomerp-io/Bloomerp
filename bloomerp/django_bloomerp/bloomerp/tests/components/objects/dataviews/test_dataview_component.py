@@ -146,6 +146,28 @@ class TestDataviewComponent(BloomerpComponentTestCase):
 
         return set_fields
 
+    def set_advanced_rendering(
+        self, field_name: str, source: str,
+    ) -> Callable[[RequestScenario], None]:
+        """Configure one field override on the normal table request path."""
+        def prepare(scenario: RequestScenario) -> None:
+            """Select the field and install the requested template for this case."""
+            self.set_view_type(TableDataView(display_fields=[field_name]))(scenario)
+            ApplicationField.get_for_model(self.CustomerModel).filter(
+                field=field_name,
+            ).update(advanced_rendering=source)
+
+        return prepare
+
+    def prepare_escaped_advanced_rendering(self, scenario: RequestScenario) -> None:
+        """Render user-supplied text inside trusted field-template markup."""
+        self.CustomerModel.objects.filter(age=0).update(
+            first_name="<script>unsafe</script>",
+        )
+        self.set_advanced_rendering(
+            "first_name", '<strong class="custom-name">{{ value }}</strong>',
+        )(scenario)
+
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Exercise rendering, filtering, and permission-aware field choices."""
         for i in range(10):
@@ -192,6 +214,39 @@ class TestDataviewComponent(BloomerpComponentTestCase):
 
 
         request_scenarios += [
+            RequestScenario(
+                name="RENDERING: Application field overrides ordinary numeric rendering",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                prepare=self.set_advanced_rendering(
+                    "age", '<span class="custom-age">{% if value == 0 %}New{% else %}{{ value }}{% endif %}</span>',
+                ),
+                expected=ExpectedResult(response_validators=[
+                    self.contains_text('<span class="custom-age">New</span>'),
+                    self.contains_text('<span class="custom-age">9</span>'),
+                    self.contains_text('data-value="0"'),
+                ]),
+            ),
+            RequestScenario(
+                name="RENDERING: Custom markup retains Django autoescaping",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                prepare=self.prepare_escaped_advanced_rendering,
+                expected=ExpectedResult(response_validators=[
+                    self.contains_text('<strong class="custom-name">&lt;script&gt;unsafe&lt;/script&gt;</strong>'),
+                    self.does_not_contain_text('<script>unsafe</script>'),
+                ]),
+            ),
+            RequestScenario(
+                name="RENDERING: Invalid legacy template falls back to ordinary rendering",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                prepare=self.set_advanced_rendering("first_name", "{% if value %}"),
+                expected=ExpectedResult(response_validators=[
+                    self.contains_text("First Name 0"),
+                    self.contains_text("First Name 9"),
+                ]),
+            ),
             RequestScenario(
                 name="FILTERS: Hide applied filters without hiding the filter button or changing results",
                 user=self.admin_user,

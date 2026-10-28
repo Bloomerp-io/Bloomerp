@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from bloomerp.agents.mcp import LocalMcpClient, McpToolCoordinator
 from bloomerp.agents.runtime import (
+    AgentRuntimeModelRetryingEvent,
     AgentRuntimeToolProposal,
     AgentRuntimeToolStartedEvent,
 )
@@ -31,6 +32,11 @@ class TestAirunProgress(AgentModelFixtures, BloomerpModelTestCase):
         """Declare isolated successful, deferred and invalid progress lifecycles."""
         return self.with_agent_fixtures(
             [
+                ModelScenario(
+                    name="Model retry progress survives reconnect without ending the attempt",
+                    create_operation=self.retry_model,
+                    create_validators=self.retry_is_replayable,
+                ),
                 ModelScenario(
                     name="Tool start is committed and published before dispatch",
                     create_operation=self.execute_tool,
@@ -71,6 +77,33 @@ class TestAirunProgress(AgentModelFixtures, BloomerpModelTestCase):
                 ),
             ]
         )
+
+    def retry_model(self) -> AIRun:
+        """Persist a model-service wait under the current execution lease."""
+        run = self.make_run()
+        attempt = run.create_attempt(
+            execution_mode="inline", executor_id="retry-test",
+            lease_duration=timedelta(seconds=60),
+        )
+        run.apply_runtime_event(
+            AgentRuntimeModelRetryingEvent(
+                run_id=run.pk, attempt_id=attempt.pk, retry_number=1,
+                delay_seconds=2.5, error_code="provider_rate_limited",
+            ),
+            lease_token=attempt.lease_token,
+        )
+        return run
+
+    def retry_is_replayable(self, run: AIRun) -> bool:
+        """Expose the same bounded retry metadata live and in the restored progress snapshot."""
+        event = run.events.get(event_type="model.retrying")
+        snapshot = run.conversation.transcript_page()["run"]["progress"]
+        self.assertEqual(snapshot["event_type"], "model.retrying")
+        self.assertEqual(snapshot["payload"]["data"], event.public_payload()["payload"]["data"])
+        self.assertEqual(snapshot["payload"]["data"]["retry_number"], 1)
+        self.assertEqual(run.status, "running")
+        self.assertIsNone(run.finished_at)
+        return True
 
     def tool_definition(self, *, read_only: bool) -> dict[str, Any]:
         """Describe a fixture tool whose arguments must remain absent from progress."""

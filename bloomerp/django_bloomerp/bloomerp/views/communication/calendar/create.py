@@ -15,6 +15,7 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.views.generic.edit import FormView
 
+from bloomerp.communication.calendar.outgoing import CalendarSendUnconfirmed
 from bloomerp.communication.utils.permissions import accessible_inboxes
 from bloomerp.forms.communication.calendar_event import (
     CalendarEventCreateForm,
@@ -240,6 +241,8 @@ class CalendarEventMixin(LayoutFormMixin):
                     event_id=event.pk,
                     email_account_id=form.cleaned_data["sender"].pk,
                 )
+            except CalendarSendUnconfirmed as error:
+                notice = {"text": error.messages[0], "type": "warning"}
             except Exception:
                 logging.getLogger(__name__).exception(
                     "Calendar event saved but invitation delivery failed: %s", event.pk
@@ -251,10 +254,14 @@ class CalendarEventMixin(LayoutFormMixin):
                     "type": "warning",
                 }
         elif cancellations_pending:
-            from bloomerp.communication.calendar.outgoing import send_removed_calendar_cancellations
+            from bloomerp.communication.calendar.outgoing import (
+                send_removed_calendar_cancellations,
+            )
 
             try:
                 send_removed_calendar_cancellations(user=self.request.user, event_id=event.pk)
+            except CalendarSendUnconfirmed as error:
+                notice = {"text": error.messages[0], "type": "warning"}
             except Exception:
                 logging.getLogger(__name__).exception("Removed attendee cancellation failed: %s", event.pk)
                 notice = {
@@ -300,4 +307,3 @@ class CalendarEventMixin(LayoutFormMixin):
 )
 class CreateCalendarEventView(CalendarEventMixin, BaseBloomerpView, FormView):
     """Create events with the same modal completion event as generic dataview creation."""
-    pass

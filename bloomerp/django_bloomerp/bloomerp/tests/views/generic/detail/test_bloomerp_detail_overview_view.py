@@ -1,8 +1,12 @@
+import json
+from unittest.mock import patch
+
 from bs4 import BeautifulSoup
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
+from django.test import RequestFactory
 from django.urls import reverse
 
 from bloomerp.filters.definition import FilterCondition
@@ -59,6 +63,19 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         """Return the permission, layout, persistence, and activity scenarios."""
         customer_kwargs = {"pk": self.customer.pk}
         return [
+            ModelRequestScenario(
+                name="Initiative todos follow multiple default ordering levels",
+                model=Initiative,
+                user=self.admin_user,
+                prepare=self.configure_ordered_todos,
+                expected=ExpectedResult(response_validators=self.todos_follow_default_order),
+            ),
+            ModelRequestScenario(
+                name="Saving an existing manual mention does not duplicate its inbox item",
+                model=self.CustomerModel, method="POST", user=self.admin_user,
+                view_kwargs=customer_kwargs, prepare=self.prepare_existing_mention,
+                expected=ExpectedResult(status_code=302, response_validators=self.mention_not_duplicated),
+            ),
             ModelRequestScenario(
                 name="Split view opens the detail tab frame without page addendum",
                 model=self.CustomerModel,
@@ -524,6 +541,38 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         expected = f'{reverse("components_activity_log")}?content_type_id={self.content_type.pk}&object_id={self.customer.pk}'
         return self.sidebar_url(response) == expected
 
+    def configure_ordered_todos(self, scenario: ModelRequestScenario) -> None:
+        """Persist a two-level mapping and todos whose primary sort values tie."""
+        from bloomerp.field_types.builtins.relations import inline_ordering_option
+
+        initiative = Initiative.objects.create(name="Ordered work")
+        scenario.view_kwargs = {"pk": initiative.pk}
+        for title, effort in [("Alpha", 1), ("Beta", 2), ("Zulu", 1)]:
+            Todo.objects.create(initiative=initiative, title=title, effort=effort)
+        request = RequestFactory().get("/")
+        request.user = self.admin_user
+        with patch("bloomerp.middleware.current_request", return_value=request):
+            ordering = inline_ordering_option(
+                ApplicationField.get_by_field(Initiative, "todos")
+            ).clean([["effort", "ascending"], ["title", "descending"]])
+        UserObjectLayoutPreference.objects.create(
+            user=self.admin_user,
+            content_type=ContentType.objects.get_for_model(Initiative),
+            selected=True,
+            layout=FieldLayout(rows=[LayoutRow(columns=1, items=[LayoutItem(
+                id=ApplicationField.get_by_field(Initiative, "todos").pk,
+                config={"inline_fields": ["title"], "ordering": ordering},
+            )])]).model_dump(mode="json"),
+        )
+
+    def todos_follow_default_order(self, response: HttpResponse) -> bool:
+        """Check ascending effort then descending title, including a non-displayed key."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        titles = soup.select(
+            '[data-one-to-many-body] [data-one-to-many-cell="title"] input'
+        )
+        return [title.get("value") for title in titles] == ["Zulu", "Alpha", "Beta"]
+
     def target_todo(self, scenario):
         scenario.view_kwargs = {"pk": Todo.objects.create(title="No recursive action").pk}
 
@@ -983,3 +1032,36 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         """Verify a rejected forged upload preserves the existing avatar value."""
         self.customer.refresh_from_db()
         return self.customer.avatar.name == "avatars/existing-avatar.gif"
+
+
+    def prepare_existing_mention(self, scenario: ModelRequestScenario) -> None:
+        """Seed one notification, then submit the same mention through the detail view."""
+        from bloomerp.models.communication.inbox.inbox import Inbox
+        from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
+        from bloomerp.services.object_reference_services import (
+            Reference,
+            reconcile_references,
+        )
+
+        self.normal_user.is_staff = True
+        self.normal_user.save(update_fields=["is_staff"])
+        inbox = Inbox.objects.create(user=self.normal_user, name="Mentions", selected=True)
+        self.mention_folder = InboxFolder.objects.create(inbox=inbox, type="in_app_notifications")
+        transport = patch("bloomerp.communication.inbox_sources.send_user_inbox_message")
+        transport.start()
+        self.addCleanup(transport.stop)
+        request = RequestFactory().post("/")
+        request.user = self.admin_user
+        reconcile_references(self.customer, {}, [Reference("user", str(self.normal_user.pk))], request)
+        scenario.data = {
+            "first_name": "Allowed", "last_name": "Person", "age": 30,
+            "object_references": json.dumps({"fields": {}, "manual": [
+                {"kind": "user", "target_id": str(self.normal_user.pk)}
+            ]}),
+        }
+
+    def mention_not_duplicated(self, _response: HttpResponse) -> bool:
+        """Ensure the detail save retained exactly the original notification."""
+        from bloomerp.models.communication.inbox.inbox_item import InboxItem
+
+        return InboxItem.objects.filter(folder=self.mention_folder).count() == 1

@@ -1,10 +1,22 @@
-from django.db import models
 from django.core.exceptions import ValidationError
-from bloomerp.models import BloomerpModel
-from bloomerp.model_fields.code_field import CodeField
+from django.db import models
 from django.utils.translation import gettext_lazy as _
-from bloomerp.models.definition import ApiSettings, BloomerpModelConfig
+from django.utils.translation import gettext_noop
+
+from bloomerp.dataviews.table.config import TableDataView
+from bloomerp.model_fields.code_field import CodeField
+from bloomerp.models import BloomerpModel
+from bloomerp.models.definition import (
+    ApiSettings,
+    BloomerpModelConfig,
+    DetailViewSettings,
+    FieldLayout,
+    LayoutItem,
+    LayoutRow,
+    ModelViewSettings,
+)
 from bloomerp.utils.sql import SqlQueryExecutor
+
 
 class SqlQuery(BloomerpModel):
     """
@@ -21,6 +33,28 @@ class SqlQuery(BloomerpModel):
         ]
     
     bloomerp_config = BloomerpModelConfig(
+        model_view_settings=ModelViewSettings(
+            default_dataviews=[
+                TableDataView(
+                    name=gettext_noop("SQL queries"),
+                    display_fields=["name", "datetime_updated"],
+                    sort_field="name",
+                )
+            ]
+        ),
+        detail_view_settings=DetailViewSettings(
+            layouts=[
+                FieldLayout(
+                    rows=[
+                        LayoutRow(
+                            columns=1,
+                            title=gettext_noop("Query"),
+                            items=[LayoutItem(id="name"), LayoutItem(id="query")],
+                        )
+                    ]
+                )
+            ]
+        ),
         api_settings=ApiSettings(
             enable_auto_generation=True,
         )
