@@ -26,7 +26,8 @@
     "preview": "vite preview",
     "tailwindcss": "node ./node_modules/tailwindcss/lib/cli.js",
     "type-check": "tsc --noEmit",
-    "test:calling": "node --experimental-strip-types --test ts/components/communication/Calling.test.ts ts/communication/voip/calling.test.ts ts/communication/voip/telnyx.test.ts"
+    "test:calling": "node --experimental-strip-types --test ts/components/communication/Calling.test.ts ts/communication/voip/calling.test.ts ts/communication/voip/telnyx.test.ts",
+    "test:email-editor": "node --experimental-strip-types --test ts/components/inbox/EmailEditor.test.ts"
   },
   "keywords": [],
   "author": "",
