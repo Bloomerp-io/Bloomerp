@@ -3,6 +3,7 @@ import BaseComponent, { getComponent } from "./BaseComponent";
 import { BloomerpTextEditor } from "./text_editor/BloomerpTextEditor";
 import ForeignFieldWidget from "./widgets/ForeignFieldWidget";
 import getSdk from "@/sdk/getSdk";
+import type { DocumentTemplateHeader } from "@/sdk/sdk";
 import CodeEditorWidget from "./widgets/CodeEditorWidget";
 import getGeneralModal, { getModal } from "@/utils/modals";
 import { edit } from "ace-builds";
@@ -512,6 +513,10 @@ export class DocumentTemplateBuilder extends BaseComponent {
     private pageHeaderSection: HTMLDivElement;
     private currentPageSize: 'A4' | 'A3' | 'Letter' = 'A4';
     private currentPageOrientation: 'landscape' | 'portrait' = 'portrait';
+    private currentPageMargin: number = 1;
+    private headerRequestSequence: number = 0;
+    private currentHeader: DocumentTemplateHeader | null = null;
+    private headerImage: HTMLImageElement | null = null;
 
     private freeVariables: FreeVariable[] = [];
     private modelVariableEntries: VariablePickerEntry[] = [];
@@ -711,37 +716,65 @@ export class DocumentTemplateBuilder extends BaseComponent {
      * Renders the document template header
      */
     private applyPageHeader(headerId: string | null): void {
-        const sdk = getSdk();
-        const headerSection = this.pageHeaderSection
-        headerSection.innerHTML = ''
-        headerSection.style.padding = ''
-        headerSection.style.boxSizing = ''
+        const requestSequence = ++this.headerRequestSequence;
+        this.currentHeader = null;
+        this.headerImage = null;
+        this.pageHeaderSection.replaceChildren();
+        this.pageHeaderSection.style.padding = '';
+        this.applyHeaderLayout();
+        if (!headerId) { return }
 
-        if (headerId) {
-            sdk.documentTemplateHeaders.retrieve(headerId).then((header) => {
-                headerSection.style.paddingTop = `${header.margin_top}in`
-                headerSection.style.paddingRight = `${header.margin_right}in`
-                headerSection.style.paddingBottom = `${header.margin_bottom}in`
-                headerSection.style.paddingLeft = `${header.margin_left}in`
-                headerSection.style.boxSizing = 'border-box'
+        getSdk().documentTemplateHeaders.retrieve(headerId).then((header: DocumentTemplateHeader): void => {
+            if (requestSequence !== this.headerRequestSequence) { return }
+            const image = document.createElement('img');
+            image.alt = header.name;
+            image.onload = (): void => {
+                if (requestSequence !== this.headerRequestSequence || !image.naturalWidth || !image.naturalHeight) { return }
+                this.currentHeader = header;
+                this.headerImage = image;
+                this.pageHeaderSection.replaceChildren(image);
+                this.applyHeaderLayout();
+            };
+            // Failed images leave the ordinary page margin and no reserved header space.
+            image.onerror = (): void => {
+                image.onload = null;
+                image.onerror = null;
+            };
+            image.src = header.header;
+        }).catch((error: unknown): void => {
+            if (requestSequence === this.headerRequestSequence) {
+                console.error('Error loading document template header:', error);
+            }
+        });
+    }
 
-                const image = document.createElement('img')
-                image.src = header.header
-                image.alt = header.name
-                image.style.display = 'block'
-                image.style.width = '100%'
-                image.style.maxWidth = '100%'
-                image.style.minHeight = `${header.height}in`
-                image.style.objectFit = 'contain'
-                image.style.objectPosition = 'left top'
-
-                // Also change the page margin
-
-                headerSection.appendChild(image)
-                return
-            })
-
+    /** Fit the loaded header and reserve the same content offset as PDF rendering. */
+    private applyHeaderLayout(): void {
+        const header = this.currentHeader;
+        const image = this.headerImage;
+        let headerExtent = 0;
+        if (header && image) {
+            const dimensions = this.getPageDimensions();
+            const pageWidth = this.currentPageOrientation === 'landscape' ? dimensions[1] : dimensions[0];
+            const aspectRatio = image.naturalWidth / image.naturalHeight;
+            const availableWidth = Math.max(0, pageWidth - header.margin_left - header.margin_right);
+            const width = Math.min(header.height * aspectRatio, availableWidth);
+            const height = width / aspectRatio;
+            image.style.display = 'block';
+            image.style.width = `${width}in`;
+            image.style.height = `${height}in`;
+            this.pageHeaderSection.style.padding = `${header.margin_top}in ${header.margin_right}in ${header.margin_bottom}in ${header.margin_left}in`;
+            this.pageHeaderSection.style.boxSizing = 'border-box';
+            headerExtent = Number(header.margin_top) + height + Number(header.margin_bottom);
         }
+        this.pageContentSection.style.padding = `${this.currentPageMargin}in`;
+        this.pageContentSection.style.paddingTop = `${Math.max(0, this.currentPageMargin - headerExtent)}in`;
+    }
+
+    /** Invalidate outstanding header requests when this builder is discarded. */
+    public override destroy(): void {
+        this.headerRequestSequence++;
+        super.destroy();
     }
 
     /**
@@ -803,7 +836,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
     /**
      * Applies page orientation to the editor
      */
-    private applyPageOrientation(orientation: 'landscape' | 'portrait') {
+    private applyPageOrientation(orientation: 'landscape' | 'portrait'): void {
         this.currentPageOrientation = orientation
         this.applyPageDimensions()
     }
@@ -811,8 +844,9 @@ export class DocumentTemplateBuilder extends BaseComponent {
     /**
      * Applies page margin
      */
-    private applyPageMargin(margin: number | string) {
-        this.pageContentSection.style.padding = `${margin.toString()}in`
+    private applyPageMargin(margin: number | string): void {
+        this.currentPageMargin = Number(margin);
+        this.applyHeaderLayout();
     }
 
     /**
@@ -839,39 +873,28 @@ export class DocumentTemplateBuilder extends BaseComponent {
     /**
      * Applies the correct page size to the container by tweaking the margins
      */
-    private applyPageSize(size: 'A4' | 'A3' | 'Letter') {
+    private applyPageSize(size: 'A4' | 'A3' | 'Letter'): void {
         this.currentPageSize = size
 
         this.applyPageDimensions()
     }
 
-    private applyPageDimensions() {
-        let width = ''
-        let height = ''
-
+    /** Return physical page dimensions in inches, matching the PDF page sizes. */
+    private getPageDimensions(): [number, number] {
         switch (this.currentPageSize) {
-            case 'A4':
-                width = '217mm'
-                height = '297mm'
-                break
-            case 'A3':
-                width = '297mm'
-                height = '420mm'
-                break
-            case 'Letter':
-                width = '8.5in'
-                height = '11in'
-                break
+            case 'A3': return [297 / 25.4, 420 / 25.4];
+            case 'Letter': return [8.5, 11];
+            default: return [210 / 25.4, 297 / 25.4];
         }
+    }
 
-        if (this.currentPageOrientation === 'landscape') {
-            this.pageContainer.style.width = height
-            this.pageContainer.style.minHeight = width
-            return
-        }
-
-        this.pageContainer.style.width = width
-        this.pageContainer.style.minHeight = height
+    /** Resize the paper and recalculate width-constrained header geometry. */
+    private applyPageDimensions(): void {
+        const dimensions = this.getPageDimensions();
+        const landscape = this.currentPageOrientation === 'landscape';
+        this.pageContainer.style.width = `${dimensions[landscape ? 1 : 0]}in`;
+        this.pageContainer.style.minHeight = `${dimensions[landscape ? 0 : 1]}in`;
+        this.applyHeaderLayout();
     }
 
     /**
