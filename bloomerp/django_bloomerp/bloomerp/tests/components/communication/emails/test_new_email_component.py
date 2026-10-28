@@ -2,18 +2,28 @@
 
 from unittest.mock import Mock, patch
 
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import Group
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 
+from bloomerp.communication.builtins.emails.base_adapter import (
+    BloomerpEmail,
+    EmailSendResult,
+    EmailSendUnconfirmed,
+)
 from bloomerp.communication.builtins.emails.providers.imap_smtp import ImapSmtpAdapter
 from bloomerp.models import DocumentTemplate, EmailAccount, EmailDraft, User
 from bloomerp.models.communication.inbox.inbox import Inbox
 from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
+from bloomerp.models.communication.inbox.inbox_item import InboxItem
 from bloomerp.permissions.definition import RowPolicyRuleContent
 from bloomerp.permissions.manager import PolicyManager
-from bloomerp.tests.base import BloomerpComponentTestCase, ExpectedResult, RequestScenario
+from bloomerp.tests.base import (
+    BloomerpComponentTestCase,
+    ExpectedResult,
+    RequestScenario,
+)
 
 
 class TestNewEmailComponent(BloomerpComponentTestCase):
@@ -188,11 +198,25 @@ class TestNewEmailComponent(BloomerpComponentTestCase):
                 expected=ExpectedResult(response_validators=self.sent_message),
             ),
             RequestScenario(
+                name="Provider acceptance is shown without claiming final delivery",
+                method="POST", user=self.admin_user, data=dict(self.message),
+                prepare=[self.own_draft, self.mock_send, self.accepted_send], cleanup=self.stop_send,
+                headers={"Accept": "application/json"},
+                expected=ExpectedResult(response_validators=self.accepted_message),
+            ),
+            RequestScenario(
                 name="Send failure retains the private draft",
                 method="POST", user=self.admin_user, data=dict(self.message),
                 prepare=[self.own_draft, self.mock_send, self.fail_send], cleanup=self.stop_send,
                 headers={"Accept": "application/json"},
                 expected=ExpectedResult(status_code=400, response_validators=self.draft_retained),
+            ),
+            RequestScenario(
+                name="Unconfirmed send retains correlation and prevents resubmitting the draft",
+                method="POST", user=self.admin_user, data=dict(self.message),
+                prepare=[self.own_draft, self.mock_send, self.unconfirmed_send], cleanup=self.stop_send,
+                headers={"Accept": "application/json"},
+                expected=ExpectedResult(status_code=202, response_validators=self.pending_send_retained),
             ),
         ]
 
@@ -249,6 +273,56 @@ class TestNewEmailComponent(BloomerpComponentTestCase):
     def fail_send(self, _scenario: RequestScenario) -> None:
         """Simulate provider validation failure without contacting any mail server."""
         self.send_mock.side_effect = ValidationError("SMTP unavailable")
+
+    def unconfirmed_send(self, _scenario: RequestScenario) -> None:
+        """Simulate a submitted draft whose remote send response was lost."""
+        self.send_mock.side_effect = EmailSendUnconfirmed(EmailSendResult(
+            provider_message_id="remote-pending-id", message_id="<pending@example.com>",
+        ))
+
+    def accepted_send(self, _scenario: RequestScenario) -> None:
+        """Return provider acceptance and its remote message reference."""
+        self.send_mock.return_value = EmailSendResult(
+            provider_message_id="remote-accepted-id", message_id="<accepted@example.com>",
+        )
+
+    def accepted_message(self, response: HttpResponse) -> bool:
+        """Distinguish an accepted transport request from final recipient delivery."""
+        return self.sent_message(response) and response.json() == {
+            "message": "Email accepted for sending.", "status": "accepted",
+        }
+
+    def pending_send_retained(self, response: HttpResponse) -> bool:
+        """Retain a server-owned send guard across autosave and clear it on confirmation."""
+        from bloomerp.communication.builtins.emails.actions import (
+            _upsert_email_inbox_item_result,
+        )
+
+        self.draft.refresh_from_db()
+        pending = InboxItem.objects.get(folder=self.folder, related_item_id="<pending@example.com>")
+        self.assertEqual(self.draft.pending_send["provider_message_id"], "remote-pending-id")
+        self.draft.payload = {"body": "Edited after the response was lost"}
+        self.draft.email_account = self.other_account
+        self.draft.save(update_fields=["payload", "email_account"])
+        repeated = self.client.post(
+            response.wsgi_request.path,
+            {**self.message, "draft_id": str(self.draft.pk)},
+            HTTP_ACCEPT="application/json",
+        )
+        retained = (
+            response.json()["status"] == "unconfirmed"
+            and repeated.status_code == 202
+            and self.send_mock.call_count == 1
+            and pending.raw_meta_data["provider_identity"] == "remote-pending-id"
+            and pending.raw_meta_data["message_id"] == "<pending@example.com>"
+            and pending.raw_meta_data["outbound_send_pending"] is True
+        )
+        _upsert_email_inbox_item_result(BloomerpEmail(
+            provider=self.account.provider, provider_message_id="remote-pending-id",
+            provider_message_id_scope="account", email_account_id=str(self.account.pk),
+            mailbox="Sent", message_id="<pending@example.com>", is_draft=False,
+        ), self.folder)
+        return retained and not EmailDraft.objects.filter(pk=self.draft.pk).exists()
 
     def sent_message(self, response: HttpResponse) -> bool:
         """Confirm edited content was sent while the reusable template was unchanged."""

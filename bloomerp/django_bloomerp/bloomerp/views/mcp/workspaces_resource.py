@@ -35,7 +35,10 @@ def tile_type_reference(key: str, definition: TileTypeDefinition) -> dict[str, A
 @router.register(
     name="Workspace authoring reference",
     url_name="workspace_resource",
-    description="Create workspaces using mutations, layouts and live tile configuration schemas.",
+    description=(
+        "Full workspace creation guide, layouts and all tile schemas. "
+        "For a type index or one tile schema, prefer get_authoring_reference with kind=tile."
+    ),
     mcp=McpResource(
         uri="bloomerp://guides/create-workspace", mime_type="application/json",
     ),

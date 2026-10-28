@@ -4,9 +4,19 @@ from django.conf import settings
 from django.contrib.auth.models import Group
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_noop
 
+from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models.base_bloomerp_model import BloomerpModel
-from bloomerp.models.definition import ApiSettings, BloomerpModelConfig
+from bloomerp.models.definition import (
+    ApiSettings,
+    BloomerpModelConfig,
+    DetailViewSettings,
+    FieldLayout,
+    LayoutItem,
+    LayoutRow,
+    ModelViewSettings,
+)
 from bloomerp.modules.bloomai import BloomAIModule
 
 
@@ -19,6 +29,43 @@ class AIAgentAccess(BloomerpModel):
         verbose_name_plural = _("AI Agent Access")
 
     bloomerp_config = BloomerpModelConfig(
+        model_view_settings=ModelViewSettings(
+            default_dataviews=[
+                TableDataView(
+                    name=gettext_noop("AI agent access"),
+                    display_fields=[
+                        "name",
+                        "model",
+                        "all_staff_users",
+                        "all_authenticated_users",
+                    ],
+                    sort_field="name",
+                )
+            ]
+        ),
+        detail_view_settings=DetailViewSettings(
+            layouts=[
+                FieldLayout(
+                    rows=[
+                        LayoutRow(
+                            columns=2,
+                            title=gettext_noop("Access grant"),
+                            items=[LayoutItem(id="name"), LayoutItem(id="model")],
+                        ),
+                        LayoutRow(
+                            columns=2,
+                            title=gettext_noop("Who can use this agent"),
+                            items=[
+                                LayoutItem(id="all_staff_users"),
+                                LayoutItem(id="all_authenticated_users"),
+                                LayoutItem(id="users"),
+                                LayoutItem(id="groups"),
+                            ],
+                        ),
+                    ]
+                )
+            ]
+        ),
         module=BloomAIModule,
         api_settings=ApiSettings(enable_auto_generation=False),
     )

@@ -9,6 +9,7 @@ import ChatComposer from './components/ChatComposer';
 import ReferenceAttachments from "./components/detail_view_components/ReferenceAttachments";
 import ArtifactPicker from './components/agent/ArtifactPicker';
 import ColoredChoices from './components/ColoredChoices';
+import CharFieldFormatting from './components/CharFieldFormatting';
 import MappingWidget from './components/MappingWidget';
 import MailboxSettings from './components/widgets/MailboxSettings';
 /**
@@ -22,6 +23,7 @@ import 'htmx.org';
 import 'drawflow/dist/drawflow.min.css';
 
 import { registerComponent, setupComponentAutoInit } from './components/BaseComponent';
+import { loadFrontendExtensions } from './extensions';
 import { Modal } from './components/Modal';
 import { Drawer } from './components/Drawer';
 import { Sidebar } from './components/sidebar/Sidebar';
@@ -202,6 +204,7 @@ registerComponent('ordered-field-select', OrderedFieldSelect);
 registerComponent('mapping-widget', MappingWidget);
 registerComponent('mailbox-settings', MailboxSettings);
 registerComponent('colored-choices', ColoredChoices);
+registerComponent('char-field-formatting', CharFieldFormatting);
 registerComponent('behavior-builder', BehaviorBuilder);
 
 registerComponent('focus-on-form', FocusOnForm);
@@ -215,15 +218,23 @@ registerComponent('calendar-event-editor', CalendarEventEditor);
 registerComponent('calendar-availability', CalendarAvailability);
 registerComponent('inbox-calendar-overlay', InboxCalendarOverlay);
 registerComponent('email-editor', EmailEditor)
+registerComponent("bloomerp:calling", Calling);
+
+/** Start component scanning after translations and implementation registrations settle. */
+function startApplication(): void {
+    setupComponentAutoInit();
+    initMessagesWebsocket();
+    SetupAnimationListener();
+}
+
+/** Report unavailable translations while allowing the application to start. */
+function reportTranslationFailure(error: unknown): void {
+    console.warn('Could not load the translation catalog', error);
+}
 
 loadTranslations()
-    .catch((error) => console.warn('Could not load the translation catalog', error))
-    .finally(() => {
-        // Components may synchronously render translated frontend labels.
-        registerComponent("bloomerp:calling", Calling);
-        setupComponentAutoInit();
-        initMessagesWebsocket();
-        SetupAnimationListener();
-    });
+    .catch(reportTranslationFailure)
+    .then(loadFrontendExtensions)
+    .finally(startApplication);
 
 registerComponent("reference-attachments", ReferenceAttachments);

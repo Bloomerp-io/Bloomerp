@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
-from django.test import SimpleTestCase
 from django.template.loader import render_to_string
+from django.test import SimpleTestCase
 from django.utils.safestring import mark_safe
 
 from bloomerp.field_types.utils.render_value_functions import (
@@ -80,3 +80,47 @@ class TestRelatedObjectRendering(SimpleTestCase):
         self.assertIn('href="/related/1/"', markup)
         self.assertIn("Review &lt;launch&gt;", markup)
         self.assertNotIn("<launch>", markup)
+
+    def test_missing_relation_with_custom_rendering_does_not_break_cell(self) -> None:
+        """An absent one-to-one target remains an empty cell with an override."""
+        from unittest.mock import PropertyMock, patch
+
+        from django.core.exceptions import ObjectDoesNotExist
+
+        from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
+        from bloomerp.models import ApplicationField
+        from bloomerp.templatetags.bloomerp import render_dataview_value
+
+        field = ApplicationField(
+            field="related", field_type="OneToOneField",
+            advanced_rendering="<b>{{ value }}</b>",
+        )
+        record = RelatedObject()
+        with patch.object(
+            RelatedObject, "related", new_callable=PropertyMock, create=True,
+            side_effect=ObjectDoesNotExist,
+        ), patch.object(field, "get_field_type", return_value=FIELD_TYPE_REGISTRY.ONE_TO_ONE_FIELD):
+            context = render_dataview_value(record, field, None)
+        self.assertIsNone(context["value"])
+        self.assertIsNone(context["data_value"])
+
+    def test_advanced_rendering_receives_the_owning_object(self) -> None:
+        """
+        Use case: A field template needs another attribute of its owning record.
+        Expected result: Object attributes and the raw value are available and escaped.
+        """
+        from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
+        from bloomerp.models import ApplicationField
+        from bloomerp.models.project_management.todo import Todo
+
+        # 1. Configure a template using both the object and the existing value.
+        record = Todo(title="Invoice <draft>", priority="high")
+        field = ApplicationField(
+            field="title", field_type="CharField",
+            advanced_rendering="<b>{{ object.priority }}</b>: {{ value }}",
+        )
+
+        # 2. Render through the shared field-type path and preserve autoescaping.
+        markup, used_template = FIELD_TYPE_REGISTRY.CHAR_FIELD.resolved_render_value_with_source(field, record)
+        self.assertTrue(used_template)
+        self.assertEqual(markup, "<b>high</b>: Invoice &lt;draft&gt;")

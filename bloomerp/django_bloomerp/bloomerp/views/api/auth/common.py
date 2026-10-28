@@ -4,6 +4,7 @@ import json
 from typing import Any
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db.models.fields.files import FieldFile
 from django.http import HttpRequest, JsonResponse
 from rest_framework.permissions import AllowAny
@@ -83,6 +84,7 @@ def uses_case_insensitive_lookup(field_name: str) -> bool:
 
 
 def get_registration_payload(data: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """Accept only public creation fields, never arbitrary user-model attributes."""
     user_model = get_user_model()
     required_fields = get_user_creation_fields(user_model)
     username_field = getattr(user_model, "USERNAME_FIELD", "username")
@@ -100,13 +102,23 @@ def get_registration_payload(data: dict[str, Any]) -> tuple[dict[str, Any], list
 
         registration_data[field_name] = value
 
-    for field_name, value in data.items():
-        if field_name in {"password", "passwordConfirm", "password_confirmation", "identifier"}:
-            continue
-        if field_name in registration_data:
-            continue
-        if hasattr(user_model, field_name):
-            registration_data[field_name] = value
+    optional_fields = {"email", "first_name", "last_name"}
+    allowed_fields = set(required_fields) | optional_fields
+    protected_fields = {
+        "pk", "id", user_model._meta.pk.name, user_model._meta.pk.attname,
+        "is_staff", "is_superuser", "is_active", "groups", "user_permissions",
+        "last_login", "date_joined", "password",
+    }
+    if set(required_fields) & protected_fields:
+        raise ValidationError("Public registration includes a server-managed field.")
+    input_fields = allowed_fields | {
+        "password", "passwordConfirm", "password_confirmation", "identifier",
+    }
+    if set(data) - input_fields:
+        raise ValidationError("Unsupported registration fields.")
+    for field_name in optional_fields:
+        if field_name not in registration_data and field_name in data and hasattr(user_model, field_name):
+            registration_data[field_name] = data[field_name]
 
     return registration_data, missing_fields
 

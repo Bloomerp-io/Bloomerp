@@ -27,6 +27,10 @@ function mapsObservableStages(): void {
     assert.equal(updateAgentProgress(initial, progressEvent(9, 'tool.outcome', {status: 'unknown'})).key, 'tool-failed');
     assert.equal(updateAgentProgress(initial, progressEvent(10, 'checkpoint.created', {reasoning: 'private'})), initial);
     assert.equal(updateAgentProgress(initial, progressEvent(11, 'usage.updated')), initial);
+    const retrying = updateAgentProgress(initial, progressEvent(12, 'model.retrying'));
+    assert.equal(retrying.key, 'model-retrying');
+    assert.equal(retrying.toolTitle, '');
+    assert.equal(updateAgentProgress(retrying, progressEvent(13, 'text.delta')).key, 'writing');
 }
 
 /** Preserve the newest stage through duplicate delivery, replay and terminal cleanup. */

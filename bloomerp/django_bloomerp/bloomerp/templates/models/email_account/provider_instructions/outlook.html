@@ -1,9 +1,10 @@
+{% load i18n %}
 <div class="space-y-2 text-sm text-slate-600">
-    <p>Use a Microsoft Entra app registration that is allowed to access Microsoft Graph mail APIs.</p>
+    <p>{% translate "Enter your Microsoft Entra application's client ID, client secret value and directory tenant ID, then sign in to authorize this mailbox." %}</p>
     <ul class="list-disc space-y-1 pl-5">
-        <li>Enter the mailbox address that should be connected.</li>
-        <li>Use the application client ID and client secret from the app registration.</li>
-        <li>Enter the tenant ID when the app is single-tenant or tied to a specific organization.</li>
-        <li>Keep the default scopes unless the integration flow requires a narrower set.</li>
+        <li>{% translate "Register the callback below as a Web redirect URI. This page must use HTTPS." %}</li>
+        <li>{% translate "Configure delegated User.Read, Mail.ReadWrite and Mail.Send permissions. Your organization may require administrator consent." %}</li>
+        <li>{% translate "Use the tenant UUID for the mailbox organization. Mailbox passwords are not needed." %}</li>
+        <li>{% translate "Disconnect removes local mailbox tokens. Revoke consent separately in Microsoft if needed." %}</li>
     </ul>
 </div>

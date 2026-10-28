@@ -114,7 +114,70 @@ def choice_widget(context: FieldContext) -> forms.Widget:
     )
 
 
-def render_choice_value(application_field: ApplicationField, instance: models.Model) -> Any:
+def formatting_option(application_field: ApplicationField) -> forms.Field:
+    """Offer optional letter-case enforcement for free-text CharField inputs."""
+    return forms.ChoiceField(
+        choices=[
+            ("", _("Normal")),
+            ("uppercase", _("Uppercase")),
+            ("lowercase", _("Lowercase")),
+        ]
+    )
+
+
+def spaces_option(application_field: ApplicationField) -> forms.Field:
+    """Offer optional whitespace replacement for free-text CharField inputs."""
+    return forms.ChoiceField(
+        choices=[
+            ("", _("Normal")),
+            ("dash", _("Dash")),
+            ("underscore", _("Underscore")),
+            ("remove", _("No spaces")),
+        ]
+    )
+
+
+def char_display_options(
+    application_field: ApplicationField,
+) -> tuple[FieldDisplayOption, ...]:
+    """Expose input formatting only for CharFields without fixed choice values."""
+    options = choice_display_options(application_field)
+    if (application_field.meta or {}).get("choices"):
+        return options
+    return (
+        *options,
+        FieldDisplayOption(
+            id="formatting", label=_("Formatting"), form_factory=formatting_option
+        ),
+        FieldDisplayOption(id="spaces", label=_("Spaces"), form_factory=spaces_option),
+    )
+
+
+def char_widget(context: FieldContext) -> forms.Widget:
+    """Wire optional frontend formatting without altering declared choice values."""
+    result = choice_widget(context)
+    if not isinstance(result, InputSelectWidget):
+        return result
+    formatting = context.layout_config.get("formatting")
+    spaces = context.layout_config.get("spaces")
+    if formatting in {"uppercase", "lowercase"} or spaces in {
+        "dash",
+        "underscore",
+        "remove",
+    }:
+        result.attrs.update(
+            {
+                "bloomerp-component": "char-field-formatting",
+                "data-formatting": formatting or "",
+                "data-spaces": spaces or "",
+            }
+        )
+    return result
+
+
+def render_choice_value(
+    application_field: ApplicationField, instance: models.Model
+) -> Any:
     """Display declared choice labels in the active locale, preserving ordinary text."""
     value = getattr(instance, application_field.field, None)
     try:
@@ -130,7 +193,7 @@ def render_choice_value(application_field: ApplicationField, instance: models.Mo
 CHAR_FIELD = FieldTypeDefinition(
     render_value=render_choice_value,
     form_factory=form(forms.CharField),
-    widget_factory=choice_widget,
+    widget_factory=char_widget,
     id="CharField",
     icon="fa-solid fa-font",
     model_field_cls=models.CharField,
@@ -139,7 +202,7 @@ CHAR_FIELD = FieldTypeDefinition(
     construction=FieldConstruction(
         defaults={"max_length": 255}, options=COMMON_TEXT_FIELD_OPTIONS
     ),
-    display_options=choice_display_options,
+    display_options=char_display_options,
 )
 CODE_FIELD = FieldTypeDefinition(
     id="CodeField",

@@ -31,6 +31,7 @@ from bloomerp.views.api.base import BaseBloomerpApiView
         description=(
             "Attach an already uploaded file using its file_id (including a chat file artifact). "
             "Provide model_label and object_id to add a reference to that object's files. "
+            "Optionally provide field to target a BloomerpFileField with its permissions and limits. "
             "Existing references and stored bytes are preserved. Repeating a link is idempotent."
         ),
         input_schema=serializer_input_schema(LinkFileSerializer),

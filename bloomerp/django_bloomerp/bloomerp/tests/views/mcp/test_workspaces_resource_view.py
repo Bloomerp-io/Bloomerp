@@ -71,7 +71,8 @@ class WorkspaceResourceMetadataTests(SimpleTestCase):
         self.assertNotIn("url_name", links["$defs"]["Link"]["properties"])
         self.assertNotIn("is_internal", links["$defs"]["Link"]["properties"])
         guide = document["guide"]
-        example = json.loads(guide.split("```json\n", 1)[1].split("```", 1)[0])
+        layout_section = guide.split("## Save tiles, then assemble the workspace", 1)[1]
+        example = json.loads(layout_section.split("```json\n", 1)[1].split("```", 1)[0])
         Draft202012Validator(document["layout_schema"]).validate(example)
         self.assertIn("api_assistant_mutation_catalog", guide)
         self.assertIn("api_assistant_mutations", guide)

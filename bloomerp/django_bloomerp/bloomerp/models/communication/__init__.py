@@ -1,5 +1,6 @@
 from .comment import Comment
 from .email_account import EmailAccount
+from .email_authorization_request import EmailAuthorizationRequest
 from .email_draft import EmailDraft
 from .inbox.inbox_item import InboxItem
 
@@ -10,6 +11,7 @@ __all__ = [
     "Label",
     "ObjectLabel",
     "EmailAccount",
+    "EmailAuthorizationRequest",
     "EmailDraft",
     "InboxItem",
 ]

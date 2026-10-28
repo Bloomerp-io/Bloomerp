@@ -5,9 +5,11 @@ from django.core.files.base import ContentFile
 from django.db import connection, models
 from django.db.models import Max, Min
 from django.urls import reverse
-from django.utils.translation import gettext_lazy as _, gettext_noop
+from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_noop
 
 from bloomerp.automation.serialization import OUTPUT_UNSET, serialize_workflow_value
+from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models.automation import workflow
 from bloomerp.models.automation.workflow_run_step import WorkflowRunStepStatus
 from bloomerp.models.definition import (
@@ -17,6 +19,7 @@ from bloomerp.models.definition import (
     FieldLayout,
     LayoutItem,
     LayoutRow,
+    ModelViewSettings,
     ObjectModalAction,
 )
 from bloomerp.models.mixins import TimestampModelMixin
@@ -123,6 +126,16 @@ class WorkflowRun(
         verbose_name_plural = _("Workflow Runs")
     
     bloomerp_config = BloomerpModelConfig(
+        model_view_settings=ModelViewSettings(
+            default_dataviews=[
+                TableDataView(
+                    name=gettext_noop("Workflow runs"),
+                    display_fields=["workflow", "status", "started_at", "finished_at"],
+                    sort_field="datetime_created",
+                    sort_direction="desc",
+                )
+            ]
+        ),
         module="automation",
         detail_view_settings=DetailViewSettings(
             layouts=[FieldLayout(

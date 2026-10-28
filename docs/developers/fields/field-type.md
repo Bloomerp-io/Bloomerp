@@ -122,3 +122,10 @@ metadata contains choices. This mapping editor lets users add or remove entries 
 colors in each layout item's configuration. Native selects display the current
 choice's color accent in detail and create views. Retired choice keys are
 ignored; fields without choices use an ordinary text input.
+
+Free-text CharField editors also expose `formatting` (`uppercase` or `lowercase`)
+and `spaces` (`dash`, `underscore`, or `remove`). Empty or null settings keep
+normal input behavior. The frontend updates the input value as users type or
+paste, so forms submit the transformed text. Existing stored values remain
+unchanged until edited. These layout settings do not apply to fixed choices
+or enforce validation on direct model/API writes.

@@ -251,12 +251,12 @@ class AIConversation(AgentModel):
         limit: int = 100,
         through_sequence: int | None = None,
     ) -> tuple[AgentRuntimeMessage, ...]:
-        """Build bounded completed text history; reject unsupported input explicitly.
+        """Build bounded text history with validated memory for new requests.
 
         The initial turn takes the most recent entries through its trigger. Resume
         callers supply only new user input, never streamed assistant output already
-        represented by the private checkpoint. Artifact/tool resolution can extend
-        this conversion without changing runtime or storage contracts.
+        represented by the private checkpoint. New requests also receive compact,
+        permission-checked endpoint notes from earlier completed runs.
         """
         if after_sequence < 0 or not 1 <= limit <= 1000:
             raise ValidationError("Invalid transcript bounds")
@@ -311,6 +311,19 @@ class AIConversation(AgentModel):
                     sequence=message.sequence,
                 )
             )
+        if not after_sequence and result:
+            from bloomerp.agents.memory import conversation_memory_context
+
+            memory_context = conversation_memory_context(
+                self, before_sequence=messages[0].sequence
+            )
+            if memory_context:
+                result.insert(
+                    0,
+                    AgentRuntimeMessage(
+                        role="system", content=(TextBlock(text=memory_context),)
+                    ),
+                )
         return tuple(result)
 
     def append_message(

@@ -1,5 +1,14 @@
 {% load static %}
 {% load bloomerp %}
+{% load bloomerp_frontend %}
+{% frontend_assets as frontend %}
+{% if frontend.extensions %}
+        {% frontend_importmap frontend.imports %}
+        {{ frontend.extensions|json_script:"bloomerp-frontend-extensions" }}
+        {% for extension in frontend.extensions %}
+                {% for stylesheet in extension.styles %}<link rel="stylesheet" href="{{ stylesheet }}">{% endfor %}
+        {% endfor %}
+{% endif %}
 
 {% comment %}
 Loads bundled JavaScript from Vite build.

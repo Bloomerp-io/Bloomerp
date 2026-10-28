@@ -9,7 +9,7 @@ from django.conf import settings
 from django.core.exceptions import FieldDoesNotExist, ImproperlyConfigured, ObjectDoesNotExist
 from django.db.models import ForeignKey, Model
 from django.http import HttpRequest
-from bloomerp.models.definition import ObjectAction, ObjectHTMLAction, ObjectModalAction
+from bloomerp.models.definition import DataviewActionContext, ObjectAction, ObjectHTMLAction, ObjectModalAction
 from bloomerp.models.users.base_preference import BasePreference
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.utils.models import get_initials, get_detail_view_url, get_delete_view_url
@@ -301,13 +301,19 @@ def render_dataview_value(
     )
     if can_view:
         try:
-            value = application_field.get_field_type().render_value(application_field, object)
+            value = application_field.get_field_type().resolved_render_value(application_field, object)
         except Exception:
             value = None
     else:
         value = ""
     
     data_value = value
+    if can_view and application_field.advanced_rendering:
+        # Cell filtering/copying must use the underlying value, not custom HTML.
+        try:
+            data_value = getattr(object, application_field.field, None)
+        except Exception:  # noqa: BLE001 - match the guarded cell renderer above.
+            data_value = None
     foreign_preview = None
     if can_view and value is not None and (not isinstance(value, str) or value != ""):
         foreign_preview = _foreign_preview_target(object, application_field)
@@ -365,10 +371,16 @@ def render_object_preview_value(
     context["can_view"] = True
     try:
         field_type = application_field.get_field_type()
-        value = field_type.render_value(application_field, object)
-        # These legacy renderers return HTML as ordinary strings. Other strings
-        # stay autoescaped; format_html-based renderers retain their SafeData.
-        if value is not None and field_type.id in {"TextField", "EmailField", "URLField", "FileField"}:
+        value, used_advanced_template = field_type.resolved_render_value_with_source(
+            application_field, object,
+        )
+        # Only legacy HTML strings need the rich-text sanitizer. Successfully
+        # rendered trusted templates retain their markup and escaped values.
+        if (
+            not used_advanced_template
+            and value is not None
+            and field_type.id in {"TextField", "EmailField", "URLField", "FileField"}
+        ):
             value = mark_safe(sanitize_html(str(value)))
         context["value"] = value
     except Exception:
@@ -449,15 +461,29 @@ def render_object_action(
         return ""
 
     if isinstance(action, ObjectHTMLAction):
+        context = {
+            "action": action,
+            "object": object,
+            "request": request,
+            "content_type_id": content_type_id,
+        }
+        if action.context_func is not None:
+            from bloomerp.permissions.manager import UserPolicyManager
+
+            queryset = UserPolicyManager(request.user).get_queryset(type(object), "view").filter(pk=object.pk)
+            context.update(action.context_func(DataviewActionContext(
+                request=request,
+                model=type(object),
+                content_type=ContentType.objects.get_for_model(object),
+                preference=None,
+                queryset=queryset,
+                querystring=request.GET.urlencode(),
+                selected_ids=[str(pk) for pk in queryset.values_list("pk", flat=True)],
+            )))
         return mark_safe(
             render_to_string(
                 action.template_name,
-                {
-                    "action": action,
-                    "object": object,
-                    "request": request,
-                    "content_type_id": content_type_id,
-                },
+                context,
                 request=request,
             )
         )

@@ -1,5 +1,7 @@
 import json
 from typing import Any
+from unittest.mock import patch
+from uuid import uuid4
 
 from bs4 import BeautifulSoup
 from django.contrib.auth.models import Permission
@@ -67,6 +69,18 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
         planet = self.PlanetModel
         return [
             *self.get_avatar_scenarios(),
+            ModelRequestScenario(
+                name="Creating an object with a manual mention creates an inbox item",
+                model=customer, method="POST", user=self.admin_user,
+                prepare=self.prepare_manual_mention,
+                expected=ExpectedResult(status_code=302, response_validators=self.mention_delivered),
+            ),
+            ModelRequestScenario(
+                name="Creating an object with an inline mention identifies its field",
+                model=customer, method="POST", user=self.admin_user,
+                prepare=self.prepare_inline_mention,
+                expected=ExpectedResult(status_code=302, response_validators=self.inline_mention_delivered),
+            ),
             ModelRequestScenario(
                 name="Create form shows field help text",
                 description="UC: A field has help text.\nExpected Result: The create form displays it below the field.",
@@ -696,3 +710,52 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
             return False
         with customer.avatar.open("rb") as avatar:
             return avatar.read() == self.uploaded_avatar_bytes
+
+
+    def prepare_manual_mention(self, scenario: ModelRequestScenario) -> None:
+        """Create a recipient-owned notification folder and a valid create payload."""
+        from bloomerp.models.communication.inbox.inbox import Inbox
+        from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
+
+        self.normal_user.is_staff = True
+        self.normal_user.save(update_fields=["is_staff"])
+        inbox = Inbox.objects.create(user=self.normal_user, name="Mentions", selected=True)
+        self.mention_folder = InboxFolder.objects.create(inbox=inbox, type="in_app_notifications")
+        transport = patch("bloomerp.communication.inbox_sources.send_user_inbox_message")
+        transport.start()
+        self.addCleanup(transport.stop)
+        scenario.data = {
+            "first_name": "Mentioned", "last_name": "Object", "age": 30,
+            "object_references": json.dumps({"fields": {}, "manual": [
+                {"kind": "user", "target_id": str(self.normal_user.pk)}
+            ]}),
+        }
+
+    def prepare_inline_mention(self, scenario: ModelRequestScenario) -> None:
+        """Submit a canonical occurrence in the new object's description field."""
+        self.prepare_manual_mention(scenario)
+        occurrence = str(uuid4())
+        field = self.fields_by_name["description"]
+        scenario.data["description"] = (
+            f'<span data-reference-kind="user" data-target-id="{self.normal_user.pk}" '
+            f'data-occurrence-id="{occurrence}">Recipient</span>'
+        )
+        scenario.data["object_references"] = json.dumps({"fields": {
+            str(field.pk): [{"kind": "user", "target_id": str(self.normal_user.pk),
+                            "field_id": field.pk, "occurrence_id": occurrence}]
+        }})
+
+    def mention_delivered(self, _response: HttpResponse) -> bool:
+        """Confirm the successful create saved one snapshot in the recipient's inbox."""
+        from bloomerp.models.communication.inbox.inbox_item import InboxItem
+
+        items = InboxItem.objects.filter(folder=self.mention_folder)
+        return items.count() == 1 and "Mentioned Object" in items.get().snippet
+
+    def inline_mention_delivered(self, response: HttpResponse) -> bool:
+        """Confirm inline creation also records the human-readable field name."""
+        from bloomerp.models.communication.inbox.inbox_item import InboxItem
+
+        return self.mention_delivered(response) and InboxItem.objects.get(
+            folder=self.mention_folder
+        ).raw_meta_data["field_label"] == str(self.CustomerModel._meta.get_field("description").verbose_name)

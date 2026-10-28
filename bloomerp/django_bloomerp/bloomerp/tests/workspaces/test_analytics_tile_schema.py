@@ -32,6 +32,10 @@ class TestAnalyticsTileSchema(SimpleTestCase):
             {"query": "SELECT 'Sales' AS department, 1 AS total", "type": "PIE_CHART", "fields": {
                 "labels": [{"name": "department"}], "values": [{"name": "total"}],
             }, "opts": {"show_legend": True, "legend_position": "right"}},
+            {"query": "SELECT 'Sales' AS department, 1 AS total", "type": "PIVOT_TABLE", "fields": {
+                "rows": [{"name": "department"}],
+                "values": [{"name": "total", "opts": {"aggregator": "sum"}}],
+            }, "opts": {"page_size": "25"}},
         ]
 
     def test_supported_tiles_match_exactly_one_branch(self) -> None:
@@ -61,7 +65,7 @@ class TestAnalyticsTileSchema(SimpleTestCase):
         Expected result: The authoring schema rejects each inaccurate configuration.
         """
         # 1. Build incorrect configurations from otherwise valid examples.
-        kpi, table, chart, pie = self.payloads()
+        kpi, table, chart, pie, pivot = self.payloads()
         invalid = [deepcopy(kpi) for _ in range(4)]
         invalid[0]["type"] = "MAP"
         invalid[1]["fields"] = {}
@@ -73,6 +77,12 @@ class TestAnalyticsTileSchema(SimpleTestCase):
         wrong_option = deepcopy(kpi)
         wrong_option["opts"] = {"chart_type": "bar"}
         invalid.extend([table, chart, pie, wrong_option])
+        missing_rows = deepcopy(pivot)
+        missing_rows["fields"]["rows"] = []
+        missing_values = deepcopy(pivot)
+        missing_values["fields"]["values"] = []
+        pivot["fields"]["values"][0]["opts"]["aggregator"] = "first"
+        invalid.extend([pivot, missing_rows, missing_values])
         # 2. Check the schema rejects each invalid payload.
         validator = Draft202012Validator(AnalyticsTileConfig.model_json_schema())
         for payload in invalid:

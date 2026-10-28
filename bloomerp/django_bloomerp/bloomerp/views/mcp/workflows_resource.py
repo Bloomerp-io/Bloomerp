@@ -1,20 +1,22 @@
+from typing import Any
+
+from django import forms
+from django.core.exceptions import PermissionDenied
+from django.http import HttpRequest
+
 from bloomerp.automation.base_executor import BaseExecutor
 from bloomerp.automation.ports import DEFAULT_OUTPUT_PORT
-from django import forms
-
 from bloomerp.automation.registry import WORKFLOW_NODE_REGISTRY, WorkflowNodeDefinition
 from bloomerp.mcp.definition import McpResource
 from bloomerp.models.automation.workflow import Workflow
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
-from bloomerp.views.mcp.authoring_references import literal_metadata, packaged_guide, sensitive_name
-from django.core.exceptions import PermissionDenied
-
-from django.http import HttpRequest
-
-
-from typing import Any
+from bloomerp.views.mcp.authoring_references import (
+    literal_metadata,
+    packaged_guide,
+    sensitive_name,
+)
 
 
 def field_reference(name: str, field: forms.Field) -> dict[str, Any]:
@@ -116,9 +118,78 @@ def node_reference(definition: WorkflowNodeDefinition) -> dict[str, Any]:
     return result
 
 
+def targeted_node_reference(
+    definition: WorkflowNodeDefinition,
+    parameters: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Describe one node and resolve its connection ports through the registry hook.
+
+    Configuration-dependent ports require explicitly supplied parameters. Form
+    constructors and input/output schema factories are never evaluated here.
+    """
+    result = node_reference(definition)
+    executor = definition.executor_cls
+    result["schema_status"] = (
+        "Input requirements, output schemas and form fields are declared baselines; "
+        "configuration-specific IO schemas are not resolved. "
+        "The connections status describes output-port resolution separately."
+    )
+    instructions = (
+        "Set each edge's output_port to an exact string ID from output_ports, "
+        "not a boolean or a string containing quotation marks. "
+        "Create one edge for each desired branch and respect max_connections "
+        "(null means unlimited). Do not assume a default port exists."
+    )
+    output_port_schema: dict[str, Any] = {"type": "string"}
+    if executor is None:
+        result["output_ports"] = []
+        result["connections"] = {
+            "status": "no_executor_declared",
+            "multiple_outputs": None,
+            "output_port_schema": output_port_schema,
+            "instructions": "No executor is registered; output ports are unavailable.",
+        }
+        return result
+
+    has_port_factory = (
+        getattr(executor.get_output_ports, "__func__", None)
+        is not BaseExecutor.get_output_ports.__func__
+    )
+    if has_port_factory and parameters is None:
+        result["output_ports"] = []
+        result["connections"] = {
+            "status": "requires_parameters",
+            "multiple_outputs": None,
+            "output_port_schema": output_port_schema,
+            "instructions": (
+                "Supply this node's parameters to resolve its configuration-dependent "
+                "output ports. " + instructions
+            ),
+        }
+        return result
+
+    ports = definition.get_output_ports(parameters)
+    result["output_ports"] = [port.to_dict() for port in ports]
+    if ports:
+        output_port_schema["enum"] = [port.id for port in ports]
+    else:
+        output_port_schema["not"] = {}
+    result["connections"] = {
+        "status": "resolved_from_parameters" if parameters is not None else "declared",
+        "multiple_outputs": len(ports) > 1,
+        "output_port_schema": output_port_schema,
+        "instructions": instructions,
+    }
+    return result
+
+
 @router.register(
     name="Workflow authoring reference",
-    description="Workflow payloads, connections and all installed node configuration forms.",
+    description=(
+        "Full workflow creation guide and all node definitions. For a type index, "
+        "one node's parameters or its output ports, prefer get_authoring_reference "
+        "with kind=workflow_node."
+    ),
     mcp=McpResource(
         uri="bloomerp://guides/create-workflow", mime_type="application/json"
     ),

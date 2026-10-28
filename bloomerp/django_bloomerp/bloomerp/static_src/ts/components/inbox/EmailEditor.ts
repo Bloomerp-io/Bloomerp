@@ -290,14 +290,14 @@ export class EmailEditor extends BaseComponent {
         this.setStatus(_("Sending email…"));
         try {
             await this.flushDraft();
-            const result = await getSdk().client.request<{ message: string }>(this.element!.dataset.sendUrl!, {
+            const result = await getSdk().client.request<{ message: string; status?: string }>(this.element!.dataset.sendUrl!, {
                 method: "POST", body: this.formData(), headers: { Accept: "application/json" },
             });
             this.sent = true;
             this.dirty = false;
             this.form!.hidden = true;
             const message = document.createElement("p");
-            message.className = "p-5 text-success-dark";
+            message.className = result.status === "unconfirmed" ? "p-5 text-warning-dark" : "p-5 text-success-dark";
             message.setAttribute("role", "status");
             message.textContent = result.message;
             this.element!.append(message);

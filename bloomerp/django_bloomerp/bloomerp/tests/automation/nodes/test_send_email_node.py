@@ -3,7 +3,12 @@ from types import SimpleNamespace
 from unittest.mock import Mock, call, patch
 
 from bloomerp.automation.actions.send_email import SendEmailExecutor, SendEmailForm
+from bloomerp.communication.builtins.emails.base_adapter import (
+    EmailSendResult,
+    EmailSendUnconfirmed,
+)
 from bloomerp.communication.builtins.emails.registry import EMAIL_PROVIDER_REGISTRY
+from bloomerp.communication.builtins.emails.sending import UNCONFIRMED_SEND_MESSAGE
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.tests.base import (
     BloomerpWorkflowNodeTestCase,
@@ -20,7 +25,7 @@ class TestSendEmailNode(BloomerpWorkflowNodeTestCase):
         """Describe sending the saved rich text body with resolved references."""
         return [
             WorkflowNodeScenario(
-                name="Sends saved editor HTML as the email body",
+                name="Reports provider acceptance of the saved editor HTML",
                 parameters={
                     "from_account": "1",
                     "recipient": "{{ input.recipient }}",
@@ -36,7 +41,9 @@ class TestSendEmailNode(BloomerpWorkflowNodeTestCase):
                         "recipient": "alice@example.com",
                         "subject": "Welcome",
                         "body": "<p>Hello <strong>Alice</strong></p>",
-                        "status": "sent",
+                        "status": "accepted",
+                        "message_id": "<accepted@example.com>",
+                        "provider_message_id": "remote-accepted-id",
                     },
                 },
             ),
@@ -80,6 +87,16 @@ class TestSendEmailNode(BloomerpWorkflowNodeTestCase):
                     },
                 },
             ),
+            WorkflowNodeScenario(
+                name="Unconfirmed delivery is recorded without retrying the message",
+                parameters={"from_account": "1", "recipient": "alice@example.com",
+                            "subject": "Check delivery", "body": "Hello"},
+                expected_output={"email": {
+                    "recipient": "alice@example.com", "subject": "Check delivery", "body": "Hello",
+                    "status": "unconfirmed", "message_id": "<pending@example.com>",
+                    "provider_message_id": "remote-pending-id", "warning": str(UNCONFIRMED_SEND_MESSAGE),
+                }},
+            ),
         ]
 
     def test_workflow_node_simulations(self) -> None:
@@ -89,6 +106,13 @@ class TestSendEmailNode(BloomerpWorkflowNodeTestCase):
         """
         # 1. Replace the external email provider while running the node scenario.
         adapter = Mock()
+        adapter.send_email.side_effect = [
+            EmailSendResult(provider_message_id="remote-accepted-id", message_id="<accepted@example.com>"),
+            None, None,
+            EmailSendUnconfirmed(EmailSendResult(
+                provider_message_id="remote-pending-id", message_id="<pending@example.com>",
+            )),
+        ]
         provider = SimpleNamespace(adapter_class=Mock(return_value=adapter))
         account = SimpleNamespace(provider="test")
         with (
@@ -120,6 +144,7 @@ class TestSendEmailNode(BloomerpWorkflowNodeTestCase):
                 body_text="First line\nUse <example> literally",
                 body_html=None,
             ),
+            call(to=["alice@example.com"], subject="Check delivery", body_text="Hello", body_html=None),
         ])
 
     def test_body_form_round_trips_rich_text(self) -> None:

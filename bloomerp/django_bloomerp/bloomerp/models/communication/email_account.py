@@ -1,22 +1,36 @@
 from typing import Any
 
-from bloomerp.communication.builtins.emails.mailboxes import normalize_mailboxes, validate_mailboxes
-
-from django.utils.translation import gettext_lazy as _, gettext_noop
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_noop
 
-from bloomerp.communication.utils.crypto import encrypt_email_secret
-from bloomerp.communication.utils.crypto import decrypt_email_secret
 from bloomerp.communication.builtins.emails.email_providers import EmailSyncMode
+from bloomerp.communication.builtins.emails.mailboxes import (
+    normalize_mailboxes,
+    validate_mailboxes,
+)
 from bloomerp.communication.builtins.emails.registry import (
     EMAIL_PROVIDER_REGISTRY,
     email_provider_choices,
 )
-from bloomerp.models.definition import FieldLayout, LayoutItem, LayoutRow
-from bloomerp.models.definition import ApiSettings, BloomerpModelConfig, DetailViewSettings
+from bloomerp.communication.utils.crypto import (
+    decrypt_email_secret,
+    encrypt_email_secret,
+)
+from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models import BloomerpModel
+from bloomerp.models.definition import (
+    ActivityLogSettings,
+    ApiSettings,
+    BloomerpModelConfig,
+    DetailViewSettings,
+    FieldLayout,
+    LayoutItem,
+    LayoutRow,
+    ModelViewSettings,
+)
 
 
 class EmailAccount(BloomerpModel):
@@ -48,6 +62,23 @@ class EmailAccount(BloomerpModel):
         ]
     
     bloomerp_config = BloomerpModelConfig(
+        activity_log_settings=ActivityLogSettings(enabled=False),
+        model_view_settings=ModelViewSettings(
+            default_dataviews=[
+                TableDataView(
+                    name=gettext_noop("Email accounts"),
+                    display_fields=[
+                        "name",
+                        "email_address",
+                        "provider",
+                        "status",
+                        "sync_enabled",
+                        "next_sync_at",
+                    ],
+                    sort_field="name",
+                )
+            ]
+        ),
         module="communication",
         api_settings=ApiSettings(enable_auto_generation=False),
         detail_view_settings=DetailViewSettings(

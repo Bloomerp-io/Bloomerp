@@ -1,5 +1,7 @@
 from django.http import HttpRequest
 
+from .memory import SQL_DISCOVERY_MEMORY
+
 from bloomerp.mcp.definition import McpTool
 from bloomerp.mcp.schema import serializer_input_schema, serializer_output_schema
 from bloomerp.router import router
@@ -43,9 +45,14 @@ class AccessibleTablesResponseSerializer(serializers.Serializer):
     route_type="api",
     mcp=McpTool(
         title="List Accessible SQL Tables",
+        memory=SQL_DISCOVERY_MEMORY,
         description=(
             "List the SQL tables and fields accessible to the current user, "
-            "with optional search and pagination."
+            "with optional search and pagination. Use each table's canonical "
+            "model_label for mutation catalog lookups; do not derive model labels "
+            "from SQL table names. A null model_label means no public model identity "
+            "is supplied, including for automatically generated join tables. "
+            "A model label does not guarantee mutation access."
         ),
         input_schema=serializer_input_schema(AccessibleTablesQuerySerializer),
         output_schema=serializer_output_schema(AccessibleTablesResponseSerializer),
@@ -115,6 +122,7 @@ class AccessibleTablesView(BaseBloomerpApiView):
 
 
 def _filter_tables_by_search(tables: list[DatabaseTable], search: str) -> list[DatabaseTable]:
+    """Filter tables and fields while preserving their canonical model identities."""
     filtered_tables: list[DatabaseTable] = []
 
     for table in tables:
@@ -135,6 +143,7 @@ def _filter_tables_by_search(tables: list[DatabaseTable], search: str) -> list[D
                     name=table.name,
                     icon=table.icon,
                     content_type_id=table.content_type_id,
+                    model_label=table.model_label,
                     fields=matching_fields,
                 )
             )

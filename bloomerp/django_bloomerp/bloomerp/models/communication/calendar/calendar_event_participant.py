@@ -6,12 +6,70 @@ from django.conf import settings
 from django.db import models
 from django.db.models.functions import Lower
 from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_noop
+
+from bloomerp.dataviews.table.config import TableDataView
+from bloomerp.models.definition import (
+    BloomerpModelConfig,
+    DetailViewSettings,
+    FieldLayout,
+    LayoutItem,
+    LayoutRow,
+    ModelViewSettings,
+)
 
 from .base import CalendarModel
 
 
 class CalendarEventParticipant(CalendarModel):
     """Identify an internal user or external email without implying placement."""
+
+    bloomerp_config = BloomerpModelConfig(
+        module="communication",
+        model_view_settings=ModelViewSettings(
+            default_dataviews=[
+                TableDataView(
+                    name=gettext_noop("Calendar event participants"),
+                    display_fields=[
+                        "display_name",
+                        "email",
+                        "user",
+                        "event",
+                        "response_status",
+                        "responded_at",
+                    ],
+                    sort_field="display_name",
+                )
+            ]
+        ),
+        detail_view_settings=DetailViewSettings(
+            layouts=[
+                FieldLayout(
+                    rows=[
+                        LayoutRow(
+                            columns=2,
+                            title=gettext_noop("Participant"),
+                            items=[
+                                LayoutItem(id="display_name"),
+                                LayoutItem(id="email"),
+                                LayoutItem(id="user"),
+                                LayoutItem(id="event"),
+                            ],
+                        ),
+                        LayoutRow(
+                            columns=2,
+                            title=gettext_noop("Response"),
+                            items=[
+                                LayoutItem(id="response_status"),
+                                LayoutItem(id="responded_at"),
+                                LayoutItem(id="invitation_cancelled"),
+                            ],
+                        ),
+                    ]
+                )
+            ]
+        ),
+    )
 
     class ResponseStatus(models.TextChoices):
         AWAITING_RESPONSE = "awaiting_response", _("Awaiting response")

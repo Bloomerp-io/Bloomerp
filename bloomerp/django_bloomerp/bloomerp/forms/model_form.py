@@ -6,7 +6,7 @@ from typing import Any, Type
 from django import forms
 from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db import transaction
-from django.db.models import Model, QuerySet
+from django.db.models import Field, Model, QuerySet
 from django.utils.datastructures import MultiValueDict
 
 from bloomerp.form_fields.bloomerp_file_field import BloomerpFileFormField
@@ -350,7 +350,17 @@ def bloomerp_modelform_factory(
         form_field = _build_registered_form_field(application_field)
 
         # Lifecycle-managed values remain visible, but ignore submitted changes.
-        if managed_by_application or form_field.disabled:
+        # Reverse and generic relations have structured editors that own
+        # persistence. Only stored model fields use Django's editable flag.
+        if (
+            managed_by_application
+            or (
+                isinstance(model_field, Field)
+                and (model_field.concrete or model_field.many_to_many)
+                and not model_field.editable
+            )
+            or form_field.disabled
+        ):
             form_field.disabled = True
             read_only_field_names.add(field_name)
 
@@ -375,12 +385,14 @@ def bloomerp_modelform_factory(
             if isinstance(form_field, (OneToManyField, BloomerpFileFormField)):
                 form_field.bind_parent(instance)
 
-        if instance is None or instance._state.adding:
+        if instance is None:
             return
         for field_name in self.bloomerp_non_model_field_names:
-            value = getattr(instance, field_name, None) or getattr(
-                instance, f"{field_name}_set", None
-            )
+            if instance._state.adding and field_name not in self.bloomerp_read_only_field_names:
+                continue
+            value = getattr(instance, field_name, None)
+            if value is None:
+                value = getattr(instance, f"{field_name}_set", None)
             if hasattr(value, "all"):
                 value = list(value.all())
             self.initial[field_name] = value

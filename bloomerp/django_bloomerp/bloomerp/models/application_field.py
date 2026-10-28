@@ -1,22 +1,49 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any, Optional, Type
+
 from django import forms
-from django.db import models
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import FieldDoesNotExist
+from django.core.exceptions import FieldDoesNotExist, ValidationError
+from django.db import models
 from django.db.models.query import QuerySet
-from typing import Any, Optional, Type
+from django.template import TemplateSyntaxError, engines
 from django.utils.encoding import force_str
-from django.utils.translation import gettext, gettext_lazy as _
+from django.utils.translation import gettext, gettext_noop
+from django.utils.translation import gettext_lazy as _
+
+from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.field_types.registry import (
-    field_type_choices,
     FieldTypeDefinition,
+    field_type_choices,
     load_builtin_field_types,
 )
-from typing import TYPE_CHECKING
+from bloomerp.model_fields.code_field import CodeField
+from bloomerp.models.definition import (
+    BloomerpModelConfig,
+    DetailViewSettings,
+    FieldLayout,
+    LayoutItem,
+    LayoutRow,
+    ModelViewSettings,
+)
 
 if TYPE_CHECKING:
     from bloomerp.lookups.definition import LookupDefinition
+
+def validate_advanced_rendering(value: str | None) -> None:
+    """Reject malformed template syntax without evaluating model data or tags."""
+    if not value:
+        return
+    try:
+        engines["django"].from_string(value)
+    except TemplateSyntaxError as exc:
+        raise ValidationError(
+            _("Invalid rendering template: %(error)s"),
+            code="invalid_template",
+            params={"error": str(exc)},
+        ) from exc
+
 
 class ApplicationField(models.Model):
     """
@@ -27,6 +54,31 @@ class ApplicationField(models.Model):
     about fields, such as their type, related model (if any),
     and other useful information.
     """
+    bloomerp_config = BloomerpModelConfig(
+        model_view_settings=ModelViewSettings(
+            default_dataviews=[
+                TableDataView(
+                    name=gettext_noop("Application fields"),
+                    display_fields=["content_type", "field", "field_type", "related_model"],
+                    sort_field="field",
+                )
+            ]
+        ),
+        detail_view_settings=DetailViewSettings(
+            layouts=[
+                FieldLayout(
+                    rows=[
+                        LayoutRow(
+                            columns=1,
+                            title=gettext_noop("Advanced rendering"),
+                            items=[LayoutItem(id="advanced_rendering")],
+                        )
+                    ]
+                )
+            ]
+        ),
+    )
+
     class Meta:
         verbose_name = _("Application Field")
         verbose_name_plural = _("Application Fields")
@@ -35,24 +87,28 @@ class ApplicationField(models.Model):
 
     
     field = models.CharField(
+        editable=False,
         max_length=100,
         help_text=_("The name of the field."),
         verbose_name=_("Field"),
         )
     content_type = models.ForeignKey(
-        ContentType, 
+        ContentType,
+        editable=False,
         on_delete=models.CASCADE,
         help_text=_("The content type (model) this field belongs to."),
         verbose_name=_("Content Type"),
     )
     field_type = models.CharField(
+        editable=False,
         max_length=100, 
         choices=field_type_choices,
         help_text=_("The type of the field."),
         verbose_name=_("Field Type"),
         )
     related_model = models.ForeignKey(
-        ContentType, 
+        ContentType,
+        editable=False,
         on_delete=models.CASCADE, 
         null=True, 
         blank=True,
@@ -61,6 +117,7 @@ class ApplicationField(models.Model):
         verbose_name=_("Related Model"),
     )
     meta = models.JSONField(
+        editable=False,
         null=True, 
         blank=True,
         help_text=_("Additional metadata about the field."),
@@ -69,6 +126,7 @@ class ApplicationField(models.Model):
 
     # Database related fields
     db_table = models.CharField(
+        editable=False,
         max_length=100, 
         null=True, 
         blank=True,
@@ -76,17 +134,42 @@ class ApplicationField(models.Model):
         verbose_name=_("DB Table"),
     )
     db_field_type = models.CharField(
+        editable=False,
         max_length=100, 
         null=True, 
         blank=True,
         verbose_name=_("DB Field Type"),
         )
     db_column = models.CharField(
+        editable=False,
         max_length=100, 
         null=True, 
         blank=True,
         verbose_name=_("DB Column"),
         )
+
+    advanced_rendering = CodeField(
+        language="html",
+        null=True,
+        blank=True,
+        verbose_name=_("Advanced rendering"),
+        help_text=_(
+            "Optional HTML/Django template. Use {{ value }} for the field value. "
+            "For example: <span class=\"text-red-600\">{{ value }}</span>. "
+            "Leave empty to use the normal field rendering."
+        ),
+        validators=[validate_advanced_rendering],
+    )
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        """Validate custom rendering on persistence while allowing metadata sync."""
+        update_fields = kwargs.get("update_fields")
+        if update_fields is None or "advanced_rendering" in update_fields:
+            try:
+                validate_advanced_rendering(self.advanced_rendering)
+            except ValidationError as exc:
+                raise ValidationError({"advanced_rendering": exc.messages}) from exc
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.content_type.__str__() + " | " + str(self.field)

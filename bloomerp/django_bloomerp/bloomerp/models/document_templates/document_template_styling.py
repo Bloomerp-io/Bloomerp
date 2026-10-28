@@ -1,13 +1,49 @@
 from django.db import models
-from bloomerp.models import BloomerpModel
-from bloomerp.model_fields.code_field import CodeField
 from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_noop
+
+from bloomerp.dataviews.table.config import TableDataView
+from bloomerp.model_fields.code_field import CodeField
+from bloomerp.models import BloomerpModel
+from bloomerp.models.definition import (
+    BloomerpModelConfig,
+    DetailViewSettings,
+    FieldLayout,
+    LayoutItem,
+    LayoutRow,
+    ModelViewSettings,
+)
 
 
 # ---------------------------------
 # Document Template Styling Model
 # ---------------------------------
 class DocumentTemplateStyling(BloomerpModel):
+
+    bloomerp_config = BloomerpModelConfig(
+        model_view_settings=ModelViewSettings(
+            default_dataviews=[
+                TableDataView(
+                    name=gettext_noop("Document template styles"),
+                    display_fields=["name", "datetime_updated"],
+                    sort_field="name",
+                )
+            ]
+        ),
+        detail_view_settings=DetailViewSettings(
+            layouts=[
+                FieldLayout(
+                    rows=[
+                        LayoutRow(
+                            columns=1,
+                            title=gettext_noop("Style"),
+                            items=[LayoutItem(id="name"), LayoutItem(id="styling")],
+                        )
+                    ]
+                )
+            ]
+        ),
+    )
     avatar = None
 
     class Meta(BloomerpModel.Meta):
