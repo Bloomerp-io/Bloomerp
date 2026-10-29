@@ -1,6 +1,9 @@
+import type { Filter } from "../filters/definition";
+
 export type BehaviorFieldStateUpdate = {
     visible: boolean | null;
     disabled: boolean | null;
+    choices_filter?: Filter[] | null;
 };
 
 export type BehaviorFieldStateSnapshot = {
@@ -9,6 +12,7 @@ export type BehaviorFieldStateSnapshot = {
     inert: boolean;
     ariaDisabled: string | null;
     behaviorDisabled: string | null;
+    choicesFilter?: Filter[];
 };
 
 /** Capture every element state changed by a behavior state update. */

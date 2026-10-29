@@ -7,6 +7,7 @@ from django.http import HttpResponse
 
 from bloomerp.filters.definition import Filter, FilterCondition
 from bloomerp.form_behaviors.builtins import (
+    ADD_FILTER,
     SET_FIELD_INTERACTION,
     SET_FIELD_VISIBILITY,
     SET_VALUE,
@@ -75,6 +76,7 @@ class TestExecuteComponent(BloomerpComponentTestCase):
                         ),
                         LayoutItem(id="last_name"),
                         LayoutItem(id="age"),
+                        LayoutItem(id="user_account"),
                     ],
                 )
             ]
@@ -249,7 +251,30 @@ class TestExecuteComponent(BloomerpComponentTestCase):
         invalid_payload = self._payload(success)
         invalid_payload["revision"] = -1
 
+        choice_filter = self._preference("Filter user choices", [FormBehavior(
+            id="filter-users", actions=[BehaviorAction(
+                action=ADD_FILTER, target_field="user_account",
+                config={"filters": [{"connector": "AND", "conditions": [{
+                    "field_path": "username", "lookup_id": "equals", "value": "{{ object.first_name }}",
+                }]}]},
+            )],
+        )])
         return [
+            RequestScenario(
+                name="Draft references become serialized choice filters without saving",
+                method="POST", user=self.admin_user, content_type="application/json",
+                data={**self._payload(choice_filter), "values": {
+                    "first_name": self.admin_user.get_username(), "last_name": "Customer", "age": 18, "user_account": None,
+                }},
+                expected=ExpectedResult(response_validators=[
+                    self.json_key_equals("states", [{
+                        "field": "user_account", "visible": None, "disabled": None,
+                        "choices_filter": [{"connector": "AND", "conditions": [{
+                            "field_path": "username", "lookup_id": "equals", "value": self.admin_user.get_username(),
+                        }]}],
+                    }]), self._customer_is_unchanged,
+                ]),
+            ),
             RequestScenario(
                 name="A UUID-backed create form does not evaluate an unsaved object",
                 view_name="todos_add",
@@ -340,6 +365,7 @@ class TestExecuteComponent(BloomerpComponentTestCase):
                                     "field": "last_name",
                                     "visible": False,
                                     "disabled": None,
+                                    "choices_filter": None,
                                 }],
                                 "messages": [],
                             }
@@ -359,6 +385,7 @@ class TestExecuteComponent(BloomerpComponentTestCase):
                         "field": "last_name",
                         "visible": None,
                         "disabled": True,
+                        "choices_filter": None,
                     }]),
                     self._customer_is_unchanged,
                 ]),
@@ -374,6 +401,7 @@ class TestExecuteComponent(BloomerpComponentTestCase):
                         "field": "last_name",
                         "visible": None,
                         "disabled": False,
+                        "choices_filter": None,
                     }]),
                     self._customer_is_unchanged,
                 ]),

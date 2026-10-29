@@ -7,6 +7,8 @@ import type { OutputAsset, OutputChunk } from 'rollup';
 import type ForeignFieldWidget from './ForeignFieldWidget.ts';
 import type InboxCalendarOverlay from '../inbox/InboxCalendarOverlay.ts';
 import type { DetailViewCell, DetailViewCellChangeDetail } from '../detail_view_components/DetailViewCell.ts';
+import type FormBehaviorRuntime from '../behaviors/FormBehaviorRuntime.ts';
+import type { Filter } from '../filters/definition.ts';
 import type ObjectCRUDViewContainer from '../detail_view_components/ObjectCRUDViewContainer.ts';
 import { JSDOM, VirtualConsole, type DOMWindow } from 'jsdom';
 
@@ -23,6 +25,7 @@ const result = await build({
         load(id: string): string | null {
             if (id !== entry) return null;
             return `
+                import FormBehaviorRuntime from '${root}/ts/components/behaviors/FormBehaviorRuntime';
                 import ForeignFieldWidget from '${root}/ts/components/widgets/ForeignFieldWidget';
                 import InboxCalendarOverlay from '${root}/ts/components/inbox/InboxCalendarOverlay';
                 import { DetailViewCell } from '${root}/ts/components/detail_view_components/DetailViewCell';
@@ -31,7 +34,7 @@ const result = await build({
                 registerComponent('foreign-field-widget', ForeignFieldWidget);
                 registerComponent('detail-view-value', DetailViewCell);
                 registerComponent('object-crud-view-container', ObjectCRUDViewContainer);
-                export { ForeignFieldWidget, InboxCalendarOverlay, DetailViewCell, ObjectCRUDViewContainer, initComponents, getComponent };
+                export { FormBehaviorRuntime, ForeignFieldWidget, InboxCalendarOverlay, DetailViewCell, ObjectCRUDViewContainer, initComponents, getComponent };
             `;
         },
     }],
@@ -48,6 +51,7 @@ const scriptCode = script.code;
 
 interface FixtureWindow extends DOMWindow {
     ForeignFieldFixture: {
+        FormBehaviorRuntime: typeof FormBehaviorRuntime;
         ForeignFieldWidget: typeof ForeignFieldWidget;
         InboxCalendarOverlay: typeof InboxCalendarOverlay;
         DetailViewCell: typeof DetailViewCell;
@@ -630,3 +634,84 @@ for (const disabled of [false, true]) {
         } finally { dispose(f); }
     });
 }
+
+/** Build a relation filter without sharing mutable condition objects. */
+function choiceFilter(value: string): Filter[] {
+    return [{ connector: 'AND', conditions: [{ field_path: 'id', lookup_id: 'equals', value }] }];
+}
+
+/** Keep static limits, replace dynamic limits, and suppress obsolete asynchronous results. */
+test('behavior choice changes abort old searches and retain static limits and selected values', async (): Promise<void> => {
+    const f = await fixture(false, { initiallySelected: true });
+    const requests: Array<{ url: string; signal: AbortSignal; resolve: (response: unknown) => void }> = [];
+    /** Hold transport responses so an obsolete request can complete after a new filter. */
+    function holdSearch(url: string, options: RequestInit): Promise<unknown> {
+        return new Promise<unknown>(function hold(resolve: (response: unknown) => void): void {
+            requests.push({ url, signal: options.signal as AbortSignal, resolve });
+        });
+    }
+    try {
+        f.widget.dataset.choicesFilter = JSON.stringify(choiceFilter('static'));
+        Object.assign(f.w, { fetch: holdSearch });
+        f.component.setBehaviorChoicesFilter(choiceFilter('7'));
+        f.component.setBehaviorChoicesFilter(choiceFilter('8'));
+        assert.equal(requests.length, 2);
+        assert.equal(requests[0].signal.aborted, true);
+        assert.deepEqual(JSON.parse(new URL(requests[1].url, 'https://fixture.test').searchParams.get('filter')!), [...choiceFilter('static'), ...choiceFilter('8')]);
+        /** Return an obsolete result even though the simulated server ignored cancellation. */
+        function obsoleteObjects(): { objects: Array<{ id: number; string_representation: string }> } {
+            return { objects: [{ id: 7, string_representation: 'Obsolete' }] };
+        }
+        requests[0].resolve({ ok: true, json: obsoleteObjects });
+        await flushResults(f.w);
+        assert.equal(f.menu.querySelector('li[data-id="7"]'), null);
+        assert.equal(f.component.getValue(), '3');
+        f.component.setBehaviorChoicesFilter([]);
+        assert.equal(JSON.stringify(f.component.getChoicesFilter()), JSON.stringify(choiceFilter('static')));
+        assert.equal(requests[1].signal.aborted, true);
+        assert.deepEqual(f.errors, []);
+    } finally { dispose(f); }
+});
+
+/** Exercise server-response adaptation and Reset with the real behavior runtime and widget. */
+test('initial and change behavior responses filter choices and Reset restores the initial restriction', async (): Promise<void> => {
+    const f = await fixture(false);
+    const root = f.w.document.getElementById('container')!;
+    const runtime = new f.w.ForeignFieldFixture.FormBehaviorRuntime(root);
+    let evaluations = 0;
+    /** Serve behavior responses while leaving object transport deterministic. */
+    async function transport(url: string, options?: RequestInit): Promise<unknown> {
+        if (url === '/behaviors') {
+            const payload = JSON.parse(options!.body as string);
+            evaluations += 1;
+            const filters = choiceFilter(payload.event === 'initial' ? '7' : '8');
+            /** Supply the exact backend state-update response contract. */
+            function response(): unknown {
+                return { revision: payload.revision, values: [], messages: [], states: [{ field: 'owner', visible: null, disabled: null, choices_filter: filters }] };
+            }
+            return { ok: true, json: response };
+        }
+        /** Return a selectable object for the user's field-change event. */
+        function objects(): unknown { return { objects: [{ id: 7, string_representation: 'Alice' }] }; }
+        return { ok: true, json: objects };
+    }
+    try {
+        root.dataset.behaviorUrl = '/behaviors';
+        root.dataset.behaviorOwnerId = 'layout';
+        root.dataset.behaviorOwnerKey = 'preference_id';
+        f.w.document.getElementById('cell')!.dataset.layoutItemConfig = JSON.stringify({ behaviors: { version: 1, behaviors: [{ events: ['initial', 'change'] }] } });
+        Object.assign(f.w, { fetch: transport });
+        runtime.initialize();
+        await flushResults(f.w);
+        assert.equal(evaluations, 1);
+        assert.deepEqual(f.component.getBehaviorChoicesFilter(), choiceFilter('7'));
+        selectResult(f, '7');
+        await flushResults(f.w);
+        assert.equal(evaluations, 2);
+        assert.deepEqual(f.component.getBehaviorChoicesFilter(), choiceFilter('8'));
+        runtime.reset();
+        assert.deepEqual(f.component.getBehaviorChoicesFilter(), choiceFilter('7'));
+        assert.equal(f.component.getValue(), '7', 'state updates do not silently change the chosen relation');
+        assert.deepEqual(f.errors, []);
+    } finally { runtime.destroy(); dispose(f); }
+});

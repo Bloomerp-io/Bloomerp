@@ -88,6 +88,7 @@ class FieldStateUpdate:
     field: str
     visible: bool | None = None
     disabled: bool | None = None
+    choices_filter: list[dict[str, Any]] | None = None
 
 
 @dataclass(frozen=True, kw_only=True)

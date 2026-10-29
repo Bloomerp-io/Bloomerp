@@ -258,3 +258,42 @@ Raw submitted values remain separate from `initial`: resetting an editor's
 initial accessor does not silently accept an invalid accessor on save.
 `SET_O2M_VALUE` restricts compatible choices using field type and related-model
 identity, and requires an accessor when a direct copy is incompatible.
+
+## Dependent relationship choices
+
+`ADD_FILTER` (action ID `add_filter`) restricts fields rendered with
+`ForeignFieldWidget`, including foreign-key and many-to-many pickers. Configure
+its **Filters** JSON with the shared filter schema and exact draft references:
+
+```json
+{
+  "filters": [{
+    "connector": "AND",
+    "conditions": [{
+      "field_path": "party",
+      "lookup_id": "equals",
+      "value": "{{ object.party }}"
+    }]
+  }]
+}
+```
+
+For a sales invoice, place the behavior on `party`, target `billing_address`,
+and enable both `initial` and `change` events. Here `field_path` refers to the
+party field on the address model, while `object.party` reads the unsaved invoice.
+The JSON editor preserves references even when a normal filter value editor
+would require selecting an existing record.
+
+The action returns `states[].choices_filter`. Each update replaces the target's
+previous behavior restriction; static widget choice limits are ANDed with it.
+Search, selected-label lookup, and advanced selection use the combined filters.
+The advanced picker hides filter editing while these restrictions apply.
+An empty referenced draft value offers no choices; an empty `filters` array
+removes the behavior restriction. Form Reset restores the initial restriction.
+Existing selections are preserved: pair this action with `CLEAR_VALUE` if a
+source change should clear the target. Conditions that stop matching do not
+implicitly undo state, consistent with other field-state actions.
+
+These are picker restrictions, not new save-time validation or authorization.
+The existing server-side search/dataview permissions still apply, and execution
+also authorizes filter dependencies before returning a restriction.

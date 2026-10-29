@@ -40,6 +40,7 @@ class TestRenderActionConfigFormComponent(BloomerpComponentTestCase):
                         items=[
                             LayoutItem(id="first_name"),
                             LayoutItem(id="last_name"),
+                            LayoutItem(id="user_account"),
                         ],
                     )
                 ]
@@ -63,6 +64,26 @@ class TestRenderActionConfigFormComponent(BloomerpComponentTestCase):
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Describe real form rendering and errors without mocking factories or field lookup."""
         return [
+            RequestScenario(
+                name="Choice filter editor retains draft references verbatim",
+                user=self.admin_user,
+                query_params=self._params(action_id="add_filter", target_field="user_account", config=json.dumps({
+                    "filters": [{"connector": "AND", "conditions": [{
+                        "field_path": "username", "lookup_id": "equals", "value": "{{ object.first_name }}",
+                    }]}],
+                })),
+                expected=ExpectedResult(response_validators=[
+                    self.contains_text('name="behavior-one-action-one-filters"'),
+                    self.contains_text("{{ object.first_name }}"),
+                    self.contains_text('bloomerp-component="code-editor-widget"'),
+                ]),
+            ),
+            RequestScenario(
+                name="Choice filter editor rejects an unsupported scalar widget",
+                user=self.admin_user,
+                query_params=self._params(action_id="add_filter"),
+                expected=ExpectedResult(status_code=404),
+            ),
             RequestScenario(
                 name="Malformed layout identifiers produce a validation response rather than a server error",
                 user=self.admin_user,

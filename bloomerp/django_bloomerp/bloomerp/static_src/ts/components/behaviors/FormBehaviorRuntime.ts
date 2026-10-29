@@ -2,6 +2,7 @@ import { t as _ } from "@/utils/i18n";
 import { getCsrfToken } from "@/utils/cookies";
 import showMessage from "@/utils/messages";
 import { getComponent } from "../BaseComponent";
+import ForeignFieldWidget from "../widgets/ForeignFieldWidget";
 import { MessageType } from "../UiMessage";
 import { DetailViewCell, type DetailViewCellChangeDetail, type DetailViewCellChangeSource, type DetailViewCellValue } from "../detail_view_components/DetailViewCell";
 import {
@@ -9,6 +10,7 @@ import {
     captureBehaviorFieldState,
     restoreBehaviorFieldState,
     type BehaviorFieldStateSnapshot,
+    type BehaviorFieldStateUpdate,
 } from "./behaviorFieldState";
 
 type BehaviorEvent = "initial" | "change";
@@ -16,7 +18,7 @@ type Evaluation = { field: string; event: BehaviorEvent; source?: DetailViewCell
 type BehaviorResponse = {
     revision: number;
     values: Array<{ field: string; value: unknown }>;
-    states: Array<{ field: string; visible: boolean | null; disabled: boolean | null }>;
+    states: Array<BehaviorFieldStateUpdate & { field: string }>;
     messages: Array<{ type: "info" | "success" | "warning" | "danger"; message: string }>;
 };
 type Field = { element: HTMLElement; cell: DetailViewCell; name: string };
@@ -67,6 +69,7 @@ export default class FormBehaviorRuntime {
         this.invalidate();
         for (const [element, state] of this.fieldStates) {
             restoreBehaviorFieldState(element, state);
+            if (state.choicesFilter !== undefined) this.foreignWidget(element)?.setBehaviorChoicesFilter(state.choicesFilter);
         }
         this.fieldStates.clear();
     }
@@ -279,14 +282,30 @@ export default class FormBehaviorRuntime {
             if (!field) throw new Error(_("Behavior target '{field}' is not rendered.").replace("{field}", update.field));
             const element = field.element;
             if (trackChanges && !this.fieldStates.has(element)) {
-                this.fieldStates.set(element, captureBehaviorFieldState(element));
+                this.fieldStates.set(element, {
+                    ...captureBehaviorFieldState(element),
+                    choicesFilter: this.foreignWidget(element)?.getBehaviorChoicesFilter(),
+                });
             }
             applyBehaviorFieldState(element, update);
+            if (update.choices_filter != null) {
+                const widget = this.foreignWidget(element);
+                if (!widget) throw new Error(_("Choice filters require a foreign-field widget."));
+                widget.setBehaviorChoicesFilter(update.choices_filter);
+            }
         }
         for (const message of result.messages) {
             const types = { info: MessageType.INFO, success: MessageType.SUCCESS, warning: MessageType.WARNING, danger: MessageType.ERROR };
             this.message(message.message, types[message.type]);
         }
+    }
+
+    /** Locate the target picker without crossing into nested row editors. */
+    private foreignWidget(element: HTMLElement): ForeignFieldWidget | null {
+        const root = element.querySelector<HTMLElement>('[bloomerp-component="foreign-field-widget"]');
+        if (!root || root.closest('[bloomerp-component="detail-view-value"]') !== element) return null;
+        const widget = getComponent(root);
+        return widget instanceof ForeignFieldWidget ? widget : null;
     }
 
     /** Escape backend text before passing it to the shared HTML message component. */
