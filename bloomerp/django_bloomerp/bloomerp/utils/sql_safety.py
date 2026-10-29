@@ -21,7 +21,7 @@ GTE LT LTE Is In Between Exists Like ILike Escape Add Sub Mul Div IntDiv Mod Neg
 Concat DPipe BitwiseAnd BitwiseOr BitwiseXor BitwiseLeftShift BitwiseRightShift
 BitwiseNot Case If Cast TryCast DataType DataTypeParam Interval Var Array Bracket
 Slice JSONExtract JSONExtractScalar JSONPath JSONPathRoot JSONPathKey
-JSONPathSubscript JSONPathWildcard
+JSONPathSubscript JSONPathWildcard JSONBContains Lateral
 """.split()  # noqa: SIM905 - grouped for security review
 )
 _FUNCTION_NAMES = frozenset(
@@ -34,7 +34,7 @@ TimestampDiff Extract TimeToStr StrToTime CurrentDate CurrentTime CurrentTimesta
 RowNumber Rank DenseRank PercentRank CumeDist Ntile Lag Lead FirstValue LastValue
 NthValue ArrayAgg ArraySize ArrayContains GroupConcat Stddev StddevPop StddevSamp
 Variance VariancePop Corr CovarPop CovarSamp PercentileCont PercentileDisc Median
-LogicalAnd LogicalOr JSONBExtract JSONBExtractScalar JSONObject JSONArray
+RegexpReplace LogicalAnd LogicalOr JSONBExtract JSONBExtractScalar JSONObject JSONArray
 """.split()  # noqa: SIM905 - grouped for security review
 )
 _ALLOWED_TYPES = frozenset(
@@ -50,6 +50,8 @@ _ANONYMOUS_FUNCTIONS = {
             "jsonb_build_object",
             "json_build_array",
             "jsonb_build_array",
+            "jsonb_array_length",
+            "jsonb_array_elements_text",
         }
     ),
     "sqlite": frozenset(
@@ -65,6 +67,9 @@ _ANONYMOUS_FUNCTIONS = {
         }
     ),
 }
+# JSON expansion consumes only already-checked arguments; unlike dynamic SQL,
+# it cannot independently open a relation or interpret SQL text.
+_TABLE_FUNCTIONS = frozenset({"jsonb_array_elements_text"})
 _CAST_TYPES = frozenset(
     """
 BOOLEAN TINYINT SMALLINT INT BIGINT UTINYINT USMALLINT UINT UBIGINT FLOAT DOUBLE
@@ -106,12 +111,13 @@ def _validated_query(query: str, dialect: str) -> exp.Query:
                 raise ValueError(f"Unsupported SQL function: {node.name}")
         elif type(node) not in _ALLOWED_TYPES:
             raise ValueError(f"Unsupported SQL expression: {type(node).__name__}")
-        if isinstance(node, exp.Table) and not isinstance(node.this, exp.Identifier):
-            raise ValueError("Table-valued functions are not supported")  # noqa: TRY004
+        if isinstance(node, exp.Table) and not (
+            isinstance(node.this, exp.Identifier)
+            or isinstance(node.this, exp.Anonymous) and node.this.name.lower() in _TABLE_FUNCTIONS
+        ):
+            raise ValueError("Unsupported SQL table-valued function")
         if isinstance(node, exp.DataType) and node.this.name not in _CAST_TYPES:
             raise ValueError("Unsupported SQL cast type")
-        if isinstance(node, exp.With) and node.args.get("recursive"):
-            raise ValueError("Recursive SQL queries are not supported")
     return tree
 
 

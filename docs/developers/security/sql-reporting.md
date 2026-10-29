@@ -6,11 +6,13 @@ SQL API, tile preview, analytics tiles, workflow SQL, safe low-level executor
 methods, and direct permission compilation. Administrators retain unrestricted
 table access, but use the same reporting syntax policy.
 
-The policy supports SELECT, nonrecursive CTEs, joins, subqueries, set operations,
+The policy supports SELECT, recursive and nonrecursive CTEs, joins, subqueries, set operations,
 CASE, ordinary casts, arithmetic, predicates, common numeric/string/date
-functions, aggregations, and window functions. Harmless keywords and semicolons
+functions, aggregations, window functions, JSON operators, and reviewed lateral
+JSON array expansion. Recursive seed and recursive-term tables receive the same
+permission rewriting. Harmless keywords and semicolons
 inside string literals are allowed. Unknown functions, schema-qualified function
-calls, custom cast types, table-valued functions, recursive queries, writes,
+calls, custom cast types, unreviewed table-valued functions, writes,
 locking clauses, and multiple statements are rejected. The exact reviewed
 expression and function sets live in the policy module. Extend those sets only
 with regression coverage and a review of the function's database behavior.

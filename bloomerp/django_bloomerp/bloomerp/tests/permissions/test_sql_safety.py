@@ -23,6 +23,8 @@ class TestSqlSafety(SimpleTestCase):
             "SELECT 1 ORDER BY pg_read_file('/unused')",
             "SELECT * FROM dblink('unused', 'SELECT secret FROM forbidden_marker')",
             "SELECT custom_function(1)",
+            "SELECT * FROM jsonb_array_elements_text(query_to_xml('SELECT secret FROM forbidden_marker', false, true, '')::jsonb)",
+            "SELECT * FROM generate_series(1, 1000000000)",
             "SELECT pg_catalog.query_to_xml('SELECT 1', false, true, '')",
             "SELECT public.lower('a')",
             "SELECT CAST('a' AS public.custom_type)",
@@ -31,7 +33,6 @@ class TestSqlSafety(SimpleTestCase):
             "SELECT 1 INTO new_table",
             "SELECT * FROM allowed FOR UPDATE",
             "WITH a AS (DELETE FROM allowed RETURNING *) SELECT * FROM a",
-            "WITH RECURSIVE a AS (SELECT 1 UNION ALL SELECT * FROM a) SELECT * FROM a",
             "SELECT 1; SELECT 2",
         ]
         # 2. Direct compilation cannot bypass the shared syntax policy.
@@ -57,6 +58,10 @@ class TestSqlSafety(SimpleTestCase):
             "SELECT x FROM t WHERE x ILIKE E'%O''Reilly%'",
             "SELECT $$pg_sleep(0); delete$$ AS literal",
             "SELECT DATE_TRUNC('day', d AT TIME ZONE 'UTC') FROM t",
+            "WITH RECURSIVE chain AS (SELECT 1 AS n UNION SELECT n + 1 FROM chain WHERE n < 3) SELECT * FROM chain",
+            "SELECT jsonb_array_length(data), data ? 'Sent' FROM t",
+            "SELECT p.email FROM t CROSS JOIN LATERAL jsonb_array_elements_text(t.data) p(email)",
+            "SELECT REGEXP_REPLACE(url, '^https?://', '') FROM t",
         ]
         # 2. Validate without accessing any database or policy metadata.
         for query in queries:
@@ -96,3 +101,13 @@ class TestSqlSafety(SimpleTestCase):
                 execute(query)
         self.assertIsInstance(raw.is_valid(query), ValueError)
         # 2. SimpleTestCase forbids database access for every call above.
+
+    def test_json_expansion_cannot_hide_an_ungranted_subquery(self) -> None:
+        """Use case: A permitted JSON expansion receives a relational subquery.
+        Expected result: Physical tables inside its arguments still require grants.
+        """
+        # 1. Reference a forbidden fixture table inside a reviewed JSON function.
+        query = "SELECT * FROM jsonb_array_elements_text((SELECT secret FROM forbidden_marker)) AS item(value)"
+        # 2. Table authorization must reject it even though the function is safe.
+        with self.assertRaisesRegex(PermissionError, "forbidden_marker"):
+            SqlPermissionCompiler({}).compile(query, dialect="postgres")

@@ -33,8 +33,10 @@ def get_table_names(sql: str, dialect: str = "postgres") -> set[str]:
 def get_physical_tables(sql: str, dialect: str = "postgres") -> list[exp.Table]:
     """Discover tables without applying the execution policy to cross-dialect SQL."""
     statements = [statement for statement in parse(sql, read=dialect) if statement]
-    if len(statements) != 1 or not isinstance(statements[0], exp.Query):
-        raise ValueError("Exactly one SQL query is required")
+    if len(statements) != 1:
+        raise ValueError("Exactly one SQL statement is required")
+    if not isinstance(statements[0], exp.Query) or statements[0].find(exp.Into):
+        raise ValueError("Only read-only SELECT/WITH queries are allowed")
     return SqlPermissionCompiler._physical_tables_from_tree(statements[0])
 
 

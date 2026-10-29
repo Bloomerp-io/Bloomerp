@@ -201,3 +201,36 @@ class TestSqlPermissionCompiler(BaseBloomerpTestCaseWithModels):
             f"MAX(LOWER(first_name)) AS name FROM {table}", paginate=False,
         )
         self.assertEqual(response.rows, [{"visible": 1, "hidden": 0, "name": FIRST_NAMES[0].lower()}])
+
+    def test_recursive_report_secures_seed_and_recursive_table_references(self) -> None:
+        """Use case: A reporting CTE follows relations recursively.
+        Expected result: Both seed and recursive scans retain row/field masking.
+        """
+        # 1. Permit only one row and one field in the recursion's source table.
+        self._assign_policy(fields=["first_name"], row_rule=self._first_customer_rule())
+        table = self.CustomerModel._meta.db_table
+        # 2. UNION terminates once the permitted row has been visited.
+        result = SqlExecutor(self.normal_user).execute_query(
+            f"WITH RECURSIVE visible AS (SELECT first_name, last_name FROM {table} "
+            f"UNION SELECT c.first_name, c.last_name FROM {table} c "
+            "JOIN visible v ON c.first_name = v.first_name) SELECT * FROM visible",
+            paginate=False,
+        )
+        self.assertEqual(result.rows, [{"first_name": FIRST_NAMES[0], "last_name": None}])
+
+    def test_postgres_lateral_json_expansion_uses_masked_fields(self) -> None:
+        """Use case: A PostgreSQL report expands JSON made from table columns.
+        Expected result: Lateral functions see permitted rows and masked fields.
+        """
+        # 1. Use PostgreSQL's actual JSON functions on isolated fixture data.
+        if connection.vendor != "postgresql":
+            self.skipTest("PostgreSQL JSON integration")
+        self._assign_policy(fields=["first_name"], row_rule=self._first_customer_rule())
+        table = self.CustomerModel._meta.db_table
+        # 2. Expanding a hidden field must produce null rather than its raw value.
+        result = SqlExecutor(self.normal_user).execute_query(
+            "SELECT p.value FROM " + table + " c CROSS JOIN LATERAL "
+            "jsonb_array_elements_text(jsonb_build_array(c.first_name, c.last_name)) p(value)",
+            paginate=False,
+        )
+        self.assertEqual(result.rows, [{"value": FIRST_NAMES[0]}, {"value": None}])
