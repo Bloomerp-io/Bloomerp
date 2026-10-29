@@ -1,13 +1,15 @@
 """Browser coverage of the shared object email modal and SDK autosave."""
 
+import json
 import re
 from unittest.mock import patch
 
 from django.contrib.contenttypes.models import ContentType
+from django.core.files.uploadedfile import SimpleUploadedFile
 from playwright.sync_api import Route, expect
 
 from bloomerp.communication.builtins.emails.providers.imap_smtp import ImapSmtpAdapter
-from bloomerp.models import DocumentTemplate, EmailAccount, EmailDraft, User
+from bloomerp.models import DocumentTemplate, EmailAccount, EmailDraft, FileNode, User
 from bloomerp.tests.base import BloomerpE2ETestCase, E2EAction, E2ERequestScenario
 
 
@@ -21,6 +23,7 @@ class TestObjectEmailE2E(BloomerpE2ETestCase):
         self.normal_user.email = "recipient@example.com"
         self.normal_user.first_name = "Ada"
         self.normal_user.save(update_fields=["email", "first_name"])
+        self.stored_file = FileNode.objects.create(kind="FILE", created_by=self.admin_user, content=SimpleUploadedFile("stored-report.txt", b"existing report", content_type="text/plain"))
         self.account = EmailAccount.objects.create(name="Sender", email_address="sender@example.com")
         self.admin_user.default_email_account = self.account
         self.admin_user.save(update_fields=["default_email_account"])
@@ -183,16 +186,23 @@ class TestObjectEmailE2E(BloomerpE2ETestCase):
         expect(editor).to_contain_text("Hello {{ user.first_name }}")
         self.composer.locator('[name="subject"]').fill("Personal greeting")
         self.composer.locator('[name="template_args-note"]').fill("Welcome")
-        self.composer.locator('[name="attachments"]').set_input_files({
-            "name": "note.txt", "mimeType": "text/plain", "buffer": b"draft file",
-        })
+        self.composer.get_by_role("button", name="Attach", exact=True).click()
+        picker = self.composer.locator('[data-reference-search-panel="file"]')
+        picker.get_by_role("searchbox", name="Search attachments").fill("stored-report")
+        picker.locator('[data-reference-results] [role="menuitem"]').filter(has_text="stored-report.txt").click()
+        with self.page.expect_file_chooser() as chooser:
+            picker.locator('[data-reference-upload]').click()
+        chooser.value.set_files({"name": "note.txt", "mimeType": "text/plain", "buffer": b"draft file"})
+        expect(self.composer.locator('[data-reference-files-count]')).to_contain_text("2")
         editor.fill("Edited {{ user.first_name }}: {{ vars.note }}")
         expect(self.composer.locator('[data-email-status]')).to_have_text("Draft saved.")
         draft = EmailDraft.objects.get(user=self.admin_user)
         self.assertIn("Edited {{ user.first_name }}", draft.payload["body"])
         self.assertEqual(draft.payload["to"], "recipient@example.com, updated@example.com")
         self.assertEqual(draft.payload["cc"], "team@example.com")
-        self.assertEqual(draft.payload["attachments"][0]["content_base64"], "ZHJhZnQgZmlsZQ==")
+        selected = json.loads(draft.payload["object_references"])["manual"]
+        self.assertEqual(len(selected), 2)
+        self.assertIn(str(self.stored_file.pk), [item["target_id"] for item in selected])
         self.template.refresh_from_db()
         self.assertEqual(self.template.template, "<p>Hello {{ user.first_name }}</p>")
 
@@ -229,4 +239,5 @@ class TestObjectEmailE2E(BloomerpE2ETestCase):
         self.assertEqual(self.delivery_mock.call_args.kwargs["cc"], ["team@example.com"])
         self.assertIn("Edited Ada: Welcome", self.delivery_mock.call_args.kwargs["body_html"])
         self.assertIn("Goodbye: Welcome", self.delivery_mock.call_args.kwargs["body_html"])
+        self.assertEqual({attachment.filename: attachment.content for attachment in self.delivery_mock.call_args.kwargs["attachments"]}, {"stored-report.txt": b"existing report", "note.txt": b"draft file"})
         self.assertFalse(EmailDraft.objects.filter(user=self.admin_user).exists())
