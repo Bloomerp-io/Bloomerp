@@ -125,7 +125,7 @@ class SqlExecutor:
         if not self.is_safe(normalized_query):
             raise ValueError("Only safe read-only SELECT/WITH queries are allowed")
 
-        query_params: tuple[Any, ...] = ()
+        query_params: tuple[Any, ...] | None = None
         if self.user is not None:
             compiled_query = self.policy_manager.get_accessible_sql_query(normalized_query)
             normalized_query = compiled_query.query

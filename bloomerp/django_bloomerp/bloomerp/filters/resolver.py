@@ -5,6 +5,7 @@ from dataclasses import dataclass, replace
 from typing import Literal
 
 from django.core.exceptions import FieldDoesNotExist, PermissionDenied, ValidationError
+from django.db import connection
 from django.db.models import Expression, F, Model
 from django.db.models.fields.json import KeyTransform
 from django.utils.translation import gettext as _
@@ -276,7 +277,10 @@ class FilterFieldResolver:
         sql_context = None
         if model is None:
             # Quote a configured result-column alias, never accept SQL from the request.
-            sql_context = SQLLookupContext(field_path='"' + field.field.replace('"', '""') + '"')
+            sql_context = SQLLookupContext(
+                field_path='"' + field.field.replace('"', '""') + '"',
+                dialect={"postgresql": "postgres"}.get(connection.vendor, connection.vendor),
+            )
         target = FilterExecutionTarget(
             backend="django" if model else "sql", model=model,
             field_path=field.field, tile_id=tile, sql_context=sql_context,
