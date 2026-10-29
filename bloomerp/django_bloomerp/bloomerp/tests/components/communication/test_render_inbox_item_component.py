@@ -3,7 +3,12 @@ from unittest.mock import Mock, patch
 from django.http import HttpResponse
 from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.utils import timezone
+from django.urls import reverse
 
+from bloomerp.communication.builtins.in_app_notifications.base import SystemMessage
+from bloomerp.models.automation import Workflow, WorkflowNode
+from bloomerp.models.automation.workflow_run import WorkflowRun
+from bloomerp.models.automation.workflow_run_step import WorkflowRunStep
 from bloomerp.communication.builtins.instant_messaging.controller import IMController
 from bloomerp.communication.builtins.instant_messaging.inbox_source import (
     publish_conversation_activity,
@@ -162,5 +167,84 @@ class TestIMInboxRendering(BloomerpComponentTestCase):
                 user=self.normal_user,
                 prepare=self.prepare_revoked,
                 expected=ExpectedResult(status_code=404),
+            ),
+        ]
+
+
+class TestWorkflowInboxRendering(BloomerpComponentTestCase):
+    """Cover durable run previews and the approval message lifecycle."""
+
+    view_name = "components_render_inbox_item"
+
+    def prepare_workflow(self, scenario: RequestScenario) -> None:
+        """Deliver a paused workflow with a prompt to its configured approver."""
+        workflow = Workflow.objects.create(name="Review purchase")
+        node = WorkflowNode.objects.create(
+            workflow=workflow, type="ACTION", sub_type="HUMAN_IN_THE_LOOP",
+            name="Review purchase", parameters={"approver_users": [self.normal_user.pk]},
+        )
+        self.run = WorkflowRun.objects.create(workflow=workflow, status="PAUSED")
+        self.step = WorkflowRunStep.objects.create(
+            workflow_run=self.run, node=node, sequence=1,
+            action_id="HUMAN_IN_THE_LOOP", status="PAUSED",
+        )
+        inbox = Inbox.objects.create(user=self.normal_user, name="Workflow test")
+        folder = InboxFolder.objects.create(inbox=inbox, type="in_app_notifications")
+        self.item = SystemMessage.create_item(
+            message_type="workflow", folder=folder,
+            data={
+                "workflow_run_id": self.run.pk, "status": "PAUSED",
+                "approval_step_id": self.step.pk,
+                "approval_message": "Please check the purchase total.",
+            },
+        )
+        scenario.view_kwargs = {"item_id": str(self.item.pk)}
+
+    def prepare_deleted_run(self, scenario: RequestScenario) -> None:
+        """Save a completed run preview and remove its original database record."""
+        self.prepare_workflow(scenario)
+        node_id = self.step.node_id
+        self.run.steps.all().delete()
+        self.item = SystemMessage.create_item(
+            message_type="workflow", folder=self.item.folder,
+            data={
+                "workflow_run_id": self.run.pk, "status": "SUCCEEDED",
+                "execution_trace": [{"node_id": node_id, "status": "success"}],
+            },
+        )
+        self.run.delete()
+        scenario.view_kwargs = {"item_id": str(self.item.pk)}
+
+    def approval_resolves(self, response: HttpResponse) -> bool:
+        """Show the prompt and review action only while the saved step is paused."""
+        self.assertContains(response, "Please check the purchase total.")
+        self.assertContains(response, "Approval required")
+        self.assertContains(response, f"step_id={self.step.pk}")
+        self.step.status = "COMPLETED"
+        self.step.save(update_fields=["status"])
+        resolved = self.client.get(reverse(self.view_name, kwargs={"item_id": self.item.pk}))
+        self.assertContains(resolved, "This approval has already been handled")
+        self.assertNotContains(resolved, f"step_id={self.step.pk}")
+        return True
+
+    def get_test_scenarios(self) -> list[RequestScenario]:
+        """Exercise completion snapshot reuse and review action availability."""
+        return [
+            RequestScenario(
+                name="Completed run uses the shared canvas after run deletion",
+                user=self.normal_user, prepare=self.prepare_deleted_run,
+                expected=ExpectedResult(response_validators=[
+                    self.contains_text('bloomerp-component="workflow"'),
+                    self.contains_text('data-workflow-readonly="true"'),
+                    self.contains_text("Completed"),
+                    self.contains_text("node.completed"),
+                    self.does_not_contain_text("data-workflow-run-url"),
+                    self.does_not_contain_text("data-workflow-edit-tools"),
+                ]),
+            ),
+            RequestScenario(
+                name="Approval prompt links to review until its step is resolved",
+                user=self.normal_user, prepare=self.prepare_workflow,
+                expected=ExpectedResult(response_validators=self.approval_resolves),
             ),
         ]
