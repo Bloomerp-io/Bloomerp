@@ -12,5 +12,10 @@ class TestExecuteSqlQueryComponent(BloomerpComponentTestCase):
     view_name = 'components_execute_sql_query'
 
     def get_test_scenarios(self) -> list[RequestScenario]:
-        # Add only the route scenarios this callable needs.
-        return []
+        """Reject unsafe SQL through the tile preview endpoint."""
+        return [RequestScenario(
+            name="Tile SQL preview rejects a side-effect function",
+            method="POST", user=self.admin_user,
+            data={"sql_query": "SELECT set_config('application_name', 'changed', false)"},
+            expected=ExpectedResult(status_code=400),
+        )]

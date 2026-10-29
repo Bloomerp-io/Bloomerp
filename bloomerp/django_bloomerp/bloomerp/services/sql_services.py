@@ -1,17 +1,22 @@
-import re
 import time
 from typing import Any
 
 import pandas as pd
+from django.db import connection
+from pydantic import BaseModel
 
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.utils.sql import SqlQueryExecutor
-from bloomerp.workspaces.analytics_tile.utils import TileFieldType, get_primitive_field_icon, to_primitive_field_type
-from pydantic import BaseModel
-
+from bloomerp.utils.sql_safety import connection_dialect, is_safe_read_query
+from bloomerp.workspaces.analytics_tile.utils import (
+    TileFieldType,
+    get_primitive_field_icon,
+    to_primitive_field_type,
+)
 from bloomerp.workspaces.utils import UserParameterResolver
+
 
 class Field(BaseModel):
     """Represents one selectable SQL output field or accessible database field."""
@@ -131,6 +136,8 @@ class SqlExecutor:
             normalized_query = compiled_query.query
             query_params = compiled_query.params
         
+        # Authored SQL is validated above; count/page wrappers and policy SQL
+        # are trusted. Avoid parsing those larger generated queries again.
         executor = SqlQueryExecutor()
         query_without_semicolon = normalized_query.rstrip(";")
         started_at = time.perf_counter()
@@ -147,7 +154,7 @@ class SqlExecutor:
             count_result = executor.execute_to_dict(
                 count_query,
                 params=query_params,
-                safe=True,
+                safe=False,
                 use_cache=False,
             )
             count_rows = count_result.get("rows", [])
@@ -173,7 +180,7 @@ class SqlExecutor:
         result = executor.execute_to_dict(
             execution_query,
             params=query_params,
-            safe=True,
+            safe=False,
             use_cache=False,
         )
         elapsed_ms = int((time.perf_counter() - started_at) * 1000)
@@ -226,24 +233,7 @@ class SqlExecutor:
         Returns:
             bool: whether it's a safe query.
         """
-        if not query or not query.strip():
-            return False
-
-        cleaned = query.strip().rstrip(";").strip()
-        lowered = cleaned.lower()
-
-        if not (lowered.startswith("select") or lowered.startswith("with")):
-            return False
-
-        if ";" in cleaned:
-            return False
-
-        disallowed = re.search(
-            r"\b(update|delete|insert|drop|alter|create|grant|revoke|truncate|vacuum|attach|detach|replace|upsert)\b",
-            lowered,
-        )
-
-        return disallowed is None
+        return is_safe_read_query(query, connection_dialect(connection.vendor))
 
     def _field_icon(self, field_type: str | None) -> str:
         """Returns the icon that corresponds to the primitive analytics field type."""

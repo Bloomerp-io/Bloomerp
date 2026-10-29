@@ -164,3 +164,40 @@ class TestSqlPermissionCompiler(BaseBloomerpTestCaseWithModels):
         with connection.cursor() as cursor:
             cursor.execute(compiled.query, compiled.params)
             self.assertEqual(cursor.fetchall(), [])
+
+    def test_function_escapes_are_rejected_for_every_user_before_execution(self) -> None:
+        """Use case: A function attempts to read a forbidden fixture field.
+        Expected result: Normal, admin, and workflow callers reject it without SQL.
+        """
+        # 1. Grant one fixture field, leaving last_name inaccessible.
+        self._assign_policy(fields=["first_name"], row_rule=self._first_customer_rule())
+        table = self.CustomerModel._meta.db_table
+        queries = [
+            f"SELECT query_to_xml('SELECT last_name FROM {table}', false, true, '')",
+            f"SELECT COALESCE(query_to_xml('SELECT last_name FROM {table}', false, true, '')::text, '')",
+            "SELECT pg_sleep(0)",
+            "SELECT set_config('application_name', 'audit-only', false)",
+        ]
+        # 2. This also runs on disposable PostgreSQL with actual forbidden fixtures.
+        for user in (self.normal_user, self.admin_user, None):
+            for query in queries:
+                with self.subTest(user=user, query=query), self.assertNumQueries(0):
+                    with self.assertRaises(ValueError):
+                        SqlExecutor(user).execute_query(query)
+                    if user is not None:
+                        with self.assertRaises(ValueError):
+                            UserPolicyManager(user).get_accessible_sql_query(query)
+
+    def test_supported_aggregates_use_only_permitted_rows_and_fields(self) -> None:
+        """Use case: A report aggregates a table with row and field restrictions.
+        Expected result: Real database results include only allowed data.
+        """
+        # 1. Grant only the first customer's first_name.
+        self._assign_policy(fields=["first_name"], row_rule=self._first_customer_rule())
+        table = self.CustomerModel._meta.db_table
+        # 2. Execute real aggregates after the shared syntax and permission checks.
+        response = SqlExecutor(self.normal_user).execute_query(
+            f"SELECT COUNT(*) AS visible, COUNT(last_name) AS hidden, "
+            f"MAX(LOWER(first_name)) AS name FROM {table}", paginate=False,
+        )
+        self.assertEqual(response.rows, [{"visible": 1, "hidden": 0, "name": FIRST_NAMES[0].lower()}])
