@@ -1,5 +1,6 @@
 """Sample catalog; registration/discovery is intentionally not wired yet."""
 
+from bloomerp.form_behaviors.builtins.add_filter import ADD_FILTER
 from bloomerp.form_behaviors.builtins.calculate import CALCULATE
 from bloomerp.form_behaviors.builtins.clear_value import CLEAR_VALUE
 from bloomerp.form_behaviors.builtins.copy_field_value import COPY_FIELD_VALUE
@@ -21,6 +22,7 @@ from .set_relative_date import SET_RELATIVE_DATE
 from .set_value import SET_VALUE
 
 BUILTIN_ACTIONS = (
+    ADD_FILTER,
     SET_FIELD_VISIBILITY,
     SET_FIELD_INTERACTION,
     SET_VALUE,

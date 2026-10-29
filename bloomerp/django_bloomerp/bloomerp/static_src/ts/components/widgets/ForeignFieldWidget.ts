@@ -3,7 +3,7 @@ import { getItemNavigationKey } from "@/utils/itemNavigation";
 import renderDataview from "@/utils/dataview";
 import { createModalInstance } from "@/utils/modals";
 import { t } from "@/utils/i18n";
-import { parseInitialFilters } from "@/components/filters/definition";
+import { parseInitialFilters, type Filter } from "@/components/filters/definition";
 import { Modal } from "../Modal";
 import type { ForeignFieldSelection } from "@/components/data_view_components/ForeignFieldDataViewContainer";
 import htmx from "htmx.org";
@@ -59,9 +59,37 @@ export default class ForeignFieldWidget extends BaseWidget {
     private searchRequestId: number = 0;
     private selectionAbortController: AbortController | null = null;
     private selectionRequestId: number = 0;
+    private behaviorChoicesFilter: Filter[] = [];
 
     private createControlEl: HTMLElement | null = null;
     private advancedControlEl: HTMLElement | null = null;
+
+    /** Return an independent snapshot of the current behavior restriction. */
+    public getBehaviorChoicesFilter(): Filter[] {
+        return structuredClone(this.behaviorChoicesFilter);
+    }
+
+    /** Replace the dynamic restriction and discard results from the previous draft. */
+    public setBehaviorChoicesFilter(filters: Filter[]): void {
+        if (JSON.stringify(filters) === JSON.stringify(this.behaviorChoicesFilter)) return;
+        this.behaviorChoicesFilter = structuredClone(filters);
+        this.cancelPendingSearch();
+        this.selectionAbortController?.abort();
+        this.selectionRequestId += 1;
+        this.advancedModal?.close();
+        this.clearResults();
+        this.hideDropdown();
+        if (this.input === document.activeElement && !this.isDisabled) {
+            void this.fetchResults(this.input!.value.trim());
+        }
+    }
+
+    /** Combine model choice limits and behavior groups with implicit AND. */
+    public getChoicesFilter(): Filter[] {
+        const base = this.element.dataset.choicesFilter
+            ? parseInitialFilters(this.element.dataset.choicesFilter) : [];
+        return [...base, ...this.getBehaviorChoicesFilter()];
+    }
     
 
     /** Connect the input, result menu, and related-object controls. */
@@ -236,9 +264,8 @@ export default class ForeignFieldWidget extends BaseWidget {
                 modal.getBodyElement(),
                 Number(this.contentTypeId),
                 'foreign-field-dataview',
-                this.element.dataset.choicesFilter
-                    ? parseInitialFilters(this.element.dataset.choicesFilter)
-                    : undefined,
+                this.getChoicesFilter(),
+                { hideFilters: this.getChoicesFilter().length > 0 },
             );
         } catch (err) {
             // handle render/init errors gracefully
@@ -401,8 +428,9 @@ export default class ForeignFieldWidget extends BaseWidget {
         const abortController = new AbortController();
         this.searchAbortController = abortController;
         const params = new URLSearchParams({ fk_search_results_query: query });
-        if (this.element.dataset.choicesFilter) {
-            params.set('filter', this.element.dataset.choicesFilter);
+        const filters = this.getChoicesFilter();
+        if (filters.length) {
+            params.set('filter', JSON.stringify(filters));
         }
         const url = `/components/search-objects/${this.contentTypeId}/?${params}`;
         try {
@@ -885,8 +913,9 @@ export default class ForeignFieldWidget extends BaseWidget {
         const controller = new AbortController();
         this.selectionAbortController = controller;
         const params = new URLSearchParams();
-        if (this.element.dataset.choicesFilter) {
-            params.set('filter', this.element.dataset.choicesFilter);
+        const filters = this.getChoicesFilter();
+        if (filters.length) {
+            params.set('filter', JSON.stringify(filters));
         }
         ids.forEach((id: string): void => { params.append('fk_selected_id', id); });
         try {

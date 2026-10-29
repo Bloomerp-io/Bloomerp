@@ -415,6 +415,19 @@ class BehaviorExecutor:
                         raise ValidationError(
                             _("Action returned an invalid state target.")
                         )
+                    if state.choices_filter is not None:
+                        from bloomerp.form_behaviors.builtins.add_filter import supports_choice_filter
+                        from bloomerp.form_behaviors.builtins.fetch import parse_filters
+                        from bloomerp.filters.manager import ModelFilterManager
+
+                        if not isinstance(state.choices_filter, list) or not supports_choice_filter(declared_update_field):
+                            raise ValidationError(_("Choice filters require a foreign-field widget."))
+                        related_model = declared_update_field.get_related_model()
+                        filters = parse_filters(state.choices_filter)
+                        self.manager.validate_filters(related_model, filters)
+                        ModelFilterManager(related_model).apply(
+                            filters, queryset=related_model._default_manager.all(),
+                        )
                     states.append(state)
                 for message in result.messages:
                     if (
