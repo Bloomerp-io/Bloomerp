@@ -23,6 +23,7 @@ class TestTextEditorFormField(BloomerpFormFieldTestCase[TextEditorFormField]):
     field_class = TextEditorFormField
 
     def get_test_scenarios(self) -> list[FormFieldScenario[TextEditorFormField]]:
+        """Describe the observable behavior covered by this test case."""
         return []
 ```
 

@@ -1,8 +1,11 @@
 # Cotton UI Components
 
-Generated from Django Cotton component docstrings in `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui`.
+Use these components in Django templates. Their implementations live in
+`bloomerp/django_bloomerp/bloomerp/templates/cotton/ui`. Each page describes the
+inputs and slots needed by its caller.
 
-Run `./scripts.sh document-cotton-components` to regenerate these docs.
+Translate literal user-facing text at the call site with Django
+`{% translate %}` or `{% blocktrans %}` tags so `makemessages` can extract it.
 
 ## Components
 

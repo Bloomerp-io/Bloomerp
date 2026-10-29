@@ -1,12 +1,5 @@
 # `c-ui.text.text`
 
-- Tag: `<c-ui.text.text />`
-- Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/text/text.html`
+Render the default slot as a paragraph. Accepts `class` for additional styling.
 
-## Description
-
-No component docstring found.
-
-## Documentation Status
-
-Add a `{% comment %}` block at the top of the component template to populate this page.
+Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/text/text.html`.

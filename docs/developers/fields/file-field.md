@@ -57,9 +57,3 @@ It includes size, MIME type, extension, original filename, bulk-import identity,
 and optional document-template and PDF-signature provenance. Generated PDFs
 reference their template and source records. Signing creates a separate node
 and records its identity on the original node.
-
-Migration `0086_file_nodes_and_object_references` copies legacy files and usages
-without copying bytes or the old generated folder hierarchy. Migration
-`0087_retire_legacy_file_models` verifies the storage-key cutover and removes
-`File`, `FileFolder`, `FileFieldReference`, and template folder destinations.
-Historical model definitions remain in migration state only.

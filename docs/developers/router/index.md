@@ -52,12 +52,19 @@ The route type decides the URL shape and what context gets attached to the view.
 Use `app` when the route is not naturally owned by a module or model.
 
 ```python
+from django.http import HttpRequest, HttpResponse
+
+from bloomerp.router import router
+
+
 @router.register(
-    path="components/global_search/",
-    name="components_global_search",
+    path="components/example_status/",
+    name="Example status",
+    url_name="components_example_status",
 )
-def global_search(request):
-    ...
+def example_status(request: HttpRequest) -> HttpResponse:
+    """Return a static fragment with no model data."""
+    return HttpResponse("<span>OK</span>")
 ```
 
 Good fits:
@@ -157,35 +164,11 @@ Good fits:
 - object activity/comments/document-template tabs
 - custom object actions that need `pk`
 
-The generated URL includes `<int_or_uuid:pk>`. Detail views should resolve the object through the model and `pk`, usually via shared detail base classes or `get_object_or_404(self.model, pk=self.kwargs["pk"])`.
+The generated URL includes `<int_or_uuid:pk>`. Resolve the object through the
+shared permission-aware detail base classes. A bare model lookup does not enforce
+row or field permissions.
 
 The view receives `model` and `module`.
-
-## Picking The Right Type
-
-Ask two questions:
-
-1. Does the URL need an object id?
-   Use `detail`.
-
-2. Does the URL belong under a model collection?
-   Use `model`.
-
-If neither is true:
-
-- use `module` when the page belongs under a module path
-- use `app` when the route is global or utility-like
-
-Examples:
-
-| Need | Type |
-| --- | --- |
-| `/sales/contacts/` list page | `model` |
-| `/sales/contacts/<pk>/` object overview | `detail` |
-| `/sales/` module home/dashboard | `module` |
-| `/components/global_search/` shared HTMX endpoint | `app` |
-| `/sales/contacts/bulk-upload/` | `model` |
-| `/sales/contacts/<pk>/files/` | `detail` |
 
 ## Names And URL Names
 
@@ -227,7 +210,7 @@ Use `override=True` when intentionally replacing an existing route with the same
     url_name="model",
     override=True,
 )
-class CustomContactListView(...):
+class CustomContactListView(BloomerpListView):
     ...
 ```
 
@@ -314,67 +297,15 @@ Tool calls and resource reads require authentication; OAuth-enabled clients may 
 
 ## MCP Resources
 
-Use the same `router.register(...)` API with `McpResource` for a concrete URI or
-`McpResourceTemplate` for a parameterized URI. The router infers
-`route_type="mcp_resource"` from either contract, or you can set it explicitly.
-
-```python
-from django.http import HttpRequest
-
-from bloomerp.mcp.definition import McpResource
-from bloomerp.router import router
-
-
-@router.register(
-    name="Create policy guide",
-    url_name="create_policy_guide",
-    description="Explain how to construct and assign a Bloomerp policy.",
-    mcp=McpResource(
-        uri="bloomerp://guides/create-policy",
-        mime_type="text/markdown",
-    ),
-)
-def create_policy_guide(request: HttpRequest) -> str:
-    """Return policy authoring guidance for the authenticated caller."""
-    return "# Create a policy\n\nDefine its rules, then assign it to users or groups."
-```
-
-Resource registrations reject `path`, `re_path`, model/module selectors, and
-`searchable=True`. They do not create HTTP or websocket URL patterns and do not
-appear in `tools/list`. Their `url_name` is catalog metadata rather than a Django
-reverse target. Put Python resource readers directly in an installed app's
-`views/mcp/` directory, which the existing views discovery imports. Keep their
-Markdown documentation in `views/mcp/resources/` and include it in package data.
-
-Resource identity is its URI; template identity normalizes variable names. A
-duplicate identity is rejected unless replaced with `override=True`. Exact URI
-matches take precedence over templates; multiple matching templates are ambiguous.
-
-Readers receive an authenticated GET request. Template arguments are decoded and
-passed as named string parameters, with optional JSON Schema validation. Readers
-can return text, bytes, dictionaries/lists, Django `HttpResponse`, or DRF
-`Response`. Class readers must support GET. Enforce any additional model, object,
-or field permissions in the reader.
-
-The transport advertises `resources: {}` and supports `resources/list`,
-`resources/templates/list`, and `resources/read`. Templates currently support
-simple `{name}` variables; subscriptions and change notifications are not enabled.
-See [Registering MCP resources](../mcp/resources.md) for complete examples,
-validation rules, and reader contracts, or the [MCP overview](../mcp/index.md) for
-client setup.
+Register reference readers with `McpResource` or `McpResourceTemplate`. These
+have no individual HTTP URL. See [resource registration](../mcp/resources.md)
+for complete examples, discovery, return types, and permission requirements.
 
 ## Components
 
-HTMX component endpoints commonly use `app` routes with explicit component paths and names:
-
-```python
-@router.register(
-    path="components/files/upload/",
-    name="components_files_upload",
-)
-def upload_file(request):
-    ...
-```
+Use an `app` route for an HTMX component endpoint, as in the static-fragment
+example above. Put each endpoint in its own module under the app's `components/`
+directory.
 
 Use these conventions:
 
@@ -395,18 +326,3 @@ router.register_routes_for_model(MyModel)
 ```
 
 This replays applicable `model` and `detail` route templates for that model, assuming the model is also known to the module registry.
-
-## Practical Checklist
-
-- Use `app` for global utility or component endpoints.
-- Use `module` for module home/dashboard/report pages.
-- Use `model` for collection-level pages and actions.
-- Use `detail` for object-level pages and actions.
-- Set explicit `url_name` for anything likely to be reversed.
-- Use `{model}` and `{module}` in `name`/`description` for generated routes.
-- Use `models="__all__"` only for generic views that truly work for every model.
-- Use `exclude_models` for generic routes with known exceptions.
-- Keep permission checks in the view or service layer.
-- Use `mcp=McpTool(...)` on eligible API routes, or `route_type="mcp"` for a tool without a REST URL.
-- Use `mcp=McpResource(...)` or `mcp=McpResourceTemplate(...)` for resource readers.
-- Use `override=True` only when replacing a route intentionally.
