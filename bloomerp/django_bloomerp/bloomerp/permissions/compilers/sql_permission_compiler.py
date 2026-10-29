@@ -15,6 +15,7 @@ from bloomerp.permissions.compilers.django_q_permission_compiler import (
     DjangoQPermissionCompiler,
 )
 from bloomerp.permissions.definition import BloomerpPermission, PermissionMatch
+from bloomerp.utils.sql_safety import connection_dialect, parse_read_query
 
 
 @dataclass(frozen=True)
@@ -30,9 +31,13 @@ def get_table_names(sql: str, dialect: str = "postgres") -> set[str]:
 
 
 def get_physical_tables(sql: str, dialect: str = "postgres") -> list[exp.Table]:
-    return SqlPermissionCompiler._physical_tables_from_tree(
-        SqlPermissionCompiler._parse_single_read_query(sql, dialect)
-    )
+    """Discover tables without applying the execution policy to cross-dialect SQL."""
+    statements = [statement for statement in parse(sql, read=dialect) if statement]
+    if len(statements) != 1:
+        raise ValueError("Exactly one SQL statement is required")
+    if not isinstance(statements[0], exp.Query) or statements[0].find(exp.Into):
+        raise ValueError("Only read-only SELECT/WITH queries are allowed")
+    return SqlPermissionCompiler._physical_tables_from_tree(statements[0])
 
 
 def get_table_references(sql: str, dialect: str = "postgres") -> list[dict[str, str]]:
@@ -112,21 +117,13 @@ class SqlPermissionCompiler(BasePermissionCompiler[CompiledSqlAccess]):
 
     @staticmethod
     def _connection_dialect() -> str:
-        dialects = {"postgresql": "postgres", "sqlite": "sqlite"}
-        try:
-            return dialects[connection.vendor]
-        except KeyError as exc:
-            raise ValueError(f"Unsupported SQL permission dialect: {connection.vendor}") from exc
+        """Resolve the parser dialect for the active database connection."""
+        return connection_dialect(connection.vendor)
 
     @staticmethod
     def _parse_single_read_query(query: str, dialect: str) -> exp.Query:
-        statements = [statement for statement in parse(query, read=dialect) if statement]
-        if len(statements) != 1:
-            raise ValueError("Exactly one SQL statement is required")
-        statement = statements[0]
-        if not isinstance(statement, exp.Query) or statement.find(exp.Into):
-            raise ValueError("Only read-only SELECT/WITH queries are allowed")
-        return statement
+        """Validate every nested expression before rewriting physical tables."""
+        return parse_read_query(query, dialect)
 
     @staticmethod
     def _physical_tables_from_tree(tree: exp.Query) -> list[exp.Table]:

@@ -19,6 +19,13 @@ class TestExecuteSqlView(BloomerpAPIViewTestCase):
         """Cover valid SQL execution and rejection of incomplete requests."""
         table = self.CustomerModel._meta.db_table
         return [
+            RequestScenario(
+                name="SQL API rejects a nested dynamic SQL function",
+                method="POST", user=self.admin_user,
+                content_type="application/json",
+                data=json.dumps({"query": "SELECT COALESCE(query_to_xml('SELECT 1', false, true, '')::text, '')"}),
+                expected=ExpectedResult(status_code=400),
+            ),
             *[
                 RequestScenario(
                     name=f"SQL execution rejects {label} query",

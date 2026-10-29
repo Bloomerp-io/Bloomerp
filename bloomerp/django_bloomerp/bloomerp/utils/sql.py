@@ -1,9 +1,9 @@
-from django.db import connection
-from django.core.cache import cache
-import re
+from typing import Any, Dict, List
+
 import pandas as pd
-from typing import Any, List, Dict
-import time
+from bloomerp.utils.sql_safety import connection_dialect, is_safe_read_query
+from django.core.cache import cache
+from django.db import connection
 
 
 def get_active_dialect() -> str:
@@ -188,9 +188,9 @@ class SqlQueryExecutor:
         Returns:
             True if the query is safe, False otherwise.
         """
-        return not re.search(r'\b(update|delete|insert|drop|alter|create|grant|revoke|truncate)\b', query.lower())
+        return is_safe_read_query(query, connection_dialect(connection.vendor))
 
-    def is_valid(self, query: str) -> bool:
+    def is_valid(self, query: str) -> bool | Exception:
         """
         Check if a query is valid by attempting to execute it.
         
@@ -201,6 +201,7 @@ class SqlQueryExecutor:
             True if the query is valid, raises an exception otherwise.
         """
         try:
+            self._validate_safe_query(query, safe=True)
             with connection.cursor() as cursor:
                 cursor.execute(query)
             return True
@@ -219,8 +220,9 @@ class SqlQueryExecutor:
         """
         return cache.get(cache_id)
 
-    def _validate_safe_query(self, query: str, safe: bool):
-        if not self.is_safe(query) and safe:
+    def _validate_safe_query(self, query: str, safe: bool) -> None:
+        """Apply the shared read-only policy unless the caller supplies trusted SQL."""
+        if safe and not self.is_safe(query):
             raise ValueError('Unsafe query')
 
     def _get_cache_result(self) -> Any:

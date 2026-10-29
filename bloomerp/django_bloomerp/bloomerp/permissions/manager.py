@@ -4,7 +4,7 @@ from typing import Optional, Type
 from django.apps import apps
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
-from django.db import models, transaction
+from django.db import connection, models, transaction
 from django.db.models import (
     BooleanField,
     Case,
@@ -49,6 +49,7 @@ from bloomerp.permissions.definition import (
     RowPolicyRuleContent,
 )
 from bloomerp.utils.models import resolve_model_and_content_type
+from bloomerp.utils.sql_safety import connection_dialect, validate_read_query
 
 
 FIELD_ACCESS_ANNOTATION_PREFIX = "_bloomerp_can_view_field_"
@@ -932,7 +933,8 @@ class UserPolicyManager:
         permissions: list[str] | list[BloomerpPermission] | str | BloomerpPermission = BloomerpPermission.VIEW,
         match: PermissionMatch = PermissionMatch.ANY,
     ) -> CompiledSqlAccess:
-        """Compile user SQL against model, row, and field permissions."""
+        """Validate reporting SQL and compile model, row, and field permissions."""
+        validate_read_query(sql, connection_dialect(connection.vendor))
         if getattr(self.user, "is_superuser", False):
             return CompiledSqlAccess(query=sql)
         if self.is_anonymous:
