@@ -71,7 +71,8 @@ class SqlQueryExecutor:
                 return cache_result
 
         with connection.cursor() as cursor:
-            cursor.execute(query, params)
+            # An empty parameter sequence still activates psycopg placeholder parsing.
+            cursor.execute(query, params or None)
             description = cursor.description or []
             columns = [col[0] for col in description]
             rows = cursor.fetchall()
