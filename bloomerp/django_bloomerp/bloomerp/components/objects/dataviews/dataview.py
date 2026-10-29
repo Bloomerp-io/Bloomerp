@@ -23,6 +23,7 @@ from bloomerp.filters.manager import ModelFilterManager
 from bloomerp.filters.parser import parse_filters
 from bloomerp.models import ApplicationField
 from bloomerp.models.definition import (
+    apply_model_base_filter,
     DataviewAction,
     DataviewActionContext,
     DataviewHTMLAction,
@@ -135,7 +136,7 @@ def _build_dataview_state(
     manager = UserPolicyManager(request.user)
     
     queryset = (
-        base_queryset
+        apply_model_base_filter(base_queryset)
         if base_queryset is not None
         else manager.get_queryset(
             Model,

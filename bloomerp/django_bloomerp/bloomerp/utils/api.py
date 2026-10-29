@@ -8,7 +8,7 @@ from django.db.models import Model, QuerySet
 from rest_framework import serializers
 from rest_framework import viewsets
 
-from bloomerp.models.definition import BloomerpModelConfig
+from bloomerp.models.definition import BloomerpModelConfig, apply_model_base_filter
 from bloomerp.permissions.compilers.base import BasePermissionCompiler
 from bloomerp.permissions.compilers.django_q_permission_compiler import (
     DjangoQPermissionCompiler,
@@ -164,8 +164,11 @@ class ApiAccessResolver:
             model, permission_str
         ) or self.permission_manager.has_row_level_access(model, permission_str)
 
-    def get_queryset(self, model: type[Model], action: str | None = None) -> QuerySet:
-        queryset = model.objects.all()
+    def get_queryset(
+        self, model: type[Model], action: str | None = None
+    ) -> QuerySet[Model]:
+        """Intersect model-wide filtering with the caller's API row permissions."""
+        queryset = apply_model_base_filter(model.objects.all())
         if getattr(self.permission_manager.user, "is_superuser", False):
             return queryset
         permission = self.get_permission_action_name(action)

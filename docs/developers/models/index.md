@@ -1,4 +1,7 @@
 # Model configuration
+
+- [Model base filters](base-filter.md)
+
 ## Field rendering settings
 
 Model configuration can manage application-field rendering templates:
