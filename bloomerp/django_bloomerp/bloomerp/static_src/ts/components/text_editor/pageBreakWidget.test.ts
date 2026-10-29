@@ -90,6 +90,8 @@ test("template marker persists through widget values and actions never leak to o
     /** Exercise the real hidden-input, event, toolbar and slash-menu integration. */
     const dom = new JSDOM("<!doctype html><html><body></body></html>", { runScripts: "outside-only", url: "https://app.example/", pretendToBeVisual: true });
     const w = dom.window as FixtureWindow;
+    // Mermaid's browser dependencies use these modern APIs absent from jsdom.
+    Object.assign(w, { TextEncoder, TextDecoder, structuredClone });
     w.CSS ??= {} as typeof CSS;
     /** Fixture IDs use only safe characters, so no selector escaping is needed. */
     w.CSS.escape = function escape(value: string): string { return value; };

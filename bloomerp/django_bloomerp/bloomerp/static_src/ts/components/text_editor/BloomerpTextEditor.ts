@@ -8,6 +8,8 @@ import { t as _ } from "@/utils/i18n";
 import { Command, COMMANDS, registerCommands } from "./commands";
 import { ImageNode } from "./nodes/ImageNode";
 import { CodeBlockNode } from "./nodes/CodeBlockNode";
+import { MermaidNode } from "./nodes/MermaidNode";
+import { registerMermaidBehavior } from "./utils/mermaidBehavior";
 import { registerLinkBehavior } from "./utils/linkBehavior";
 import { registerHtmlBehavior } from "./utils/htmlBehavior";
 import { registerImageBehavior } from "./utils/imageBehavior";
@@ -166,6 +168,7 @@ export class BloomerpTextEditor extends BaseWidget {
                 ReferenceNode,
                 FileImageNode,
                 CodeBlockNode,
+                MermaidNode,
                 HtmlNode,
                 ...this.getAdditionalNodes(),
             ],
@@ -209,6 +212,7 @@ export class BloomerpTextEditor extends BaseWidget {
             registerHistory(this.editor, historyState, 300),
             registerTableBehavior(this.editor, this.element),
             registerHtmlBehavior(this.editor),
+            registerMermaidBehavior(this.editor, this.element),
             registerImageBehavior(this.editor, this.element),
             this.editor.registerCommand(CLICK_COMMAND, this.handleChecklistClick.bind(this), COMMAND_PRIORITY_LOW),
             this.editor.registerCommand(KEY_SPACE_COMMAND, this.handleChecklistSpace.bind(this), COMMAND_PRIORITY_LOW),
