@@ -259,9 +259,10 @@ export default class Workflow extends BaseComponent {
 
     private startNodeId: number | null = null;
 
+    /** Initialize the shared canvas, enabling editing only outside saved run previews. */
     public initialize(): void {
         if (!this.element) return;
-        this.element.addEventListener('htmx:beforeCleanupElement', event => {
+        this.element.addEventListener('htmx:beforeCleanupElement', (event: Event): void => {
             if (event.target === this.element) this.destroy();
         }, { signal: this.lifecycle.signal });
 
@@ -279,6 +280,22 @@ export default class Workflow extends BaseComponent {
         // Start DrawFlow first
         this.drawflow.start();
         this.setupCanvasWorkspace(container);
+
+        // Create initial editor module
+        this.drawflow.addModule('Home');
+        this.drawflow.changeModule('Home');
+        (this.drawflow as any).zoom_max = WORKFLOW_MAX_ZOOM;
+        this.workflowId = this.element.getAttribute('data-workflow-id');
+        this.buildNodeDefinitions();
+        this.importSavedWorkflow();
+
+        // Setup toolbar buttons
+        this.setupToolbar();
+
+        if (this.element.dataset.workflowReadonly === 'true') {
+            this.initializeRunSnapshot(container);
+            return;
+        }
         
         // Register events
         this.drawflow.on('nodeCreated', (id: number) => {
@@ -318,17 +335,6 @@ export default class Workflow extends BaseComponent {
         this.drawflow.on('nodeSelected', (id: number) => {
             
         });
-        
-        // Create initial editor module
-        this.drawflow.addModule('Home');
-        this.drawflow.changeModule('Home');
-        (this.drawflow as any).zoom_max = WORKFLOW_MAX_ZOOM;
-        this.workflowId = this.element.getAttribute('data-workflow-id');
-        this.buildNodeDefinitions();
-        this.importSavedWorkflow();
-        
-        // Setup toolbar buttons
-        this.setupToolbar();
 
         // Setup double-click handler for nodes
         this.setupNodeDoubleClickHandler();
@@ -350,6 +356,25 @@ export default class Workflow extends BaseComponent {
         // Setup node drawer for adding new nodes
         this.setupNodeDrawer();
 
+    }
+
+    /** Replay saved events through the live run renderer without editing or subscribing. */
+    private initializeRunSnapshot(container: HTMLElement): void {
+        this.enterRunMode();
+        try {
+            const events: WorkflowRunEvent[] = JSON.parse(this.element.dataset.workflowRunEvents || '[]');
+            this.currentRunId = events[0]?.run_id ?? null;
+            for (const event of events) this.handleWorkflowRunEvent(event);
+        } catch (error) {
+            console.warn('Invalid workflow run snapshot', error);
+        }
+        this.setWorkflowRunStatus(this.element.dataset.workflowRunStatus || 'Workflow run');
+        this.resizeObserver = new ResizeObserver((): void => {
+            this.scheduleConnectionLayout();
+            this.fitWorkflowToViewport();
+        });
+        this.resizeObserver.observe(container);
+        this.fitWorkflowToViewport();
     }
 
     public destroy(): void {

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from collections import defaultdict
+import json
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q, Model, QuerySet
@@ -15,6 +16,10 @@ from bloomerp.communication.builtins.in_app_notifications.base import (
     SystemMessageItemData,
 )
 from bloomerp.utils.labels import safe_object_label
+
+if TYPE_CHECKING:
+    from bloomerp.models.automation.workflow_run import WorkflowRun
+    from bloomerp.models.communication.inbox.inbox_item import InboxItem
 
 
 def _safe_absolute_url(obj: Model) -> str | None:
@@ -38,78 +43,91 @@ def _snapshot_related_object(obj) -> dict | None:
     }
 
 
-def _snapshot_graph(workflow, execution_trace: list[dict]) -> dict:
-    from bloomerp.models.automation.workflow_edge import WorkflowEdge
+def _snapshot_run_view(
+    workflow_run: WorkflowRun, execution_trace: list[dict] | None = None,
+) -> dict:
+    """Save the shared workflow canvas and run events without node parameters."""
+    from bloomerp.serializers.workflow import WorkflowSerializer
 
-    nodes = list(workflow.nodes.all().order_by("id"))
-    # WorkflowEdge has no workflow FK, so derive its edges through the nodes.
-    edges = list(
-        WorkflowEdge.objects.filter(from_node__workflow=workflow).order_by("id")
+    graph = dict(WorkflowSerializer(workflow_run.workflow).data)
+    for node in graph["nodes"]:
+        node.pop("parameters", None)
+
+    if len({(node["pos_x"], node["pos_y"]) for node in graph["nodes"]}) == 1:
+        for index, node in enumerate(graph["nodes"]):
+            node["pos_y"] += index * 160
+
+    trace = execution_trace or list(
+        workflow_run.steps.order_by("sequence", "datetime_created").values("node_id", "status")
     )
-
-    traces_by_node: dict[str, list[dict]] = defaultdict(list)
-    for entry in execution_trace:
-        traces_by_node[str(entry.get("node_id"))].append(entry)
-
-    raw_positions = {(node.pos_x, node.pos_y) for node in nodes}
-    use_sequence_layout = len(nodes) > 1 and len(raw_positions) <= 1
-    x_values = sorted({node.pos_x for node in nodes})
-    y_values = sorted({node.pos_y for node in nodes})
-    x_ranks = {value: index for index, value in enumerate(x_values)}
-    y_ranks = {value: index for index, value in enumerate(y_values)}
-
-    graph_nodes = []
-    positions = {}
-    for index, node in enumerate(nodes):
-        if use_sequence_layout:
-            graph_x = 32
-            graph_y = 28 + index * 92
-        else:
-            graph_x = 32 + x_ranks.get(node.pos_x, 0) * 220
-            graph_y = 28 + y_ranks.get(node.pos_y, 0) * 112
-
-        node_traces = traces_by_node.get(str(node.id), [])
-        if any(entry.get("status") == "error" for entry in node_traces):
-            status = "failed"
-        elif node_traces:
-            status = "completed"
-        else:
-            status = "not_run"
-
-        positions[str(node.id)] = (graph_x, graph_y)
-        graph_nodes.append(
-            {
-                "id": str(node.id),
-                "label": node.name or node.node_sub_type_id or "Workflow step",
-                "type": node.node_sub_type_id or node.type,
-                "status": status,
-                "execution_count": len(node_traces),
-                "x": graph_x,
-                "y": graph_y,
-            }
-        )
-
-    graph_edges = []
-    for edge in edges:
-        start = positions.get(str(edge.from_node_id))
-        end = positions.get(str(edge.to_node_id))
-        if not start or not end:
+    events = []
+    for sequence, entry in enumerate(trace, start=1):
+        if entry.get("node_id") is None:
             continue
-        graph_edges.append(
-            {
-                "x1": start[0] + 82,
-                "y1": start[1] + 28,
-                "x2": end[0] + 82,
-                "y2": end[1] + 28,
-            }
-        )
+        event = {
+            "type": "workflow_run",
+            "workflow_id": workflow_run.workflow_id,
+            "run_id": workflow_run.pk,
+            "node_id": int(entry["node_id"]),
+            "sequence": sequence,
+            "status": entry["status"],
+        }
+        events.append({**event, "event": "node.started"})
+        status = entry["status"].lower()
+        outcome = {"success": "completed", "error": "failed", "cancelled": "deferred"}.get(status, status)
+        events.append({**event, "event": f"node.{outcome}"})
+    return {"graph": graph, "events": events}
 
+
+def _status_label(status: str) -> str:
+    """Label persisted run states and legacy completion aliases consistently."""
     return {
-        "nodes": graph_nodes,
-        "edges": graph_edges,
-        "width": max((node["x"] for node in graph_nodes), default=0) + 200,
-        "height": max((node["y"] for node in graph_nodes), default=0) + 90,
-    }
+        "success": "Completed",
+        "successful": "Completed",
+        "succeeded": "Completed",
+        "completed": "Completed",
+        "paused": "Approval required",
+        "failed": "Failed",
+        "cancelled": "Cancelled",
+        "queued": "Queued",
+        "running": "Running",
+    }.get(status.lower(), status.replace("_", " ").capitalize())
+
+
+def _legacy_run_view(snapshot: dict) -> dict:
+    """Adapt saved static graphs to the shared canvas without querying live nodes."""
+    from bloomerp.automation.registry import WORKFLOW_NODE_REGISTRY
+
+    graph = snapshot.get("graph") or {}
+    nodes, events = [], []
+    positions = {}
+    for node in graph.get("nodes", []):
+        node_id = int(node["id"])
+        client_id = f"node-{node_id}"
+        definition = WORKFLOW_NODE_REGISTRY.get(node.get("type", ""))
+        positions[(node["x"] + 82, node["y"] + 28)] = client_id
+        nodes.append({
+            "id": node_id, "client_id": client_id,
+            "name": node.get("label", ""),
+            "type": definition.type if definition else "ACTION",
+            "sub_type": node.get("type", ""),
+            "pos_x": node["x"] * 1.5, "pos_y": node["y"] * 1.5,
+        })
+        for _ in range(node.get("execution_count", 0)):
+            event = {
+                "type": "workflow_run", "workflow_id": 0,
+                "run_id": int(snapshot.get("workflow_run_id") or 0),
+                "node_id": node_id, "status": node["status"],
+            }
+            events.append({**event, "event": "node.started"})
+            events.append({**event, "event": f"node.{node['status']}"})
+    edges = []
+    for edge in graph.get("edges", []):
+        source = positions.get((edge["x1"], edge["y1"]))
+        target = positions.get((edge["x2"], edge["y2"]))
+        if source and target:
+            edges.append({"from_node": source, "to_node": target})
+    return {"graph": {"nodes": nodes, "edges": edges}, "events": events}
 
 
 def _duration_seconds(started_at: datetime, finished_at: datetime) -> float:
@@ -128,6 +146,7 @@ def _format_duration(seconds: float) -> str:
 class WorkflowSystemMessage(BaseSystemMessageType):
     @classmethod
     def build_item_data(cls, data: dict) -> SystemMessageItemData:
+        """Persist a workflow result that remains readable after run cleanup."""
         from bloomerp.models.automation.workflow_run import WorkflowRun
 
         workflow_run_id = str(data["workflow_run_id"])
@@ -152,8 +171,7 @@ class WorkflowSystemMessage(BaseSystemMessageType):
             if timezone.is_aware(finished_at)
             else finished_at
         )
-        successful = status in {"success", "successful", "completed"}
-        status_label = "Completed" if successful else "Failed"
+        status_label = _status_label(status)
         workflow = workflow_run.workflow
 
         snapshot = {
@@ -170,29 +188,53 @@ class WorkflowSystemMessage(BaseSystemMessageType):
             "duration_seconds": duration_seconds,
             "duration_display": _format_duration(duration_seconds),
             "step_count": len(execution_trace) or len(steps),
-            "graph": _snapshot_graph(workflow, execution_trace),
+            "run_view": _snapshot_run_view(workflow_run, execution_trace),
+            "approval_step_id": data.get("approval_step_id"),
+            "approval_message": data.get("approval_message", ""),
             "related_object": _snapshot_related_object(data.get("related_object")),
             "run_url": _safe_absolute_url(workflow_run),
         }
 
         return SystemMessageItemData(
-            title=f"Workflow '{workflow.name}' {status_label.lower()}",
+            title=(
+                f"Approval required: {workflow.name}"
+                if status == "paused"
+                else f"Workflow '{workflow.name}' {status_label.lower()}"
+            ),
             snippet=(
-                f"{snapshot['step_count']} steps in {snapshot['duration_display']}"
+                snapshot["approval_message"]
+                or f"{snapshot['step_count']} steps in {snapshot['duration_display']}"
             ),
             related_item_id=workflow_run_id,
             raw_meta_data={"workflow": snapshot},
         )
 
     @classmethod
-    def render(cls, item, request: HttpRequest | None = None) -> str:
+    def render(cls, item: InboxItem, request: HttpRequest | None = None) -> str:
+        """Reuse the workflow run canvas and the existing approval interaction."""
         from bloomerp.models.automation.workflow_run import WorkflowRun
+        from bloomerp.automation.registry import WORKFLOW_NODE_REGISTRY
+        from bloomerp.components.automation.approve_workflow_continuation import (
+            can_approve_workflow_step,
+        )
 
-        snapshot = (item.raw_meta_data or {}).get("workflow") or {}
+        snapshot = dict((item.raw_meta_data or {}).get("workflow") or {})
+        snapshot["status_label"] = _status_label(snapshot.get("status", ""))
         workflow_run_id = snapshot.get("workflow_run_id") or item.related_item_id
-        run_available = bool(
-            workflow_run_id
-            and WorkflowRun.objects.filter(pk=workflow_run_id).exists()
+        run = WorkflowRun.objects.select_related("workflow").filter(pk=workflow_run_id).first()
+        run_view = snapshot.get("run_view") or _legacy_run_view(snapshot)
+        approval_step = None
+        if run and snapshot.get("approval_step_id"):
+            approval_step = run.steps.select_related("node", "workflow_run__workflow").filter(
+                pk=snapshot["approval_step_id"],
+            ).first()
+        if approval_step and approval_step.status != "PAUSED":
+            snapshot["status_label"] = "Approval handled"
+        can_approve = bool(
+            request
+            and approval_step
+            and approval_step.status == "PAUSED"
+            and can_approve_workflow_step(request.user, approval_step)
         )
 
         related_object = snapshot.get("related_object")
@@ -212,13 +254,25 @@ class WorkflowSystemMessage(BaseSystemMessageType):
                 )
             except (ContentType.DoesNotExist, KeyError, TypeError, ValueError):
                 pass
-        
+
         return render_to_string(
             "inbox_items/workflow_run.html",
             {
                 "item": item,
                 "workflow": snapshot,
-                "run_available": run_available,
+                "run_available": run is not None,
+                "workflow_readonly": True,
+                "workflow_json": json.dumps(run_view.get("graph", {})),
+                "workflow_run_events": json.dumps(run_view.get("events", [])),
+                "workflow_run_status": snapshot["status_label"],
+                "has_run_view": bool(run_view.get("graph", {}).get("nodes")),
+                "node_types": WORKFLOW_NODE_REGISTRY.grouped(),
+                "approval_step": approval_step,
+                "approval_message": snapshot.get("approval_message") or (
+                    (approval_step.node.parameters or {}).get("message", "")
+                    if approval_step and approval_step.node else ""
+                ),
+                "can_approve": can_approve,
                 "related_object": related_object,
             },
             request=request,
