@@ -41,7 +41,7 @@
     <c-ui.floating_panel panel_id="bloomerp-agent-panel" title="BloomAI" :logo="agent_logo"
         launcher_label="{% trans 'Ask BloomAI' %}" close_label="{% trans 'Close assistant' %}"
         storage_key="bloomerp_agent_launcher_{{ request.user.pk }}" data-agent-panel>
-        <c-slot name="launcher"><span class="bloomerp-agent-orb" aria-hidden="true"></span></c-slot>
+        <c-slot name="launcher"><i class="fa-regular fa-paper-plane" aria-hidden="true"></i><span>{% trans 'Agent' %}</span></c-slot>
         <c-slot name="header_controls">
                 <button type="button" data-agent-action="history" aria-label="{% trans 'Conversation history' %}" title="{% trans 'Conversation history' %}" class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i><span data-agent-unread hidden class="h-2 w-2 rounded-full bg-primary-500"></span></button>
                 <button type="button" data-agent-action="reset" aria-label="{% trans 'New conversation' %}" title="{% trans 'New conversation' %}" class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>

@@ -536,9 +536,9 @@ export default class AgentChat extends FloatingPanel {
         this.saveEditorState();
     }
 
-    /** Close the shared shell without discarding the current conversation. */
-    protected override close(): void {
-        super.close();
+    /** Persist dismissal or tool switching without discarding the conversation. */
+    protected override close(restoreFocus: boolean = true): void {
+        super.close(restoreFocus);
         this.saveEditorState();
     }
 

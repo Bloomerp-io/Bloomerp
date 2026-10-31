@@ -5,7 +5,7 @@ import FloatingPanel from '../FloatingPanel';
 export default class MessagingPanel extends FloatingPanel {
     private lifecycle = new AbortController();
 
-    /** Bind navigation once and reuse the draggable launcher behavior. */
+    /** Bind navigation once and connect the persistent Chat footer control. */
     public initialize(): void {
         this.lifecycle.abort();
         this.lifecycle = new AbortController();
@@ -89,7 +89,7 @@ export default class MessagingPanel extends FloatingPanel {
         return element.getClientRects().length > 0;
     }
 
-    /** Update the orb count after an unfiltered conversation list is loaded. */
+    /** Update the footer unread count after a conversation list is loaded. */
     public override onAfterSwap(): void {
         const total = this.element.querySelector<HTMLElement>('[data-unread-total]');
         if (!total) return;
@@ -98,7 +98,7 @@ export default class MessagingPanel extends FloatingPanel {
         this.find('[data-count]').hidden = unread === 0;
     }
 
-    /** Release shell listeners and drag resources. */
+    /** Release panel navigation and shared footer listeners. */
     public override destroy(): void {
         this.lifecycle.abort();
         super.destroy();

@@ -5,8 +5,8 @@
     {% static 'bloomerp/img/messaging-header-logo.png' as messaging_logo %}
     <c-ui.floating_panel panel_id="im-messaging-panel" title="{% translate 'Messages' %}" :logo="messaging_logo"
         launcher_label="{% translate 'Open messages' %}" close_label="{% translate 'Close messages' %}"
-        storage_key="bloomerp-im-draft-position" launcher_class="im-orb right-[88px] z-[86]">
-        <c-slot name="launcher"><i class="fa-solid fa-comment-dots" aria-hidden="true"></i><span class="im-count" data-count hidden></span></c-slot>
+        storage_key="bloomerp-im-draft-position">
+        <c-slot name="launcher"><i class="fa-regular fa-comment" aria-hidden="true"></i><span>{% translate 'Chat' %}</span><span class="workspace-tool-count" data-count hidden></span></c-slot>
         <c-slot name="header_start"><button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50" data-action="back" data-floating-panel-focus hidden aria-label="{% translate 'Back to search' %}"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i></button></c-slot>
         <c-slot name="header_controls">
                     <c-ui.dropdown.body width="w-56" :fixed="True">

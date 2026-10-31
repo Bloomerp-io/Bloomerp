@@ -1,18 +1,16 @@
 import BaseComponent from './BaseComponent';
-import FloatingPanelLauncher from '../utils/FloatingPanelLauncher';
 
 /** Shared floating shell; subclasses own the content and application state. */
 export default class FloatingPanel extends BaseComponent {
     protected panel: HTMLElement | null = null;
     private previousFocus: HTMLElement | null = null;
 
-    /** Bind shared opening, dismissal, focus restoration and draggable positioning. */
+    /** Bind persistent footer controls, panel switching and focus restoration. */
     protected initializeFloatingPanel(signal: AbortSignal): void {
         this.panel = this.element?.querySelector('[data-floating-panel]') ?? null;
-        const launcher = this.element?.querySelector<HTMLButtonElement>('[data-floating-panel-launcher]');
-        if (launcher && this.panel) new FloatingPanelLauncher(launcher, this.panel.dataset.launcherStorageKey || this.panel.id, signal);
         this.element?.addEventListener('click', this.onShellClick, { signal });
         document.addEventListener('keydown', this.onShellKeyDown, { signal });
+        document.addEventListener('bloomerp:panel-opened', this.onPanelOpened, { signal });
         try { this.setPanelOpen(sessionStorage.getItem(`${this.panel?.dataset.launcherStorageKey || this.panel?.id}:open`) === 'true'); }
         catch { /* Visibility remains usable when storage is unavailable. */ }
     }
@@ -26,10 +24,11 @@ export default class FloatingPanel extends BaseComponent {
             .find(this.isVisibleControl)?.focus();
     }
 
-    /** Hide the shell without discarding content and restore the user's focus. */
-    protected close(): void {
+    /** Hide the shell, optionally restoring focus when dismissal is explicit. */
+    protected close(restoreFocus: boolean = true): void {
         if (!this.panel) return;
         this.setPanelOpen(false);
+        if (!restoreFocus) return;
         const launcher = this.element?.querySelector<HTMLElement>('[data-floating-panel-launcher]');
         (this.previousFocus?.isConnected ? this.previousFocus : launcher)?.focus();
     }
@@ -39,9 +38,10 @@ export default class FloatingPanel extends BaseComponent {
         if (!this.panel) return;
         this.panel.hidden = !open;
         const launcher = this.element?.querySelector<HTMLElement>('[data-floating-panel-launcher]');
-        if (launcher) { launcher.hidden = open; launcher.setAttribute('aria-expanded', String(open)); }
+        launcher?.setAttribute('aria-expanded', String(open));
         try { sessionStorage.setItem(`${this.panel.dataset.launcherStorageKey || this.panel.id}:open`, String(open)); }
         catch { /* Storage is optional; controls continue to work. */ }
+        if (open) document.dispatchEvent(new CustomEvent('bloomerp:panel-opened', { detail: this.panel.id }));
     }
 
     /** Skip controls in hidden content views when opening the panel. */
@@ -53,7 +53,17 @@ export default class FloatingPanel extends BaseComponent {
     private onShellClick = (event: MouseEvent): void => {
         const action = (event.target as Element).closest<HTMLElement>('[data-floating-panel-action]')?.dataset.floatingPanelAction;
         if (action === 'open') this.open();
+        else if (action === 'toggle') {
+            if (this.panel?.hidden) this.open();
+            else this.close();
+        }
         else if (action === 'close') this.close();
+    };
+
+    /** Close the other tool without stealing focus from the newly opened panel. */
+    private onPanelOpened = (event: Event): void => {
+        if (!(event instanceof CustomEvent) || event.detail === this.panel?.id || this.panel?.hidden !== false) return;
+        this.close(false);
     };
 
     /** Dismiss the focused panel with Escape without closing another open panel. */

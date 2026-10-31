@@ -1979,93 +1979,97 @@ html.dark [data-workflow-node-item]:hover {
   .bloomerp-agent-thinking > span { animation: none; }
 }
 
-/* Shared draggable launcher; BloomAI supplies its cloudy orb artwork. */
-.floating-panel-launcher {
-  width: 48px;
-  height: 48px;
+/* Reserve a slim footer so workspace tools never cover page content. */
+body[data-bloomerp-agent="enabled"] {
+  --workspace-tools-height: 2rem;
+}
+
+.workspace-main {
+  height: calc(100dvh - 1.5rem);
+}
+
+body[data-bloomerp-agent="enabled"] .workspace-main {
+  height: calc(100dvh - .75rem - var(--workspace-tools-height));
+  margin-bottom: 0;
+}
+
+.workspace-tools {
+  position: fixed;
+  right: max(.75rem, env(safe-area-inset-right, 0px));
+  bottom: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: .25rem;
+  height: var(--workspace-tools-height);
+  margin: 0;
   padding: 0;
+}
+
+.workspace-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .375rem;
+  height: 1.75rem;
+  margin: .125rem 0;
+  padding: .375rem .625rem;
   border: 0;
-  border-radius: 50%;
   background: transparent;
+  color: var(--color-gray-500);
+  font-size: .75rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
-  transition: transform 200ms ease;
-  touch-action: none;
-  user-select: none;
 }
 
-.floating-panel-launcher.is-dragging {
-  cursor: grabbing;
-  transform: none;
-  transition: none;
+.workspace-tool > i {
+  width: .875rem;
+  font-size: .8125rem;
 }
 
-.floating-panel-launcher:hover:not(.is-dragging) {
-  transform: translateY(-2px) scale(1.04);
+.workspace-tool:hover,
+.workspace-tool[aria-expanded="true"] {
+  background: var(--color-gray-200);
+  color: var(--color-gray-900);
 }
 
-.floating-panel-launcher:active:not(.is-dragging) {
-  transform: scale(0.96);
+.workspace-tool:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
 }
 
-.bloomerp-agent-orb {
-  position: relative;
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  isolation: isolate;
-  border-radius: 50%;
-  background:
-    radial-gradient(ellipse at 21% 65%, #93a2fb 0%, transparent 48%),
-    linear-gradient(145deg, var(--color-primary-500) 12%, #697cf8 54%, #bfdbfe 100%);
-  box-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 28%),
-    0 6px 20px rgb(65 84 241 / 20%);
+.workspace-tool-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 .25rem;
+  border-radius: .25rem;
+  background: var(--color-gray-200);
+  color: var(--color-gray-700);
+  font-size: .625rem;
+  font-variant-numeric: tabular-nums;
 }
 
-.bloomerp-agent-orb::before,
-.bloomerp-agent-orb::after {
-  content: "";
-  position: absolute;
-  inset: -18%;
-  border-radius: 50%;
-  pointer-events: none;
+.workspace-tool-panel {
+  bottom: var(--workspace-tools-height, 2rem);
 }
 
-.bloomerp-agent-orb::before {
-  background:
-    radial-gradient(ellipse at 68% 62%, rgb(255 255 255 / 85%) 0%, transparent 23%),
-    radial-gradient(ellipse at 48% 76%, rgb(244 244 253 / 85%) 0%, transparent 26%),
-    radial-gradient(ellipse at 72% 38%, rgb(219 234 254 / 70%) 0%, transparent 18%),
-    radial-gradient(ellipse at 34% 54%, rgb(219 234 254 / 55%) 0%, transparent 20%);
-  filter: blur(4px);
-  animation: bloomerp-agent-cloud-drift 18s ease-in-out infinite;
+.dark .workspace-tool {
+  color: var(--color-zinc-400);
 }
 
-.bloomerp-agent-orb::after {
-  background:
-    linear-gradient(130deg, transparent 37%, rgb(255 255 255 / 35%) 48%, transparent 57%),
-    radial-gradient(ellipse at 70% 76%, rgb(255 255 255 / 90%) 0%, rgb(219 234 254 / 65%) 18%, transparent 43%);
-  filter: blur(3px);
-  animation: bloomerp-agent-cloud-wisp 24s ease-in-out infinite;
+.dark .workspace-tool:hover,
+.dark .workspace-tool[aria-expanded="true"] {
+  background: var(--color-zinc-800);
+  color: var(--color-zinc-100);
 }
 
-@keyframes bloomerp-agent-cloud-drift {
-  0%, 100% { transform: translate(-8%, 5%) rotate(-20deg); }
-  50% { transform: translate(8%, -6%) rotate(10deg); }
-}
-
-@keyframes bloomerp-agent-cloud-wisp {
-  0%, 100% { transform: translate(6%, -5%) rotate(8deg); }
-  50% { transform: translate(-7%, 6%) rotate(-12deg); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .floating-panel-launcher { transition: none; }
-  .floating-panel-launcher:hover,
-  .floating-panel-launcher:active { transform: none; }
-  .bloomerp-agent-orb::before,
-  .bloomerp-agent-orb::after { animation: none; }
+.dark .workspace-tool-count {
+  background: var(--color-zinc-700);
+  color: var(--color-zinc-200);
 }
 
 /* Select the entire message row, including a conversation's disclosure control. */
@@ -2089,8 +2093,6 @@ html.dark [data-workflow-node-item]:hover {
 .im-phone-controls:has(button:not([hidden])), .im-phone-controls:has([data-phone-status]:not(:empty)) { display: flex; }
 .im-theme button { cursor: pointer; }
 .im-theme button:focus-visible, .im-theme input:focus-visible, .im-theme textarea:focus-visible, .im-message:focus-visible { outline: 2px solid var(--im-accent); outline-offset: 3px; }
-.im-orb { background: var(--im-accent); color: white; border: 1px solid #ffffff55; box-shadow: 0 5px 18px #30265530; font-size: 22px; }
-.im-count { position: absolute; top: -5px; right: -5px; display: grid; place-items: center; min-width: 21px; height: 21px; padding: 0 5px; background: var(--color-primary-700); border: 2px solid white; border-radius: 12px; font-size: 10px; font-weight: 700; }
 .im-theme-label { font-size: 10px; color: var(--im-muted); background: var(--color-base); border-radius: 5px; padding: 3px 6px; }
 .im-icon-button { display: grid; place-items: center; flex-shrink: 0; width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; }
 .im-icon-button:hover { background: var(--color-base); }
