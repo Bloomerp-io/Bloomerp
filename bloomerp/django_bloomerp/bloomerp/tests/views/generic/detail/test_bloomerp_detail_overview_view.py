@@ -309,7 +309,7 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
                 and link.get('hx-push-url') == 'false'
                 for link in links
             )
-            and soup.select_one('#resizable-div-detail-aside #object-sidesection')
+            and soup.select_one('#resizable-div-detail-aside [data-detail-sidebar-content]')
             and soup.select_one('[data-detail-sidebar-view="activity"]')
             and soup.select_one('[data-detail-sidebar-view="comments"]')
             and soup.select_one('#detail-todo-modal')
