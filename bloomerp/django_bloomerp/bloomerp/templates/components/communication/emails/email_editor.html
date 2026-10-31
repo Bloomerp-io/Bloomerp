@@ -135,6 +135,8 @@
             </label>
         </div>
 
+        {% include 'components/communication/emails/attachments.html' %}
+
         {% if enhanced_composer %}
         <input type="hidden" name="document_template_id" value="">
         <div data-template-arguments hidden class="shrink-0 border-b border-gray-200 px-5 py-3"></div>
@@ -165,8 +167,6 @@
                 </div>
             {% endif %}
         </div>
-
-        {% include 'components/communication/emails/attachments.html' %}
 
         <footer class="flex shrink-0 items-center justify-between border-t border-gray-200 px-5 py-3">
             <div class="flex min-w-0 items-center gap-2">

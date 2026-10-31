@@ -1,9 +1,10 @@
 {% load i18n %}
-<div bloomerp-component="reference-attachments" hidden class="shrink-0 border-t border-gray-200 px-5 py-3"
+<div bloomerp-component="reference-attachments" hidden class="shrink-0 border-b border-gray-200 px-5 py-3"
      data-can-change="true"
      data-reference-preview-url="{% url 'components_preview_file' file_id='__file_id__' %}"
      data-reference-search-url="{% url 'components_objects_references' %}"
      data-reference-upload-url="{% url 'api_assistant_file_upload' %}">
+    {% if email_attachments %}{{ email_attachments|json_script }}{% endif %}
     <input type="hidden" name="object_references" value="{}">
     <div data-reference-chips></div>
     <div data-reference-files-group hidden>

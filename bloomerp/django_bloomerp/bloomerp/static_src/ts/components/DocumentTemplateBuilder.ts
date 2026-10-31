@@ -11,6 +11,7 @@ import { getCurrentWordFromSelection, removeTextFromCurrentSelection } from "./t
 import htmx from "htmx.org";
 import showMessage from "@/utils/messages";
 import { MessageType } from "./UiMessage";
+import { t } from "@/utils/i18n";
 
 const AUTO_SAVE_INTERVAL_MS = 5000;
 
@@ -556,7 +557,7 @@ export class DocumentTemplateBuilder extends BaseComponent {
         this.pageHeaderSection = this.element.querySelector('#page-header-section')
 
         // Clicking somewhere in pageContainer should focus on editor
-        this.pageContainer.addEventListener('click', () => { this.editor.editor.focus() })
+        this.pageContainer.addEventListener('click', this.focusEditorFromPage)
 
         // Apply initial styling
         const pageMarginField = this.getFormField('page_margin')
@@ -670,11 +671,12 @@ export class DocumentTemplateBuilder extends BaseComponent {
             {
                 label: "Preview document",
                 icon: "fa-solid fa-eye",
-                handler: (editor) => {
+                /** Save the current template and open its translated document preview. */
+                handler: (): void => {
                     this.saveDocumentTemplate(false)
                     const modal = getGeneralModal()
                     modal.setSize('full')
-                    modal.setTitle('Document preview')
+                    modal.setTitle(t('Document preview'))
 
                     htmx.ajax(
                         'get',
@@ -711,6 +713,12 @@ export class DocumentTemplateBuilder extends BaseComponent {
         // Initialize autosave
         this.initializeAutosave()
     }
+
+    /** Focus the editable document only when its surrounding page background was clicked. */
+    private focusEditorFromPage = (event: MouseEvent): void => {
+        if (event.target instanceof Node && this.editor.editor?.getRootElement()?.contains(event.target)) return;
+        this.editor.editor?.focus();
+    };
 
     /**
      * Renders the document template header

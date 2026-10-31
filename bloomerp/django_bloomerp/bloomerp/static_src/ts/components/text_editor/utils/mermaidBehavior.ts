@@ -17,6 +17,9 @@ import { t as _ } from "../../../utils/i18n";
 import { renderMermaid } from "../../../utils/mermaid";
 import { $createMermaidNode, $isMermaidNode } from "../nodes/MermaidNode";
 import { getCurrentWordFromSelection, removeTextFromCurrentSelection } from "./wordSelector";
+import { getComponent } from "../../BaseComponent";
+import { BaseWidget } from "../../widgets/BaseWidget";
+import type CodeEditorWidget from "../../widgets/CodeEditorWidget";
 
 type MermaidBehaviorState = {
     closeDialog: (() => void) | null;
@@ -231,17 +234,29 @@ function openMermaidModal(
     form.className = "flex flex-col gap-3";
     const panels = document.createElement("div");
     panels.className = "grid gap-4 md:grid-cols-2";
-    const sourceLabel = document.createElement("label");
-    sourceLabel.className = "flex flex-col gap-2 font-medium";
+    const sourcePanel = document.createElement("div");
+    sourcePanel.className = "flex min-w-0 flex-col gap-2";
+    const sourceLabel = document.createElement("p");
+    sourceLabel.className = "font-medium";
+    sourceLabel.id = `${modal.element.id}-source-label`;
     sourceLabel.textContent = _("Mermaid source");
+    const sourceHost = document.createElement("div");
+    sourceHost.setAttribute("bloomerp-component", "code-editor-widget");
+    sourceHost.dataset.language = "mermaid";
+    const sourceContainer = document.createElement("div");
+    sourceContainer.dataset.codeEditorContainer = "true";
+    sourceContainer.className = "w-full rounded-xl border border-gray-200 font-normal";
+    sourceContainer.style.height = "min(55vh, 32rem)";
+    sourceContainer.style.minHeight = "18rem";
+    sourceContainer.setAttribute("role", "group");
+    sourceContainer.setAttribute("aria-labelledby", sourceLabel.id);
     const source = document.createElement("textarea");
-    source.className = "textarea w-full min-h-72 resize-y font-mono text-sm font-normal";
-    source.rows = 14;
-    source.spellcheck = false;
-    source.required = true;
+    source.hidden = true;
     source.value = initialSource;
+    source.dataset.codeEditorInput = "true";
     source.dataset.mermaidSource = "true";
-    sourceLabel.appendChild(source);
+    sourceHost.append(sourceContainer, source);
+    sourcePanel.append(sourceLabel, sourceHost);
     const previewPanel = document.createElement("div");
     previewPanel.className = "flex min-w-0 flex-col gap-2";
     const previewHeading = document.createElement("p");
@@ -253,7 +268,7 @@ function openMermaidModal(
     preview.dataset.mermaidPreview = "true";
     preview.setAttribute("aria-label", _("Diagram preview"));
     previewPanel.append(previewHeading, preview);
-    panels.append(sourceLabel, previewPanel);
+    panels.append(sourcePanel, previewPanel);
     const errorMessage = document.createElement("p");
     errorMessage.className = "whitespace-pre-wrap text-sm text-danger-dark";
     errorMessage.setAttribute("role", "alert");
@@ -272,6 +287,7 @@ function openMermaidModal(
     actions.append(cancel, apply);
     form.append(panels, errorMessage, actions);
     body.replaceChildren(form);
+    const sourceEditor = getComponent(sourceHost) as CodeEditorWidget;
 
     /** Cancel pending rendering and release the disposable form immediately. */
     function closeDialog(): void {
@@ -280,6 +296,7 @@ function openMermaidModal(
         renderVersion += 1;
         if (previewTimer !== null) window.clearTimeout(previewTimer);
         lifecycle.abort();
+        sourceEditor.destroy();
         if (state?.closeDialog === closeDialog) state.closeDialog = null;
         modal.destroy();
     }
@@ -288,7 +305,7 @@ function openMermaidModal(
     async function refreshPreview(): Promise<void> {
         previewTimer = null;
         const version = ++renderVersion;
-        const value = source.value;
+        const value = sourceEditor.getValue();
         validSource = null;
         apply.disabled = true;
         errorMessage.hidden = true;
@@ -297,12 +314,12 @@ function openMermaidModal(
         try {
             if (!value.trim()) throw new Error(_("Enter Mermaid source to create a diagram."));
             const svg = await renderMermaid(value);
-            if (disposed || version !== renderVersion || value !== source.value) return;
+            if (disposed || version !== renderVersion || value !== sourceEditor.getValue()) return;
             preview.innerHTML = svg;
             validSource = value;
             apply.disabled = false;
         } catch (error: unknown) {
-            if (disposed || version !== renderVersion || value !== source.value) return;
+            if (disposed || version !== renderVersion || value !== sourceEditor.getValue()) return;
             preview.textContent = _("Fix the source to preview this diagram.");
             errorMessage.textContent = error instanceof Error ? error.message : _("Unable to render this diagram.");
             errorMessage.hidden = false;
@@ -330,18 +347,18 @@ function openMermaidModal(
             closeDialog();
             return;
         }
-        if (validSource !== source.value) return;
-        const value = source.value;
+        const value = sourceEditor.getValue();
+        if (validSource !== value) return;
         closeDialog();
         onApply(value);
     }
 
     cancel.addEventListener("click", closeDialog, options);
-    source.addEventListener("input", schedulePreview, options);
+    sourceHost.addEventListener(BaseWidget.changeEventName, schedulePreview, options);
     form.addEventListener("submit", submitDiagram, options);
     modal.element.addEventListener("bloomerp:modal-closed", closeDialog, options);
     if (state) state.closeDialog = closeDialog;
     modal.open();
-    source.focus();
+    sourceEditor.focus();
     renderPreview();
 }

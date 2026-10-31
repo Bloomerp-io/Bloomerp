@@ -14,6 +14,9 @@
     "build:clean": "rimraf ../static/bloomerp/css/dist ../static/bloomerp/js/dist",
     "build:tailwind": "cross-env NODE_ENV=production tailwindcss --postcss -i ./src/styles.css -o ../static/bloomerp/css/dist/styles.css --minify",
     "build:js": "tsc && vite build",
+    "test:editor-actions": "node --experimental-strip-types --test ts/components/text_editor/actionRegistry.test.ts",
+    "test:mermaid": "node --experimental-strip-types --test ts/components/text_editor/utils/mermaidBehavior.test.ts",
+    "test:text-editor-tables": "node --experimental-strip-types --test ts/components/text_editor/utils/tableBehavior.test.ts",
     "test:text-editor-links": "node --experimental-strip-types --test ts/components/text_editor/utils/linkBehavior.test.ts",
     "test:url-widget": "node --experimental-strip-types --test ts/components/widgets/URLWidget.test.ts",
     "test:document-header": "node --experimental-strip-types --test ts/components/DocumentTemplateBuilder.test.ts",
@@ -29,7 +32,8 @@
     "type-check": "tsc --noEmit",
     "test:calling": "node --experimental-strip-types --test ts/components/communication/Calling.test.ts ts/communication/voip/calling.test.ts ts/communication/voip/telnyx.test.ts",
     "test:page-break": "node --experimental-strip-types --test ts/components/text_editor/utils/pageBreakBehavior.test.ts ts/components/text_editor/pageBreakWidget.test.ts",
-    "test:email-editor": "node --experimental-strip-types --test ts/components/inbox/EmailEditor.test.ts"
+    "test:email-editor": "node --experimental-strip-types --test ts/components/inbox/EmailEditor.test.ts",
+    "test:signature-request": "node --experimental-strip-types --test ts/components/document_signing/SendSignatureRequest.test.ts"
   },
   "keywords": [],
   "author": "",
@@ -81,6 +85,7 @@
     "livekit-client": "^2.22.4",
     "marked": "^16.4.2",
     "mermaid": "^12.2.0",
+    "pdfjs-dist": "^5.7.284",
     "sortablejs": "^1.15.7"
   }
 }

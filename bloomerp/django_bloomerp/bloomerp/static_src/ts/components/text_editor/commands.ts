@@ -11,22 +11,19 @@ import {
     KEY_ENTER_COMMAND,
     KEY_SPACE_COMMAND,
     KEY_TAB_COMMAND,
-    SELECTION_CHANGE_COMMAND,
     type CommandListenerPriority,
     type LexicalNode,
     type LexicalCommand,
     type LexicalEditor,
 } from "lexical";
 import { $createListItemNode, $createListNode, $isListItemNode, $isListNode, type ListItemNode, type ListType } from "@lexical/list";
-import { $setBlocksType } from "@lexical/selection";
 import { getContextMenu } from "@/utils/contextMenu";
 import { launchContextMenu } from "./utils/editorContextMenu";
-import { getCurrentWord, removeTextFromCurrentNode } from "./utils/wordSelector";
+import { getCurrentWord, removeTextFromCurrentSelection } from "./utils/wordSelector";
 import type { BloomerpTextEditor } from "./BloomerpTextEditor";
 import { $isCodeBlockNode } from "./nodes/CodeBlockNode";
 
 const COMMAND_CONTEXT_MENU_ID = 'bloomerp-text-editor-command-menu';
-const RANGE_CONTEXT_MENU_ID = 'bloomerp-text-editor-range-menu';
 
 export type Command = {
     command: LexicalCommand<KeyboardEvent>;
@@ -231,24 +228,11 @@ function handleListItemEnter(listItem: ListItemNode): boolean {
     return insertListItemAfter(listItem);
 }
 
-function enterListMode(editor: LexicalEditor, trigger: string, listType: ListType): boolean {
-    if (getCurrentWord(editor) !== trigger) {
-        return false;
-    }
-
-    removeTextFromCurrentNode(editor, trigger);
-
-    editor.update(() => {
-        const selection = $getSelection();
-
-        if (!$isRangeSelection(selection)) {
-            return;
-        }
-
-        $setBlocksType(selection, () => $createListNode(listType));
-    });
-
-    return true;
+/** Reuse the registered list conversion for Markdown-style keyboard triggers. */
+function enterListMode(host: BloomerpTextEditor, trigger: string, listType: ListType): boolean {
+    if (!host.editor || getCurrentWord(host.editor) !== trigger) return false;
+    removeTextFromCurrentSelection(trigger);
+    return host.actionRegistry.execute(listType === "number" ? "ordered_list" : "unordered_list", "shortcut");
 }
 
 /** Launch the existing slash menu with searchable reference actions. */
@@ -257,15 +241,22 @@ function handleSlashTrigger(this: BloomerpTextEditor, _event?: KeyboardEvent): b
     /** Read command text after Lexical applies the current keyboard input. */
     function openSlashAfterInput(): void {
         const editor = component.editor;
-        if (!editor) return;
+        if (!editor?.isEditable() || component.element.dataset.disabled === "true") return;
+        // A queued keystroke must not dismiss a picker after its search takes focus.
+        if (!editor.getRootElement()?.contains(document.activeElement)) return;
         const currentWord = getCurrentWord(editor);
         const menu = getContextMenu(COMMAND_CONTEXT_MENU_ID);
+        /** Keep slash-like source code literal instead of offering document transformations. */
+        function insideCode(): boolean {
+            const selection = $getSelection();
+            return $isRangeSelection(selection) && isCodeBlockSelection(selection.anchor.getNode());
+        }
+        if (editor.getEditorState().read(insideCode)) { menu.hide(); return; }
         if (!currentWord.startsWith("/")) {
             if (!currentWord.startsWith("@")) menu.hide();
             return;
         }
-        getContextMenu(RANGE_CONTEXT_MENU_ID).hide();
-        launchContextMenu(editor, menu, ["template", "h1", "h2", "h3", "code_block", "mermaid", "image", "unordered_list", "ordered_list", "checklist", "table", "mention", "object_reference"].concat(component.slashExtraActions), currentWord.slice(1));
+        launchContextMenu(component, menu, currentWord.slice(1));
     }
     requestAnimationFrame(openSlashAfterInput);
     return false;
@@ -273,47 +264,12 @@ function handleSlashTrigger(this: BloomerpTextEditor, _event?: KeyboardEvent): b
 
 export let COMMANDS: Record<string, Command> = {
     slash: { command: KEY_DOWN_COMMAND, handler: handleSlashTrigger },
-    range: {
-        command: SELECTION_CHANGE_COMMAND,
-        handler: function () {
-            requestAnimationFrame(() => {
-                const editor = this.editor;
-                if (!editor) {return}
-
-                const contextMenu = getContextMenu(RANGE_CONTEXT_MENU_ID);
-                let shouldShowRangeMenu = false;
-
-                editor.getEditorState().read(() => {
-                    const selection = $getSelection();
-                    shouldShowRangeMenu = Boolean(
-                        $isRangeSelection(selection)
-                        && !selection.isCollapsed()
-                        && this.rangeExtraActions.length > 0
-                    );
-                });
-
-                if (!shouldShowRangeMenu) {
-                    contextMenu.hide();
-                    return;
-                }
-
-                launchContextMenu(
-                    editor,
-                    contextMenu,
-                    this.rangeExtraActions,
-                    undefined,
-                    'selection',
-                );
-            });
-
-            return false
-        },
-    },
     numberEntersUnorderdList: {
         command: KEY_SPACE_COMMAND,
-        handler: function (event) {
+        /** Convert the current Markdown prefix through the shared list action. */
+        handler: function (this: BloomerpTextEditor, event?: KeyboardEvent): boolean {
             const editor = this.editor;
-            if (!editor || !enterListMode(editor, "1.", "number")) {
+            if (!editor || !enterListMode(this, "1.", "number")) {
                 return false;
             }
 
@@ -323,9 +279,10 @@ export let COMMANDS: Record<string, Command> = {
     },
     dashEntersUnorderedList: {
         command: KEY_SPACE_COMMAND,
-        handler: function (event) {
+        /** Convert the current Markdown prefix through the shared list action. */
+        handler: function (this: BloomerpTextEditor, event?: KeyboardEvent): boolean {
             const editor = this.editor;
-            if (!editor || !enterListMode(editor, "-", "bullet")) {
+            if (!editor || !enterListMode(this, "-", "bullet")) {
                 return false;
             }
 

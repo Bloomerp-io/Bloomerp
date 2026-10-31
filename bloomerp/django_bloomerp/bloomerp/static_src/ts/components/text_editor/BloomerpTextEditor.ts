@@ -50,7 +50,7 @@ import {
     createEmptyHistoryState,
     registerHistory,
 } from "@lexical/history";
-import { $isListItemNode, $isListNode, ListItemNode, ListNode } from "@lexical/list";
+import { $isListItemNode, $isListNode, ListItemNode, ListNode, registerList } from "@lexical/list";
 import { LinkNode } from "@lexical/link";
 import {
     TableCellNode,
@@ -58,6 +58,13 @@ import {
     TableRowNode,
 } from "@lexical/table";
 import { Action, ACTIONS } from "./actions";
+import { EditorActionRegistry, type ActionSurface } from "./actionRegistry";
+import { ActionToolbar, createActionToolbarButton } from "./actionToolbar";
+import { SelectionToolbar } from "./selectionToolbar";
+import { ResizableTableNode, $replaceTableNode } from "./nodes/ResizableTableNode";
+import { registerTableColumnResizing } from "./utils/tableColumnResizing";
+import { registerTableCellSelection } from "./utils/tableCellSelection";
+import { createEditorHTMLConfig } from "./serialization";
 import { BaseWidget } from "../widgets/BaseWidget";
 import { parseBoolean } from "../../utils/booleans";
 
@@ -76,10 +83,17 @@ export class BloomerpTextEditor extends BaseWidget {
     private templatePicker: TemplatePicker | null = null;
     private unregister: (() => void) | null = null;
     private commands: Array<Command> = [];
-    private actions: Record<string, Action> = {};
+    public readonly actionRegistry = new EditorActionRegistry(this, ACTIONS);
+    private actionToolbar: ActionToolbar | null = null;
+    private selectionToolbar: SelectionToolbar | null = null;
+    /** Dispose portal controls when HTMX removes the owning editor widget. */
+    private readonly beforeCleanup = (event: Event): void => {
+        if (event.target === this.element) this.destroy();
+    };
     
     private actionsToolbar: HTMLElement | null = null;
     private toolbarToggleButton: HTMLButtonElement | null = null;
+    private toolbarToggleCleanup: (() => void) | null = null;
     private toolbarRevealButton: HTMLButtonElement | null = null;
     private toolbarHidden: boolean = true;
     private toolbarVisibilityHandler: ((event: Event) => void) | null = null;
@@ -100,8 +114,23 @@ export class BloomerpTextEditor extends BaseWidget {
     public overrideDefaultStyling: boolean = false;
 
     /** Let specialized editors register extra nodes before the initial HTML load. */
-    protected getAdditionalNodes(): Array<Klass<LexicalNode>> {
-        return [];
+    protected getAdditionalNodes(): Array<Klass<LexicalNode>> { return []; }
+
+    /** Show the configured hint only for an empty document, preserving non-text content. */
+    private updatePlaceholder(editorRoot: HTMLElement): void {
+        const placeholder = this.element.dataset.placeholder;
+        if (!placeholder || !this.editor) return;
+        editorRoot.dataset.placeholder = placeholder;
+        editorRoot.setAttribute("aria-placeholder", placeholder);
+        editorRoot.dataset.empty = String(this.editor.getEditorState().read(this.canShowPlaceholder));
+    }
+
+    /** Recognize the empty paragraph Lexical creates without hiding images, lists, or tables. */
+    private canShowPlaceholder(): boolean {
+        const children = $getRoot().getChildren();
+        if (!children.length) return true;
+        const first = children[0];
+        return children.length === 1 && $isElementNode(first) && first.getType() === "paragraph" && first.isEmpty();
     }
 
     /** Create the Lexical editor and connect its actions to the widget value. */
@@ -131,9 +160,18 @@ export class BloomerpTextEditor extends BaseWidget {
 
         this.editor = createEditor({
             namespace: "BloomerpTextEditor",
+            editable: this.element.dataset.disabled !== "true",
+            html: createEditorHTMLConfig(),
             theme: {
+                text: {
+                    italic: 'bloomerp-text-editor-italic',
+                    underline: 'bloomerp-text-editor-underline',
+                    strikethrough: 'bloomerp-text-editor-strikethrough',
+                    underlineStrikethrough: 'bloomerp-text-editor-underline-strikethrough',
+                },
                 link: !this.overrideDefaultStyling ? 'text-blue-600 underline' : '',
                 paragraph: !this.overrideDefaultStyling ? 'text-md mb-2 last:mb-0' : '',
+                quote: !this.overrideDefaultStyling ? 'bloomerp-text-editor-quote' : '',
                 heading: {
                     h1: !this.overrideDefaultStyling ? 'text-4xl font-bold mb-2' : '',
                     h2: !this.overrideDefaultStyling ? 'text-2xl font-bold mb-1' : '',
@@ -152,7 +190,8 @@ export class BloomerpTextEditor extends BaseWidget {
                 table: !this.overrideDefaultStyling ? 'my-3 w-full table-fixed border-collapse overflow-hidden rounded-lg border border-gray-200 text-left' : '',
                 tableRow: !this.overrideDefaultStyling ? 'border-b border-gray-200 last:border-b-0' : '',
                 tableCell: !this.overrideDefaultStyling ? 'min-w-24 border-r border-gray-200 px-1 py-1 align-top text-sm outline-none last:border-r-0' : '',
-                tableCellHeader: !this.overrideDefaultStyling ? 'bg-gray-100 font-medium' : '',
+                tableCellHeader: 'bloomerp-text-editor-table-header' + (!this.overrideDefaultStyling ? ' font-medium' : ''),
+                tableSelection: 'bloomerp-text-editor-table-selection',
                 code: !this.overrideDefaultStyling ? 'bloomerp-text-editor-code-block' : '',
             },
             nodes: [
@@ -161,7 +200,8 @@ export class BloomerpTextEditor extends BaseWidget {
                 ListNode,
                 ListItemNode,
                 LinkNode,
-                TableNode,
+                ResizableTableNode,
+                { replace: TableNode, with: $replaceTableNode, withKlass: ResizableTableNode },
                 TableRowNode,
                 TableCellNode,
                 ImageNode,
@@ -172,7 +212,8 @@ export class BloomerpTextEditor extends BaseWidget {
                 HtmlNode,
                 ...this.getAdditionalNodes(),
             ],
-            onError: (error: Error) => {
+            /** Surface editor failures instead of silently corrupting the field value. */
+            onError: (error: Error): never => {
                 throw error;
             },
         });
@@ -192,6 +233,9 @@ export class BloomerpTextEditor extends BaseWidget {
         window.addEventListener(TEXT_EDITOR_TOOLBAR_VISIBILITY_EVENT, this.toolbarVisibilityHandler);
 
         this.editor.setRootElement(editorRef);
+        editorRef.contentEditable = String(this.editor.isEditable());
+        this.actionRegistry.initialize();
+        this.element.addEventListener("htmx:beforeCleanupElement", this.beforeCleanup);
         this.referencePreviewCleanup = bindReferencePreviews(editorRef);
         this.hostClickHandler = (event: MouseEvent) => {
             if (event.target !== this.element) return;
@@ -206,18 +250,30 @@ export class BloomerpTextEditor extends BaseWidget {
         const historyState = createEmptyHistoryState();
 
         this.unregister = mergeRegister(
+            /** Keep the native editing surface and action controls consistent with read-only state. */
+            this.editor.registerEditableListener((editable: boolean): void => {
+                editorRef.contentEditable = String(editable);
+                this.actionToolbar?.refresh();
+                if (!editable) this.selectionToolbar?.hide();
+            }),
             this.editor.registerCommand(PASTE_COMMAND, this.pasteReferences.bind(this), COMMAND_PRIORITY_LOW),
             registerLinkBehavior(this.editor, this.element),
             registerRichText(this.editor),
+            registerList(this.editor),
             registerHistory(this.editor, historyState, 300),
             registerTableBehavior(this.editor, this.element),
+            registerTableColumnResizing(this.editor, this.element),
+            registerTableCellSelection(this.editor, this.element),
             registerHtmlBehavior(this.editor),
             registerMermaidBehavior(this.editor, this.element),
             registerImageBehavior(this.editor, this.element),
             this.editor.registerCommand(CLICK_COMMAND, this.handleChecklistClick.bind(this), COMMAND_PRIORITY_LOW),
             this.editor.registerCommand(KEY_SPACE_COMMAND, this.handleChecklistSpace.bind(this), COMMAND_PRIORITY_LOW),
-            this.editor.registerUpdateListener(() => {
+            /** Refresh action state and notify the form only when saved HTML changes. */
+            this.editor.registerUpdateListener((): void => {
                 this.updateNestedListMarkers(editorRef);
+                this.updatePlaceholder(editorRef);
+                this.actionToolbar?.refresh();
 
                 if (this.isInitializing || this.suppressNextChange) {
                     this.suppressNextChange = false;
@@ -237,6 +293,7 @@ export class BloomerpTextEditor extends BaseWidget {
         );
 
         this.registerActionsToolbar()
+        this.selectionToolbar = new SelectionToolbar(this);
         queueMicrotask(() => {
             this.isInitializing = false;
             this.suppressNextChange = false;
@@ -245,6 +302,14 @@ export class BloomerpTextEditor extends BaseWidget {
 
     /** Release editor menus, subscriptions, and Lexical resources. */
     public destroy(): void {
+        this.toolbarToggleCleanup?.();
+        this.toolbarToggleCleanup = null;
+        this.selectionToolbar?.destroy();
+        this.selectionToolbar = null;
+        this.actionToolbar?.destroy();
+        this.actionToolbar = null;
+        this.actionRegistry.destroy();
+        this.element.removeEventListener("htmx:beforeCleanupElement", this.beforeCleanup);
         this.referencePreviewCleanup?.();
         this.referencePreviewCleanup = null;
         this.referencePicker?.destroy();
@@ -339,19 +404,18 @@ export class BloomerpTextEditor extends BaseWidget {
      * Returns the actions available for this editor
      */
     public getActions() : Array<Action> {
-        return Object.values({ ...ACTIONS, ...this.actions });
+        /** Expose scoped definitions without leaking custom actions into another editor. */
+        function definition(entry: import("./actionRegistry").RegisteredAction): Action { return entry.action; }
+        return this.actionRegistry.list("toolbar").map(definition);
     }
 
-    /** Resolve a scoped action without exposing it to other editor instances. */
-    public getAction(key: string): Action | undefined {
-        return this.actions[key] ?? ACTIONS[key];
-    }
+    /** Resolve a scoped capability without exposing it to other editor instances. */
+    public getAction(key: string): Action | undefined { return this.actionRegistry.get(key); }
 
     /**
      * Registers the actions toolbar
      */
-    private registerActionsToolbar() {
-        const actions = this.getActions()
+    private registerActionsToolbar(): void {
         let actionsToolbarId = this.element.dataset.actionsToolbarSectionId;
         
         const standardToolbar = (!actionsToolbarId && this.includeToolbar)
@@ -365,26 +429,10 @@ export class BloomerpTextEditor extends BaseWidget {
         if (!this.actionsToolbar) return;
 
         this.toolbarToggleButton = null;
+        this.actionToolbar?.destroy();
         this.actionsToolbar.innerHTML = ''
-
-
-        actions.map((action)=>{
-            let actionBtn = document.createElement('button')
-            actionBtn.type = 'button'
-            actionBtn.tabIndex = -1
-            actionBtn.className = 'btn btn-secondary btn-sm'
-            actionBtn.innerHTML = `<i class='${action.icon}'></i> ${action.label}`
-            actionBtn.addEventListener('mousedown', (event) => {
-                event.preventDefault()
-            })
-            actionBtn.addEventListener('click', ()=> {
-                action.handler(this)
-                this.editor?.focus()
-            })
-
-            this.actionsToolbar.appendChild(actionBtn)
-        })
-
+        this.actionToolbar = new ActionToolbar(this, "toolbar", this.actionRegistry.captureSelection.bind(this.actionRegistry));
+        this.actionsToolbar.appendChild(this.actionToolbar.element);
 
         if (standardToolbar) {
             this.actionsToolbar.className = 'flex mb-4 gap-2 overflow-x-scroll'
@@ -400,20 +448,20 @@ export class BloomerpTextEditor extends BaseWidget {
     private createToolbarToggleButton(): void {
         if (!this.actionsToolbar) return;
 
-        const toggleButton = document.createElement('button');
-        toggleButton.type = 'button';
-        toggleButton.className = 'btn btn-secondary btn-sm shrink-0';
-        toggleButton.setAttribute('aria-label', _('Hide formatting toolbar'));
-        toggleButton.title = _('Hide formatting toolbar');
-        toggleButton.innerHTML = '<i class="fa-solid fa-eye-slash" aria-hidden="true"></i>';
-        toggleButton.addEventListener('mousedown', (event) => {
+        this.toolbarToggleCleanup?.();
+        const control = createActionToolbarButton(_('Hide formatting toolbar'), 'fa-solid fa-eye-slash');
+        const toggleButton = control.element;
+        this.toolbarToggleCleanup = control.destroy;
+        /** Keep the selected text intact while collapsing formatting controls. */
+        toggleButton.addEventListener('mousedown', (event: MouseEvent): void => {
             event.preventDefault();
         });
-        toggleButton.addEventListener('click', () => {
+        /** Persist the shared toolbar visibility preference through the standard control. */
+        toggleButton.addEventListener('click', (): void => {
             this.setToolbarHidden(true, true);
         });
 
-        this.actionsToolbar.appendChild(toggleButton);
+        this.actionToolbar?.appendControl(toggleButton);
         this.toolbarToggleButton = toggleButton;
     }
 
@@ -508,6 +556,8 @@ export class BloomerpTextEditor extends BaseWidget {
         if (this.hiddenInput) {
             this.hiddenInput.value = this.getValue();
         }
+        const editorRoot = editor.getRootElement();
+        if (editorRoot) this.updatePlaceholder(editorRoot);
         this.element.dispatchEvent(new CustomEvent("bloomerp:references-changed", { bubbles: true }));
     }
 
@@ -697,15 +747,13 @@ export class BloomerpTextEditor extends BaseWidget {
      * @param addToSlash whether to add the action to the slash menu
      * @param addToRange whether to add the action to the range menu
      */
-    public registerAction(action:Action, key:string, addToSlash:boolean=false, addToRange:boolean=false): void {
-        this.actions[key] = action;
-
-        if (this.actionsToolbar) {
-            this.registerActionsToolbar();
-        }
-
-        if (addToSlash && !this.slashExtraActions.includes(key)) {this.slashExtraActions.push(key)}
-        if (addToRange && !this.rangeExtraActions.includes(key)) {this.rangeExtraActions.push(key)}
+    public registerAction(action: Action, key: string, addToSlash: boolean = false, addToRange: boolean = false): void {
+        const surfaces = new Set<ActionSurface>(action.surfaces ?? ["toolbar"]);
+        if (addToSlash) surfaces.add("slash");
+        if (addToRange) surfaces.add("selection");
+        this.actionRegistry.register(key, { ...action, surfaces: [...surfaces] });
+        if (addToSlash && !this.slashExtraActions.includes(key)) this.slashExtraActions.push(key);
+        if (addToRange && !this.rangeExtraActions.includes(key)) this.rangeExtraActions.push(key);
     }
 
     /**
@@ -727,6 +775,7 @@ export class BloomerpTextEditor extends BaseWidget {
         ].filter(Boolean).join('\n\n');
     }
 
+    /** Reset application presentation without disabling native editing or atomic read-only nodes. */
     private getDocumentResetStyling(): string {
         if (!this.editorRootSelector) {
             return '';
@@ -735,6 +784,18 @@ export class BloomerpTextEditor extends BaseWidget {
         return `
 :where(${this.editorRootSelector}, ${this.editorRootSelector} *) {
     all: revert;
+}
+
+:where(${this.editorRootSelector}[contenteditable="true"]) {
+    -webkit-user-modify: read-write;
+}
+
+:where(${this.editorRootSelector} *) {
+    -webkit-user-modify: inherit;
+}
+
+:where(${this.editorRootSelector}[contenteditable="false"], ${this.editorRootSelector}[contenteditable="false"] *, ${this.editorRootSelector} [contenteditable="false"], ${this.editorRootSelector} [contenteditable="false"] *) {
+    -webkit-user-modify: read-only;
 }
 
 :where(${this.editorRootSelector}) {

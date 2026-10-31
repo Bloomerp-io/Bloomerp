@@ -15,6 +15,7 @@ from django.views.generic import TemplateView
 class DocumentTemplateGenerateView(BaseBloomerpDetailView):
     template_name = "utils/load_component_view.html"
     model = DocumentTemplate
+    htmx_include_addendum_padding = False
     
     def get_context_data(self, **kwargs):
         ctx =  super().get_context_data(**kwargs)

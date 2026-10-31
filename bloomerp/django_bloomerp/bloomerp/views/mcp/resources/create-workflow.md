@@ -94,7 +94,7 @@ if an extension provides one, follow its advertised input schema. Do not assume
 that a generic object mutation accepts the nested graph payload below.
 
 The existing authenticated graph creation API is POST
-`/components/automation/save_workflow/` with JSON validated by WorkflowSerializer.
+`/api/workflows/save/` with JSON validated by WorkflowSerializer.
 Creation requires UserPolicyManager's global `add_workflow` permission. Updates
 include `workflow_id` and require object-level `change_workflow` access. Successful
 creation returns 201 with the saved graph; updates return 200. Authentication and

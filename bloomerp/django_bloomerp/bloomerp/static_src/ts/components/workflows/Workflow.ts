@@ -1,5 +1,6 @@
 import getGeneralModal from "@/utils/modals";
-import { getCsrfToken } from "@/utils/cookies";
+import getSdk from "@/sdk/getSdk";
+import type { CustomWorkflowsSaveInput } from "@/sdk/sdk";
 import showMessage from "@/utils/messages";
 import BaseComponent, { getComponent, initComponents } from "../BaseComponent";
 import { MessageType } from "../UiMessage";
@@ -1494,7 +1495,8 @@ export default class Workflow extends BaseComponent {
     }
     
 
-    private buildWorkflowPayload() {
+    /** Build the typed graph payload accepted by the workflow save API. */
+    private buildWorkflowPayload(): CustomWorkflowsSaveInput {
         const exportData = this.drawflow.export();
         const workflowData = exportData.drawflow?.Home?.data || {};
         const nodes = Object.values(workflowData as Record<string, any>);
@@ -1591,35 +1593,19 @@ export default class Workflow extends BaseComponent {
         return saved;
     }
 
+    /** Serialize pending saves through the generated, session-authenticated SDK. */
     private async saveWorkflow(): Promise<boolean> {
         if (this.saveInFlight) {
             this.saveAgainAfterCurrent = true;
             return await this.saveInFlight;
         }
 
-        const savePromise = (async (): Promise<boolean> => {
+        /** Persist queued graph changes and synchronize server-assigned identifiers. */
+        const persistChanges = async (): Promise<boolean> => {
             try {
                 do {
                     this.saveAgainAfterCurrent = false;
-                    const csrfToken = getCsrfToken();
-                    const payload = this.buildWorkflowPayload();
-
-                    const response = await fetch('/components/automation/save_workflow/', {
-                        method: 'POST',
-                        credentials: 'same-origin',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
-                        },
-                        body: JSON.stringify(payload),
-                    });
-
-                    if (!response.ok) {
-                        console.error('Failed to save workflow');
-                        return false;
-                    }
-
-                    const savedWorkflow = await response.json();
+                    const savedWorkflow = await getSdk().custom.workflowsSave(this.buildWorkflowPayload());
                     this.workflowId = savedWorkflow.workflow_id?.toString() || this.workflowId;
 
                     for (const node of savedWorkflow.nodes || []) {
@@ -1646,7 +1632,8 @@ export default class Workflow extends BaseComponent {
                 console.error('Failed to save workflow', error);
                 return false;
             }
-        })();
+        };
+        const savePromise = persistChanges();
         this.saveInFlight = savePromise;
 
         try {

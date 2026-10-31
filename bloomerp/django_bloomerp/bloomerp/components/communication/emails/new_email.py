@@ -25,7 +25,10 @@ from bloomerp.communication.builtins.emails.sending import (
 )
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.router import router
-from bloomerp.services.email_attachment_services import prepare_email_files
+from bloomerp.services.email_attachment_services import (
+    prepare_email_files,
+    selected_email_file_ids,
+)
 from bloomerp.services.email_composer_requests import (
     _get_form_data,
     _join_recipients,
@@ -144,12 +147,27 @@ def _render_email_composer(
     form_data: dict[str, Any],
 ) -> HttpResponse:
     """Provide contextual accounts and document templates to the reusable editor."""
+    from bloomerp.files.access import FileAccessManager
+    from bloomerp.models.files.file_node import FileNode
+
+    identifiers = selected_email_file_ids(request.GET.get("object_references", ""))
+    files = (
+        list(FileAccessManager(request.user).get_queryset(FileNode.objects.filter(pk__in=identifiers)))
+        if identifiers else []
+    )
+    if len(files) != len(identifiers):
+        raise ValidationError(_("An attachment is unavailable or you no longer have access."))
+    attachments = [
+        {"kind": "file", "target_id": str(file.pk), "label": file.name}
+        for file in files
+    ]
     return render(request, "components/communication/emails/email_editor.html", {
         "mode": "new", "title": _("New email"), "submit_label": _("Send"),
         "inbox_folder": inbox_folder, "email_account": email_account,
         "from_email": email_account.email_address,
         "email_accounts": accessible_email_accounts(request.user),
         "email_object": obj,
+        "email_attachments": attachments,
         "email_content_type_id": ContentType.objects.get_for_model(obj).pk if obj is not None else "",
         "to": _join_recipients(form_data.get("to", [])),
         "subject": form_data.get("subject", ""), "body": form_data.get("body", ""),

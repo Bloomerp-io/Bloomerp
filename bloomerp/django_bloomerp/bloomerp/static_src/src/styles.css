@@ -1378,6 +1378,23 @@ Dashboard
   Text editor placeholder
 */
 
+.bloomerp-text-editor[data-placeholder] {
+    position: relative;
+}
+
+.bloomerp-text-editor[data-empty="true"]::before {
+    content: attr(data-placeholder);
+    position: absolute;
+    top: 0;
+    left: 0;
+    color: var(--color-gray-400);
+    pointer-events: none;
+}
+
+.dark .bloomerp-text-editor[data-empty="true"]::before {
+    color: var(--color-zinc-400);
+}
+
 .bloomerp-text-editor-checklist {
   list-style: none;
   padding-left: 1rem;

@@ -415,6 +415,12 @@ class TestEmailFileDelivery(BloomerpComponentTestCase):
         private_html = f'<img data-reference-kind="file" data-target-id="{self.private.pk}" src="/private">'
         cases = [
             RequestScenario(name="Shared picker is rendered", user=self.normal_user, query_params={"folder_id": str(self.folder.pk)}, expected=ExpectedResult(response_validators=[self.contains_text('bloomerp-component="reference-attachments"'), self.contains_text('data-reference-upload'), self.does_not_contain_text('name="attachments"')])),
+            RequestScenario(
+                name="Composer preselects existing email attachments with canonical labels",
+                user=self.normal_user,
+                query_params={"folder_id": str(self.folder.pk), "object_references": self.selection(self.document.pk, self.image.pk)},
+                expected=ExpectedResult(response_validators=self.preselected_attachments),
+            ),
             self.scenario("Mixed stored, multipart and repeated inline images", {"object_references": self.selection(self.document.pk, self.image.pk), "body": self.body + self.body, "attachments": SimpleUploadedFile("legacy.txt", b"legacy", content_type="text/plain")}, validator=self.mixed_mime),
             self.scenario("URL-only stored image is embedded", {"body": f'<p>A</p><img src="http://testserver/api/files/serve/?file_id={self.image.pk}"><p>B</p>'}, validator=self.inline_mime),
             self.scenario("Upload endpoint and existing file share delivery", {"object_references": self.selection(self.document.pk)}, prepare=self.upload_new, validator=self.uploaded_mime),
@@ -438,6 +444,21 @@ class TestEmailFileDelivery(BloomerpComponentTestCase):
         for invalid in ('not-json', '[]', '{"fields":{"1":[]}}', '{"manual":[{"kind":"file","target_id":"not-a-uuid"}]}', '{"manual":[{"kind":"object","target_id":"1","content_type_id":1}]}'):
             cases.append(self.scenario(f"Reject malformed picker payload {invalid}", {"object_references": invalid}, status=400))
         return cases
+
+    def preselected_attachments(self, response: HttpResponse) -> bool:
+        """Verify the shared picker receives both selected files and trusted display names."""
+        import json
+        from bs4 import BeautifulSoup
+
+        picker = BeautifulSoup(response.content, "html.parser").select_one('[bloomerp-component="reference-attachments"]')
+        entries = json.loads(picker.select_one('script[type="application/json"]').string)
+        self.assertEqual(
+            {entry["target_id"]: entry["label"] for entry in entries},
+            {str(self.document.pk): self.document.name, str(self.image.pk): self.image.name},
+        )
+        self.assertTrue(all(entry["kind"] == "file" for entry in entries))
+        self.assertContains(response, 'name="to"')
+        return True
 
     def delivery_ok(self, _response: HttpResponse) -> bool:
         """Require exactly one delivery for a valid request."""

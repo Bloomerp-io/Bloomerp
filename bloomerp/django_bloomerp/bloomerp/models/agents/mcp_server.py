@@ -23,7 +23,7 @@ from bloomerp.models.definition import (
 )
 from bloomerp.modules.bloomai import BloomAIModule
 
-from .base import AgentQuerySet
+from .base import AgentQuerySet, agent_search_settings
 
 
 class MCPIntegration(BloomerpModel):
@@ -87,6 +87,7 @@ class MCPIntegration(BloomerpModel):
         ),
         module=BloomAIModule,
         api_settings=ApiSettings(enable_auto_generation=False),
+        string_search_settings=agent_search_settings(allow_global_search=True),
         description="External MCP server configuration independent of an account.",
     )
     objects = AgentQuerySet.as_manager()

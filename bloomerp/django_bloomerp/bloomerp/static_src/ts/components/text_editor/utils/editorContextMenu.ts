@@ -1,9 +1,10 @@
-import { ContextMenuController, getContextMenu, type ContextMenuItem } from "@/utils/contextMenu";
+import type { ContextMenuController } from "@/utils/contextMenu";
+import { getComponent } from "@/components/BaseComponent";
 import { $getSelection, $isRangeSelection, $isTextNode, LexicalEditor } from "lexical";
-import { ACTIONS, type Action } from "../actions";
-import { componentIdentifier, getComponent } from "@/components/BaseComponent";
-import { BloomerpTextEditor } from "../BloomerpTextEditor";
+import { createActionMenuItems } from "../actionMenu";
+import type { BloomerpTextEditor } from "../BloomerpTextEditor";
 
+/** Measure the caret, falling back to the editor bounds when it has no visible text. */
 function getCaretRect(root: HTMLElement): DOMRect {
     const selection = window.getSelection();
     const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
@@ -41,12 +42,14 @@ function getCaretRect(root: HTMLElement): DOMRect {
     return root.getBoundingClientRect();
 }
 
+/** Measure the last typed slash-query character without changing editor content. */
 function getSlashRect(editor: LexicalEditor): DOMRect {
     const root = editor.getRootElement();
 
     let rect: DOMRect | null = null;
 
-    editor.getEditorState().read(() => {
+    /** Read the typed character corresponding to the current Lexical caret. */
+    function measure(): void {
         const selection = $getSelection();
         if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
             return;
@@ -73,108 +76,49 @@ function getSlashRect(editor: LexicalEditor): DOMRect {
         if (measured.width > 0 || measured.height > 0) {
             rect = measured;
         }
-    });
+    }
+    editor.getEditorState().read(measure);
 
     return rect ?? getCaretRect(root);
 }
 
-function getSelectionRect(editor: LexicalEditor): DOMRect {
-    const root = editor.getRootElement();
-    if (!root) {
-        return new DOMRect();
-    }
-
-    const selection = window.getSelection();
-    const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-    if (!range) {
-        return getCaretRect(root);
-    }
-
-    const ancestor = range.commonAncestorContainer;
-    const ancestorElement = ancestor instanceof HTMLElement ? ancestor : ancestor.parentElement;
-    if (!ancestorElement || !root.contains(ancestorElement)) {
-        return getCaretRect(root);
-    }
-
-    const rect = Array.from(range.getClientRects()).at(-1) ?? range.getBoundingClientRect();
-    if (rect.width > 0 || rect.height > 0) {
-        return rect;
-    }
-
-    return getCaretRect(root);
-}
-
-/** Resolve the owning widget, including specialized rich-text editor components. */
-function getTextEditorComponent(editor: LexicalEditor): BloomerpTextEditor | null {
-    const root = editor.getRootElement();
-    const componentElement = root?.closest<HTMLElement>(`[${componentIdentifier}]`);
-    if (!componentElement) {
-        return null;
-    }
-
-    const component = getComponent(componentElement);
-    return component instanceof BloomerpTextEditor ? component : null;
-}
-
-/** Show filtered editor actions with reusable child-menu providers at the current selection. */
+/** Show slash commands from the owning editor's scoped capability registry. */
+export function launchContextMenu(textEditor: BloomerpTextEditor, contextMenu: ContextMenuController, query?: string): void;
+/** Support existing specialized editors while their callers migrate to the owning widget. */
+export function launchContextMenu(editor: LexicalEditor, contextMenu: ContextMenuController, keys: string[], query?: string): void;
+/** Resolve both entry points to the same scoped registry and slash-menu presenter. */
 export function launchContextMenu(
-    editor:LexicalEditor, 
-    contextMenu:ContextMenuController,
-    insertKeys?:Array<string>,
-    query?:string,
-    anchor:'caret'|'selection' = 'caret',
+    owner: BloomerpTextEditor | LexicalEditor,
+    contextMenu: ContextMenuController,
+    queryOrKeys: string | string[] = "",
+    legacyQuery: string = "",
 ): void {
-    const root = editor.getRootElement()
-    if (!root) {
-        return;
+    let textEditor: BloomerpTextEditor | null;
+    if ("actionRegistry" in owner) textEditor = owner;
+    else {
+        const element = owner.getRootElement()?.closest<HTMLElement>("[bloomerp-component]");
+        textEditor = element ? getComponent(element) as BloomerpTextEditor | null : null;
     }
-
-    const textEditor = getTextEditorComponent(editor);
-    if (!textEditor) {
-        return;
+    if (!textEditor?.actionRegistry) return;
+    const keys = Array.isArray(queryOrKeys) ? queryOrKeys : null;
+    const query = typeof queryOrKeys === "string" ? queryOrKeys : legacyQuery;
+    const editor = textEditor.editor;
+    const root = editor?.getRootElement();
+    if (!editor || !root) return;
+    const selection = textEditor.actionRegistry.captureSelection();
+    const normalizedQuery = query.trim().toLowerCase();
+    /** Search both translated labels and stable command identifiers. */
+    function matches(entry: import("../actionRegistry").RegisteredAction): boolean {
+        return (!keys || keys.includes(entry.id))
+            && (!normalizedQuery || `${entry.id} ${entry.action.label}`.toLowerCase().includes(normalizedQuery));
     }
-
-    const requestedKeys = insertKeys ?? Object.keys(ACTIONS);
-    const normalizedQuery = query?.trim().toLowerCase() ?? '';
-    const items = requestedKeys
-        .map(function resolveAction(key: string): Action | undefined {
-            /** Resolve builder-only commands through this editor instance. */
-            return textEditor.getAction(key);
-        })
-        .filter((insert) => Boolean(insert))
-        .filter((insert) => {
-            if (!normalizedQuery) {
-                return true;
-            }
-
-            return insert.label.toLowerCase().includes(normalizedQuery);
-        })
-        .map((insert: Action): ContextMenuItem => ({
-            label: insert.label,
-            icon: insert.icon,
-            submenu: insert.submenu?.bind(null, textEditor),
-            onClick: function runMenuAction(): void {
-                /** Distinguish slash-trigger consumption from toolbar insertion. */
-                insert.handler(textEditor, anchor === "caret" ? "slash" : "selection");
-            },
-        }));
-
-    if (!items.length) {
-        contextMenu.hide();
-        return;
+    const entries = textEditor.actionRegistry.list("slash", selection).filter(matches);
+    const items = createActionMenuItems(textEditor, entries, "slash", selection);
+    if (!items.length) { contextMenu.hide(); return; }
+    /** Place the shared searchable menu beside the current slash trigger. */
+    function show(): void {
+        const rect = getSlashRect(editor!);
+        contextMenu.showAt({ x: rect.left, y: rect.bottom + 8 }, root!, items, { anchorRect: rect });
     }
-
-    requestAnimationFrame(() => {
-            const rect = anchor === 'selection' ? getSelectionRect(editor) : getSlashRect(editor);
-
-            contextMenu.showAt(
-                {
-                    x: rect.left,
-                    y: rect.bottom + 8,
-                },
-                root,
-                items,
-                { hideOnViewportChange: anchor !== 'selection', anchorRect: rect },
-            );
-        });
+    requestAnimationFrame(show);
 }

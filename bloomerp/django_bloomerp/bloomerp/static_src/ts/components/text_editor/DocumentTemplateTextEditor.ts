@@ -1,13 +1,13 @@
 import type { Klass, LexicalNode } from "lexical";
 import { t as _ } from "../../utils/i18n";
-import type { EditorActionSource } from "./actions";
+import type { ActionContext } from "./actionRegistry";
 import { BloomerpTextEditor } from "./BloomerpTextEditor";
 import { PageBreakNode } from "./nodes/PageBreakNode";
 import { insertPageBreak } from "./utils/pageBreakBehavior";
 
-/** Insert a page boundary while consuming a trigger only for slash-menu actions. */
-function handlePageBreak(editor: BloomerpTextEditor, source: EditorActionSource = "toolbar"): void {
-    if (editor.editor) insertPageBreak(editor.editor, source === "slash");
+/** Insert a page boundary after the shared registry restores selection and consumes any slash query. */
+function handlePageBreak(editor: BloomerpTextEditor, _context: ActionContext): void {
+    if (editor.editor) insertPageBreak(editor.editor);
 }
 
 /** Keep printable page-boundary nodes and actions specific to document templates. */

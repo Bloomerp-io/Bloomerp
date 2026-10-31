@@ -1,11 +1,12 @@
+from typing import Any, ClassVar
+
 from django import forms
 from django.db.models import Model
-from typing import Any
 
 
 class DocumentTemplateForm(forms.Form):
     variable_field_names: tuple[str, ...] = ()
-    variable_name_by_field_name: dict[str, str] = {}
+    variable_name_by_field_name: ClassVar[dict[str, str]] = {}
     preset_instance: Model | None = None
     preset_variable_name: str | None = None
 
@@ -17,13 +18,19 @@ class DocumentTemplateForm(forms.Form):
             attrs={
                 "class": "input",
             }
-        )
+        ),
     )
 
-    def __init__(self, *args: Any, **kwargs: Any):
+    def __init__(self, *args: Any, allow_persist: bool = True, **kwargs: Any) -> None:
+        """Build generator inputs and omit persistence when the containing flow owns saving."""
         super().__init__(*args, **kwargs)
+        if not allow_persist:
+            self.fields.pop("persist", None)
         if "persist" in self.fields:
-            self.order_fields([field_name for field_name in self.fields if field_name != "persist"] + ["persist"])
+            self.order_fields(
+                [field_name for field_name in self.fields if field_name != "persist"]
+                + ["persist"]
+            )
         self.model_variable_values = {}
         if self.preset_instance is not None and self.preset_variable_name is not None:
             self.model_variable_values[self.preset_variable_name] = self.preset_instance
@@ -41,7 +48,9 @@ class DocumentTemplateForm(forms.Form):
             selected_instance = cleaned_data.get(field_name)
             if selected_instance is None:
                 continue
-            model_variable_values[self.variable_name_by_field_name[field_name]] = selected_instance
+            model_variable_values[self.variable_name_by_field_name[field_name]] = (
+                selected_instance
+            )
 
         self.model_variable_values = model_variable_values
         self.objects = list(model_variable_values.values())

@@ -1,7 +1,9 @@
 import BaseComponent from "../BaseComponent";
 import ace from 'ace-builds/src-noconflict/ace';
-import htmx from "htmx.org";
 import { insertSkeleton } from "../../utils/animations";
+import getSdk from "../../sdk/getSdk";
+import { BloomerpHttpError, type ListResponse, type SqlQuery } from "../../sdk/sdk";
+import './SqlQueryEditor.css';
 
 interface SqlField {
     name: string;
@@ -26,11 +28,7 @@ interface SqlSchemaResponse {
     total_pages?: number;
 }
 
-interface SavedSqlQuery {
-    id: string;
-    name: string;
-    query: string;
-}
+type SqlQueryTab = Pick<SqlQuery, 'id' | 'name' | 'query'>;
 
 export default class SqlQueryEditor extends BaseComponent {
     private editor: any = null;
@@ -50,15 +48,19 @@ export default class SqlQueryEditor extends BaseComponent {
     private resizeHandle: HTMLElement | null = null;
     private saveButton: HTMLButtonElement | null = null;
     private queryNameInput: HTMLInputElement | null = null;
-    private csrfInput: HTMLInputElement | null = null;
+    private statusElement: HTMLElement | null = null;
     private tabsContainer: HTMLElement | null = null;
     private activeQueryIdInput: HTMLInputElement | null = null;
     private schemaUrl = '/api/sql/accessible-tables/';
     private executeUrl = '/components/execute_sql_query/';
-    private queriesUrl = '/api/sql/queries/';
     private schemaData: SqlDatabase[] = [];
-    private savedQueries: SavedSqlQuery[] = [];
+    private queryTabs: SqlQueryTab[] = [];
+    private activeTabId = 'unsaved';
     private activeQueryId: string | null = null;
+    private isSaving = false;
+    private readonly requests = new AbortController();
+    private executionRequest: AbortController | null = null;
+    private resizeObserver: ResizeObserver | null = null;
     private completionWords: string[] = [];
     private tableFieldMap: Map<string, { name: string; fields: string[] }> = new Map();
     private onEditorChange: (() => void) | null = null;
@@ -69,8 +71,6 @@ export default class SqlQueryEditor extends BaseComponent {
     private onCatalogClick: ((event: Event) => void) | null = null;
     private onSaveClick: ((event: Event) => void) | null = null;
     private onTabsClick: ((event: Event) => void) | null = null;
-    private onResultsSwap: ((event: Event) => void) | null = null;
-    private onResultsBeforeSwap: ((event: Event) => void) | null = null;
     private onPageSizeChange: ((event: Event) => void) | null = null;
     private onPaginationClick: ((event: Event) => void) | null = null;
     private onResizeHandleMouseDown: ((event: MouseEvent) => void) | null = null;
@@ -88,12 +88,12 @@ export default class SqlQueryEditor extends BaseComponent {
     private resizeStartEditorHeight = 0;
     private readonly editorHeightStorageKey = 'bloomerp.sqlQueryEditor.editorHeight';
 
+    /** Mount the SQL editor, bind its controls, and load data through the session SDK. */
     public initialize(): void {
         if (!this.element) return;
 
         this.schemaUrl = this.element.dataset.sqlSchemaUrl || this.schemaUrl;
         this.executeUrl = this.element.dataset.sqlExecuteUrl || this.executeUrl;
-        this.queriesUrl = this.element.dataset.sqlQueriesUrl || this.queriesUrl;
 
         this.editorContainer = this.element.querySelector<HTMLElement>('[data-sql-editor]');
         this.queryInput = this.element.querySelector<HTMLTextAreaElement>('[data-sql-query-input]');
@@ -113,13 +113,18 @@ export default class SqlQueryEditor extends BaseComponent {
         this.saveButton = this.element.querySelector<HTMLButtonElement>('[data-sql-save]');
         this.queryNameInput = this.element.querySelector<HTMLInputElement>('[data-sql-query-name]');
         this.tabsContainer = this.element.querySelector<HTMLElement>('[data-sql-tabs]');
-        this.csrfInput = this.element.querySelector<HTMLInputElement>('[data-sql-csrf]');
+        this.statusElement = this.element.querySelector<HTMLElement>('[data-sql-status]');
 
         if (!this.editorContainer || !this.queryInput) return;
 
         this.configureAceModuleLoader();
         this.editor = ace.edit(this.editorContainer);
         this.editor.setTheme('ace/theme/chrome');
+        this.resizeObserver = new ResizeObserver(this.resizeEditor);
+        this.resizeObserver.observe(this.editorContainer);
+        this.element.addEventListener('htmx:beforeCleanupElement', this.onBeforeCleanup, {
+            signal: this.requests.signal,
+        });
 
         this.editor.setOptions({
             showPrintMargin: false,
@@ -143,7 +148,10 @@ export default class SqlQueryEditor extends BaseComponent {
             this.hiddenQueryInput.value = this.editor.getValue();
         }
 
-        this.onEditorChange = () => {
+        this.queryTabs = [{ id: 'unsaved', name: 'Unsaved Query', query: this.getQuery() }];
+
+        /** Keep the active draft and submitted form values synchronized with Ace. */
+        this.onEditorChange = (): void => {
             if (!this.queryInput || !this.editor) return;
             const value = this.editor.getValue();
             this.queryInput.value = value;
@@ -157,16 +165,18 @@ export default class SqlQueryEditor extends BaseComponent {
 
         this.editor.session.on('change', this.onEditorChange);
 
-        this.onExecuteClick = (event: Event) => {
+        /** Execute the active draft from the first results page. */
+        this.onExecuteClick = (event: Event): void => {
             event.preventDefault();
-            this.executeQuery(1);
+            void this.executeQuery(1);
         };
 
         if (this.executeButton) {
             this.executeButton.addEventListener('click', this.onExecuteClick);
         }
 
-        this.onSearchInput = (event: Event) => {
+        /** Filter the loaded catalog using the search input. */
+        this.onSearchInput = (event: Event): void => {
             const target = event.target as HTMLInputElement;
             this.renderCatalog(target.value.trim().toLowerCase());
         };
@@ -175,7 +185,8 @@ export default class SqlQueryEditor extends BaseComponent {
             this.searchInput.addEventListener('input', this.onSearchInput);
         }
 
-        this.onResultsSearchInput = () => {
+        /** Filter the currently displayed result rows. */
+        this.onResultsSearchInput = (): void => {
             this.filterResultsTable();
         };
 
@@ -183,7 +194,8 @@ export default class SqlQueryEditor extends BaseComponent {
             this.resultsSearchInput.addEventListener('input', this.onResultsSearchInput);
         }
 
-        this.onRefreshClick = (event: Event) => {
+        /** Refresh the accessible schema from the server. */
+        this.onRefreshClick = (event: Event): void => {
             event.preventDefault();
             void this.fetchAndRenderSchema(true);
         };
@@ -192,7 +204,8 @@ export default class SqlQueryEditor extends BaseComponent {
             this.refreshButton.addEventListener('click', this.onRefreshClick);
         }
 
-        this.onCatalogClick = (event: Event) => {
+        /** Insert the selected table or field into the active SQL draft. */
+        this.onCatalogClick = (event: Event): void => {
             const target = event.target as HTMLElement;
             const insertElement = target.closest<HTMLElement>('[data-sql-insert-value]');
             if (!insertElement) return;
@@ -208,7 +221,8 @@ export default class SqlQueryEditor extends BaseComponent {
             this.catalogTree.addEventListener('click', this.onCatalogClick);
         }
 
-        this.onSaveClick = (event: Event) => {
+        /** Save the active query without submitting an enclosing form. */
+        this.onSaveClick = (event: Event): void => {
             event.preventDefault();
             void this.saveCurrentQuery();
         };
@@ -217,7 +231,8 @@ export default class SqlQueryEditor extends BaseComponent {
             this.saveButton.addEventListener('click', this.onSaveClick);
         }
 
-        this.onTabsClick = (event: Event) => {
+        /** Activate an existing query tab or create a new local draft. */
+        this.onTabsClick = (event: Event): void => {
             const target = event.target as HTMLElement;
 
             const addTabButton = target.closest<HTMLElement>('[data-sql-tab-add]');
@@ -238,38 +253,14 @@ export default class SqlQueryEditor extends BaseComponent {
             this.tabsContainer.addEventListener('click', this.onTabsClick);
         }
 
-        this.onResultsSwap = () => {
-            this.filterResultsTable();
-            this.syncPaginationStateFromResultsMeta();
-            this.updatePaginationControls();
-        };
-
-        this.onResultsBeforeSwap = (event: Event) => {
-            if (!this.resultsTarget) return;
-
-            const customEvent = event as CustomEvent;
-            const detail = customEvent.detail;
-
-            if (!detail || detail.target !== this.resultsTarget || detail.xhr.status < 400) {
-                return;
-            }
-
-            detail.shouldSwap = true;
-            detail.isError = false;
-        };
-
-        if (this.resultsTarget) {
-            this.resultsTarget.addEventListener('htmx:afterSwap', this.onResultsSwap);
-            this.resultsTarget.addEventListener('htmx:beforeSwap', this.onResultsBeforeSwap);
-        }
-
-        this.onPageSizeChange = (event: Event) => {
+        /** Re-run the query when the requested results page size changes. */
+        this.onPageSizeChange = (event: Event): void => {
             const target = event.target as HTMLSelectElement;
             const nextPageSize = Number.parseInt(target.value, 10);
             if (Number.isNaN(nextPageSize) || nextPageSize < 1) return;
 
             this.pageSize = nextPageSize;
-            this.executeQuery(1);
+            void this.executeQuery(1);
         };
 
         if (this.pageSizeSelect) {
@@ -277,7 +268,8 @@ export default class SqlQueryEditor extends BaseComponent {
             this.pageSizeSelect.addEventListener('change', this.onPageSizeChange);
         }
 
-        this.onPaginationClick = (event: Event) => {
+        /** Request the previous or next results page when available. */
+        this.onPaginationClick = (event: Event): void => {
             const target = event.target as HTMLElement;
             const button = target.closest<HTMLElement>('[data-sql-page-nav]');
             if (!button) return;
@@ -285,9 +277,9 @@ export default class SqlQueryEditor extends BaseComponent {
             event.preventDefault();
             const direction = button.dataset.sqlPageNav;
             if (direction === 'prev' && this.currentPage > 1) {
-                this.executeQuery(this.currentPage - 1);
+                void this.executeQuery(this.currentPage - 1);
             } else if (direction === 'next' && this.currentPage < this.totalPages) {
-                this.executeQuery(this.currentPage + 1);
+                void this.executeQuery(this.currentPage + 1);
             }
         };
 
@@ -319,26 +311,67 @@ export default class SqlQueryEditor extends BaseComponent {
     /**
      * Executes the SQL query and displays the results.
      */
-    public executeQuery(page: number = this.currentPage) : void {
+    public async executeQuery(page: number = this.currentPage): Promise<void> {
         const query = this.getQuery().trim();
         if (!query || !this.resultsTarget) return;
 
         this.currentPage = Math.max(1, page);
         insertSkeleton(this.resultsTarget);
 
-        htmx.ajax('post', this.executeUrl, {
-            target: this.resultsTarget,
-            swap: 'innerHTML',
-            values: {
-                sql_query: query,
-                sql_page: this.currentPage,
-                sql_page_size: this.pageSize,
-                csrfmiddlewaretoken: this.csrfInput?.value || '',
-            },
-        });
+        this.executionRequest?.abort();
+        const request = new AbortController();
+        this.executionRequest = request;
+
+        try {
+            const html = await getSdk().client.request<string>(this.executeUrl, {
+                method: 'POST',
+                body: new URLSearchParams({
+                    sql_query: query,
+                    sql_page: String(this.currentPage),
+                    sql_page_size: String(this.pageSize),
+                }),
+                signal: request.signal,
+            });
+            if (!request.signal.aborted) this.renderResults(html);
+        } catch (error: unknown) {
+            if (request.signal.aborted) return;
+            if (error instanceof BloomerpHttpError && typeof error.body === 'string') {
+                this.renderResults(error.body);
+            } else {
+                this.resultsTarget.textContent = 'Failed to execute query. Please try again.';
+            }
+        }
     }
 
+    /** Render the server results fragment and refresh local search and pagination. */
+    private renderResults(html: string): void {
+        if (!this.resultsTarget) return;
+        this.resultsTarget.innerHTML = html;
+        this.filterResultsTable();
+        this.syncPaginationStateFromResultsMeta();
+        this.updatePaginationControls();
+    }
+
+    /** Resize Ace whenever its parent changes width or height. */
+    private resizeEditor = (): void => {
+        this.editor?.resize();
+    };
+
+    /** Release editor resources when HTMX removes this component. */
+    private onBeforeCleanup = (event: Event): void => {
+        if (event.target === this.element) this.destroy();
+    };
+
+    /** Cancel requests and release the editor, observer, and control listeners. */
     public destroy(): void {
+        this.requests.abort();
+        this.executionRequest?.abort();
+        this.resizeObserver?.disconnect();
+        if (this.isResizing) {
+            this.isResizing = false;
+            document.body.classList.remove('select-none');
+            document.body.style.cursor = '';
+        }
         if (this.editor && this.onEditorChange) {
             this.editor.session.off('change', this.onEditorChange);
         }
@@ -369,14 +402,6 @@ export default class SqlQueryEditor extends BaseComponent {
 
         if (this.tabsContainer && this.onTabsClick) {
             this.tabsContainer.removeEventListener('click', this.onTabsClick);
-        }
-
-        if (this.resultsTarget && this.onResultsSwap) {
-            this.resultsTarget.removeEventListener('htmx:afterSwap', this.onResultsSwap);
-        }
-
-        if (this.resultsTarget && this.onResultsBeforeSwap) {
-            this.resultsTarget.removeEventListener('htmx:beforeSwap', this.onResultsBeforeSwap);
         }
 
         if (this.pageSizeSelect && this.onPageSizeChange) {
@@ -420,8 +445,6 @@ export default class SqlQueryEditor extends BaseComponent {
         this.onCatalogClick = null;
         this.onSaveClick = null;
         this.onTabsClick = null;
-        this.onResultsSwap = null;
-        this.onResultsBeforeSwap = null;
         this.onPageSizeChange = null;
         this.onPaginationClick = null;
         this.onResizeHandleMouseDown = null;
@@ -429,6 +452,7 @@ export default class SqlQueryEditor extends BaseComponent {
         this.onWindowMouseUp = null;
         this.onEditorDragOver = null;
         this.onEditorDrop = null;
+        super.destroy();
     }
 
     private async loadSqlMode(): Promise<void> {
@@ -441,6 +465,7 @@ export default class SqlQueryEditor extends BaseComponent {
         }
     }
 
+    /** Load every accessible schema page through the SDK and update the catalog. */
     private async fetchAndRenderSchema(refresh: boolean): Promise<void> {
         if (!this.catalogTree) return;
 
@@ -465,16 +490,12 @@ export default class SqlQueryEditor extends BaseComponent {
             do {
                 params.set('page', String(page));
                 const endpoint = `${this.schemaUrl}?${params.toString()}`;
-                const response = await fetch(endpoint, {
-                    credentials: 'same-origin',
+                const payload = await getSdk().client.request<SqlSchemaResponse>(endpoint, {
+                    signal: this.requests.signal,
                 });
-
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch schema: ${response.status}`);
-                }
-
-                const payload = await response.json() as SqlSchemaResponse;
-                payload.databases?.forEach((database) => {
+                if (this.requests.signal.aborted) return;
+                /** Merge tables returned across schema pages for each database. */
+                payload.databases?.forEach((database: SqlDatabase): void => {
                     const existing = databases.get(database.name);
                     if (existing) {
                         existing.tables.push(...database.tables);
@@ -494,36 +515,38 @@ export default class SqlQueryEditor extends BaseComponent {
             this.refreshAutocompleteTokens();
             this.setupSchemaCompleter();
         } catch (error) {
+            if (this.requests.signal.aborted) return;
             this.catalogTree.innerHTML = `<div class="text-red-600 text-sm">Failed to load schema</div>`;
             console.error(error);
         }
     }
 
+    /** Load all saved queries with the generated model API while retaining local drafts. */
     private async fetchSavedQueries(): Promise<void> {
         if (!this.tabsContainer) return;
 
         try {
-            const response = await fetch(this.queriesUrl, {
-                credentials: 'same-origin',
-            });
-
-            if (!response.ok) {
-                throw new Error(`Failed to fetch saved queries: ${response.status}`);
+            const sdk = getSdk();
+            const options = { signal: this.requests.signal };
+            let page = await sdk.sqlQueries.list(undefined, options);
+            const queries = [...page.results];
+            while (page.next) {
+                const next = new URL(page.next, window.location.origin);
+                page = await sdk.client.request<ListResponse<SqlQuery>>(`${next.pathname}${next.search}`, options);
+                queries.push(...page.results);
             }
-
-            const payload = await response.json() as SavedSqlQuery[] | { results?: SavedSqlQuery[] };
-            this.savedQueries = Array.isArray(payload) ? payload : payload.results || [];
-
-            if (this.savedQueries.length > 0) {
-                const initialId = this.activeQueryId ?? this.savedQueries[0].id;
-                this.renderTabs(initialId);
-                this.activateTab(String(initialId));
-            } else {
-                this.renderTabs(null);
+            if (this.requests.signal.aborted) return;
+            this.persistActiveTabQuery(this.getQuery());
+            for (const query of queries) {
+                if (!this.findTab(query.id)) {
+                    this.queryTabs.push(query);
+                }
             }
-        } catch (error) {
+            this.renderTabs();
+        } catch (error: unknown) {
+            if (this.requests.signal.aborted) return;
             console.error(error);
-            this.renderTabs(null);
+            this.setStatus('Failed to load saved queries. Your draft is still available.', true);
         }
     }
 
@@ -610,163 +633,123 @@ export default class SqlQueryEditor extends BaseComponent {
         });
     }
 
-    private renderTabs(activeId: string | null): void {
+    /** Render saved queries and local drafts without discarding either kind of tab. */
+    private renderTabs(): void {
         if (!this.tabsContainer) return;
 
         const tabs: string[] = [];
-
-        if (this.savedQueries.length === 0) {
-            const currentQuery = this.getQuery();
+        for (const query of this.queryTabs) {
+            const isActive = this.activeTabId === query.id;
             tabs.push(`
                 <li
-                    class="px-4 py-3 border-b-2 border-primary bg-primary/5 text-primary font-medium cursor-pointer"
-                    data-sql-tab-id="unsaved"
-                    data-sql-tab-query="${this.escapeAttribute(currentQuery)}"
-                    title="Unsaved Query"
-                >Unsaved Query</li>
+                    class="px-4 py-3 shrink-0 cursor-pointer border-r border-base ${isActive ? 'border-b-2 border-primary bg-primary/5 text-primary font-medium' : 'text-gray-700'}"
+                    data-sql-tab-id="${this.escapeAttribute(query.id)}"
+                    title="${this.escapeAttribute(query.name)}"
+                >${this.escapeHtml(query.name)}</li>
             `);
-        } else {
-            this.savedQueries.forEach((query) => {
-                const isActive = activeId === query.id;
-                tabs.push(`
-                    <li
-                        class="px-4 py-3 cursor-pointer border-r border-base ${isActive ? 'border-b-2 border-primary bg-primary/5 text-primary font-medium' : 'text-gray-700'}"
-                        data-sql-tab-id="${query.id}"
-                        data-sql-tab-query="${this.escapeAttribute(query.query)}"
-                        title="${this.escapeAttribute(query.name)}"
-                    >${this.escapeHtml(query.name)}</li>
-                `);
-            });
         }
-
-        tabs.push('<li class="px-4 py-3 text-gray-500 cursor-pointer" data-sql-tab-add title="New query tab"><i class="fa-solid fa-plus"></i></li>');
+        tabs.push('<li class="px-4 py-3 shrink-0 text-gray-500 cursor-pointer" data-sql-tab-add title="New query tab"><i class="fa-solid fa-plus"></i></li>');
         this.tabsContainer.innerHTML = tabs.join('');
-
-        const localTabs = this.tabsContainer.querySelectorAll<HTMLElement>('[data-sql-tab-id^="local-"]');
-        this.localTabCounter = Math.max(this.localTabCounter, localTabs.length + 1);
     }
 
+    /** Find a saved query or local draft by its stable tab identifier. */
+    private findTab(tabId: string): SqlQueryTab | undefined {
+        for (const tab of this.queryTabs) {
+            if (tab.id === tabId) return tab;
+        }
+        return undefined;
+    }
+
+    /** Switch queries after retaining the previous tab's SQL and edited name. */
     private activateTab(tabId: string): void {
         if (!this.tabsContainer || !this.editor) return;
+        const tab = this.findTab(tabId);
+        if (!tab) return;
 
         this.persistActiveTabQuery(this.getQuery());
-
-        const tabItems = this.tabsContainer.querySelectorAll<HTMLElement>('[data-sql-tab-id]');
-        let activeQuery = '';
-        let activeName = 'Unsaved Query';
-
-        tabItems.forEach((tabItem) => {
-            const isActive = tabItem.dataset.sqlTabId === tabId;
-            tabItem.classList.toggle('border-b-2', isActive);
-            tabItem.classList.toggle('border-primary', isActive);
-            tabItem.classList.toggle('bg-primary/5', isActive);
-            tabItem.classList.toggle('text-primary', isActive);
-            tabItem.classList.toggle('font-medium', isActive);
-            tabItem.classList.toggle('text-gray-700', !isActive);
-
-            if (isActive) {
-                activeQuery = tabItem.dataset.sqlTabQuery || '';
-                activeName = (tabItem.textContent || '').trim() || activeName;
-            }
-        });
-
-        this.editor.setValue(activeQuery, -1);
-        this.queryInput!.value = activeQuery;
-
-        if (this.hiddenQueryInput) {
-            this.hiddenQueryInput.value = activeQuery;
-        }
-
+        this.activeTabId = tabId;
         this.activeQueryId = tabId.startsWith('local-') || tabId === 'unsaved' ? null : tabId;
 
-        if (this.activeQueryIdInput) {
-            this.activeQueryIdInput.value = this.activeQueryId ? String(this.activeQueryId) : '';
-        }
-
-        if (this.queryNameInput) {
-            this.queryNameInput.value = activeName;
-        }
+        if (this.queryNameInput) this.queryNameInput.value = tab.name;
+        if (this.activeQueryIdInput) this.activeQueryIdInput.value = this.activeQueryId || '';
+        this.editor.setValue(tab.query, -1);
+        if (this.queryInput) this.queryInput.value = tab.query;
+        if (this.hiddenQueryInput) this.hiddenQueryInput.value = tab.query;
+        this.renderTabs();
     }
 
+    /** Retain the active draft in memory until the user explicitly saves it. */
     private persistActiveTabQuery(queryValue: string): void {
-        if (!this.tabsContainer) return;
-
-        const activeTab = this.tabsContainer.querySelector<HTMLElement>('[data-sql-tab-id].border-b-2');
-        if (!activeTab) return;
-
-        activeTab.dataset.sqlTabQuery = queryValue;
+        const tab = this.findTab(this.activeTabId);
+        if (!tab) return;
+        tab.query = queryValue;
+        tab.name = this.queryNameInput?.value || tab.name;
     }
 
+    /** Open a fresh local tab while keeping every existing draft intact. */
     private addNewLocalTab(): void {
         if (!this.tabsContainer || !this.editor) return;
 
-        this.persistActiveTabQuery(this.getQuery());
-
         const tabId = `local-${Date.now()}-${this.localTabCounter}`;
-        const tabName = `Query ${this.localTabCounter}`;
+        this.queryTabs.push({ id: tabId, name: `Query ${this.localTabCounter}`, query: '' });
         this.localTabCounter += 1;
-
-        const addButton = this.tabsContainer.querySelector<HTMLElement>('[data-sql-tab-add]');
-
-        const newTab = document.createElement('li');
-        newTab.className = 'px-4 py-3 cursor-pointer border-r border-base text-gray-700';
-        newTab.dataset.sqlTabId = tabId;
-        newTab.dataset.sqlTabQuery = '';
-        newTab.title = tabName;
-        newTab.textContent = tabName;
-
-        if (addButton && addButton.parentElement === this.tabsContainer) {
-            this.tabsContainer.insertBefore(newTab, addButton);
-        } else {
-            this.tabsContainer.appendChild(newTab);
-        }
-
         this.activateTab(tabId);
     }
 
+    /** Create or update the active query through the SDK's generated model API. */
     private async saveCurrentQuery(): Promise<void> {
+        if (this.isSaving) return;
         const query = this.getQuery().trim();
         const name = (this.queryNameInput?.value || '').trim();
-
         if (!query || !name) {
+            this.setStatus('Enter a query and a name before saving.', true);
             return;
         }
 
-        const payload = {
-            name,
-            query,
-        };
+        this.persistActiveTabQuery(this.getQuery());
+        const tab = this.findTab(this.activeTabId);
+        if (!tab) return;
+        const tabId = tab.id;
+        const queryId = this.activeQueryId;
+        this.isSaving = true;
+        if (this.saveButton) this.saveButton.disabled = true;
+        this.setStatus('Saving query…');
 
-        const isUpdating = this.activeQueryId !== null;
-        const endpoint = isUpdating ? `${this.queriesUrl}${this.activeQueryId}/` : this.queriesUrl;
+        try {
+            const sdk = getSdk();
+            const options = { signal: this.requests.signal };
+            const savedQuery = queryId
+                ? await sdk.sqlQueries.partialUpdate(queryId, { name, query }, options)
+                : await sdk.sqlQueries.create({ name, query }, options);
+            if (this.requests.signal.aborted) return;
 
-        const response = await fetch(endpoint, {
-            method: isUpdating ? 'PATCH' : 'POST',
-            credentials: 'same-origin',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': this.csrfInput?.value || '',
-            },
-            body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-            return;
+            // Edits and tab changes made while the request was pending remain local drafts.
+            this.persistActiveTabQuery(this.getQuery());
+            tab.id = savedQuery.id;
+            if (this.activeTabId === tabId) {
+                this.activeTabId = savedQuery.id;
+                this.activeQueryId = savedQuery.id;
+                if (this.activeQueryIdInput) this.activeQueryIdInput.value = savedQuery.id;
+            }
+            this.renderTabs();
+            this.setStatus(`Saved "${savedQuery.name}".`);
+        } catch (error: unknown) {
+            if (this.requests.signal.aborted) return;
+            console.error(error);
+            this.setStatus('Failed to save query. Your draft is still available; please try again.', true);
+        } finally {
+            this.isSaving = false;
+            if (this.saveButton) this.saveButton.disabled = false;
         }
+    }
 
-        const savedQuery = await response.json() as SavedSqlQuery;
-
-        this.activeQueryId = savedQuery.id;
-
-        const existingIndex = this.savedQueries.findIndex((item) => item.id === savedQuery.id);
-        if (existingIndex >= 0) {
-            this.savedQueries[existingIndex] = savedQuery;
-        } else {
-            this.savedQueries.unshift(savedQuery);
-        }
-
-        this.renderTabs(savedQuery.id);
-        this.activateTab(String(savedQuery.id));
+    /** Show query persistence feedback without disturbing the SQL or results panes. */
+    private setStatus(message: string, isError: boolean = false): void {
+        if (!this.statusElement) return;
+        this.statusElement.hidden = false;
+        this.statusElement.textContent = message;
+        this.statusElement.classList.toggle('text-red-600', isError);
+        this.statusElement.classList.toggle('text-gray-600', !isError);
     }
 
     private filterResultsTable(): void {

@@ -1,0 +1,21 @@
+{% load i18n %}
+<section class="space-y-4">
+    <p class="text-sm text-muted">{{ item.snippet }}</p>
+    {% if email_content %}
+    <div class="break-words text-sm">{{ email_content|safe }}</div>
+    {% endif %}
+    <div class="flex flex-wrap gap-2">
+        {% if sign_url %}
+        <button type="button" class="btn btn-primary btn-sm"
+                hx-get="{{ sign_url }}" hx-target="#bloomerp-general-use-modal-body"
+                bloomerp-set-modal-title-for="bloomerp-general-use-modal"
+                bloomerp-set-modal-title-to="{% trans 'Sign document' %}"
+                bloomerp-set-modal-size-to="xl" bloomerp-open-modal="bloomerp-general-use-modal">
+            <i class="fa-solid fa-signature" aria-hidden="true"></i> {% trans 'Sign document' %}
+        </button>
+        {% endif %}
+        {% if status_url %}
+        <a href="{{ status_url }}" hx-get="{{ status_url }}" hx-target="#main-content" hx-push-url="true" class="btn btn-secondary btn-sm">{% trans 'View request' %}</a>
+        {% endif %}
+    </div>
+</section>

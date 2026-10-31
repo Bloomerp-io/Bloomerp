@@ -410,3 +410,98 @@ This replays applicable `model` and `detail` route templates for that model, ass
 - Use `mcp=McpTool(...)` on eligible API routes, or `route_type="mcp"` for a tool without a REST URL.
 - Use `mcp=McpResource(...)` or `mcp=McpResourceTemplate(...)` for resource readers.
 - Use `override=True` only when replacing a route intentionally.
+
+## Custom SDK endpoints
+
+Opt JSON API operations into `create_sdk` by attaching an `SdkEndpoint` or a
+list/tuple of contracts to their router registration. Both serializers are
+required for each operation; routes without `sdk` remain excluded. Existing
+model CRUD and authentication clients stay available.
+
+```python
+from bloomerp.sdk.definition import SdkEndpoint
+from bloomerp.serializers.workflow import WorkflowResponseSerializer, WorkflowSerializer
+from bloomerp.views.api.workflows.save import SaveWorkflowView
+
+router.register(
+    path="workflows/save/",
+    route_type="api",
+    url_name="workflows_save",
+    sdk=SdkEndpoint(
+        method="POST",
+        input_serializer=WorkflowSerializer,
+        output_serializer=WorkflowResponseSerializer,
+    ),
+)(SaveWorkflowView)
+```
+
+The generated calls are `sdk.custom.workflowsSave(payload, options)` in
+TypeScript/JavaScript and `sdk.custom.workflows_save(payload, options=options)`
+in Python. They use the existing HTTP client, including session cookies, CSRF,
+API keys, request options, and structured errors. GET inputs become query
+parameters; POST, PUT, PATCH, and DELETE inputs become JSON bodies. GET contracts
+should describe flat scalar or scalar-list query parameters. Each contract
+exposes one HTTP method. Regex routes are unsupported.
+
+When one URL supports both GET and POST, pass separate contracts in `sdk`:
+
+```python
+sdk = [
+    SdkEndpoint(
+        method="GET",
+        input_serializer=InvoiceQuerySerializer,
+        output_serializer=InvoiceListSerializer,
+    ),
+    SdkEndpoint(
+        method="POST",
+        input_serializer=InvoiceCreateSerializer,
+        output_serializer=InvoiceSerializer,
+    ),
+]
+```
+
+For a route with `url_name="invoices"`, these generate
+`sdk.custom.invoicesGet(query)` and `sdk.custom.invoicesPost(payload)` in
+TypeScript/JavaScript, or `invoices_get(query)` and `invoices_post(payload)` in
+Python. Each call has its own input and output types. Every declared method
+must be implemented by the class view. Duplicate method declarations are
+rejected. Only methods with a contract appear in the SDK.
+
+The HTTP method suffix is added when a route has multiple contracts. A single
+contract, including a one-item list, keeps the original unsuffixed method name.
+Adding a second contract therefore changes the generated name of the first
+operation; update its SDK callers when doing so.
+
+For `api_model` and `api_detail` routes, either serializer can instead be a
+factory accepting the concrete model. Factories are evaluated during SDK
+generation, including for models registered after route discovery:
+
+```python
+from django.db.models import Model
+from rest_framework import serializers
+
+
+def input_for_model(model: type[Model] | None) -> type[serializers.BaseSerializer]:
+    """Declare writable identifiers for the concrete model's custom operation."""
+    if model is None:
+        raise ValueError("This operation requires a model route")
+    meta = type("Meta", (), {"model": model, "fields": ["id"]})
+    return type("OperationInputSerializer", (serializers.ModelSerializer,), {"Meta": meta})
+```
+
+Model routes prefix methods with the model's plural endpoint name, for example
+`sdk.custom.invoices_post(payload, {"pk": invoice_id})` in Python or
+`sdk.custom.invoicesPost(payload, { pk: invoiceId })` in TypeScript. Path
+arguments follow the payload and precede request options. Values are URL encoded.
+`--apps` filters model routes by the model's app and other routes by the view's
+owning app. Conflicting generated method names raise an error.
+
+Nested serializers, lists, dictionaries, choices, nullable fields, and optional
+input fields produce corresponding types. Read-only fields are excluded from
+input; write-only and hidden fields are excluded from output. Declare computed
+response fields explicitly on the output serializer to expose their types;
+unstructured JSON or fields without a declared shape remain `unknown`/`Any`.
+The SDK contract describes the operation; the view remains responsible for
+validating input and enforcing permissions.
+
+Workflow saving uses `/api/workflows/save/` through the generated SDK.

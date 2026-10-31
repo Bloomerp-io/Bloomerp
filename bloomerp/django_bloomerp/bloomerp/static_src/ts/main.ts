@@ -12,6 +12,12 @@ import ColoredChoices from './components/ColoredChoices';
 import CharFieldFormatting from './components/CharFieldFormatting';
 import MappingWidget from './components/MappingWidget';
 import MailboxSettings from './components/widgets/MailboxSettings';
+import PrepareSign from './components/document_signing/PrepareSign';
+import SigningWizard from './components/document_signing/SigningWizard';
+import SendSignatureRequest from './components/document_signing/SendSignatureRequest';
+import StartSelfSigning from './components/document_signing/StartSelfSigning';
+import SignDocument from './components/document_signing/SignDocument';
+import SignaturePad from './components/document_signing/SignaturePad';
 /**
  * Bloomerp Main TypeScript Entry Point
  * 
@@ -75,6 +81,7 @@ import { DocumentTemplateBuilder } from './components/DocumentTemplateBuilder';
 import { SetupAnimationListener } from './utils/animations';
 import BaseWizard from './components/BaseWizard';
 import showMessage from './utils/messages';
+import { copyToClipboard } from './utils/clipboard';
 import Breadcrumb from './components/Breadcrumb';
 import ResizableDiv from './components/ResizableDiv';
 import { DataViewDisplayOptions } from './components/data_view_components/DisplayOptions';
@@ -96,11 +103,17 @@ import MessagingPanel from './components/communication/MessagingPanel';
 import { setupMermaidDisplay } from './utils/mermaidDisplay';
 
 
-Object.assign(window, { showMessage });
+Object.assign(window, { showMessage, copyToClipboard });
 initBrowserAgent();
 setupLanguageSwitch();
 
 // Register components here
+registerComponent('bloomerp:prepare-sign', PrepareSign);
+registerComponent('bloomerp:signing-wizard', SigningWizard);
+registerComponent('bloomerp:send-signature-request', SendSignatureRequest);
+registerComponent('bloomerp:start-self-signing', StartSelfSigning);
+registerComponent('bloomerp:sign-document', SignDocument);
+registerComponent('bloomerp:signature-pad', SignaturePad);
 registerComponent('bloomerp:meeting-lobby', MeetingLobby);
 registerComponent('bloomerp:artifact-picker', ArtifactPicker);
 registerComponent('modal', Modal);

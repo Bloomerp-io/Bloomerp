@@ -93,7 +93,7 @@ class WorkflowEdgeSerializer(serializers.Serializer):
 
 
 class WorkflowSerializer(serializers.ModelSerializer):
-    workflow_id = serializers.IntegerField(source="id", required=False)
+    workflow_id = serializers.IntegerField(source="id", required=False, min_value=1)
     nodes = WorkflowNodeSerializer(many=True)
     edges = WorkflowEdgeSerializer(many=True)
 
@@ -328,6 +328,31 @@ class WorkflowSerializer(serializers.ModelSerializer):
     ) -> None:
         kept_ids = {node.id for node in node_lookup.values()}
         workflow.nodes.exclude(id__in=kept_ids).delete()
+
+
+class WorkflowOutputPortSerializer(serializers.Serializer):
+    """Describe the ports returned for each persisted workflow node."""
+
+    id = serializers.CharField()
+    label = serializers.CharField()
+    max_connections = serializers.IntegerField(allow_null=True)
+
+
+class WorkflowNodeResponseSerializer(WorkflowNodeSerializer):
+    """Declare persisted node identifiers, positions, and computed output ports."""
+
+    id = serializers.IntegerField()
+    parameters = serializers.DictField()
+    pos_x = serializers.IntegerField()
+    pos_y = serializers.IntegerField()
+    output_ports = WorkflowOutputPortSerializer(many=True)
+
+
+class WorkflowResponseSerializer(WorkflowSerializer):
+    """Expose the complete save response contract to generated SDKs."""
+
+    workflow_id = serializers.IntegerField(source="id")
+    nodes = WorkflowNodeResponseSerializer(many=True)
 
 
 EXAMPLE_WORKFLOW_PAYLOAD = {

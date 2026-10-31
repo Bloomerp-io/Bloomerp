@@ -1,16 +1,34 @@
+import runpy
+import shutil
+import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import Mock, patch
 
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.db.models import Model
+from django.http import HttpRequest, HttpResponse
+from django.views import View
+from rest_framework import serializers
 
-from bloomerp.models.definition import ApiAccessSettings, ApiNesting, ApiSettings, BloomerpModelConfig
+from bloomerp.models.definition import (
+    ApiAccessSettings,
+    ApiNesting,
+    ApiSettings,
+    BloomerpModelConfig,
+)
 from bloomerp.permissions.definition import (
     AccessRule,
     BloomerpPermission,
     RowPolicyRuleCondition,
     RowPolicyRuleContent,
 )
+from bloomerp.router import BloomerpRouteRegistry, router
+from bloomerp.sdk.definition import SdkEndpoint
+from bloomerp.sdk.javascript import JavaScriptSdkGenerator
+from bloomerp.sdk.python import PythonSdkGenerator
+from bloomerp.sdk.typescript import TypescriptSdkGenerator
 from bloomerp.tests.base import BaseBloomerpTestCaseWithModels
 
 
@@ -296,3 +314,215 @@ class TestCreateSdkCommand(BaseBloomerpTestCaseWithModels):
                     "--language",
                     "ruby",
                 )
+
+
+    def test_custom_sdk_contracts_and_transport(self) -> None:
+        """
+        Use case: Custom routes expose single or multiple methods with model-dependent serializers.
+        Expected result: All languages preserve each method's types and request transport.
+        """
+        # 1. Register a deferred detail operation, a GET query, and an opted-out route.
+        class ItemSerializer(serializers.Serializer):
+            """Nested response values with literal choices and nullable text."""
+
+            state = serializers.ChoiceField(choices=["ready", "done"])
+            note = serializers.CharField(required=False, allow_null=True)
+            secret = serializers.CharField(write_only=True)
+
+        class OutputSerializer(serializers.Serializer):
+            """Return nested records and server-owned identifiers."""
+
+            items = ItemSerializer(many=True)
+            id = serializers.IntegerField(read_only=True)
+            owner = serializers.PrimaryKeyRelatedField(read_only=True)
+
+        class QuerySerializer(serializers.Serializer):
+            """Describe query-string values accepted by the search endpoint."""
+
+            term = serializers.CharField()
+            tags = serializers.ListField(child=serializers.CharField(), required=False)
+
+        resolved_models: list[type[Model] | None] = []
+
+        def input_for_model(model: type[Model] | None) -> type[serializers.BaseSerializer]:
+            """Build a serializer using the model attached to this route."""
+            resolved_models.append(model)
+            meta = type("Meta", (), {"model": model, "fields": ["id", "first_name"]})
+            return type("CustomerInputSerializer", (serializers.ModelSerializer,), {"Meta": meta})
+
+        def endpoint(request: HttpRequest, **kwargs: object) -> HttpResponse:
+            """Supply a local route fixture without invoking a real server."""
+            return HttpResponse()
+
+        class MultiMethodView(View):
+            """Declare a fixture route that supports both reading and writing."""
+
+            def get(self, request: HttpRequest, **kwargs: object) -> HttpResponse:
+                """Represent the query operation without contacting a real server."""
+                return HttpResponse()
+
+            def post(self, request: HttpRequest, **kwargs: object) -> HttpResponse:
+                """Represent the JSON operation without contacting a real server."""
+                return HttpResponse()
+
+        registry = BloomerpRouteRegistry()
+        registry._auto_imported = True
+        registry.register(
+            path="/post/", route_type="api_detail", models=[self.CustomerModel], url_name="post",
+            sdk=SdkEndpoint(method="POST", input_serializer=input_for_model, output_serializer=OutputSerializer),
+        )(endpoint)
+        registry.register(
+            path="/action/", route_type="api_detail", models=[self.CustomerModel], url_name="action",
+            sdk=[
+                SdkEndpoint(method="GET", input_serializer=QuerySerializer, output_serializer=OutputSerializer),
+                SdkEndpoint(method="POST", input_serializer=input_for_model, output_serializer=ItemSerializer),
+            ],
+        )(MultiMethodView)
+        # Exercise the path used when models arrive after router discovery.
+        registry.routes.clear()
+        registry.register_routes_for_model(self.CustomerModel)
+        registry.register(
+            path="search/", route_type="api", url_name="search",
+            sdk=[SdkEndpoint(method="GET", input_serializer=QuerySerializer, output_serializer=OutputSerializer)],
+        )(endpoint)
+        registry.register(path="untyped/", route_type="api", url_name="untyped")(endpoint)
+        self.assertEqual(resolved_models, [])
+
+        # 2. Generate complete clients; verify exclusion, direction, nested types, and app filtering.
+        with TemporaryDirectory() as directory, patch.object(router, "filter", return_value=registry.routes):
+            for generator_class in (TypescriptSdkGenerator, JavaScriptSdkGenerator, PythonSdkGenerator):
+                generator = generator_class(directory)
+                source = generator.render_source([])
+                self.assertNotIn("untyped", source)
+                self.assertNotIn("secret", source)
+                self.assertIn("CustomCustomersPostOutputItemsItem", source)
+                owner_declaration = {
+                    "python": "'owner': str | int,",
+                    "typescript": '"owner": string | number;',
+                    "javascript": "@property {string | number} owner",
+                }[generator.language]
+                self.assertIn(owner_declaration, source)
+                self.assertIn("/api/customers/<int_or_uuid:pk>/post/", source)
+                self.assertNotIn("/api/customers/", generator_class(directory, app_labels=["auth"]).render_source([]))
+                suffix = {"typescript": "ts", "javascript": "mjs", "python": "py"}[generator.language]
+                target = Path(directory) / f"client.{suffix}"
+                target.write_text(source, encoding="utf-8")
+
+                # 3. Execute generated methods to prove URL encoding, JSON/query placement, and options.
+                if generator.language == "python":
+                    namespace = runpy.run_path(str(target))
+                    sdk = namespace["BloomerpSdk"]("https://example.test")
+                    sdk.client.request = Mock(return_value={"items": [], "id": 1})
+                    result = sdk.custom.customers_post({"first_name": "Ada"}, {"pk": "a/b ?"}, {"headers": {"X-Test": "yes"}})
+                    self.assertEqual(result, {"items": [], "id": 1})
+                    sdk.client.request.assert_called_with(
+                        "/api/customers/a%2Fb%20%3F/post/", method="POST", data={"first_name": "Ada"},
+                        options={"headers": {"X-Test": "yes"}},
+                    )
+                    sdk.custom.search({"term": "Ada", "tags": ["a", "b"]})
+                    sdk.client.request.assert_called_with(
+                        "/api/search/", method="GET", query={"term": "Ada", "tags": ["a", "b"]}, options=None,
+                    )
+                    self.assertEqual(set(namespace["CustomCustomersActionGetInput"].__annotations__), {"term", "tags"})
+                    self.assertEqual(set(namespace["CustomCustomersActionPostInput"].__annotations__), {"first_name"})
+                    self.assertEqual(set(namespace["CustomCustomersActionGetOutput"].__annotations__), {"items", "id", "owner"})
+                    self.assertEqual(set(namespace["CustomCustomersActionPostOutput"].__annotations__), {"state", "note"})
+                    sdk.custom.customers_action_get({"term": "Ada"}, {"pk": "a/b ?"})
+                    sdk.client.request.assert_called_with(
+                        "/api/customers/a%2Fb%20%3F/action/", method="GET", query={"term": "Ada"}, options=None,
+                    )
+                    sdk.client.request.return_value = {"state": "ready"}
+                    result = sdk.custom.customers_action_post({"first_name": "Ada"}, {"pk": "a/b ?"})
+                    self.assertEqual(result, {"state": "ready"})
+                    sdk.client.request.assert_called_with(
+                        "/api/customers/a%2Fb%20%3F/action/", method="POST", data={"first_name": "Ada"}, options=None,
+                    )
+                elif shutil.which("node"):
+                    script = """
+import assert from 'node:assert/strict';
+const { BloomerpSdk, BloomerpHttpError } = await import(process.argv[1]);
+const requests = [];
+/** Capture generated HTTP requests without contacting a server.
+ * @param {RequestInfo | URL} input Request URL.
+ * @param {RequestInit} init Request options.
+ * @returns {Promise<Response>} Simulated API response.
+ */
+async function capture(input, init) {
+    requests.push(new Request(input, init));
+    if (String(input).includes('/action/') && init.method === 'POST') {
+        return Response.json({state: 'ready'});
+    }
+    return Response.json({ items: [], id: 1 });
+}
+const sdk = new BloomerpSdk({baseUrl: 'https://example.test', fetch: capture,
+    auth: {type: 'session', csrf: {token: 'csrf-token'}}});
+await sdk.custom.customersPost({first_name: 'Ada'}, {pk: 'a/b ?'}, {headers: {'X-Test': 'yes'}});
+assert.equal(requests[0].url, 'https://example.test/api/customers/a%2Fb%20%3F/post/');
+assert.equal(requests[0].method, 'POST');
+assert.equal(requests[0].headers.get('X-CSRFToken'), 'csrf-token');
+assert.equal(requests[0].headers.get('X-Test'), 'yes');
+assert.deepEqual(await requests[0].json(), {first_name: 'Ada'});
+await sdk.custom.search({term: 'Ada', tags: ['a', 'b']});
+assert.equal(requests[1].method, 'GET');
+assert.equal(requests[1].body, null);
+assert.deepEqual(new URL(requests[1].url).searchParams.getAll('tags'), ['a', 'b']);
+const read = await sdk.custom.customersActionGet({term: 'Ada'}, {pk: 'a/b ?'});
+assert.deepEqual(read, {items: [], id: 1});
+assert.equal(requests[2].url, 'https://example.test/api/customers/a%2Fb%20%3F/action/?term=Ada');
+assert.equal(requests[2].method, 'GET');
+assert.equal(requests[2].body, null);
+const written = await sdk.custom.customersActionPost({first_name: 'Ada'}, {pk: 'a/b ?'});
+assert.deepEqual(written, {state: 'ready'});
+assert.equal(requests[3].url, 'https://example.test/api/customers/a%2Fb%20%3F/action/');
+assert.equal(requests[3].method, 'POST');
+assert.equal(requests[3].headers.get('X-CSRFToken'), 'csrf-token');
+assert.deepEqual(await requests[3].json(), {first_name: 'Ada'});
+"""
+                    completed = subprocess.run(
+                        [shutil.which("node"), "--experimental-transform-types", "--input-type=module", "-e", script, target.as_uri()],
+                        capture_output=True, text=True, check=False,
+                    )
+                    self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(resolved_models, [self.CustomerModel] * 6)
+
+    def test_custom_sdk_rejects_invalid_route_contracts(self) -> None:
+        """
+        Use case: A route declares an incomplete or unsupported SDK contract.
+        Expected result: Registration fails explicitly instead of generating a broken client.
+        """
+        # 1. Require both serializers and a supported method.
+        with self.assertRaises(TypeError):
+            SdkEndpoint(method="POST", input_serializer=None, output_serializer=serializers.Serializer)
+        with self.assertRaises(ValueError):
+            SdkEndpoint(method="TRACE", input_serializer=serializers.Serializer, output_serializer=serializers.Serializer)
+
+        # 2. Keep SDK discovery limited to API paths.
+        def endpoint(request: HttpRequest) -> HttpResponse:
+            """Supply a local registration fixture."""
+            return HttpResponse()
+
+        registry = BloomerpRouteRegistry()
+        contract = SdkEndpoint(method="POST", input_serializer=serializers.Serializer, output_serializer=serializers.Serializer)
+        with self.assertRaises(ValueError):
+            registry.register(path="ordinary/", sdk=contract)(endpoint)
+        with self.assertRaises(ValueError):
+            registry.register(re_path="^api/regex/$", route_type="api", sdk=contract)(endpoint)
+
+        # 3. Reject ambiguous lists and validate every declared view method.
+        with self.assertRaisesRegex(ValueError, "Duplicate SDK method: POST"):
+            registry.register(path="duplicate/", route_type="api", sdk=[contract, contract])(endpoint)
+        with self.assertRaisesRegex(ValueError, "cannot be empty"):
+            registry.register(path="empty/", route_type="api", sdk=[])(endpoint)
+        with self.assertRaises(TypeError):
+            registry.register(path="invalid/", route_type="api", sdk=[None])(endpoint)
+
+        class GetOnlyView(View):
+            """Provide a view missing the requested POST implementation."""
+
+            def get(self, request: HttpRequest) -> HttpResponse:
+                """Serve the only supported operation for registration validation."""
+                return HttpResponse()
+
+        read_contract = SdkEndpoint(method="GET", input_serializer=serializers.Serializer, output_serializer=serializers.Serializer)
+        with self.assertRaisesRegex(ValueError, "POST is not implemented"):
+            registry.register(path="unsupported/", route_type="api", sdk=[read_contract, contract])(GetOnlyView)

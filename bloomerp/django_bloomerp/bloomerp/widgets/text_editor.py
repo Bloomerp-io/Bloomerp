@@ -22,7 +22,7 @@ class BloomerpTextEditorWidget(forms.Textarea):
                 "application_field_id": widget_context.get("attrs", {}).get(
                     "data-application-field-id", ""
                 ),
-                "value": widget_context.get("value"),
+                "value": widget_context.get("value") or "",
                 "disabled": widget_context.get("attrs", {}).get("disabled", False),
                 "include_toolbar": True,
                 "compact": "one-to-many-field-widget__input" in widget_classes,

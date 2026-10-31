@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.http import JsonResponse
+from django.templatetags import static
 from django.urls import include, path
 from django.conf import settings
 
@@ -24,6 +25,7 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns.append(
         path("__reload__/", include("django_browser_reload.urls")),
     )

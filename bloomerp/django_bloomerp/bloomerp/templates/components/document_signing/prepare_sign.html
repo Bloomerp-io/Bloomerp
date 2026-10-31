@@ -1,0 +1,98 @@
+{% load i18n %}
+<section id="{{ component_id }}" bloomerp-component="bloomerp:prepare-sign"
+         class="sign-builder flex flex-col overflow-hidden bg-white text-sm text-gray-900 {% if not embedded %}-m-3{% endif %}" data-config-id="{{ config_id }}" aria-label="{% trans 'Prepare document for signing' %}">
+    {{ builder_config|json_script:config_id }}
+    {% if document_templates %}
+    <div class="border-b border-gray-200 px-3 py-2" data-layout-controls>
+        <div class="flex flex-wrap items-center gap-2">
+            {% if template_known %}
+                <span class="text-xs text-muted">{{ known_template_name }}</span>
+            {% else %}
+            <label class="flex min-w-0 items-center gap-2 text-xs" for="{{ component_id }}-template">
+                {% trans 'Document template' %}
+                <select id="{{ component_id }}-template" class="select select-sm max-w-64" data-document-template aria-label="{% trans 'Document template' %}">
+                    {% if not selected_template %}<option value="">{% trans 'Choose document template' %}</option>{% endif %}
+                    {% for document_template in document_templates %}
+                    <option value="{{ document_template.pk }}" {% if selected_template == document_template.pk|stringformat:'s' %}selected{% endif %}>{{ document_template }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            {% endif %}
+            <label class="flex min-w-0 items-center gap-2 text-xs" for="{{ component_id }}-revision">
+                {% trans 'Layout revision' %}
+                <select id="{{ component_id }}-revision" class="select select-sm max-w-64" data-layout-revision aria-label="{% trans 'Layout revision' %}" disabled>
+                    <option value="">{% trans 'Choose revision' %}</option>
+                </select>
+            </label>
+            <button type="button" class="btn btn-secondary btn-xs" data-action="save-layout" disabled><i class="fa-regular fa-floppy-disk" aria-hidden="true"></i> {% trans 'Save as default layout' %}</button>
+        </div>
+        <div class="alert alert-warning mt-2" data-layout-confirmation hidden>
+            <p>{% trans 'Replace the current fields and signer roles with this revision?' %}</p>
+            <div class="mt-2 flex gap-2">
+                <button type="button" class="btn btn-primary btn-xs" data-action="confirm-layout">{% trans 'Replace fields and roles' %}</button>
+                <button type="button" class="btn btn-secondary btn-xs" data-action="cancel-layout">{% trans 'Cancel' %}</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    <div class="flex min-h-0 flex-1">
+        <aside class="sign-builder__sidebar flex flex-col overflow-y-auto border-r border-gray-200 bg-white p-3" aria-label="{% trans 'Signers and fields' %}">
+            <section class="mb-4 border-b border-gray-200 pb-4">
+                <label class="mb-2 block font-semibold text-primary-900" for="{{ component_id }}-title">{% trans 'Request title' %}</label>
+                <input id="{{ component_id }}-title" class="input input-sm w-full" data-draft-title
+                       value="{{ file.name }}" maxlength="255">
+                {% if not embedded %}
+                <div class="mt-3 flex flex-wrap gap-2">
+                    <button id="{{ component_id }}-sign-myself" type="button" class="btn btn-primary btn-sm"><i class="fa-solid fa-signature" aria-hidden="true"></i> {% trans 'Sign myself' %}</button>
+                    <button id="{{ component_id }}-send" type="button" class="btn btn-secondary btn-sm"><i class="fa-regular fa-envelope" aria-hidden="true"></i> {% trans 'Send' %}</button>
+                </div>
+                {% endif %}
+            </section>
+            <div class="mb-2 flex items-center justify-between gap-2">
+                <h3 class="font-semibold text-primary-900">{% trans 'Signer roles' %}</h3><span class="badge badge-secondary badge-xs" data-signer-count>0</span>
+            </div>
+            <p class="mb-3 text-xs text-muted">{% trans 'Assign fields to roles. Choose the people when sending or signing.' %}</p>
+            <div class="grid gap-2" data-signers></div>
+            <button type="button" class="btn btn-secondary btn-sm mt-3 w-full" data-action="add-signer">
+                <i class="fa-solid fa-plus" aria-hidden="true"></i> {% trans 'Add role' %}
+            </button>
+            <section class="mt-4 border-t border-gray-200 pt-4">
+                <div class="mb-2 flex items-center justify-between gap-2"><h3 class="font-semibold text-primary-900">{% trans 'Fields' %}</h3><span class="truncate text-xs text-muted" data-active-signer></span></div>
+                <p class="mb-3 text-xs text-muted">{% trans 'Drag a field onto the PDF, or select one and click a page.' %}</p>
+                <div class="grid grid-cols-2 gap-2" data-palette></div>
+            </section>
+            <section class="mt-4 border-t border-gray-200 pt-4" data-field-inspector hidden>
+                <div class="mb-2 flex items-center justify-between gap-2">
+                    <h3 class="font-semibold text-primary-900">{% trans 'Field settings' %}</h3>
+                    <button type="button" class="btn btn-ghost btn-xs" data-action="delete-field" title="{% trans 'Remove field' %}" aria-label="{% trans 'Remove field' %}"><i class="fa-regular fa-trash-can" aria-hidden="true"></i></button>
+                </div>
+                <label class="my-3 grid gap-1 text-xs">{% trans 'Label' %}<input class="input input-sm w-full" data-field-property="label" maxlength="255"></label>
+                <label class="my-3 grid gap-1 text-xs">{% trans 'Assigned role' %}<select class="select select-sm w-full" data-field-property="role"></select></label>
+                <label class="my-3 flex items-center gap-2 text-xs"><input class="checkbox rounded text-primary focus:ring-primary" type="checkbox" data-field-property="required"> {% trans 'Required field' %}</label>
+                <label class="my-3 grid gap-1 text-xs" data-options-label hidden>{% trans 'Options, one per line' %}<textarea class="input input-sm w-full" rows="4" data-field-property="options"></textarea></label>
+                <p class="text-xs text-muted">{% trans 'Drag to move. Use the corner handle to resize.' %}</p>
+            </section>
+            <div class="mt-auto pt-6 text-xs text-muted"><i class="fa-solid fa-lock" aria-hidden="true"></i> {% trans 'Your original PDF stays unchanged.' %}</div>
+        </aside>
+        <main class="flex min-w-0 flex-1 flex-col bg-base">
+            <nav class="flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-3 py-2" aria-label="{% trans 'Document controls' %}">
+                <div class="flex min-w-0 items-center gap-1">
+                    <button type="button" class="btn btn-ghost btn-xs" data-action="previous-page" aria-label="{% trans 'Previous page' %}"><i class="fa-solid fa-chevron-left" aria-hidden="true"></i></button>
+                    <label class="flex items-center gap-2 whitespace-nowrap text-xs"><span class="sr-only">{% trans 'Page' %}</span><input class="input input-sm w-14" data-current-page type="number" min="1" value="1" aria-label="{% trans 'Page' %}"><span>/ <span data-page-count>—</span></span></label>
+                    <button type="button" class="btn btn-ghost btn-xs" data-action="next-page" aria-label="{% trans 'Next page' %}"><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></button>
+                </div>
+                <span class="hidden truncate text-xs text-muted lg:inline" data-placement-hint>{% trans 'Select a field to get started' %}</span>
+                <div class="flex min-w-0 items-center gap-1">
+                    <button type="button" class="btn btn-ghost btn-xs" data-action="zoom-out" aria-label="{% trans 'Zoom out' %}"><i class="fa-solid fa-minus" aria-hidden="true"></i></button>
+                    <select class="select select-sm" data-zoom aria-label="{% trans 'Zoom' %}"><option value="fit">{% trans 'Fit width' %}</option><option value="0.75">75%</option><option value="1" selected>100%</option><option value="1.25">125%</option><option value="1.5">150%</option><option value="2">200%</option></select>
+                    <button type="button" class="btn btn-ghost btn-xs" data-action="zoom-in" aria-label="{% trans 'Zoom in' %}"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
+                </div>
+            </nav>
+            <div class="relative min-h-0 flex-1 overflow-auto overscroll-contain" data-viewport>
+                <div class="absolute inset-0 flex items-center justify-center gap-2 text-muted" data-loading><i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i><span>{% trans 'Loading document…' %}</span></div>
+                <div class="sign-builder__pages flex flex-col items-center gap-6 px-8 py-6" data-pages></div>
+            </div>
+            <footer class="border-t border-gray-200 bg-white px-3 py-2 text-xs text-muted"><span data-field-count>{% trans 'No fields placed' %}</span></footer>
+        </main>
+    </div>
+</section>
