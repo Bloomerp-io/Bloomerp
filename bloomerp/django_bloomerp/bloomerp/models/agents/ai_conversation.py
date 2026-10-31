@@ -18,7 +18,7 @@ from bloomerp.lookups import builtins as lookups
 from bloomerp.models.definition import ApiAccessSettings, ApiSettings
 from bloomerp.permissions.definition import AccessRule, RowPolicyRuleContent
 
-from .base import AgentModel
+from .base import AgentModel, agent_search_settings
 
 if TYPE_CHECKING:
     from bloomerp.agents.definition import BrowserContext, RunBudgets
@@ -35,6 +35,9 @@ class AIConversation(AgentModel):
     bloomerp_config = AgentModel.bloomerp_config.model_copy(
         deep=True,
         update={
+            "string_search_settings": agent_search_settings(
+                include_search_routes=True
+            ),
             "api_settings": ApiSettings(
                 enable_auto_generation=True,
                 access=ApiAccessSettings(

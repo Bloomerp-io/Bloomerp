@@ -15,6 +15,7 @@ import re
 from functools import wraps
 from typing import Any, Callable, List, Literal
 
+from bloomerp.sdk.definition import SdkEndpoint, SdkEndpoints, normalize_sdk_endpoints
 from bloomerp.mcp.definition import McpContract, McpResource, McpResourceTemplate, McpTool
 from bloomerp.models.definition import get_model_config
 from bloomerp.i18n.models import model_verbose_name_in_source_language
@@ -188,6 +189,12 @@ class BloomerpRoute:
     re_path: Optional[str] = None
     base_url_name: Optional[str] = None
     mcp: Optional[McpContract] = None
+    sdk: SdkEndpoints | None = None
+
+    @property
+    def sdk_endpoints(self) -> tuple[SdkEndpoint, ...]:
+        """Return one serializer contract per SDK-enabled HTTP method on this route."""
+        return normalize_sdk_endpoints(self.sdk)
 
     @property
     def mcp_tool_name(self) -> Optional[str]:
@@ -271,6 +278,35 @@ class BloomerpRoute:
 # ------------------------
 # Helper functions
 # ------------------------
+def _resolve_module(
+    module: ModuleConfig | type[BloomerpModule] | BloomerpModule | str,
+) -> ModuleConfig:
+    """Normalize a module reference, preferring its registered runtime config."""
+    if isinstance(module, str):
+        resolved = module_registry.get(module)
+        if resolved is None:
+            raise ValueError("Module not found in registry")
+        return resolved
+
+    if isinstance(module, BloomerpModule) or (
+        isinstance(module, type) and issubclass(module, BloomerpModule)
+    ):
+        owner_app = apps.get_containing_app_config(module.__module__)
+        module = module.to_config(
+            owner_app_label=owner_app.label if owner_app else None,
+        )
+
+    if not isinstance(module, ModuleConfig):
+        raise TypeError("Module must be a module ID, BloomerpModule, or ModuleConfig")
+
+    module_id = module.full_id or (
+        f"{module.parent_module_id}.{module.id}"
+        if module.parent_module_id
+        else module.id
+    )
+    return module_registry.get(module_id) or module
+
+
 def _resolve_model_selector(selector):
     """Evaluate a deferred model selector without calling model classes."""
     if callable(selector) and not (
@@ -485,6 +521,15 @@ class BloomerpRouteRegistry:
 
     def _add_route(self, route: BloomerpRoute) -> bool:
         """Validate and insert a route while respecting explicit override registrations."""
+        if route.sdk is not None:
+            if not _is_api_route(route.route_type) or route.re_path is not None:
+                raise ValueError("SDK endpoints require an API route with a Django path")
+            view_class = getattr(route.view, "cls", route.view)
+            for contract in route.sdk_endpoints:
+                if route.view_type == ViewType.CLASS or hasattr(route.view, "cls"):
+                    method = contract.method.lower()
+                    if not hasattr(view_class, method) or method not in view_class.http_method_names:
+                        raise ValueError(f"SDK method {contract.method} is not implemented by the view")
         conflicting_routes = [
             existing
             for existing in self.routes
@@ -651,7 +696,11 @@ class BloomerpRouteRegistry:
         re_path: Optional[str] = None,
         route_type: Literal['app', 'module', 'detail', 'model', 'api', 'api_model', 'api_detail', 'websocket', 'mcp', 'mcp_resource'] | RouteType | None = None,
         models: Union[Model, List[Model], str, None] = None,
-        modules: Union[BloomerpModule, List[BloomerpModule], str, None] = None,
+        modules: (
+            ModuleConfig | type[BloomerpModule] | BloomerpModule | str
+            | list[ModuleConfig | type[BloomerpModule] | BloomerpModule | str]
+            | None
+        ) = None,
         exclude_models:Union[Model, List[Model], str, None] = None,
         name: Optional[str] = None,
         description: Optional[str] = None,
@@ -661,6 +710,7 @@ class BloomerpRouteRegistry:
         searchable: Optional[bool] = None,
         message_format_values: Optional[dict[str, object]] = None,
         mcp: Optional[McpContract] = None,
+        sdk: SdkEndpoints | None = None,
     ) -> Callable[[Callable[..., Any] | type[View]], Callable[..., Any] | type[View]]:
         """
         Decorator for registering routes with the registry.
@@ -670,13 +720,20 @@ class BloomerpRouteRegistry:
             path: A Django ``path()`` pattern (optional, auto-generated if omitted)
             re_path: A complete Django ``re_path()`` regular expression
             models: The model(s) associated with this route
+            modules: Module IDs, definitions, or configs associated with this route
             route_type: Type of route ('app', 'module', 'detail', 'model', 'api', 'api_model', 'api_detail')
             name: Name for the route (optional, derived from view if not provided)
             description: Description of the route
             override: Whether to override existing routes with same path
+            sdk: One typed SDK operation or a list/tuple with one contract per HTTP
+                method. Omit to exclude this route from custom SDK generation.
             mcp: Optional tool, resource, or resource-template contract. Pathless
                 registrations infer the corresponding MCP-only route type.
         """
+        contracts = normalize_sdk_endpoints(sdk)
+        if isinstance(sdk, (list, tuple)):
+            sdk = contracts
+
         def decorator(view: Callable[..., Any] | type[View]) -> Callable[..., Any] | type[View]:
             """Register the decorated view and preserve its original interface."""
             if path is not None and re_path is not None:
@@ -739,6 +796,7 @@ class BloomerpRouteRegistry:
                     "searchable": should_search,
                     "message_format_values": message_format_values,
                     "mcp": mcp,
+                    "sdk": sdk,
                 }
             
             # Determine view type and handle accordingly
@@ -865,19 +923,11 @@ class BloomerpRouteRegistry:
 
                     if _modules == "__all__":
                         modules_list = module_registry.get_all().values()
-                    elif type(_modules) == BloomerpModule:
-                        modules_list = [_modules]
-                    elif isinstance(_modules, str):
-                        modules_list = [module_registry.get(_modules)]
-                    elif isinstance(_modules, list):
-                        modules_list = _modules
                     else:
-                        raise ValueError("Modules parameter must be a BloomerpModule instance, a list of BloomerpModule instances, or '__all__'")
+                        module_refs = _modules if isinstance(_modules, list) else [_modules]
+                        modules_list = [_resolve_module(module) for module in module_refs]
 
                     for module in modules_list:
-                        if not module:
-                            raise ValueError("Module not found in registry")
-
                         actual_name = _generate_name(
                             _name,
                             None,
@@ -936,6 +986,7 @@ class BloomerpRouteRegistry:
                         'searchable': searchable,
                         'message_format_values': message_format_values,
                         'mcp': mcp,
+                        'sdk': sdk,
                         'models': models,
                         'exclude_models': exclude_models,
                         'view': view,
@@ -1133,6 +1184,7 @@ class BloomerpRouteRegistry:
             )
 
             def _auto_desc(name: str, tmpl: dict = template) -> str:
+                """Describe the deferred route using its original template."""
                 if tmpl['description']:
                     return tmpl['description']
                 view = tmpl['view']
@@ -1199,6 +1251,7 @@ class BloomerpRouteRegistry:
                 ),
                 message_format_values=template.get('message_format_values'),
                 mcp=template.get('mcp'),
+                sdk=template.get('sdk'),
             )
             self._add_route(route)
 

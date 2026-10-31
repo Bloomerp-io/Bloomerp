@@ -1,283 +1,142 @@
-import type { ContextMenuSubmenu } from "@/utils/contextMenu";
-import { t as _ } from "@/utils/i18n";
-import { $createHeadingNode } from "@lexical/rich-text";
-import {
-    $createListNode,
-    type ListType,
-} from "@lexical/list";
-import { $setBlocksType } from "@lexical/selection";
+import { $createParagraphNode, $insertNodes, UNDO_COMMAND, REDO_COMMAND } from "lexical";
 import { $createTableNodeWithDimensions } from "@lexical/table";
-import {
-    $createParagraphNode,
-    $getRoot,
-    $getSelection,
-    $insertNodes,
-    $isInlineElementOrDecoratorNode,
-    $isRangeSelection,
-    $isTextNode,
-    LexicalEditor,
-    type LexicalNode,
-} from "lexical"
-import { getCurrentWordFromSelection, removeTextFromCurrentSelection } from "./utils/wordSelector";
+import type { ContextMenuSubmenu } from "@/utils/contextMenu";
+import { t } from "@/utils/i18n";
 import type { BloomerpTextEditor } from "./BloomerpTextEditor";
-import { promptImageUpload } from "./utils/imageBehavior";
+import type { Action, ActionContext } from "./actionRegistry";
+import { createFormattingActions } from "./formattingActions";
+import { createTableActions } from "./tableActions";
 import { promptLinkInsert } from "./utils/linkPicker";
 import { promptHtmlInsert } from "./utils/htmlBehavior";
-import { $createCodeBlockNode } from "./nodes/CodeBlockNode";
+import { promptMermaidInsert } from "./utils/mermaidBehavior";
 
+export type { Action } from "./actionRegistry";
 
-export type Action = {
-    label: string,
-    icon: string,
-    submenu?: (textEditor: BloomerpTextEditor) => ContextMenuSubmenu;
-    handler: (textEditor: BloomerpTextEditor) => void
+/** Open the diagram source form after the registry commits its restored selection. */
+function handleMermaid(host: BloomerpTextEditor, context: ActionContext): void {
+    /** Preserve the slash query until the user confirms a valid diagram. */
+    function openDiagram(): void { if (host.editor) promptMermaidInsert(host.editor, host.element); }
+    context.afterCommit(openDiagram);
 }
 
+/** Open the shared template picker from a registered action surface. */
+function handleTemplate(host: BloomerpTextEditor, context: ActionContext): void {
+    /** Let template search capture the committed insertion range. */
+    function open(): void { host.openTemplatePicker(); }
+    context.afterCommit(open);
+}
+/** Supply template search to slash and toolbar menus. */
+function templateSubmenu(host: BloomerpTextEditor): ContextMenuSubmenu { return host.getTemplateSubmenu(); }
+/** Open stored-image selection in this editor. */
+function handleImage(host: BloomerpTextEditor, context: ActionContext): void {
+    /** Let image search capture the committed insertion range. */
+    function open(): void { host.openReferencePicker("file"); }
+    context.afterCommit(open);
+}
+/** Supply stored-image search to the shared menu presenter. */
+function imageSubmenu(host: BloomerpTextEditor): ContextMenuSubmenu { return host.getReferenceSubmenu("file"); }
+/** Open mention selection in this editor. */
+function handleMention(host: BloomerpTextEditor, context: ActionContext): void {
+    /** Let mention search capture the committed insertion range. */
+    function open(): void { host.openReferencePicker("user"); }
+    context.afterCommit(open);
+}
+/** Supply mention search to the shared menu presenter. */
+function mentionSubmenu(host: BloomerpTextEditor): ContextMenuSubmenu { return host.getReferenceSubmenu("user"); }
+/** Open object-reference selection in this editor. */
+function handleObject(host: BloomerpTextEditor, context: ActionContext): void {
+    /** Let object search capture the committed insertion range. */
+    function open(): void { host.openReferencePicker("object"); }
+    context.afterCommit(open);
+}
+/** Supply object-reference search to the shared menu presenter. */
+function objectSubmenu(host: BloomerpTextEditor): ContextMenuSubmenu { return host.getReferenceSubmenu("object"); }
 
-function removeTriggerWord() {
-    const currentWord = getCurrentWordFromSelection();
-    if (currentWord[0] === '/' || currentWord[0] === '@') {
-        removeTextFromCurrentSelection(currentWord)
-    }
+/** Open the link dialog after Lexical commits the restored selection. */
+function handleLink(host: BloomerpTextEditor, context: ActionContext): void {
+    /** Let the existing link form capture the command's committed selection. */
+    function open(): void { if (host.editor) promptLinkInsert(host.editor, host.element); }
+    context.afterCommit(open);
 }
 
-function getLexicalEditor(textEditor: BloomerpTextEditor): LexicalEditor | null {
-    return textEditor.editor;
+/** Insert a table with valid cell children and a following editing paragraph. */
+function handleTable(_host: BloomerpTextEditor, context: ActionContext): void {
+    if (context.range) $insertNodes([$createTableNodeWithDimensions(3, 2, { rows: true, columns: false }), $createParagraphNode()]);
 }
 
-function handleHeading(textEditor: BloomerpTextEditor, heading: "h1" | "h2" | "h3") {
-    const editor = getLexicalEditor(textEditor);
-    if (!editor) {
-        return;
-    }
-
-    editor.update(() => {
-        removeTriggerWord()
-        const selection = $getSelection();
-
-        if (!$isRangeSelection(selection)) {
-            return;
-        }
-
-        $setBlocksType(selection, () => $createHeadingNode(heading))
-    });
+/** Open HTML insertion after the registry's selection update commits. */
+function handleHtml(host: BloomerpTextEditor, context: ActionContext): void {
+    /** Reuse the source editor without adding another insertion implementation. */
+    function open(): void { if (host.editor) promptHtmlInsert(host.editor); }
+    context.afterCommit(open);
 }
 
-/** Turn the selected paragraph or blocks into editable preformatted code. */
-function handleCodeBlock(textEditor: BloomerpTextEditor): void {
-    const editor = getLexicalEditor(textEditor);
-    if (!editor) return;
+/** Provide portable undo even when the browser's native key mapping differs by platform. */
+function undo(_host: BloomerpTextEditor, context: ActionContext): void { context.editor.dispatchCommand(UNDO_COMMAND, undefined); }
+/** Share Cmd/Ctrl+Shift+Z and Ctrl+Y with Lexical's existing history state. */
+function redo(_host: BloomerpTextEditor, context: ActionContext): void { context.editor.dispatchCommand(REDO_COMMAND, undefined); }
 
-    /** Convert the selected blocks or insert a block without a selection. */
-    function insertCodeBlock(): void {
-        removeTriggerWord();
-        const selection = $getSelection();
-        if ($isRangeSelection(selection)) {
-            $setBlocksType(selection, () => $createCodeBlockNode());
-        } else {
-            const block = $createCodeBlockNode();
-            $getRoot().append(block);
-            block.selectStart();
-        }
-    }
-
-    editor.update(insertCodeBlock);
-}
-
-function canWrapSelectionInInlineNode(nodes: LexicalNode[]): boolean {
-    if (nodes.length === 0) {
-        return false;
-    }
-
-    const parent = nodes[0].getParent();
-
-    return parent !== null && nodes.every((node) => (
-        node.getParent() === parent && (
-            $isTextNode(node) || $isInlineElementOrDecoratorNode(node)
-        )
-    ));
-}
-
-/** Convert the selected block to a list while removing a slash-command trigger. */
-function handleList(textEditor: BloomerpTextEditor, listType: ListType): void {
-    const editor = getLexicalEditor(textEditor);
-    if (!editor) return;
-
-    /** Replace the selected block inside Lexical's update transaction. */
-    function convertSelectedBlock(): void {
-        removeTriggerWord();
-        const selection = $getSelection();
-        if ($isRangeSelection(selection)) {
-            $setBlocksType(selection, () => $createListNode(listType));
-        }
-    }
-
-    editor.update(convertSelectedBlock);
-}
-
-/** Insert a checklist using the same list conversion as the other list actions. */
-function handleChecklist(textEditor: BloomerpTextEditor): void {
-    handleList(textEditor, "check");
-}
-
-/** Insert an unordered list using the shared list conversion. */
-function handleUnorderedList(textEditor: BloomerpTextEditor): void {
-    handleList(textEditor, "bullet");
-}
-
-/** Insert an ordered list using the shared list conversion. */
-function handleOrderedList(textEditor: BloomerpTextEditor): void {
-    handleList(textEditor, "number");
-}
-
-/** Open the shared picker after removing a slash-command trigger. */
-function handleTemplate(textEditor: BloomerpTextEditor): void {
-    textEditor.openTemplatePicker();
-}
-
-/** Supply the template child page to the shared context menu. */
-function templateSubmenu(textEditor: BloomerpTextEditor): ContextMenuSubmenu {
-    return textEditor.getTemplateSubmenu();
-}
-
-/** Open the stored-file picker for image insertion. */
-function handleStoredImage(textEditor: BloomerpTextEditor): void { textEditor.openReferencePicker("file"); }
-/** Supply image search and upload to the slash menu. */
-function storedImageSubmenu(textEditor: BloomerpTextEditor): ContextMenuSubmenu { return textEditor.getReferenceSubmenu("file"); }
-/** Open the user mention picker. */
-function handleMention(textEditor: BloomerpTextEditor): void { textEditor.openReferencePicker("user"); }
-/** Supply user search to the slash menu. */
-function mentionSubmenu(textEditor: BloomerpTextEditor): ContextMenuSubmenu { return textEditor.getReferenceSubmenu("user"); }
-/** Open readable object reference selection. */
-function handleObjectReference(textEditor: BloomerpTextEditor): void { textEditor.openReferencePicker("object"); }
-/** Supply readable object search to the slash menu. */
-function objectReferenceSubmenu(textEditor: BloomerpTextEditor): ContextMenuSubmenu { return textEditor.getReferenceSubmenu("object"); }
-
-/** Open the link form after the toolbar restores the editor's selection. */
-function handleLink(textEditor: BloomerpTextEditor): void {
-    /** Defer modal focus until the toolbar's click handler has finished. */
-    function openLink(): void {
-        if (textEditor.editor) promptLinkInsert(textEditor.editor, textEditor.element);
-    }
-    queueMicrotask(openLink);
-}
-
-export let ACTIONS: Record<string, Action> = {
+/** Retain insertion capabilities alongside the shared formatting definitions. */
+export const ACTIONS: Readonly<Record<string, Action>> = Object.freeze({
+    ...createFormattingActions(),
+    ...createTableActions(),
+    mermaid: {
+        /** Make diagram insertion searchable by its format and translated label. */
+        get label(): string { return t("Mermaid diagram"); },
+        icon: "fa-solid fa-diagram-project", group: "insert", surfaces: ["toolbar", "slash"],
+        preserveSlashTrigger: true, handler: handleMermaid,
+    },
+    undo: {
+        /** Translate the command name without changing its stable shortcut identifier. */
+        get label(): string { return t("Undo"); },
+        icon: "fa-solid fa-rotate-left", surfaces: ["shortcut"], shortcuts: ["mod+z"], handler: undo,
+    },
+    redo: {
+        /** Translate the command name without changing its stable shortcut identifier. */
+        get label(): string { return t("Redo"); },
+        icon: "fa-solid fa-rotate-right", surfaces: ["shortcut"], shortcuts: ["mod+shift+z", "mod+y"], handler: redo,
+    },
     link: {
-        /** Resolve the named-link action label. */
-        get label(): string { return _("Link"); },
-        icon: "fa-solid fa-link",
-        handler: handleLink,
+        /** Resolve the link label using the loaded catalog. */
+        get label(): string { return t("Link"); },
+        icon: "fa-solid fa-link", group: "text", surfaces: ["toolbar", "selection", "slash", "shortcut"],
+        shortcuts: ["mod+k"], handler: handleLink,
+        /** Require a text range outside literal code before opening a link form. */
+        getState(context: ActionContext): import("./actionRegistry").ActionState {
+            return { disabled: !context.range || context.blocks.some(isCodeBlock) };
+        },
     },
     template: {
-        /** Resolve the shared template command label. */
-        get label(): string { return _("Template"); },
-        icon: "fa-solid fa-file-lines",
-        handler: handleTemplate,
-        submenu: templateSubmenu,
-    },
-    code_block: {
-        /** Resolve the command label after the active catalog loads. */
-        get label(): string { return _("Code Block"); },
-        icon: "fa-solid fa-code",
-        handler: handleCodeBlock,
-    },
-    h1: {
-        /** Resolve the command label after the active catalog loads. */
-        get label(): string { return _("Heading 1"); },
-        icon: "fa-solid fa-heading",
-        handler: (textEditor) => handleHeading(textEditor, "h1")
-    },
-    h2: {
-        /** Resolve the command label after the active catalog loads. */
-        get label(): string { return _("Heading 2"); },
-        icon: "fa-solid fa-heading",
-        handler: (textEditor) => handleHeading(textEditor, "h2")
-    },
-    h3: {
-        /** Resolve the command label after the active catalog loads. */
-        get label(): string { return _("Heading 3"); },
-        icon: "fa-solid fa-heading",
-        handler: (textEditor) => handleHeading(textEditor, "h3")
+        /** Resolve the template label using the loaded catalog. */
+        get label(): string { return t("Template"); },
+        icon: "fa-solid fa-file-lines", group: "insert", surfaces: ["toolbar", "slash"], handler: handleTemplate, submenu: templateSubmenu,
     },
     image: {
-        /** Resolve the command label after the active catalog loads. */
-        get label(): string { return _("Image"); },
-        icon: "fa-solid fa-image",
-        handler: handleStoredImage,
-        submenu: storedImageSubmenu,
-    },
-    mention: {
-        /** Resolve the mention action label. */
-        get label(): string { return _("Mention"); },
-        icon: "fa-solid fa-at", handler: handleMention, submenu: mentionSubmenu,
-    },
-    object_reference: {
-        /** Resolve the object reference action label. */
-        get label(): string { return _("Object"); },
-        icon: "fa-solid fa-link", handler: handleObjectReference, submenu: objectReferenceSubmenu,
-    },
-    unordered_list: {
-        /** Resolve the command label after the active catalog loads. */
-        get label(): string { return _("Bullet List"); },
-        icon: "fa-solid fa-list-ul",
-        handler: handleUnorderedList,
-    },
-    ordered_list: {
-        /** Resolve the command label after the active catalog loads. */
-        get label(): string { return _("Numbered List"); },
-        icon: "fa-solid fa-list-ol",
-        handler: handleOrderedList,
-    },
-    checklist: {
-        /** Resolve the command label after the active catalog loads. */
-        get label(): string { return _("Checklist"); },
-        icon: "fa-solid fa-list-check",
-        handler: handleChecklist,
+        /** Resolve the image label using the loaded catalog. */
+        get label(): string { return t("Image"); },
+        icon: "fa-solid fa-image", group: "insert", surfaces: ["toolbar", "slash"], handler: handleImage, submenu: imageSubmenu,
     },
     table: {
-        /** Resolve the command label after the active catalog loads. */
-        get label(): string { return _("Table"); },
-        icon: "fa-solid fa-table",
-        handler: (textEditor) => {
-            const editor = getLexicalEditor(textEditor);
-            if (!editor) {
-                return;
-            }
-
-            editor.update(() => {
-                removeTriggerWord()
-                const selection = $getSelection();
-                
-                if (!$isRangeSelection(selection)) {
-                    return;
-                }
-
-                const table = $createTableNodeWithDimensions(3, 2, {
-                    rows: true,
-                    columns: false,
-                });
-                const paragraph = $createParagraphNode();
-
-                $insertNodes([table, paragraph]);
-            });
-        }
+        /** Resolve the table label using the loaded catalog. */
+        get label(): string { return t("Table"); },
+        icon: "fa-solid fa-table", group: "insert", surfaces: ["toolbar", "slash"], handler: handleTable,
+    },
+    mention: {
+        /** Resolve the mention label using the loaded catalog. */
+        get label(): string { return t("Mention"); },
+        icon: "fa-solid fa-at", group: "insert", surfaces: ["toolbar", "slash"], handler: handleMention, submenu: mentionSubmenu,
+    },
+    object_reference: {
+        /** Resolve the reference label using the loaded catalog. */
+        get label(): string { return t("Object"); },
+        icon: "fa-solid fa-link", group: "insert", surfaces: ["toolbar", "slash"], handler: handleObject, submenu: objectSubmenu,
     },
     html: {
-        /** Resolve the command label after the active catalog loads. */
-        get label(): string { return _("HTML"); },
-        icon: "fa-solid fa-code",
-        handler: (textEditor) => {
-            const editor = getLexicalEditor(textEditor);
-            if (!editor) {
-                return;
-            }
-
-            editor.update(() => {
-                removeTriggerWord()
-            });
-
-            promptHtmlInsert(editor);
-        }
+        /** Resolve the source-HTML label using the loaded catalog. */
+        get label(): string { return t("HTML"); },
+        icon: "fa-solid fa-code", group: "insert", surfaces: ["toolbar"], handler: handleHtml,
     },
-}
+});
+
+/** Identify literal code where semantic link insertion is inappropriate. */
+function isCodeBlock(block: import("lexical").ElementNode): boolean { return block.getType() === "text-editor-code-block"; }

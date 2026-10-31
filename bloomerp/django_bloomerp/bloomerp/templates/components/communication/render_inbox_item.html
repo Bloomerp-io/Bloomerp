@@ -64,32 +64,27 @@
         {{ content|safe }}
     {% else %}
     <div class="min-h-0 flex-1 overflow-y-auto">
-        <div class="mx-auto max-w-5xl px-8 py-6">
-            <div class="flex items-start gap-3">
-                <span class="mt-0.5 inline-flex size-7 items-center justify-center rounded-lg bg-primary-500 text-sm text-white">
-                    <i class="{{ item.icon }}"></i>
-                </span>
-                <div class="min-w-0">
-                    <h1 class="truncate text-2xl font-semibold tracking-normal text-gray-950 dark:text-zinc-100">{{ item.title }}</h1>
-                    {% if item.actor %}
-                        <p class="mt-1 text-base text-gray-600">{{ item.actor }}</p>
-                    {% endif %}
-                </div>
-            </div>
-
-            <div class="mt-8 border-t border-gray-200 pt-4">
-                {% if error_message %}
-                    <div class="rounded-lg border border-danger-light bg-danger-light/20 p-4 text-danger-dark">
-                        {{ error_message }}
-                    </div>
-                {% elif content %}
-                    {{ content|safe }}
-                {% elif item.snippet %}
-                    <p class="text-base leading-7 text-gray-700">{{ item.snippet }}</p>
-                {% else %}
-                    <c-ui.text.muted>No preview is available for this item.</c-ui.text.muted>
+        <div class="border-b border-gray-200">
+            <div class="mx-auto min-w-0 max-w-5xl px-6 py-4">
+                <h1 class="truncate text-2xl font-semibold tracking-normal text-gray-950 dark:text-zinc-100">{{ item.title }}</h1>
+                {% if item.actor %}
+                    <p class="mt-1 text-base text-gray-600">{{ item.actor }}</p>
                 {% endif %}
             </div>
+        </div>
+
+        <div class="mx-auto max-w-5xl px-6 py-4">
+            {% if error_message %}
+                <div class="rounded-lg border border-danger-light bg-danger-light/20 p-4 text-danger-dark">
+                    {{ error_message }}
+                </div>
+            {% elif content %}
+                {{ content|safe }}
+            {% elif item.snippet %}
+                <p class="text-base leading-7 text-gray-700">{{ item.snippet }}</p>
+            {% else %}
+                <c-ui.text.muted>No preview is available for this item.</c-ui.text.muted>
+            {% endif %}
         </div>
     </div>
     {% endif %}

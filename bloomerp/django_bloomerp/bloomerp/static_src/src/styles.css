@@ -1378,6 +1378,23 @@ Dashboard
   Text editor placeholder
 */
 
+.bloomerp-text-editor[data-placeholder] {
+    position: relative;
+}
+
+.bloomerp-text-editor[data-empty="true"]::before {
+    content: attr(data-placeholder);
+    position: absolute;
+    top: 0;
+    left: 0;
+    color: var(--color-gray-400);
+    pointer-events: none;
+}
+
+.dark .bloomerp-text-editor[data-empty="true"]::before {
+    color: var(--color-zinc-400);
+}
+
 .bloomerp-text-editor-checklist {
   list-style: none;
   padding-left: 1rem;
@@ -1847,6 +1864,11 @@ pre[data-text-editor-code-block] {
 .workflow-builder { position: relative; margin: -1rem; }
 .workflow-builder #drawflow { position: relative; height: 70vh; overflow: hidden; overscroll-behavior: contain; }
 .workflow-builder #drawflow:focus { outline: none; }
+.workflow-builder[data-workflow-readonly="true"] { margin: 0; }
+.workflow-builder[data-workflow-readonly="true"] #drawflow { height: clamp(20rem, 50vh, 32rem); }
+.workflow-builder[data-workflow-readonly="true"] .workflow-toolbar { display: flex; flex-wrap: wrap; gap: .5rem; right: 1rem; }
+.workflow-builder[data-workflow-readonly="true"] .node-body { display: none; }
+
 .workflow-toolbar, .workflow-selection-actions {
     position: absolute; z-index: 10; padding: .5rem; border-radius: .75rem;
     background: var(--color-white, white); box-shadow: 0 2px 8px #0002;

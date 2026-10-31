@@ -4,11 +4,15 @@ type AddTooltipOptions = {
     title?: string;
     text: string;
     position?: TooltipPosition;
+    portal?: boolean;
 };
 
 type CleanupFn = () => void;
 
+/** Render the shared tooltip appearance for inline and portaled hints. */
 function getTooltipMarkup(title: string, text: string, position: TooltipPosition): string {
+    title = escapeTooltipText(title);
+    text = escapeTooltipText(text);
     const content = `
         ${title ? `<div class="font-medium">${title}</div>` : ""}
         ${text ? `<div>${text}</div>` : ""}
@@ -47,6 +51,14 @@ function getTooltipMarkup(title: string, text: string, position: TooltipPosition
     }
 }
 
+/** Treat labels and shortcut hints as text when composing the shared markup. */
+function escapeTooltipText(value: string): string {
+    const text = document.createElement("span");
+    text.textContent = value;
+    return text.innerHTML;
+}
+
+/** Attach a shared tooltip, optionally escaping scroll containers through the top layer. */
 export function addTooltip(element: HTMLElement, options: AddTooltipOptions): CleanupFn {
     const tooltipTitle = (options.title || "").trim();
     const tooltipText = options.text.trim();
@@ -54,7 +66,8 @@ export function addTooltip(element: HTMLElement, options: AddTooltipOptions): Cl
     element.querySelectorAll<HTMLElement>("[data-dynamic-tooltip='true']").forEach((node) => node.remove());
 
     if (!tooltipTitle && !tooltipText) {
-        return () => {};
+        /** No resources were created for an empty hint. */
+        return (): void => {};
     }
 
     element.classList.add("relative", "group");
@@ -62,9 +75,84 @@ export function addTooltip(element: HTMLElement, options: AddTooltipOptions): Cl
     const tooltip = document.createElement("div");
     tooltip.dataset.dynamicTooltip = "true";
     tooltip.innerHTML = getTooltipMarkup(tooltipTitle, tooltipText, options.position || "top");
+    if (options.portal) return attachPortalTooltip(element, tooltip.firstElementChild as HTMLElement, options.position || "top");
     element.appendChild(tooltip);
 
-    return () => {
+    /** Remove only tooltip markup owned by this element. */
+    return (): void => {
         element.querySelectorAll<HTMLElement>("[data-dynamic-tooltip='true']").forEach((node) => node.remove());
     };
+}
+
+/** Keep the existing tooltip design visible above clipped toolbars and open popovers. */
+function attachPortalTooltip(element: HTMLElement, tooltip: HTMLElement, position: TooltipPosition): CleanupFn {
+    const lifecycle = new AbortController();
+    let ownerPopover: HTMLElement | null = null;
+    tooltip.dataset.dynamicTooltip = "true";
+    tooltip.setAttribute("role", "tooltip");
+    tooltip.id = `tooltip-${crypto.randomUUID()}`;
+    tooltip.style.cssText = "position:fixed;inset:auto;margin:0;transform:none;translate:none;overflow:visible;transition-property:opacity;opacity:0;visibility:hidden;z-index:2147483647";
+    tooltip.hidden = true;
+    if (typeof tooltip.showPopover === "function") tooltip.setAttribute("popover", "manual");
+    const describedBy = element.getAttribute("aria-describedby");
+    element.setAttribute("aria-describedby", [describedBy, tooltip.id].filter(Boolean).join(" "));
+    document.body.appendChild(tooltip);
+
+    /** Position relative to the trigger while keeping the hint inside the viewport. */
+    function place(): void {
+        const anchor = element.getBoundingClientRect();
+        const bounds = tooltip.getBoundingClientRect();
+        let left = anchor.left + (anchor.width - bounds.width) / 2;
+        let top = position === "bottom" ? anchor.bottom + 6 : anchor.top - bounds.height - 6;
+        if (position === "left" || position === "right") {
+            left = position === "left" ? anchor.left - bounds.width - 6 : anchor.right + 6;
+            top = anchor.top + (anchor.height - bounds.height) / 2;
+        }
+        tooltip.style.left = `${Math.max(4, Math.min(left, window.innerWidth - bounds.width - 4))}px`;
+        tooltip.style.top = `${Math.max(4, Math.min(top, window.innerHeight - bounds.height - 4))}px`;
+    }
+
+    /** Dismiss hints immediately when the owning control or viewport changes. */
+    function hide(): void {
+        ownerPopover?.removeEventListener("beforetoggle", onOwnerToggle);
+        ownerPopover = null;
+        if (tooltip.hasAttribute("popover") && tooltip.matches(":popover-open")) tooltip.hidePopover();
+        tooltip.hidden = true;
+        tooltip.style.opacity = "0";
+        tooltip.style.visibility = "hidden";
+    }
+
+    /** Close a portaled hint together with its selection toolbar or parent popover. */
+    function onOwnerToggle(event: Event): void {
+        if ((event as ToggleEvent).newState === "closed") hide();
+    }
+
+    /** Reveal the shared tooltip on pointer hover or keyboard focus. */
+    function show(): void {
+        if (!element.isConnected || !element.getClientRects().length) return;
+        ownerPopover = element.closest<HTMLElement>("[popover]");
+        ownerPopover?.addEventListener("beforetoggle", onOwnerToggle);
+        tooltip.hidden = false;
+        if (tooltip.hasAttribute("popover") && !tooltip.matches(":popover-open")) tooltip.showPopover();
+        place();
+        tooltip.style.visibility = "visible";
+        tooltip.style.opacity = "1";
+    }
+
+    element.addEventListener("mouseenter", show, { signal: lifecycle.signal });
+    element.addEventListener("mouseleave", hide, { signal: lifecycle.signal });
+    element.addEventListener("focus", show, { signal: lifecycle.signal });
+    element.addEventListener("blur", hide, { signal: lifecycle.signal });
+    element.addEventListener("pointerdown", hide, { signal: lifecycle.signal });
+    window.addEventListener("scroll", hide, { capture: true, signal: lifecycle.signal });
+    window.addEventListener("resize", hide, { signal: lifecycle.signal });
+    /** Release listeners, top-layer markup, and the trigger's accessibility reference. */
+    function cleanup(): void {
+        hide();
+        lifecycle.abort();
+        tooltip.remove();
+        if (describedBy) element.setAttribute("aria-describedby", describedBy);
+        else element.removeAttribute("aria-describedby");
+    }
+    return cleanup;
 }

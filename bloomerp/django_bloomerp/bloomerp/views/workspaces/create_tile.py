@@ -201,6 +201,7 @@ class CreateTileView(WizardMixin, BaseBloomerpView, TemplateView):
                     description=_("Select or enter a query for your analytics tile"),
                     context_func=ctx_analytics_query,
                     process_func=pcs_analytics_query,
+                    include_padding=False
                 )
 
             return BUILDER_STEP

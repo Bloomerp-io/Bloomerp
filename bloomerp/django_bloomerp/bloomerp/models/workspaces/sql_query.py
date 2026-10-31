@@ -1,5 +1,8 @@
-from django.core.exceptions import ValidationError
+from urllib.parse import urlencode
+
 from django.db import models
+from django.http import HttpRequest
+from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import gettext_noop
 
@@ -14,8 +17,24 @@ from bloomerp.models.definition import (
     LayoutItem,
     LayoutRow,
     ModelViewSettings,
+    ObjectModalAction,
 )
 from bloomerp.utils.sql import SqlQueryExecutor
+
+
+def _apply_query_url(sql_query: "SqlQuery") -> str:
+    """Open the execution component with the saved query's identifier."""
+    return f"{reverse('components_execute_sql_query')}?{urlencode({'query_id': str(sql_query.pk)})}"
+
+
+def _can_apply_query(request: HttpRequest, sql_query: "SqlQuery") -> bool:
+    """Offer Apply to users allowed to execute SQL and read this query's SQL field."""
+    from bloomerp.permissions.definition import BloomerpPermission
+    from bloomerp.permissions.manager import UserPolicyManager
+
+    return request.user.has_perm("bloomerp.execute_sql_query") and UserPolicyManager(
+        request.user
+    ).has_access_to_object(sql_query, BloomerpPermission.VIEW, fields=["query"])
 
 
 class SqlQuery(BloomerpModel):
@@ -57,7 +76,17 @@ class SqlQuery(BloomerpModel):
         ),
         api_settings=ApiSettings(
             enable_auto_generation=True,
-        )
+        ),
+        object_actions=[
+            ObjectModalAction(
+                id="apply_query",
+                label=gettext_noop("Apply query"),
+                endpoint=_apply_query_url,
+                should_render_func=_can_apply_query,
+                icon="fa-solid fa-play",
+                modal_size="xl",
+            )
+        ]
     )
     
     

@@ -15,13 +15,13 @@ export default class CodeEditorWidget extends BaseWidget {
     private lastCommittedValue: string = '';
     private boundOnEditorChange: (() => void) | null = null;
     private boundOnModalClosed: ((event: Event) => void) | null = null;
-    private boundOnTextareaInput: (() => void) | null = null;
     private destroyed: boolean = false;
     private readonly boundOnBeforeCleanupElement = (event: Event): void => {
         if (event.target === this.element) this.destroy();
     };
     private readonly boundOnThemeChange = (): void => this.updateEditorTheme();
 
+    /** Initialize the configured Ace editor and synchronize its form value. */
     public initialize(): void {
         if (!this.element) return;
         this.element.addEventListener('htmx:beforeCleanupElement', this.boundOnBeforeCleanupElement);
@@ -34,12 +34,8 @@ export default class CodeEditorWidget extends BaseWidget {
         if (!this.textarea || !this.editorContainer) return;
         this.lastCommittedValue = this.textarea.value || this.textarea.textContent || '';
 
-        if (this.element.closest("[bloomerp-component='document-template-builder']")) {
-            this.initializePlainTextEditor();
-        } else {
-            this.configureAceModuleLoader();
-            this.initializeEditor();
-        }
+        this.configureAceModuleLoader();
+        this.initializeEditor();
 
         window.addEventListener('bloomerp:theme-change', this.boundOnThemeChange);
 
@@ -52,17 +48,6 @@ export default class CodeEditorWidget extends BaseWidget {
             };
             document.body.addEventListener('bloomerp:modal-closed', this.boundOnModalClosed);
         }
-    }
-
-    private initializePlainTextEditor(): void {
-        if (!this.editorContainer || !this.textarea) return;
-
-        this.editorContainer.hidden = true;
-        this.textarea.hidden = false;
-        this.textarea.classList.add('textarea', 'w-full', 'font-mono');
-        this.textarea.style.minHeight = '300px';
-        this.boundOnTextareaInput = () => this.onChange();
-        this.textarea.addEventListener('input', this.boundOnTextareaInput);
     }
 
     private initializeEditor(): void {
@@ -96,6 +81,7 @@ export default class CodeEditorWidget extends BaseWidget {
         this.editor.session.on('change', this.boundOnEditorChange);
     }
 
+    /** Preserve the latest value and release the Ace instance and listeners. */
     public destroy(): void {
         if (this.destroyed) return;
         this.destroyed = true;
@@ -118,10 +104,6 @@ export default class CodeEditorWidget extends BaseWidget {
         this.element?.removeEventListener('htmx:beforeCleanupElement', this.boundOnBeforeCleanupElement);
         window.removeEventListener('bloomerp:theme-change', this.boundOnThemeChange);
 
-        if (this.textarea && this.boundOnTextareaInput) {
-            this.textarea.removeEventListener('input', this.boundOnTextareaInput);
-        }
-
         if (this.editorContainer) {
             const registeredEditor = CodeEditorWidget.editorsByContainer.get(this.editorContainer);
             if (registeredEditor === this.editor) {
@@ -133,7 +115,6 @@ export default class CodeEditorWidget extends BaseWidget {
         this.editor = null;
         this.boundOnEditorChange = null;
         this.boundOnModalClosed = null;
-        this.boundOnTextareaInput = null;
     }
 
     private configureAceModuleLoader(): void {
@@ -185,17 +166,28 @@ export default class CodeEditorWidget extends BaseWidget {
         });
     }
 
+    /** Load a bundled syntax mode without applying it to a disposed editor. */
     private async loadLanguageMode(language: string): Promise<void> {
         const editor = this.editor;
 
         try {
+            if (language === 'mermaid') {
+                const { createMermaidMode } = await import('./code_editor/mermaidMode');
+                if (this.editor === editor) editor.session.setMode(createMermaidMode());
+                return;
+            }
             await (ace as any).config.loadModule(`ace/mode/${language}`);
             if (this.editor === editor) {
                 this.editor.session.setMode(`ace/mode/${language}`);
             }
-        } catch (error) {
+        } catch (error: unknown) {
             console.warn(`Ace editor language mode not found: ${language}`, error);
         }
+    }
+
+    /** Move keyboard focus to the code input when its containing dialog opens. */
+    public focus(): void {
+        this.editor?.focus();
     }
 
     public override onChange(): void {

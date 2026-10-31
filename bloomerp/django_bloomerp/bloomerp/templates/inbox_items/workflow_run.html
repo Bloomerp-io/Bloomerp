@@ -1,110 +1,33 @@
 {% load i18n %}
-<main class="space-y-5">
-    <section class="rounded-xl border border-primary-100 bg-primary-50 p-5 shadow-xs">
-        <div class="flex items-start justify-between gap-4">
-            <div class="min-w-0">
-                <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-primary-700">
-                    {% blocktrans %}Workflow execution{% endblocktrans %}
-                </p>
-                <h1 class="truncate text-xl font-semibold text-primary-900">{{ workflow.workflow_name }}</h1>
-            </div>
-            {% if workflow.status == "completed" %}
-                <span class="inline-flex shrink-0 items-center gap-2 rounded-full bg-success-light px-3 py-1.5 text-xs font-semibold text-success-dark">
-                    <span class="size-2 rounded-full bg-success-dark"></span>
-                    {% blocktrans %}Completed{% endblocktrans %}
-                </span>
-            {% else %}
-                <span class="inline-flex shrink-0 items-center gap-2 rounded-full bg-danger-light px-3 py-1.5 text-xs font-semibold text-danger-dark">
-                    <span class="size-2 rounded-full bg-danger-dark"></span>
-                    {% blocktrans %}Failed{% endblocktrans %}
-                </span>
-            {% endif %}
-        </div>
+<div class="space-y-5">
+    <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-500">
+        <span class="font-semibold {% if workflow.status_label == 'Completed' %}text-success-dark{% elif workflow.status_label == 'Failed' %}text-danger-dark{% elif workflow.status == 'paused' %}text-warning-dark{% endif %}">{{ workflow.status_label }}</span>
+        <span>{% blocktrans count steps=workflow.step_count %}{{ steps }} step{% plural %}{{ steps }} steps{% endblocktrans %} · {{ workflow.duration_display }}</span>
+        <time datetime="{{ workflow.finished_at }}">{{ workflow.finished_display }}</time>
+    </div>
 
-        <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div class="rounded-xl border border-gray-200 bg-white p-3 shadow-xs">
-                <p class="text-xs font-medium text-gray-500">{% blocktrans %}Execution time{% endblocktrans %}</p>
-                <p class="mt-1 text-sm font-semibold text-dark">{{ workflow.duration_display }}</p>
-            </div>
-            <div class="rounded-xl border border-gray-200 bg-white p-3 shadow-xs">
-                <p class="text-xs font-medium text-gray-500">{% blocktrans %}Executed steps{% endblocktrans %}</p>
-                <p class="mt-1 text-sm font-semibold text-dark">{{ workflow.step_count }}</p>
-            </div>
-            <div class="rounded-xl border border-gray-200 bg-white p-3 shadow-xs">
-                <p class="text-xs font-medium text-gray-500">{% blocktrans %}Finished{% endblocktrans %}</p>
-                <p class="mt-1 text-sm font-semibold text-dark">{{ workflow.finished_display }}</p>
-            </div>
-        </div>
-    </section>
-
-    {% if related_object %}
-        <section class="rounded-xl border border-gray-200 bg-white p-5 shadow-xs">
-            <h2 class="mb-4 text-sm font-semibold text-primary-900">
-                {% blocktrans %}Related object{% endblocktrans %}
-            </h2>
-            <div class="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-                <div class="min-w-0">
-                    <p class="truncate text-sm font-medium text-dark">{{ related_object.label }}</p>
-                    <p class="mt-1 text-xs text-gray-500">{{ related_object.type_label }} · {{ related_object.object_id }}</p>
-                </div>
-                {% if related_object.available and related_object.url %}
-                    <a href="{{ related_object.url }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm shrink-0">
-                        {% blocktrans %}Open object{% endblocktrans %}
-                    </a>
-                {% else %}
-                    <span class="text-xs text-gray-500">{% blocktrans %}Object no longer available{% endblocktrans %}</span>
-                {% endif %}
-            </div>
-        </section>
+    {% if workflow.status == 'paused' %}
+        {% include "inbox_items/workflow_approval.html" %}
     {% endif %}
 
-    <section class="rounded-xl border border-gray-200 bg-white p-5 shadow-xs">
-        <h2 class="mb-4 text-sm font-semibold text-primary-900">
-            {% blocktrans %}Execution graph{% endblocktrans %}
-        </h2>
-        {% if workflow.graph.nodes %}
-            <div class="overflow-x-auto rounded-xl border border-gray-200 bg-base">
-                <div class="relative min-w-full" style="width: {{ workflow.graph.width }}px; height: {{ workflow.graph.height }}px;">
-                    <svg class="absolute inset-0 z-0 text-primary-300" width="{{ workflow.graph.width }}" height="{{ workflow.graph.height }}" aria-hidden="true">
-                        {% for edge in workflow.graph.edges %}
-                            <line class="stroke-current" stroke-width="2" x1="{{ edge.x1 }}" y1="{{ edge.y1 }}" x2="{{ edge.x2 }}" y2="{{ edge.y2 }}"></line>
-                        {% endfor %}
-                    </svg>
-                    {% for node in workflow.graph.nodes %}
-                        <div
-                            class="absolute z-10 min-h-14 w-40 rounded-xl border border-l-4 bg-white p-2.5 shadow-xs {% if node.status == 'completed' %}border-gray-200 border-l-success-dark{% elif node.status == 'failed' %}border-danger-light border-l-danger-dark{% else %}border-gray-200 border-l-gray-400 opacity-70{% endif %}"
-                            style="left: {{ node.x }}px; top: {{ node.y }}px;"
-                        >
-                            <p class="truncate text-xs font-semibold text-dark">{{ node.label }}</p>
-                            <div class="mt-1 flex items-center justify-between gap-2 text-xs text-gray-500">
-                                <span class="truncate">{{ node.type }}</span>
-                                {% if node.execution_count > 1 %}
-                                    <span class="shrink-0">×{{ node.execution_count }}</span>
-                                {% else %}
-                                    <span class="shrink-0">{{ node.status }}</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-            </div>
-        {% else %}
-            <div class="rounded-xl border border-warning-light bg-warning-light p-4 text-sm text-warning-dark">
-                {% blocktrans %}No workflow graph was available for this execution.{% endblocktrans %}
-            </div>
-        {% endif %}
-    </section>
-
-    {% if run_available and workflow.run_url %}
-        <section class="flex flex-col items-start justify-between gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-xs sm:flex-row sm:items-center">
-            <p class="text-sm text-gray-600">{% blocktrans %}Detailed run logging is still available.{% endblocktrans %}</p>
-            <a href="{{ workflow.run_url }}" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm shrink-0">
-                {% blocktrans %}Open workflow run{% endblocktrans %}
-            </a>
-        </section>
+    {% if has_run_view %}
+        {% include "views/workflows/builder.html" %}
     {% else %}
-        <div class="rounded-xl border border-warning-light bg-warning-light p-4 text-sm text-warning-dark">
-            {% blocktrans %}The original workflow-run record is no longer available. This notification is rendered from its saved execution snapshot.{% endblocktrans %}
-        </div>
+        <p class="text-sm text-gray-500">{% translate "The workflow graph is no longer available." %}</p>
     {% endif %}
-</main>
+
+    <div class="flex flex-wrap items-center justify-between gap-4 text-sm">
+        {% if related_object %}
+            {% if related_object.available and related_object.url %}
+                <a href="{{ related_object.url }}" class="text-primary-700 hover:underline">{{ related_object.label }} <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>
+            {% else %}
+                <span class="text-gray-500">{{ related_object.label }} · {% translate "Object no longer available" %}</span>
+            {% endif %}
+        {% endif %}
+        {% if run_available and workflow.run_url %}
+            <a href="{{ workflow.run_url }}" class="btn btn-secondary btn-sm">{% translate "Open workflow run" %}</a>
+        {% elif not run_available %}
+            <span class="text-gray-500">{% translate "The original run is no longer available. Showing its saved execution." %}</span>
+        {% endif %}
+    </div>
+</div>

@@ -2,12 +2,16 @@
 
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from .base import VoIPModel
+from .base import VoIPModel, voip_model_config
 
 
 class PhoneCallEvent(VoIPModel):
     """Retain state transitions without storing raw webhook payloads or secrets."""
-
+    
+    bloomerp_config = voip_model_config(
+        icon="fa fa-phone-volume",
+    )
+    
     call = models.ForeignKey(
         "bloomerp.PhoneCall",
         verbose_name=_("Call"),

@@ -33,8 +33,8 @@ export class EmailRecipients {
     private searchRequest?: AbortController;
     private activeSuggestion = -1;
 
-    /** Replace a plain input with keyboard-accessible chips and a typing area. */
-    public constructor(source: HTMLInputElement, signal: AbortSignal, searchUrl?: string, userSource?: HTMLInputElement) {
+    /** Replace a plain input with accessible chips, optionally limiting it to one recipient. */
+    public constructor(source: HTMLInputElement, signal: AbortSignal, searchUrl?: string, userSource?: HTMLInputElement, private readonly singleRecipient: boolean = false) {
         this.source = source;
         this.userSource = userSource;
         if (userSource?.value) {
@@ -101,14 +101,14 @@ export class EmailRecipients {
         this.entry.placeholder = this.values.length ? "" : "name@example.com";
     }
 
-    /** Build safe, removable chip labels and mark invalid addresses visibly. */
+    /** Build removable recipient chips with readable labels in either theme and visible validation. */
     private render(): void {
         this.chips.replaceChildren();
         for (const value of this.values) {
             const chip = document.createElement("span");
             chip.dataset.recipientChip = value;
             chip.className = "inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 py-1 text-sm "
-                + (this.valid(value) ? "border-gray-200 bg-base text-gray-950" : "border-danger-dark bg-danger-light/10 text-danger-dark");
+                + (this.valid(value) ? "border-gray-200 bg-base text-gray-950 dark:text-zinc-100" : "border-danger-dark bg-danger-light/10 text-danger-dark dark:text-danger-light");
             const text = document.createElement("span");
             text.className = "truncate";
             text.textContent = this.users.has(this.address(value).toLowerCase()) ? `${this.userLabels.get(this.address(value).toLowerCase()) || value} · ${_("User")}` : value;
@@ -124,19 +124,36 @@ export class EmailRecipients {
         }
     }
 
-    /** Commit typed recipients, deduplicate addresses, and notify autosave. */
-    public commit(): void {
+    /** Commit distinct addresses while retaining excess input in single-recipient fields. */
+    public commit(): boolean {
         this.closeSuggestions();
-        if (!this.entry.value.trim()) return;
+        if (!this.entry.value.trim()) return true;
+        const values = [...this.values];
         for (const value of splitRecipients(this.entry.value)) {
             const address = this.address(value).toLowerCase();
-            if (!this.values.some(this.matchesAddress.bind(this, address))) this.values.push(value);
+            if (!values.some(this.matchesAddress.bind(this, address))) values.push(value);
         }
+        if (this.singleRecipient && values.length > 1) {
+            this.entry.setCustomValidity(_("Choose one email address for this role."));
+            this.entry.reportValidity();
+            return false;
+        }
+        this.values = values;
         this.entry.value = "";
         this.entry.setCustomValidity("");
         this.render();
         this.sync();
         this.source.dispatchEvent(new Event("change", { bubbles: true }));
+        return true;
+    }
+
+    /** Treat unfinished input and addresses without an explicitly selected user as external. */
+    public hasExternalRecipients(): boolean {
+        if (this.entry.value.trim()) return true;
+        for (const value of this.values) {
+            if (!this.userSource || !this.users.has(this.address(value).toLowerCase())) return true;
+        }
+        return false;
     }
 
     /** Keep account-only identities out of the email-address submission. */
@@ -161,7 +178,7 @@ export class EmailRecipients {
 
     /** Require all chips to be valid before either composer submits. */
     public validate(): boolean {
-        this.commit();
+        if (!this.commit()) return false;
         const invalid = this.values.find(this.isInvalid.bind(this));
         this.entry.setCustomValidity(invalid ? _("Enter a valid email address or remove the invalid recipient.") : "");
         if (invalid) {

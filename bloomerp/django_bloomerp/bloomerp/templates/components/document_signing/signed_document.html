@@ -1,0 +1,17 @@
+{% load i18n %}
+<section class="space-y-4 p-3" role="status">
+    <div class="flex items-center gap-3">
+        <i class="fa-solid fa-circle-check text-2xl text-success-dark" aria-hidden="true"></i>
+        <div>
+            <h3 class="font-semibold text-gray-900">{% trans 'Your signature has been recorded' %}</h3>
+            <p class="text-sm text-muted">{{ signing_request.title }} · {{ recipient.role_label }}</p>
+        </div>
+    </div>
+    {% if signing_request.status == 'completed' %}
+    <a class="btn btn-primary btn-sm" href="{{ pdf_url }}?download=1">
+        <i class="fa-solid fa-download" aria-hidden="true"></i> {% trans 'Download signed PDF' %}
+    </a>
+    {% else %}
+    <p class="text-sm text-muted">{% trans 'The document will be completed when all recipients have signed.' %}</p>
+    {% endif %}
+</section>

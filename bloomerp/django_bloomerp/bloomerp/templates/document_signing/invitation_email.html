@@ -1,0 +1,9 @@
+{% load i18n %}
+<!DOCTYPE html>
+<html><body>
+    <p>{% blocktrans with title=signing_request.title %}You have been invited to sign “{{ title }}”.{% endblocktrans %}</p>
+    {% if email_content %}<div>{{ email_content|safe }}</div>{% endif %}
+    <p><a href="{{ signing_url }}">{% trans 'Review and sign document' %}</a></p>
+    <p>{% trans 'This link is personal. Please do not forward it.' %}</p>
+    {% if signing_request.expires_at %}<p>{% trans 'Valid until' %}: {{ signing_request.expires_at }}</p>{% endif %}
+</body></html>

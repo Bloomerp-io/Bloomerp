@@ -1,0 +1,10 @@
+{% load i18n %}
+<div class="max-w-2xl space-y-4">
+    <div class="space-y-2">
+        <label for="{{ form.document.id_for_label }}" class="text-sm font-medium">{{ form.document.label }}</label>
+        {{ form.document }}
+        {% for error in form.document.errors %}
+            <p class="text-sm text-danger-dark" role="alert">{{ error }}</p>
+        {% endfor %}
+    </div>
+</div>

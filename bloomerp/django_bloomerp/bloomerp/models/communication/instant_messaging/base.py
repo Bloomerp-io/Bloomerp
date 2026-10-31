@@ -13,7 +13,7 @@ from bloomerp.models.definition import (
     ActivityLogSettings,
     ApiSettings,
     BloomerpModelConfig,
-    StringSearchSettings,
+    SearchSettings,
 )
 
 
@@ -57,7 +57,7 @@ class IMModel(BloomerpModel):
         module="communication",
         is_internal=True,
         api_settings=ApiSettings(enable_auto_generation=False),
-        string_search_settings=StringSearchSettings(allow_global_search=False),
+        string_search_settings=SearchSettings(allow_global_search=False, include_search_routes=False),
         activity_log_settings=ActivityLogSettings(enabled=False),
     )
 

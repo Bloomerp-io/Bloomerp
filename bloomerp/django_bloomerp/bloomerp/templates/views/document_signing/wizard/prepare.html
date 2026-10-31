@@ -1,0 +1,8 @@
+{% load i18n %}
+<div bloomerp-component="bloomerp:signing-wizard" data-prepare-step>
+    <input type="hidden" name="preparation_id" data-wizard-preparation>
+    <input type="hidden" name="preparation_revision" data-wizard-revision>
+    <div hx-get="{{ signing_component_url }}" hx-trigger="load" hx-target="this" hx-swap="innerHTML" data-signing-component>
+        <p class="text-sm text-muted" role="status">{% trans 'Loading document…' %}</p>
+    </div>
+</div>

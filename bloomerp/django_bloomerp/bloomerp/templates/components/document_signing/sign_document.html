@@ -1,0 +1,51 @@
+{% load i18n l10n %}
+<form id="{{ component_id }}" bloomerp-component="bloomerp:sign-document" data-config-id="{{ config_id }}"
+      class="sign-document flex flex-col overflow-hidden text-sm text-gray-900" aria-label="{% trans 'Sign document' %}">
+    {% csrf_token %}
+    {{ signing_config|json_script:config_id }}
+    <header class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-3">
+        <div class="min-w-0">
+            <h3 class="truncate font-semibold">{{ signing_request.title }}</h3>
+            <p class="text-xs text-muted">{{ recipient.name }} · {{ recipient.role_label }}</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-1" data-zoom-controls role="group" aria-label="{% trans 'Zoom' %}">
+                <button type="button" class="btn btn-ghost btn-xs" data-action="zoom-out" data-zoom-control disabled aria-label="{% trans 'Zoom out' %}"><i class="fa-solid fa-minus" aria-hidden="true"></i></button>
+                <select class="select select-sm" data-zoom data-zoom-control disabled aria-label="{% trans 'Zoom' %}">
+                    <option value="fit">{% trans 'Fit width' %}</option>
+                    <option value="0.75">75%</option>
+                    <option value="1" selected>100%</option>
+                    <option value="1.25">125%</option>
+                    <option value="1.5">150%</option>
+                    <option value="2">200%</option>
+                </select>
+                <button type="button" class="btn btn-ghost btn-xs" data-action="zoom-in" data-zoom-control disabled aria-label="{% trans 'Zoom in' %}"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" data-next-field>{% trans 'Next field' %}</button>
+        </div>
+    </header>
+    <p data-signing-error hidden role="alert" class="alert alert-danger my-3"></p>
+    <div class="relative min-h-0 flex-1 overflow-auto bg-base" data-signing-viewport>
+        <p data-signing-loading class="p-4 text-muted" role="status">{% trans 'Loading document…' %}</p>
+        <div class="sign-document__pages flex flex-col items-center gap-6 p-4" data-signing-pages></div>
+    </div>
+    <div hidden data-signing-fields>
+        {% for placement, control in form.signing_fields %}
+        <div class="sign-document__field" data-signing-field data-page="{{ placement.page_number }}"
+             data-x="{{ placement.x|unlocalize }}" data-y="{{ placement.y|unlocalize }}"
+             data-width="{{ placement.width|unlocalize }}" data-height="{{ placement.height|unlocalize }}">
+            <label class="sr-only" for="{{ control.id_for_label }}">{{ control.label }}{% if control.field.required %} *{% endif %}</label>
+            {{ control }}
+        </div>
+        {% endfor %}
+    </div>
+    <footer class="shrink-0 space-y-3 border-t border-gray-200 pt-3">
+        <label class="flex items-center gap-2">{{ form.consent }} <span>{{ form.consent.label }}</span></label>
+        <div class="flex items-center justify-between gap-3">
+            <span data-signing-status class="text-xs text-muted" role="status">{% trans 'Complete your fields, then confirm your signature.' %}</span>
+            <button type="submit" class="btn btn-primary btn-sm" data-finish-signing disabled>
+                <i class="fa-solid fa-check" aria-hidden="true"></i> {% trans 'Sign document' %}
+            </button>
+        </div>
+    </footer>
+</form>

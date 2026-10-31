@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
 from django.conf import settings
+from django.conf.urls.static import static
 
 # Register generated views independently of user-owned URL extensions.
 from django.apps import apps
@@ -24,6 +25,7 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns.append(
         path("__reload__/", include("django_browser_reload.urls")),
     )

@@ -1,6 +1,6 @@
 import re
 
-from playwright.sync_api import expect
+from playwright.sync_api import Response, expect
 
 from bloomerp.models.automation.workflow import Workflow
 from bloomerp.models.automation.workflow_node import WorkflowNode
@@ -169,7 +169,8 @@ class TestWorkflowBuilderE2E(e2e.BloomerpE2ETestCase):
         self.nodes().first.dblclick()
         expect(self.page.locator('form[data-workflow-node-config-form="true"]')).to_be_visible()
 
-    def save_on_navigation(self):
+    def save_on_navigation(self) -> None:
+        """Verify navigation flushes pending graph edits through the save API."""
         self.ready()
         first = self.nodes().first
         first.click()
@@ -177,7 +178,11 @@ class TestWorkflowBuilderE2E(e2e.BloomerpE2ETestCase):
         self.page.keyboard.press("Shift+ArrowDown")
         moved_top = first.evaluate("node => parseFloat(node.style.top)")
         self.assertGreater(moved_top, previous_top)
-        with self.page.expect_response(lambda response: "/components/automation/save_workflow/" in response.url and response.request.method == "POST") as saved:
+        def is_save_response(response: Response) -> bool:
+            """Match the workflow save request initiated by leaving the editor."""
+            return "/api/workflows/save/" in response.url and response.request.method == "POST"
+
+        with self.page.expect_response(is_save_response) as saved:
             self.page.get_by_role("tab", name="Details", exact=True).click()
         self.assertEqual(saved.value.status, 200, saved.value.headers.get("location", "No redirect location"))
         self.page.get_by_role("tab", name="Builder", exact=True).click()

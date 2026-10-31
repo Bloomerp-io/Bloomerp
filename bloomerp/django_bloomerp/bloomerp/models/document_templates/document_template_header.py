@@ -9,6 +9,7 @@ from bloomerp.models.definition import (
     DetailViewSettings,
     ModelViewSettings,
 )
+from bloomerp.modules.file_management import FileManagement
 
 
 # ---------------------------------
@@ -18,6 +19,9 @@ class DocumentTemplateHeader(BloomerpModel):
     avatar = None
 
     bloomerp_config = BloomerpModelConfig(
+        module=FileManagement,
+        icon="fa fa-heading",
+        description=gettext_noop("Reusable headers for document templates"),
         model_view_settings=ModelViewSettings(
             default_dataviews=[
                 TableDataView(
