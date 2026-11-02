@@ -1,9 +1,10 @@
 # Registering MCP resources
 
-Bloomerp ships two authenticated authoring references. Their Python readers live
-directly in `bloomerp/views/mcp/authoring_references.py` and are discovered through
-the router's existing views discovery. Their Markdown documentation lives in
-`bloomerp/views/mcp/resources/`:
+Bloomerp ships three authenticated authoring references. Their readers live in
+`bloomerp/views/mcp/workflows_resource.py`, `policy_resource.py`, and
+`workspaces_resource.py`; shared helpers live in `authoring_references.py`.
+The router discovers the readers automatically. Their Markdown documentation
+lives in `bloomerp/views/mcp/resources/`:
 
 - `bloomerp://guides/create-workflow` (`application/json`) includes a construction
   guide and every current `WORKFLOW_NODE_REGISTRY` definition. Parameters come
@@ -15,6 +16,12 @@ the router's existing views discovery. Their Markdown documentation lives in
 - `bloomerp://guides/create-policy` (`text/markdown`) explains the nested policy
   API, global/row/field grants and separate user/group assignment. Permission
   actions and the row-rule schema are generated from current definitions.
+- `bloomerp://guides/create-workspace` (`application/json`) includes workspace
+  and tile model labels, a layout schema, and each registered tile type's
+  configuration schema. It does not render tiles or execute their queries.
+
+The workflow and workspace references also require global view permission for
+their respective models. The policy reference requires authentication.
 
 These resources contain authoring metadata, not saved workflow configurations,
 policy assignments or object choices. Reading a guide does not grant authority
@@ -43,17 +50,17 @@ from bloomerp.router import router
 
 
 @router.register(
-    name="Create policy guide",
-    description="Explain how to construct and assign a Bloomerp policy.",
+    name="Order policy guide",
+    description="Explain the application's order-access policies.",
     route_type="mcp_resource",
     mcp=McpResource(
-        uri="bloomerp://guides/create-policy",
+        uri="myapp://guides/order-policy",
         mime_type="text/markdown",
     ),
 )
-def create_policy_guide(request: HttpRequest) -> str:
-    """Read the packaged policy authoring guide for the authenticated caller."""
-    path = Path(__file__).parent / "resources" / "create-policy.md"
+def order_policy_guide(request: HttpRequest) -> str:
+    """Read the application's order policy guide for the authenticated caller."""
+    path = Path(__file__).parent / "resources" / "order-policy.md"
     return path.read_text(encoding="utf-8")
 ```
 

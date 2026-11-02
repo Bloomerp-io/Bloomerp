@@ -1570,7 +1570,8 @@ pre[data-text-editor-code-block] {
 */
 @layer components {
     /* Canvas background with dotted grid */
-    #drawflow {
+    #drawflow,
+    .builder-canvas {
         background-color: #f8f9fa;
         background-image: radial-gradient(circle, #d1d5db 1px, transparent 1px);
         background-size: 20px 20px;
@@ -1768,7 +1769,8 @@ pre[data-text-editor-code-block] {
 
     /* DrawFlow is generated markup, so its dark theme lives here rather than
        relying on utility classes that cannot be attached to every element. */
-    .dark #drawflow {
+    .dark #drawflow,
+    .dark .builder-canvas {
         background-color: #18181b;
         background-image: radial-gradient(circle, #3f3f46 1px, transparent 1px);
     }

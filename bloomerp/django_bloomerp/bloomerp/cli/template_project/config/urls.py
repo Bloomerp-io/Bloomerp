@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.templatetags import static
 from django.urls import include, path
 from django.conf import settings
+from django.conf.urls.static import static
 
 # Register generated views independently of user-owned URL extensions.
 from django.apps import apps

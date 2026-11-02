@@ -18,6 +18,7 @@ class TestAccessibleTablesView(BloomerpAPIViewTestCase):
     view_name = "api_sql_accessible_tables"
 
     def get_test_scenarios(self) -> list[RequestScenario]:
+        """Describe the observable behavior covered by this test case."""
         return []
 ```
 
@@ -26,13 +27,14 @@ request scenarios for the callable's behavior:
 
 ```python
 def get_test_scenarios(self) -> list[RequestScenario]:
+    """Describe the observable behavior covered by this test case."""
     return [
         RequestScenario(
             name="Returns accessible tables as JSON",
             user=self.admin_user,
             expected=ExpectedResult(
                 status_code=200,
-                response_validators=[self.is_json(), self.key_in_json("tables")],
+                response_validators=[self.is_json(), self.key_in_json("databases")],
             ),
         )
     ]

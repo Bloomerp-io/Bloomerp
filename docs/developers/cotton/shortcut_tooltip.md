@@ -13,8 +13,8 @@ Component that allows you to create shortcuts which has tooltips
 | Name | Type | Description |
 | --- | --- | --- |
 | `shortcut` | string | the actual shortcut (ex. mod+k) |
-| `action` | string | focus | click | ... (more tbd) |
-| `position` | string | bottom | top | right | left |
+| `action` | string | `focus` or `click` (default) |
+| `position` | string | `bottom`, `top`, `right`, or `left` |
 | `text` | string | optional text |
 | `target` | string | optional query selector for the element that should receive the initial action |
 | `focus_target` | string | optional query selector for the element that should be focused after the action runs |

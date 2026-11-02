@@ -1,12 +1,7 @@
 # `c-ui.center_page_element`
 
-- Tag: `<c-ui.center_page_element />`
-- Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/center_page_element.html`
+Center an empty-state or status message in the page. Supply `title`, `text`,
+and an optional icon CSS class through `icon`. Put actions in the default slot;
+use `class` for additional container classes.
 
-## Description
-
-No component docstring found.
-
-## Documentation Status
-
-Add a `{% comment %}` block at the top of the component template to populate this page.
+Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/center_page_element.html`.

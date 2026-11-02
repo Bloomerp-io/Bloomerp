@@ -13,11 +13,11 @@ Parameters:
 {% load bloomerp %}
 
 {% if url %}
-    <img src="{{ url }}" class="{{ class_name|default:'rounded-full object-cover' }}" style="height:{{ size|default:30 }}; width:{{ size|default:30 }}" alt="avatar">
+    <img src="{{ url }}" class="{{ class_name|default:'rounded-full object-cover' }}" style="height:{{ size|default:30|avatar_size }}; width:{{ size|default:30|avatar_size }}; flex-shrink:0" alt="avatar">
 {% elif object %}
     {% avatar object avatar_attribute|default:"avatar" size|default:30 class_name|default:"" %}
 {% else %}
-    <div class="{{ class_name|default:'rounded-full' }} flex items-center justify-center bg-primary-100 text-primary-800" style="height:{{ size|default:30 }}; width:{{ size|default:30 }}">
+    <div class="{{ class_name|default:'rounded-full' }} flex items-center justify-center bg-primary-100 text-primary-800" style="height:{{ size|default:30|avatar_size }}; width:{{ size|default:30|avatar_size }}; flex-shrink:0">
         <span class="text-sm font-medium">{{ initials|default:"?" }}</span>
     </div>
 {% endif %}

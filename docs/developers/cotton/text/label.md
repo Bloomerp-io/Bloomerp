@@ -1,12 +1,6 @@
 # `c-ui.text.label`
 
-- Tag: `<c-ui.text.label />`
-- Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/text/label.html`
+Render a form label from the default slot. Set `for` to the input ID and
+use `class` for additional styling.
 
-## Description
-
-No component docstring found.
-
-## Documentation Status
-
-Add a `{% comment %}` block at the top of the component template to populate this page.
+Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/text/label.html`.

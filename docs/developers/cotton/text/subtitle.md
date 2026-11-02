@@ -1,12 +1,6 @@
 # `c-ui.text.subtitle`
 
-- Tag: `<c-ui.text.subtitle />`
-- Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/text/subtitle.html`
+Render the default slot as a compact `h2` heading. Accepts `class` for
+additional styling.
 
-## Description
-
-No component docstring found.
-
-## Documentation Status
-
-Add a `{% comment %}` block at the top of the component template to populate this page.
+Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/text/subtitle.html`.

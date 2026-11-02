@@ -1,13 +1,8 @@
 # `c-ui.inputs.sql_query_editor`
 
-- Tag: `<c-ui.inputs.sql_query_editor />`
-- Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/inputs/sql_query_editor.html`
-- TypeScript component id: `sql-query-editor`
+Render the SQL catalog, editor, execution controls, and paginated results.
+`name` defaults to `query`; `value` initializes the hidden query field. The
+default slot supplies the editor textarea. Render with a request context so
+the component has a CSRF token. SQL access remains subject to server permissions.
 
-## Description
-
-No component docstring found.
-
-## Documentation Status
-
-Add a `{% comment %}` block at the top of the component template to populate this page.
+Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/inputs/sql_query_editor.html`.

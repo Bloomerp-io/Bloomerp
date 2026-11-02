@@ -201,6 +201,17 @@ def percentage(value, arg):
         return 
 
 
+@register.filter
+def avatar_size(size: int | float | str) -> str:
+    """Convert numeric avatar sizes to pixels while preserving explicit CSS units."""
+    value = str(size)
+    try:
+        float(value)
+    except ValueError:
+        return value
+    return f"{value}px"
+
+
 @register.inclusion_tag('snippets/avatar.html')
 def avatar(object:Model, avatar_attribute:str='avatar', size:int=30, class_name=''):
     '''

@@ -27,9 +27,9 @@ read directly; string coercion and lookup validation remain backend concerns.
 Applying updates the hidden `filter` input and emits the bubbling event
 `bloomerp:filters-apply` with `{filters, scope, id}`. Clearing edits the draft;
 Apply submits that empty draft. Model dataviews consume the event and send JSON
-through the `filter` query parameter. Other hosts, including the future policy
-form and workspace execution adapter, can consume this event or call
-`getFilters()` before submitting. The editor itself never executes SQL or
+through the `filter` query parameter. Workspace hosts consume the same groups;
+permission forms use the control-free mode described below. Custom hosts can
+consume the event or call `getFilters()` before submitting. The editor itself never executes SQL or
 chooses which tiles to refresh.
 
 The component is registered as `unified-filter-container`. Legacy callers of
@@ -79,18 +79,6 @@ followed by matching saved filters. Search ignores case. **Add filter** clears
 the saved identity and name, starts an empty condition group, and focuses the
 name input; Save then creates a new preset. Apply emits optional
 `filter_id` and `filter_name` alongside the grouped filters; it does not save.
-
-Focused browser verification (requires installed frontend dependencies and
-Playwright Chromium):
-
-```sh
-bloomerp/django_bloomerp/.venv/bin/python -m unittest discover \
-  -s bloomerp/django_bloomerp/bloomerp/tests/e2e/filters \
-  -p 'test_filter_container_e2e.py'
-```
-
-These tests exercise the real editor in Chromium with fixture component responses;
-they do not replace backend component tests or the pending full view E2E suites.
 
 ### Shared workspace fields
 

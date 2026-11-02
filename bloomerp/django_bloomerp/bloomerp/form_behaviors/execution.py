@@ -194,6 +194,8 @@ class BehaviorExecutor:
             return str(cleaned)
         if isinstance(cleaned, Model):
             return cleaned.pk
+        if isinstance(form_field, forms.ModelMultipleChoiceField):
+            return [instance.pk for instance in cleaned]
         return cleaned
 
     def _serialize_update_value(self, field: ApplicationField, value: Any) -> Any:

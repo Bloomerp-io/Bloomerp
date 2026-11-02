@@ -1,12 +1,6 @@
 # `c-ui.tabs.container`
 
-- Tag: `<c-ui.tabs.container />`
-- Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/tabs/container.html`
+Wrap `c-ui.tabs.item` elements in the default slot to create a horizontal
+tab list. Configure destinations and selected state on each item.
 
-## Description
-
-No component docstring found.
-
-## Documentation Status
-
-Add a `{% comment %}` block at the top of the component template to populate this page.
+Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/tabs/container.html`.

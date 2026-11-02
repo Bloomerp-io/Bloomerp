@@ -24,6 +24,7 @@ class TestAddressWidget(BloomerpWidgetTestCase[AddressWidget]):
     widget_class = AddressWidget
 
     def get_test_scenarios(self) -> list[WidgetScenario[AddressWidget]]:
+        """Describe the observable behavior covered by this test case."""
         return []
 ```
 

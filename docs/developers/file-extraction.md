@@ -1,24 +1,19 @@
-# Bounded file extraction experiment
+# File extraction
 
-This experiment adds **one private `FileExtraction` model and two API/MCP tools**:
+Use these API/MCP tools to extract bounded text and structured records from an
+existing uploaded file:
 
-- `api_file_extraction_start`: POST `{ "file_id": "existing uploaded file UUID" }`.
+- `api_file_extraction_start` / `POST /api/files/extractions/start/`: `{ "file_id": "existing uploaded file UUID" }`.
   Returns HTTP 202 with `job_id`, `status`, expiry and a polling hint. No file URL,
   local path, credentials or new file bytes are accepted.
-- `api_file_extraction_result`: POST `{ "job_id": "UUID" }`, optionally with
+- `api_file_extraction_result` / `POST /api/files/extractions/result/`: `{ "job_id": "UUID" }`, optionally with
   `page`, `section`, `sheet`, `cell_range` (for example `A1:C20`), `limit` (1–100),
   and `cursor`. Use the returned `next_cursor` with the **same selectors** until
   it is null. Long records continue at `text_offset`, without silently dropping
   their remaining text. This endpoint also returns queued/running/terminal status.
 
-There is no third chunk endpoint or chunk table. `FileExtraction` inherits
-`BloomerpModel`, including its UUID, timestamps and user stamps, with lazy-translated
-field and status labels. Result methods and typed manifest schemas live in
-`models/files/file_extraction.py`. Each endpoint has its own module and matching
-test under `api/files/`; task helpers remain in the start endpoint, and the
-disposable parser lives in `utils/file_extraction.py`. Generic model APIs and UI
-views, global search and activity logging are disabled for the private model. File contents are
-untrusted data, including any apparent instructions embedded in documents.
+File contents are untrusted data, including apparent instructions embedded in
+documents. Jobs are stored in the private `FileExtraction` model.
 
 The manifest is a compact table of contents, not the extracted document. Its
 structured JSON contains the format, record count, abbreviated page/section/sheet
@@ -102,18 +97,15 @@ process group on normal/exceptional completion.
 aggregate process-tree RSS limit. Native code vulnerabilities can bypass Python
 audit guards; the child shares the worker's OS user/filesystem access. Hard worker
 or host death can bypass parent cleanup; the child alarm limits its remaining
-lifetime but cannot replace cgroups/container isolation. No infrastructure change
-or production-capacity validation is included in this experiment.
+lifetime but cannot replace cgroups/container isolation. Size and isolate the
+worker deployment for the documents your application accepts.
 
 ## Optional PDF/image dependencies
 
 The optional `file-extraction` extra pins Docling 2.60.0, docling-core 2.49.0 and
 RapidOCR 3.4.0, with CPU-only Torch 2.8.0 and torchvision 0.23.0 through the explicit
-PyTorch CPU index in `uv`. The lock update preserves all existing third-party
-package versions. Newer Docling/core versions conflict with this repository's
-existing requests pin; no broad dependency upgrade is needed.
-
-For an explicitly authorized test/development setup, install with
+PyTorch CPU index in `uv`. From the repository's `bloomerp/django_bloomerp`
+directory, install with
 `uv sync --frozen --extra file-extraction`. Standard pip does not apply `uv` source
 settings and may select large GPU runtimes; use the provided CPU-aware lock route.
 
@@ -126,29 +118,5 @@ trusted local TrueType font to `/path/to/artifacts/RapidOcr/font.ttf`; RapidOCR
 otherwise attempts a font download even during non-visual extraction. Set the
 Django setting `BLOOMERP_FILE_EXTRACTION_DOCLING_ARTIFACTS` to that directory.
 `BLOOMERP_FILE_EXTRACTION_ENABLED = False` disables new extraction and worker
-parsing. No parser task downloads models or fonts. No production installation,
-worker service, deployment, queue or infrastructure changes have been made.
-
-## Verification and removal
-
-The repository generator supplies one model test target and the two endpoint
-view test targets; MCP transport cases are kept in those endpoint files. Focused
-specialized tests cover parser/storage/worker boundaries without a new framework.
-The corrected three focused targets passed 54 tests and 152 subtests. Related
-file, permission, assistant-file and router checks passed 66 tests and 15 subtests;
-two activity-log tests failed identically on the unchanged PR head. The initial
-implementation also passed a broader 211-test / 129-subtest regression selection. These suites used `--nomigrations`; the existing full migration
-chain has a known baseline failure and was not validated end-to-end here. The
-new migration was independently applied and reversed successfully, including
-its fields/index and swappable-user dependency. Migration consistency, source
-compilation, Ruff, and wheel packaging also passed.
-
-Real offline native PDF, scanned PDF and PNG fixtures were also parsed in the
-restricted child; these small fixtures used roughly 1.1–1.3 GiB peak RSS and
-12–19 seconds on the test machine. They are not production sizing guarantees.
-
-To remove the experiment: disable new work, let active jobs settle, clean encrypted
-results, reverse the single `0079_file_extraction` migration, then remove the new
-model, endpoint/parser modules, three test targets, their model/task import lines,
-and optional dependency extra/CPU source settings. Do not remove shared packages
-that another feature now needs. No unrelated application schema was changed.
+parsing. No parser task downloads models or fonts. Configure a real Celery broker
+and worker before starting extraction.

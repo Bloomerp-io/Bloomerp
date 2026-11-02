@@ -1,13 +1,8 @@
 # `c-ui.search_section.container`
 
-- Tag: `<c-ui.search_section.container />`
-- Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/search_section/container.html`
-- TypeScript component id: `search-section`
+Filter items in the default slot with a search input. Set
+`container_query_selector` to the item selector and `search_text_attribute` to
+the attribute containing each item's searchable text. The optional `buttons`
+slot holds actions beside the search input.
 
-## Description
-
-No component docstring found.
-
-## Documentation Status
-
-Add a `{% comment %}` block at the top of the component template to populate this page.
+Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/search_section/container.html`.

@@ -27,6 +27,7 @@ from bloomerp.tests.base import (
 
 class TestTodoEditingE2E(BloomerpE2ETestCase):
     def get_test_scenarios(self) -> list[E2ERequestScenario]:
+        """Describe the observable behavior covered by this test case."""
         todo = Todo.objects.create(title="Prepare report")
 
         return [
@@ -85,7 +86,10 @@ and swaps, navigation, focus, uploads, and complete user journeys. Server-side
 status codes, fragments, JSON, and permissions are faster and clearer in
 [view](view-test-case.md) or [component](component-test-case.md) scenarios.
 
+## Debug a browser test
 
-## Tracing e2e test
+Run from the directory containing `manage.py`, replacing the test path:
 
-pytest path/to/test_e2e.py --no-migrations --headed --slowmo 500
+```sh
+uv run pytest path/to/test_e2e.py --no-migrations --headed --slowmo 500
+```

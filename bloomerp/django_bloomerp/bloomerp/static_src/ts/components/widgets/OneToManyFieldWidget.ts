@@ -350,27 +350,44 @@ export default class OneToManyFieldWidget extends BaseWidget {
             .map((rowElement) => this.serializeRow(rowElement));
     }
 
+    /** Read embedded widget values once so their internal inputs cannot overwrite selections. */
     private serializeRow(rowElement: HTMLElement): OneToManyRowState {
         const rowData: OneToManyRowState = {};
+        const handled = new Set<string>();
+        for (const cell of rowElement.querySelectorAll<HTMLElement>("[data-one-to-many-cell]")) {
+            const fieldName = cell.dataset.oneToManyCell;
+            if (!fieldName) continue;
+            for (const root of cell.querySelectorAll<HTMLElement>(`[${componentIdentifier}]`)) {
+                const widget = getComponent(root);
+                if (!(widget instanceof BaseWidget)) continue;
+                const value = widget.getValue();
+                rowData[fieldName] = Array.isArray(value)
+                    ? value.map((item: unknown): string => String(item))
+                    : value !== null && typeof value === "object"
+                        ? JSON.stringify(value) : String(value ?? "");
+                handled.add(fieldName);
+                break;
+            }
+        }
         const fields = rowElement.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
             "input[name], textarea[name], select[name]",
         );
-        fields.forEach((field) => {
+        for (const field of fields) {
             const fieldName = this.getFieldKey(field.name);
-            if (!fieldName) return;
+            if (!fieldName || handled.has(fieldName)) continue;
 
             if (field instanceof HTMLSelectElement && field.multiple) {
-                rowData[fieldName] = Array.from(field.selectedOptions).map((option) => option.value);
-                return;
+                rowData[fieldName] = Array.from(field.selectedOptions, (option: HTMLOptionElement): string => option.value);
+                continue;
             }
 
             if (field instanceof HTMLInputElement && field.type === "checkbox") {
                 rowData[fieldName] = field.checked ? (field.value || "on") : "";
-                return;
+                continue;
             }
 
             rowData[fieldName] = field.value ?? "";
-        });
+        }
         return rowData;
     }
 

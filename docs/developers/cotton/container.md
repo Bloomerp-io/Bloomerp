@@ -1,12 +1,6 @@
 # `c-ui.container`
 
-- Tag: `<c-ui.container />`
-- Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/container.html`
+Constrain the default slot to a centered, `max-w-2xl` section. Use `class`
+to add layout classes.
 
-## Description
-
-No component docstring found.
-
-## Documentation Status
-
-Add a `{% comment %}` block at the top of the component template to populate this page.
+Source: `bloomerp/django_bloomerp/bloomerp/templates/cotton/ui/container.html`.

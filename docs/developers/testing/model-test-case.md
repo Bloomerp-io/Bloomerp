@@ -24,6 +24,7 @@ class TestInitiativeModel(BloomerpModelTestCase):
     model = Initiative
 
     def get_test_scenarios(self) -> list[ModelScenario[Initiative]]:
+        """Describe the observable behavior covered by this test case."""
         return []
 ```
 
@@ -68,6 +69,7 @@ related fixtures need the new instance as a foreign key.
 
 ```python
 def create_started_todos(self, initiative: Initiative) -> None:
+    """Create an active to-do for the initiative lifecycle scenario."""
     Todo.objects.create(
         title="Review",
         initiative=initiative,

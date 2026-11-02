@@ -72,8 +72,13 @@ The base implementation returns HTTP 400 for unsupported operations.
 Use `super().handle_action(action, request, state)` for unknown operation names:
 
 ```python
+from django.http import HttpRequest, HttpResponse
+from bloomerp.dataviews import DataviewState
+
+
 @classmethod
-def handle_action(cls, action, request, state):
+def handle_action(cls, action: str, request: HttpRequest, state: DataviewState) -> HttpResponse:
+    """Dispatch known renderer operations and delegate unsupported names."""
     if action == "more":
         return cls.render_more(request, state)
     return super().handle_action(action, request, state)
@@ -105,7 +110,7 @@ receive `DataviewState` automatically.
 
 ## End-to-end Kanban behavior
 
-Kanban currently demonstrates both paths.
+Kanban uses renderer operations for both lane loading and card movement.
 
 ### Initial render
 
@@ -123,10 +128,11 @@ Kanban currently demonstrates both paths.
 This is a renderer operation because it depends on the active Kanban options,
 the rendered preference, and the currently filtered queryset:
 
-1. `dataview_kanban_cards.html` renders an `hx-get` loader targeting
+1. `dataview_kanban_cards.html` renders an `hx-post` loader targeting
    `components_dataview_renderer_operation` with `action="column"`.
 2. Intersection triggers a request containing `kanban_column` and
-   `kanban_page`.
+   `kanban_page`; the board supplies already displayed card IDs in the POST body
+   so the renderer can select the next unseen records.
 3. The shared endpoint rebuilds the current dataview state and dispatches to
    `KanbanDataviewRenderer.handle_action("column", request, state)`.
 4. The renderer resolves the configured grouping field from `state.options`,
@@ -155,9 +161,9 @@ the resolved Kanban preference:
 4. The renderer requires row-level `change` access to the object and
    field-level `change` access to the configured grouping field. Related lane
    values are also limited to values the viewer may access.
-5. It updates the object and returns JSON. The frontend keeps the optimistic
-   move on success or restores the original column and shows an error on
-   failure.
+5. It updates the object and returns JSON containing the refreshed card HTML
+   and ordering metadata. The frontend updates that card in place, removes it if
+   it no longer matches the view, or restores the previous position on failure.
 
 Sharing a Kanban preference grants access to its board configuration, not write
 access to its records. A recipient can move a card only when their independent
@@ -174,17 +180,18 @@ separate reusable capability.
 The following renderer loads another page of a renderer-specific fragment:
 
 ```python
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 
-from bloomerp.dataviews import BaseDataviewRenderer
+from bloomerp.dataviews import BaseDataviewRenderer, DataviewState
 
 
 class TimelineDataviewRenderer(BaseDataviewRenderer):
     reserved_query_params = {"timeline_page"}
 
     @classmethod
-    def handle_action(cls, action, request, state) -> HttpResponse:
+    def handle_action(cls, action: str, request: HttpRequest, state: DataviewState) -> HttpResponse:
+        """Render another page without changing the selected preference."""
         if action != "page":
             return super().handle_action(action, request, state)
         if request.method != "GET":
@@ -208,20 +215,11 @@ class TimelineDataviewRenderer(BaseDataviewRenderer):
         )
 ```
 
-The corresponding template can call the shared dispatcher without defining a
-new Django route:
-
-```django
-{% url 'components_dataview_renderer_operation' content_type_id=content_type_id preference_id=preference.pk action='page' as next_page_url %}
-
-<button
-    hx-get="{{ next_page_url }}?timeline_page={{ page_obj.next_page_number }}"
-    hx-target="#timeline-rows"
-    hx-swap="beforeend"
->
-    Load more
-</button>
-```
+Build pagination links against `components_dataview_renderer_operation` with
+`content_type_id`, `preference_id`, and `action`. Preserve the active search and
+filter query parameters and any `_dataview_operation_context` token. Only
+replace the renderer's own pagination parameter. Use the built-in Kanban loader
+as a reference for carrying this state into subsequent requests.
 
 ## Implementing a mutation operation
 
@@ -240,7 +238,7 @@ operation must establish write authorization separately:
    set; do not silently update only the permitted subset.
 
 Calendar and Gantt `dates` operations are the reference implementations for
-batch mutation behavior. The standalone Kanban move endpoint demonstrates the
+batch mutation behavior. Kanban's `move` renderer operation demonstrates the
 equivalent object- and field-permission checks for a single-object update.
 
 ## Configured toolbar actions are different
