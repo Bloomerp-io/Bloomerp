@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-10-19 11:11+0000\n"
+"POT-Creation-Date: 2026-11-02 10:55+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: nl\n"
@@ -18,6 +18,14 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.16.0\n"
+
+#: static_src/ts/components/document_signing/SignDocument.ts:89
+msgid "A PDF page could not be displayed. Reopen the signing window."
+msgstr "Een PDF-pagina kon niet worden weergegeven. Open het ondertekenvenster opnieuw."
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:242
+msgid "A PDF page could not be rendered."
+msgstr "Een PDF-pagina kon niet worden gerenderd."
 
 #: static_src/ts/components/filters/SavedFilters.ts:193
 msgid "A filter name is required."
@@ -38,13 +46,22 @@ msgstr "EN"
 msgid "Action"
 msgstr "Actie"
 
-#: static_src/ts/components/inputs/BehaviorBuilder.ts:268 static_src/ts/utils/contextMenu.ts:157
+#: static_src/ts/components/inputs/BehaviorBuilder.ts:268
+#: static_src/ts/components/text_editor/actionMenu.ts:77 static_src/ts/utils/contextMenu.ts:157
 msgid "Actions"
 msgstr "Acties"
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:595
+msgid "Add a role first."
+msgstr "Voeg eerst een rol toe."
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:269
 msgid "Add action"
 msgstr "Actie toevoegen"
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:827
+msgid "Add at least one role."
+msgstr "Voeg ten minste één rol toe."
 
 #: static_src/ts/components/filters/FilterContainer.ts:122
 msgid "Add condition"
@@ -63,6 +80,23 @@ msgstr "Groep toevoegen"
 msgid "Add row below"
 msgstr "Rij hieronder toevoegen"
 
+#: static_src/ts/components/text_editor/formattingActions.ts:22
+msgid "Align center"
+msgstr "Centreren"
+
+#: static_src/ts/components/text_editor/formattingActions.ts:22
+msgid "Align left"
+msgstr "Links uitlijnen"
+
+#: static_src/ts/components/text_editor/formattingActions.ts:23
+msgid "Align right"
+msgstr "Rechts uitlijnen"
+
+#: static_src/ts/components/text_editor/actionMenu.ts:74
+#: static_src/ts/components/text_editor/actionToolbar.ts:69
+msgid "Alignment"
+msgstr "Uitlijning"
+
 #: static_src/ts/components/PermissionsTable.ts:440
 msgid "All objects"
 msgstr "Alle objecten"
@@ -72,17 +106,31 @@ msgstr "Alle objecten"
 msgid "All rows"
 msgstr "Alle rijen"
 
-#: static_src/ts/components/communication/Calling.ts:103
+#: static_src/ts/components/communication/Calling.ts:378
 msgid "Allow pop-ups to open the call tab. Your call controls are available here."
 msgstr "Sta pop-ups toe om het oproeptabblad te openen. Je oproepbediening is hier beschikbaar."
 
+#: static_src/ts/components/communication/Calling.ts:735
+msgid "Answered on another tab or device"
+msgstr "Beantwoord op een ander tabblad of apparaat"
+
 #: static_src/ts/components/filters/FilterContainer.ts:69
+#: static_src/ts/components/text_editor/utils/colorPicker.ts:32
+#: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:285
 msgid "Apply"
 msgstr "Toepassen"
+
+#: static_src/ts/components/document_signing/SendSignatureRequest.ts:116
+msgid "Assigning recipients…"
+msgstr "Ontvangers toewijzen…"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:299
 msgid "Attachment"
 msgstr "Bijlage"
+
+#: static_src/ts/components/communication/Calling.ts:282
+msgid "Audio call"
+msgstr "Audiogesprek"
 
 #: static_src/ts/components/inbox/CalendarAvailability.ts:64
 msgid "Availability could not be loaded."
@@ -93,7 +141,19 @@ msgstr "Beschikbaarheid kon niet worden geladen."
 msgid "Availability unavailable"
 msgstr "Beschikbaarheid niet beschikbaar"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:392
+#: static_src/ts/components/communication/Calling.ts:251
+msgid "Available"
+msgstr "Beschikbaar"
+
+#: static_src/ts/components/communication/Calling.ts:248
+msgid "Available in another tab"
+msgstr "Beschikbaar op een ander tabblad"
+
+#: static_src/ts/components/communication/Calling.ts:251
+msgid "Available — enable ringtone sound"
+msgstr "Beschikbaar — schakel het belgeluid in"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:395
 #: static_src/ts/utils/contextMenu.ts:164
 msgid "Back"
 msgstr "Terug"
@@ -121,11 +181,16 @@ msgstr "De revisie van het gedragsantwoord komt niet overeen met het concept."
 msgid "Behavior target '{field}' is not rendered."
 msgstr "Gedragsdoel '{field}' wordt niet weergegeven."
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:431
+#: static_src/ts/components/text_editor/formattingActions.ts:124
 msgid "Blue"
 msgstr "Blauw"
 
-#: static_src/ts/components/text_editor/actions.ts:222
+#: static_src/ts/components/text_editor/formattingActions.ts:17
+msgid "Bold"
+msgstr "Vet"
+
+#: static_src/ts/components/text_editor/formattingActions.ts:20
 msgid "Bullet List"
 msgstr "Opsomming"
 
@@ -134,63 +199,102 @@ msgstr "Opsomming"
 msgid "Busy"
 msgstr "Bezet"
 
-#: static_src/ts/components/inbox/InboxCalendarOverlay.ts:66
+#: static_src/ts/components/inbox/InboxCalendarOverlay.ts:76
 msgid "Calendar selections could not be saved. Please try again."
 msgstr "Agenda-keuzes konden niet worden opgeslagen. Probeer het opnieuw."
 
-#: static_src/ts/components/communication/Calling.ts:373
+#: static_src/ts/components/communication/Calling.ts:281
+msgid "Call"
+msgstr "Bellen"
+
+#: static_src/ts/components/communication/Calling.ts:423
+msgid "Call declined"
+msgstr "Oproep geweigerd"
+
+#: static_src/ts/components/communication/Calling.ts:746
 msgid "Call disconnected"
 msgstr "Oproep verbroken"
 
-#: static_src/ts/components/communication/Calling.ts:151
-#: static_src/ts/components/communication/Calling.ts:361
+#: static_src/ts/components/communication/Calling.ts:439
+#: static_src/ts/components/communication/Calling.ts:735
 msgid "Call ended"
 msgstr "Gesprek beëindigd"
 
-#: static_src/ts/components/communication/Calling.ts:374
+#: static_src/ts/components/communication/Calling.ts:219
+msgid "Call handled in another tab"
+msgstr "Oproep afgehandeld in een ander tabblad"
+
+#: static_src/ts/components/communication/Calling.ts:256
+#: static_src/ts/components/communication/Calling.ts:754
 msgid "Call in progress"
 msgstr "Gesprek gaande"
 
-#: static_src/ts/components/communication/Calling.ts:188
+#: static_src/ts/components/communication/Calling.ts:478
 msgid "Call not connected"
 msgstr "Oproep niet verbonden"
 
-#: static_src/ts/components/communication/Calling.ts:384
+#: static_src/ts/components/communication/Calling.ts:765
 msgid "Calling failed. Check your connection and access, then try again."
 msgstr "Bellen is mislukt. Controleer je verbinding en toegang en probeer het opnieuw."
 
-#: static_src/ts/components/communication/Calling.ts:189
+#: static_src/ts/components/communication/Calling.ts:480
 msgid "Calling is unavailable."
 msgstr "Bellen is niet beschikbaar."
 
+#: static_src/ts/components/communication/Calling.ts:258
+msgid "Calls"
+msgstr "Oproepen"
+
+#: static_src/ts/components/text_editor/utils/colorPicker.ts:25
 #: static_src/ts/components/text_editor/utils/linkPicker.ts:48
+#: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:281
 msgid "Cancel"
 msgstr "Annuleren"
 
-#: static_src/ts/components/text_editor/actions.ts:234
+#: static_src/ts/components/text_editor/formattingActions.ts:21
 msgid "Checklist"
 msgstr "Checklist"
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:441
+msgid "Choose document template"
+msgstr "Documentsjabloon kiezen"
+
+#: static_src/ts/components/inbox/EmailRecipients.ts:137
+msgid "Choose one email address for this role."
+msgstr "Kies één e-mailadres voor deze rol."
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:442
+msgid "Choose revision"
+msgstr "Revisie kiezen"
 
 #: static_src/ts/components/filters/FilterContainer.ts:74
 msgid "Clear"
 msgstr "Wissen"
 
+#: static_src/ts/components/text_editor/formattingActions.ts:18
+msgid "Clear formatting"
+msgstr "Opmaak wissen"
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:599
+msgid "Click a page to place the selected field"
+msgstr "Klik op een pagina om het geselecteerde veld te plaatsen"
+
 #: static_src/ts/utils/modals.ts:44
 msgid "Close"
 msgstr "Sluiten"
 
-#: static_src/ts/components/text_editor/actions.ts:181
+#: static_src/ts/components/text_editor/formattingActions.ts:20
 msgid "Code Block"
 msgstr "Codeblok"
-
-#: static_src/ts/components/communication/Calling.ts:74
-msgid "Collapse call controls"
-msgstr "Gespreksbediening inklappen"
 
 #: static_src/ts/components/filters/FilterContainer.ts:106
 #: static_src/ts/components/filters/FilterContainer.ts:155
 msgid "Collapse group"
 msgstr "Groep inklappen"
+
+#: static_src/ts/components/text_editor/utils/colorPicker.ts:14
+msgid "Color"
+msgstr "Kleur"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:207
 msgid "Complete every action and wait for its configuration to load."
@@ -209,9 +313,18 @@ msgstr "Voorwaardengroep"
 msgid "Conditions"
 msgstr "Voorwaarden"
 
+#: static_src/ts/components/communication/Calling.ts:250
+#: static_src/ts/components/communication/Calling.ts:727
+msgid "Connecting…"
+msgstr "Verbinden…"
+
 #: static_src/ts/components/communication/MeetingLobby.ts:44
 msgid "Connection interrupted. Retrying…"
 msgstr "Verbinding onderbroken. Opnieuw proberen…"
+
+#: static_src/ts/utils/clipboard.ts:9
+msgid "Copied to clipboard."
+msgstr "Gekopieerd naar het klembord."
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:151
 msgid "Could not load action configuration."
@@ -241,25 +354,64 @@ msgstr "De oorspronkelijke filters herstellen is niet gelukt. Wis ze om opnieuw 
 msgid "Create label"
 msgstr "Label aanmaken"
 
+#: static_src/ts/components/document_signing/PrepareSign.ts:442
+msgid "Current draft"
+msgstr "Huidig concept"
+
+#: static_src/ts/components/text_editor/formattingActions.ts:125
+msgid "Custom color…"
+msgstr "Aangepaste kleur…"
+
+#: static_src/ts/components/text_editor/utils/colorPicker.ts:9
+msgid "Custom text color"
+msgstr "Aangepaste tekstkleur"
+
+#: static_src/ts/components/text_editor/formattingActions.ts:23
+msgid "Decrease indent"
+msgstr "Inspringing verkleinen"
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:448
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:81
+#: static_src/ts/components/text_editor/formattingActions.ts:122
+#: static_src/ts/components/text_editor/formattingActions.ts:131
 msgid "Default"
 msgstr "Standaard"
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:568
+msgid "Default layout saved"
+msgstr "Standaardindeling opgeslagen"
 
 #: static_src/ts/components/SelectPreference.ts:73
 msgid "Delete {preference}"
 msgstr "{preference} verwijderen"
 
-#: static_src/ts/components/inbox/EmailEditor.ts:155
+#: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:269
+msgid "Diagram preview"
+msgstr "Diagramvoorbeeld"
+
+#: static_src/ts/components/DocumentTemplateBuilder.ts:679
+msgid "Document preview"
+msgstr "Documentvoorbeeld"
+
+#: static_src/ts/components/text_editor/nodes/MermaidNode.ts:108
+msgid "Double-click to edit diagram"
+msgstr "Dubbelklik om het diagram te bewerken"
+
+#: static_src/ts/components/inbox/EmailEditor.ts:168
 msgid "Draft attachments cannot exceed 20 MB in total."
 msgstr "Bijlagen bij een concept mogen in totaal niet groter zijn dan 20 MB."
 
-#: static_src/ts/components/inbox/EmailEditor.ts:179
+#: static_src/ts/components/inbox/EmailEditor.ts:193
 msgid "Draft saved."
 msgstr "Concept opgeslagen."
 
 #: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:365
 msgid "Drag row"
 msgstr "Rij verslepen"
+
+#: static_src/ts/components/document_signing/SignaturePad.ts:160
+msgid "Draw signature"
+msgstr "Handtekening tekenen"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:322
 msgid "Each behavior needs at least one action."
@@ -269,29 +421,37 @@ msgstr "Elk gedrag vereist ten minste één actie."
 msgid "Edit"
 msgstr "Bewerken"
 
-#: static_src/ts/components/inbox/EmailEditor.ts:304
+#: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:223
+msgid "Edit Mermaid diagram"
+msgstr "Mermaid-diagram bewerken"
+
+#: static_src/ts/components/inbox/EmailEditor.ts:326
 msgid "Email operation failed. Your edits are still here; please try again."
 msgstr "De e-mailbewerking is mislukt. Je wijzigingen zijn er nog; probeer het opnieuw."
+
+#: static_src/ts/components/communication/Calling.ts:521
+msgid "Enable sound to hear the call."
+msgstr "Schakel geluid in om de oproep te horen."
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:245
 msgid "Enabled"
 msgstr "Ingeschakeld"
 
+#: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:315
+msgid "Enter Mermaid source to create a diagram."
+msgstr "Voer Mermaid-broncode in om een diagram te maken."
+
 #: static_src/ts/components/filters/ConditionEditor.ts:94
 msgid "Enter a single field key."
 msgstr "Voer één veldsleutel in."
 
-#: static_src/ts/components/inbox/EmailRecipients.ts:166
+#: static_src/ts/components/inbox/EmailRecipients.ts:183
 msgid "Enter a valid email address or remove the invalid recipient."
 msgstr "Voer een geldig e-mailadres in of verwijder de ongeldige ontvanger."
 
 #: static_src/ts/components/text_editor/utils/linkPicker.ts:67
 msgid "Enter a valid http, https, mailto, or tel URL."
 msgstr "Voer een geldige http-, https-, mailto- of tel-URL in."
-
-#: static_src/ts/components/communication/Calling.ts:74
-msgid "Expand call controls"
-msgstr "Gespreksbediening uitklappen"
 
 #: static_src/ts/components/filters/FilterContainer.ts:155
 msgid "Expand group"
@@ -305,7 +465,7 @@ msgstr "Veld"
 msgid "Field reference"
 msgstr "Veldverwijzing"
 
-#: static_src/ts/components/text_editor/utils/referencePicker.ts:16
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:18
 msgid "File upload failed"
 msgstr "Bestand uploaden mislukt"
 
@@ -330,6 +490,14 @@ msgstr "Filternaam"
 msgid "Filter scope is missing."
 msgstr "Filterscope ontbreekt."
 
+#: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:323
+msgid "Fix the source to preview this diagram."
+msgstr "Corrigeer de broncode om een voorbeeld van dit diagram te bekijken."
+
+#: static_src/ts/components/text_editor/formattingActions.ts:22
+msgid "Font size"
+msgstr "Tekengrootte"
+
 #: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:202
 msgid "Form behaviors changed each other repeatedly. Check for a cycle in the configured behaviors."
 msgstr ""
@@ -340,27 +508,36 @@ msgstr ""
 msgid "Form fields"
 msgstr "Formuliervelden"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:425
+#: static_src/ts/components/document_signing/PrepareSign.ts:831
+msgid "Give every signer role a name."
+msgstr "Geef elke ondertekenaarsrol een naam."
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:842
+msgid "Give this signature request a title."
+msgstr "Geef dit ondertekenverzoek een titel."
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
 msgid "Gray"
 msgstr "Grijs"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:427
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:430
+#: static_src/ts/components/text_editor/formattingActions.ts:123
 msgid "Green"
 msgstr "Groen"
 
-#: static_src/ts/components/text_editor/actions.ts:268
+#: static_src/ts/components/text_editor/actions.ts:136
 msgid "HTML"
 msgstr "HTML"
 
-#: static_src/ts/components/text_editor/actions.ts:187
+#: static_src/ts/components/text_editor/formattingActions.ts:19
 msgid "Heading 1"
 msgstr "Kop 1"
 
-#: static_src/ts/components/text_editor/actions.ts:193
+#: static_src/ts/components/text_editor/formattingActions.ts:19
 msgid "Heading 2"
 msgstr "Kop 2"
 
-#: static_src/ts/components/text_editor/actions.ts:199
+#: static_src/ts/components/text_editor/formattingActions.ts:19
 msgid "Heading 3"
 msgstr "Kop 3"
 
@@ -368,32 +545,63 @@ msgstr "Kop 3"
 msgid "Hide behavior"
 msgstr "Gedrag verbergen"
 
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:389
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:390
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:452
 msgid "Hide formatting toolbar"
 msgstr "Opmaakwerkbalk verbergen"
 
-#: static_src/ts/components/text_editor/actions.ts:205
-#: static_src/ts/components/text_editor/utils/referencePicker.ts:146
+#: static_src/ts/components/text_editor/formattingActions.ts:18
+msgid "Highlight"
+msgstr "Markeren"
+
+#: static_src/ts/components/text_editor/actions.ts:116
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:151
 msgid "Image"
 msgstr "Afbeelding"
 
-#: static_src/ts/components/communication/Calling.ts:349
-#: static_src/ts/components/communication/Calling.ts:366
+#: static_src/ts/components/communication/Calling.ts:256
+#: static_src/ts/components/communication/Calling.ts:317
 msgid "Incoming call"
 msgstr "Inkomende oproep"
 
-#: static_src/ts/components/communication/Calling.ts:315
+#: static_src/ts/components/communication/Calling.ts:256
+msgid "Incoming call — enable ringtone sound"
+msgstr "Inkomende oproep — schakel het beltoongeluid in"
+
+#: static_src/ts/components/communication/Calling.ts:634
 msgid "Incoming calling is unavailable."
 msgstr "Inkomende oproepen zijn niet beschikbaar."
 
-#: static_src/ts/components/communication/Calling.ts:334
+#: static_src/ts/components/communication/Calling.ts:696
 msgid "Incoming calling is unavailable. Check your connection and access."
 msgstr "Inkomende oproepen zijn niet beschikbaar. Controleer je verbinding en toegang."
+
+#: static_src/ts/components/communication/Calling.ts:186
+msgid "Incoming calls disabled"
+msgstr "Inkomende oproepen uitgeschakeld"
+
+#: static_src/ts/components/text_editor/formattingActions.ts:23
+msgid "Increase indent"
+msgstr "Inspringing vergroten"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:248
 msgid "Initial load and change"
 msgstr "Bij eerste keer laden en bij wijzigingen"
+
+#: static_src/ts/components/text_editor/formattingActions.ts:18
+msgid "Inline code"
+msgstr "Inline code"
+
+#: static_src/ts/components/text_editor/actionMenu.ts:76
+msgid "Insert"
+msgstr "Invoegen"
+
+#: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:223
+msgid "Insert Mermaid diagram"
+msgstr "Mermaid-diagram invoegen"
+
+#: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:285
+msgid "Insert diagram"
+msgstr "Diagram invoegen"
 
 #: static_src/ts/components/text_editor/utils/linkPicker.ts:24
 #: static_src/ts/components/text_editor/utils/linkPicker.ts:55
@@ -404,7 +612,7 @@ msgstr "Link invoegen"
 msgid "Invalid behavior configuration: expected version 1 with a behaviors list."
 msgstr "Ongeldige gedragsconfiguratie: versie 1 met een lijst met gedragingen verwacht."
 
-#: static_src/ts/components/communication/Calling.ts:380
+#: static_src/ts/components/communication/Calling.ts:761
 msgid "Invalid call endpoint."
 msgstr "Ongeldig oproepeindpunt."
 
@@ -412,23 +620,31 @@ msgstr "Ongeldig oproepeindpunt."
 msgid "Invalid row policy"
 msgstr "Ongeldig rijbeleid"
 
-#: static_src/ts/components/communication/Calling.ts:197
+#: static_src/ts/components/text_editor/formattingActions.ts:17
+msgid "Italic"
+msgstr "Cursief"
+
+#: static_src/ts/components/communication/Calling.ts:489
 msgid "Joining call…"
 msgstr "Deelnemen aan oproep…"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:452
+#: static_src/ts/components/text_editor/formattingActions.ts:23
+msgid "Justify"
+msgstr "Uitvullen"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:455
 msgid "Label could not be created"
 msgstr "Label kon niet worden aangemaakt"
 
-#: static_src/ts/components/communication/Calling.ts:119
+#: static_src/ts/components/communication/Calling.ts:392
 msgid "Leave or dismiss the current call first."
 msgstr "Verlaat of sluit eerst de huidige oproep."
 
-#: static_src/ts/components/communication/Calling.ts:132
+#: static_src/ts/components/communication/Calling.ts:411
 msgid "Leave the current call first."
 msgstr "Verlaat eerst de huidige oproep."
 
-#: static_src/ts/components/text_editor/actions.ts:168
+#: static_src/ts/components/text_editor/actions.ts:101
 msgid "Link"
 msgstr "Link"
 
@@ -440,6 +656,15 @@ msgstr "Link-URL"
 msgid "Link name"
 msgstr "Linknaam"
 
+#: static_src/ts/components/text_editor/actionMenu.ts:73
+#: static_src/ts/components/text_editor/actionToolbar.ts:68
+msgid "Lists"
+msgstr "Lijsten"
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:535
+msgid "Loaded revision"
+msgstr "Revisie geladen"
+
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:138
 msgid "Loading configuration…"
 msgstr "Configuratie laden…"
@@ -449,6 +674,7 @@ msgid "Loading saved filters…"
 msgstr "Opgeslagen filters laden…"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:146
+#: static_src/ts/components/document_signing/PrepareSign.ts:902
 #: static_src/ts/components/widgets/ForeignFieldWidget.ts:202 static_src/ts/utils/contextMenu.ts:260
 #: static_src/ts/utils/contextMenu.ts:271
 msgid "Loading…"
@@ -462,20 +688,44 @@ msgstr "Opzoeken"
 msgid "Match conditions"
 msgstr "Voorwaarden overeen laten komen"
 
-#: static_src/ts/components/communication/Calling.ts:181
+#: static_src/ts/components/communication/Calling.ts:469
 msgid "Meeting link copied"
 msgstr "Vergaderlink gekopieerd"
 
-#: static_src/ts/components/text_editor/actions.ts:212
-#: static_src/ts/components/text_editor/utils/referencePicker.ts:146
+#: static_src/ts/components/text_editor/actions.ts:126
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:151
 msgid "Mention"
 msgstr "Vermelden"
 
-#: static_src/ts/components/text_editor/utils/referencePicker.ts:65
-#: static_src/ts/components/text_editor/utils/referencePicker.ts:78
-#: static_src/ts/components/text_editor/utils/referencePicker.ts:82
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:70
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:83
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:87
 msgid "Mention suggestions"
 msgstr "Suggesties voor vermeldingen"
+
+#: static_src/ts/components/text_editor/tableActions.ts:115
+msgid "Merge cells"
+msgstr "Cellen samenvoegen"
+
+#: static_src/ts/components/text_editor/utils/tableControls.ts:350
+msgid "Merged cells must be separated before changing rows or columns"
+msgstr "Samengevoegde cellen moeten worden gesplitst voordat u rijen of kolommen wijzigt"
+
+#: static_src/ts/components/text_editor/actions.ts:85 static_src/ts/utils/mermaidDisplay.ts:22
+msgid "Mermaid diagram"
+msgstr "Mermaid-diagram"
+
+#: static_src/ts/components/text_editor/nodes/MermaidNode.ts:107
+msgid "Mermaid diagram. Press Enter to edit."
+msgstr "Mermaid-diagram. Druk op Enter om te bewerken."
+
+#: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:242
+msgid "Mermaid source"
+msgstr "Mermaid-broncode"
+
+#: static_src/ts/components/communication/Calling.ts:331
+msgid "Missed call"
+msgstr "Gemiste oproep"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:98
 msgid "Move action down"
@@ -493,9 +743,18 @@ msgstr "Gedrag omlaag verplaatsen"
 msgid "Move behavior up"
 msgstr "Gedrag omhoog verplaatsen"
 
-#: static_src/ts/components/communication/Calling.ts:321
-msgid "No incoming call accounts are available"
-msgstr "Er zijn geen accounts voor inkomende oproepen beschikbaar"
+#: static_src/ts/components/communication/Calling.ts:266
+msgid "Mute ringtone"
+msgstr "Beltoon dempen"
+
+#: static_src/ts/components/communication/Calling.ts:63
+msgid "No active call"
+msgstr "Geen actief gesprek"
+
+#: static_src/ts/components/communication/Calling.ts:306
+#: static_src/ts/components/communication/Calling.ts:727
+msgid "No answer"
+msgstr "Geen antwoord"
 
 #: static_src/ts/components/data_view_components/KanbanBoard.ts:453
 msgid "No items"
@@ -514,8 +773,8 @@ msgid "No readable attendee calendars."
 msgstr "Geen leesbare agenda's van deelnemers."
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:182
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:445
-#: static_src/ts/components/widgets/ForeignFieldWidget.ts:418
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:448
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:434
 msgid "No results"
 msgstr "Geen resultaten"
 
@@ -532,11 +791,15 @@ msgstr "Geen rijen"
 msgid "No saved filters yet."
 msgstr "Nog geen opgeslagen filters."
 
+#: static_src/ts/components/document_signing/PrepareSign.ts:441
+msgid "No saved revisions"
+msgstr "Geen opgeslagen revisies"
+
 #: static_src/ts/components/inbox/CalendarAvailability.ts:119
 msgid "No visible conflicts"
 msgstr "Geen zichtbare conflicten"
 
-#: static_src/ts/components/text_editor/actions.ts:228
+#: static_src/ts/components/text_editor/formattingActions.ts:21
 msgid "Numbered List"
 msgstr "Genummerde lijst"
 
@@ -544,14 +807,22 @@ msgstr "Genummerde lijst"
 msgid "OR"
 msgstr "OF"
 
-#: static_src/ts/components/text_editor/actions.ts:217
-#: static_src/ts/components/text_editor/utils/referencePicker.ts:146
+#: static_src/ts/components/text_editor/actions.ts:131
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:151
 msgid "Object"
 msgstr "Object"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:158
 msgid "Objects"
 msgstr "Objecten"
+
+#: static_src/ts/components/communication/Calling.ts:245
+msgid "Offline"
+msgstr "Offline"
+
+#: static_src/ts/components/communication/Calling.ts:249
+msgid "Offline — reconnecting"
+msgstr "Offline — opnieuw verbinden"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:248
 msgid "On change"
@@ -561,17 +832,39 @@ msgstr "Bij wijziging"
 msgid "On initial load"
 msgstr "Bij eerste keer laden"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:426
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:429
+#: static_src/ts/components/text_editor/formattingActions.ts:123
 msgid "Orange"
 msgstr "Oranje"
+
+#: static_src/ts/components/document_signing/PdfViewer.ts:105
+msgid "Page"
+msgstr "Pagina"
+
+#: static_src/ts/components/text_editor/DocumentTemplateTextEditor.ts:24
+#: static_src/ts/components/text_editor/nodes/PageBreakNode.ts:64
+msgid "Page break"
+msgstr "Pagina-einde"
+
+#: static_src/ts/components/text_editor/formattingActions.ts:19
+msgid "Paragraph"
+msgstr "Alinea"
 
 #: static_src/ts/components/PermissionsTable.ts:388
 msgid "Permission required"
 msgstr "Machtiging vereist"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:429
+#: static_src/ts/components/communication/Calling.ts:282
+msgid "Phone call"
+msgstr "Telefoongesprek"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:432
 msgid "Pink"
 msgstr "Roze"
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:230
+msgid "Place a field on page"
+msgstr "Plaats een veld op de pagina"
 
 #: static_src/ts/components/filters/widget.ts:36
 msgid "Please check the filter value."
@@ -585,24 +878,51 @@ msgstr "Selecteer ten minste één machtiging voor het rijbeleid."
 msgid "Preference"
 msgstr "Voorkeur"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
+#: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:264
+msgid "Preview"
+msgstr "Voorbeeld"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:431
+#: static_src/ts/components/text_editor/formattingActions.ts:124
 msgid "Purple"
 msgstr "Paars"
 
-#: static_src/ts/components/communication/Calling.ts:321
-msgid "Ready for incoming calls"
-msgstr "Gereed voor inkomende oproepen"
+#: static_src/ts/components/text_editor/formattingActions.ts:20
+msgid "Quote"
+msgstr "Citaat"
 
-#: static_src/ts/components/communication/Calling.ts:374
+#: static_src/ts/components/document_signing/SignDocument.ts:166
+msgid "Ready to retry"
+msgstr "Klaar om opnieuw te proberen"
+
+#: static_src/ts/components/document_signing/SendSignatureRequest.ts:122
+msgid "Recipients assigned."
+msgstr "Ontvangers toegewezen."
+
+#: static_src/ts/components/communication/Calling.ts:754
 msgid "Reconnecting…"
 msgstr "Opnieuw verbinden…"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:425
+#: static_src/ts/components/document_signing/SignDocument.ts:143
+msgid "Recording your signature…"
+msgstr "Je handtekening wordt vastgelegd…"
+
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
+#: static_src/ts/components/text_editor/formattingActions.ts:122
 msgid "Red"
 msgstr "Rood"
 
+#: static_src/ts/components/text_editor/actions.ts:96
+msgid "Redo"
+msgstr "Opnieuw"
+
+#: static_src/ts/components/document_signing/SignaturePad.ts:160
+msgid "Redraw signature"
+msgstr "Handtekening opnieuw tekenen"
+
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:314
 #: static_src/ts/components/filters/RenderedFilter.ts:94
+#: static_src/ts/components/text_editor/nodes/PageBreakNode.ts:67
 msgid "Remove"
 msgstr "Verwijderen"
 
@@ -622,25 +942,63 @@ msgstr "Voorwaarde verwijderen"
 msgid "Remove group"
 msgstr "Groep verwijderen"
 
+#: static_src/ts/components/text_editor/nodes/PageBreakNode.ts:68
+msgid "Remove page break"
+msgstr "Pagina-einde verwijderen"
+
 #: static_src/ts/components/inbox/EmailRecipients.ts:119
 msgid "Remove recipient"
 msgstr "Ontvanger verwijderen"
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:309
+msgid "Remove role and its fields"
+msgstr "Rol en bijbehorende velden verwijderen"
 
 #: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:366
 msgid "Remove row"
 msgstr "Rij verwijderen"
 
-#: static_src/ts/components/widgets/ForeignFieldWidget.ts:530
+#: static_src/ts/components/widgets/ForeignFieldWidget.ts:547
 msgid "Remove {label}"
 msgstr "{label} verwijderen"
 
-#: static_src/ts/components/ResizableDiv.ts:368
+#: static_src/ts/components/text_editor/nodes/MermaidNode.ts:50
+#: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:313
+msgid "Rendering diagram…"
+msgstr "Diagram renderen…"
+
+#: static_src/ts/components/text_editor/utils/tableColumnResizing.ts:161
+msgid "Resize column"
+msgstr "Kolomformaat aanpassen"
+
+#: static_src/ts/components/ResizableDiv.ts:372
 msgid "Resize panel"
 msgstr "Paneel vergroten/verkleinen"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:162
 msgid "Retry"
 msgstr "Opnieuw proberen"
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:535
+msgid "Review the field positions before signing."
+msgstr "Controleer de veldposities voordat je ondertekent."
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:448
+#: static_src/ts/components/document_signing/PrepareSign.ts:568
+msgid "Revision"
+msgstr "Revisie"
+
+#: static_src/ts/components/communication/Calling.ts:754
+msgid "Ringing…"
+msgstr "Gaat over…"
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:267
+msgid "Role"
+msgstr "Rol"
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:324
+msgid "Role name"
+msgstr "Rolnaam"
 
 #: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:363
 msgid "Row title"
@@ -664,15 +1022,15 @@ msgstr "Filter opslaan"
 msgid "Saved filters"
 msgstr "Opgeslagen filters"
 
-#: static_src/ts/components/inbox/EmailEditor.ts:90
+#: static_src/ts/components/inbox/EmailEditor.ts:103
 msgid "Saving draft…"
 msgstr "Concept opslaan…"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:399
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:402
 msgid "Search colors"
 msgstr "Kleuren zoeken"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:398
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:401
 msgid "Search colors…"
 msgstr "Kleuren zoeken…"
 
@@ -692,11 +1050,11 @@ msgstr "Opgeslagen filters zoeken"
 msgid "Search templates"
 msgstr "Sjablonen zoeken"
 
-#: static_src/ts/components/text_editor/utils/referencePicker.ts:81
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:86
 msgid "Search unavailable"
 msgstr "Zoeken niet beschikbaar"
 
-#: static_src/ts/components/inbox/EmailRecipients.ts:266
+#: static_src/ts/components/inbox/EmailRecipients.ts:283
 msgid "Searching email addresses…"
 msgstr "E-mailadressen zoeken…"
 
@@ -704,13 +1062,18 @@ msgstr "E-mailadressen zoeken…"
 msgid "Searching…"
 msgstr "Zoeken…"
 
-#: static_src/ts/components/text_editor/utils/referencePicker.ts:146
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:151
 msgid "Search…"
 msgstr "Zoeken…"
 
 #: static_src/ts/components/filters/SavedFilters.ts:11
 msgid "Select"
 msgstr "Selecteren"
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:533
+#: static_src/ts/components/document_signing/PrepareSign.ts:599
+msgid "Select a field to get started"
+msgstr "Selecteer een veld om te beginnen"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:78
 msgid "Select action"
@@ -736,13 +1099,31 @@ msgstr "Zoektype selecteren"
 msgid "Select target field"
 msgstr "Doelveld selecteren"
 
+#: static_src/ts/components/text_editor/actionToolbar.ts:52
+msgid "Selection formatting"
+msgstr "Opmaak van selectie"
+
 #: static_src/ts/components/inbox/CalendarEventEditor.ts:46
 msgid "Send"
 msgstr "Verzenden"
 
-#: static_src/ts/components/inbox/EmailEditor.ts:268
+#: static_src/ts/components/document_signing/PrepareSign.ts:897
+msgid "Send signature request"
+msgstr "Verzoek om handtekening versturen"
+
+#: static_src/ts/components/document_signing/SendSignatureRequest.ts:134
+msgid "Sending could not be confirmed. Retry with the same recipients and message."
+msgstr ""
+"Het verzenden kon niet worden bevestigd. Probeer het opnieuw met dezelfde ontvangers en hetzelfde"
+" bericht."
+
+#: static_src/ts/components/inbox/EmailEditor.ts:290
 msgid "Sending email…"
 msgstr "E-mail verzenden…"
+
+#: static_src/ts/components/document_signing/SendSignatureRequest.ts:116
+msgid "Sending signature requests…"
+msgstr "Handtekeningverzoeken verzenden…"
 
 #: static_src/ts/components/filters/RenderedFilter.ts:96
 msgid "Set default"
@@ -752,11 +1133,11 @@ msgstr "Als standaard instellen"
 msgid "Share {preference}"
 msgstr "{preference} delen"
 
-#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:668
+#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:670
 msgid "Show All Fields"
 msgstr "Alle velden weergeven"
 
-#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:667
+#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:669
 msgid "Show Required Only"
 msgstr "Alleen verplichte velden weergeven"
 
@@ -765,24 +1146,59 @@ msgstr "Alleen verplichte velden weergeven"
 msgid "Show behavior"
 msgstr "Gedrag tonen"
 
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:410
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:411
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:475
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:476
 msgid "Show formatting toolbar"
 msgstr "Opmaakwerkbalk tonen"
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:897
+msgid "Sign document"
+msgstr "Document ondertekenen"
+
+#: static_src/ts/components/document_signing/SendSignatureRequest.ts:123
+msgid "Signature invitations accepted for email delivery."
+msgstr "Uitnodigingen om te ondertekenen zijn geaccepteerd voor verzending per e-mail."
+
+#: static_src/ts/components/document_signing/SignDocument.ts:166
+msgid "Signature recorded"
+msgstr "Handtekening vastgelegd"
+
+#: static_src/ts/components/document_signing/SendSignatureRequest.ts:124
+msgid "Signature request created without email."
+msgstr "Handtekeningverzoek aangemaakt zonder e-mail."
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:291
+#: static_src/ts/components/document_signing/PrepareSign.ts:302
+#: static_src/ts/components/document_signing/PrepareSign.ts:630
+msgid "Signing order"
+msgstr "Ondertekenvolgorde"
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:213
+msgid "Some fields could not be loaded. Check your draft permissions."
+msgstr "Sommige velden konden niet worden geladen. Controleer de machtigingen voor je concept."
+
+#: static_src/ts/components/text_editor/tableActions.ts:121
+msgid "Split cell"
+msgstr "Cel splitsen"
 
 #: static_src/ts/components/inbox/CalendarAvailability.ts:112
 msgid "Start event at"
 msgstr "Evenement begint om"
 
-#: static_src/ts/components/communication/Calling.ts:124
+#: static_src/ts/components/communication/Calling.ts:399
 msgid "Starting call…"
 msgstr "Oproep starten…"
+
+#: static_src/ts/components/text_editor/formattingActions.ts:17
+msgid "Strikethrough"
+msgstr "Doorhalen"
 
 #: static_src/ts/components/inbox/EmailRecipients.ts:65
 msgid "Suggested email addresses"
 msgstr "Voorgestelde e-mailadressen"
 
-#: static_src/ts/components/text_editor/actions.ts:240
+#: static_src/ts/components/text_editor/actionMenu.ts:75
+#: static_src/ts/components/text_editor/actions.ts:121
 msgid "Table"
 msgstr "Tabel"
 
@@ -790,14 +1206,40 @@ msgstr "Tabel"
 msgid "Target field"
 msgstr "Doelveld"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:427
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:430
 msgid "Teal"
 msgstr "Blauwgroen"
 
-#: static_src/ts/components/text_editor/actions.ts:174
+#: static_src/ts/components/text_editor/actions.ts:111
 #: static_src/ts/components/text_editor/utils/templatePicker.ts:30
 msgid "Template"
 msgstr "Sjabloon"
+
+#: static_src/ts/components/text_editor/formattingActions.ts:21
+msgid "Text color"
+msgstr "Tekstkleur"
+
+#: static_src/ts/components/text_editor/actionMenu.ts:72
+#: static_src/ts/components/text_editor/actionToolbar.ts:52
+msgid "Text formatting"
+msgstr "Tekstopmaak"
+
+#: static_src/ts/components/text_editor/actionMenu.ts:71
+#: static_src/ts/components/text_editor/actionToolbar.ts:68
+msgid "Text style"
+msgstr "Tekststijl"
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:572
+msgid "The default layout could not be saved."
+msgstr "De standaardindeling kon niet worden opgeslagen."
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:166
+msgid "The document could not be loaded."
+msgstr "Het document kon niet worden geladen."
+
+#: static_src/ts/components/document_signing/SignDocument.ts:70
+msgid "The document could not be loaded. Close this window and try again."
+msgstr "Het document kon niet worden geladen. Sluit dit venster en probeer het opnieuw."
 
 #: static_src/ts/components/PermissionsTable.ts:339
 msgid "The filter editor is not ready."
@@ -806,6 +1248,30 @@ msgstr "De filtereditor is niet gereed."
 #: static_src/ts/components/communication/MeetingLobby.ts:52
 msgid "The host did not admit you."
 msgstr "De host heeft u niet toegelaten."
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:491
+msgid "The layout revision could not be loaded."
+msgstr "De revisie van de indeling kon niet worden geladen."
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:876
+msgid "The preparation could not be saved. Please try again."
+msgstr "De voorbereiding kon niet worden opgeslagen. Probeer het opnieuw."
+
+#: static_src/ts/components/document_signing/SigningWizard.ts:61
+msgid "The preparation could not be saved. Try again."
+msgstr "De voorbereiding kon niet worden opgeslagen. Probeer het opnieuw."
+
+#: static_src/ts/components/document_signing/SendSignatureRequest.ts:125
+msgid ""
+"The request was created, but some emails could not be confirmed. Check Sent Items before sending "
+"again."
+msgstr ""
+"Het verzoek is aangemaakt, maar sommige e-mails konden niet worden bevestigd. Controleer "
+"Verzonden items voordat je het opnieuw verzendt."
+
+#: static_src/ts/components/document_signing/SigningWizard.ts:104
+msgid "The request was saved. Reload the page to continue."
+msgstr "Het verzoek is opgeslagen. Laad de pagina opnieuw om verder te gaan."
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:378
 msgid "The saved behavior configuration cannot be edited in this format."
@@ -819,17 +1285,49 @@ msgstr "Het veld van het opgeslagen filter is niet beschikbaar."
 msgid "The saved filter lookup could not be restored."
 msgstr "De zoekopdracht van het opgeslagen filter kon niet worden hersteld."
 
-#: static_src/ts/components/communication/Calling.ts:199
+#: static_src/ts/components/document_signing/PrepareSign.ts:916
+msgid "The signing form could not be loaded. Please try again."
+msgstr "Het ondertekeningsformulier kon niet worden geladen. Probeer het opnieuw."
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:920
+msgid "The signing form could not be opened."
+msgstr "Het ondertekeningsformulier kon niet worden geopend."
+
+#: static_src/ts/components/document_signing/StartSelfSigning.ts:57
+msgid "The signing session could not be opened. Try again."
+msgstr "De ondertekeningssessie kon niet worden geopend. Probeer het opnieuw."
+
+#: static_src/ts/utils/clipboard.ts:12
+msgid "The value could not be copied to the clipboard."
+msgstr "De waarde kon niet naar het klembord worden gekopieerd."
+
+#: static_src/ts/components/communication/Calling.ts:491
 msgid "This call has ended."
 msgstr "Deze oproep is beëindigd."
+
+#: static_src/ts/components/text_editor/nodes/MermaidNode.ts:59
+msgid "This diagram could not be rendered. Double-click to edit its source."
+msgstr "Dit diagram kon niet worden weergegeven. Dubbelklik om de bron te bewerken."
 
 #: static_src/ts/components/filters/FilterContainer.ts:183
 msgid "This editor accepts one condition group per rule."
 msgstr "Deze editor accepteert één voorwaardengroep per regel."
 
+#: static_src/ts/components/document_signing/PrepareSign.ts:515
+msgid "This layout contains fields that do not fit this PDF. Your current fields have been kept."
+msgstr "Deze indeling bevat velden die niet in deze PDF passen. Je huidige velden zijn behouden."
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:482
+msgid "This layout revision is no longer available."
+msgstr "Deze revisie van de indeling is niet meer beschikbaar."
+
 #: static_src/ts/components/communication/MeetingLobby.ts:52
 msgid "This meeting is no longer available."
 msgstr "Deze vergadering is niet langer beschikbaar."
+
+#: static_src/ts/components/document_signing/SigningWizard.ts:119
+msgid "This step could not be loaded. Go back and try again."
+msgstr "Deze stap kon niet worden geladen. Ga terug en probeer het opnieuw."
 
 #: static_src/ts/components/inbox/CalendarAvailability.ts:87
 msgid "Time"
@@ -839,7 +1337,7 @@ msgstr "Tijd"
 msgid "Toggle fullscreen"
 msgstr "Volledig scherm in-/uitschakelen"
 
-#: static_src/ts/components/ResizableDiv.ts:313
+#: static_src/ts/components/ResizableDiv.ts:317
 msgid "Toggle side panel"
 msgstr "Zijpaneel in- of uitschakelen"
 
@@ -864,12 +1362,16 @@ msgstr "Kaart verplaatsen is niet gelukt. Probeer het opnieuw."
 msgid "Unable to refresh field settings. Please try again."
 msgstr "Kan de veldinstellingen niet vernieuwen. Probeer het opnieuw."
 
+#: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:324
+msgid "Unable to render this diagram."
+msgstr "Kan dit diagram niet weergeven."
+
 #: static_src/ts/components/communication/MeetingLobby.ts:26
 #: static_src/ts/components/communication/MeetingLobby.ts:29
 msgid "Unable to request admission."
 msgstr "Kan geen toegang aanvragen."
 
-#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:292
+#: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:294
 msgid "Unable to save changes. Please try again."
 msgstr "Kan wijzigingen niet opslaan. Probeer het opnieuw."
 
@@ -885,22 +1387,56 @@ msgstr "Niet-beschikbare actie: {action}"
 msgid "Unavailable field: {field}"
 msgstr "Niet-beschikbaar veld: {field}"
 
-#: static_src/ts/components/text_editor/utils/referencePicker.ts:164
+#: static_src/ts/components/text_editor/formattingActions.ts:17
+msgid "Underline"
+msgstr "Onderstrepen"
+
+#: static_src/ts/components/text_editor/actions.ts:91
+msgid "Undo"
+msgstr "Ongedaan maken"
+
+#: static_src/ts/components/communication/Calling.ts:266
+msgid "Unmute ringtone"
+msgstr "Beltoon inschakelen"
+
+#: static_src/ts/components/text_editor/utils/referencePicker.ts:169
 msgid "Upload image"
 msgstr "Afbeelding uploaden"
 
+#: static_src/ts/components/inbox/EmailEditor.ts:281
+msgid "Uploading attachment…"
+msgstr "Bijlage uploaden…"
+
 #: static_src/ts/components/inbox/EmailRecipients.ts:114
-#: static_src/ts/components/inbox/EmailRecipients.ts:325
+#: static_src/ts/components/inbox/EmailRecipients.ts:342
 msgid "User"
 msgstr "Gebruiker"
+
+#: static_src/ts/components/communication/Calling.ts:282
+msgid "Video call"
+msgstr "Videogesprek"
+
+#: static_src/ts/components/document_signing/SigningWizard.ts:46
+msgid "Wait for the document to finish loading."
+msgstr "Wacht tot het document volledig is geladen."
+
+#: static_src/ts/components/communication/Calling.ts:754
+msgid "Waiting for participants…"
+msgstr "Wachten op deelnemers…"
 
 #: static_src/ts/components/communication/MeetingLobby.ts:52
 msgid "Waiting for the host to admit you…"
 msgstr "Wachten tot de host u toelaat…"
 
-#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:426
+#: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:429
 msgid "Yellow"
 msgstr "Geel"
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:162
+msgid "You can prepare fields here, but you do not have permission to save signing preparations."
+msgstr ""
+"Je kunt hier velden voorbereiden, maar je hebt geen toestemming om voorbereidingen voor "
+"ondertekening op te slaan."
 
 #: static_src/ts/components/data_view_components/KanbanBoard.ts:402
 msgid "You do not have permission to move this card."
@@ -910,9 +1446,29 @@ msgstr "Je hebt geen toestemming om deze kaart te verplaatsen."
 msgid "You have been admitted. You can now join."
 msgstr "U bent toegelaten. U kunt nu deelnemen."
 
-#: static_src/ts/components/communication/Calling.ts:264
+#: static_src/ts/components/communication/Calling.ts:569
 msgid "You left the call"
 msgstr "Je hebt de oproep verlaten"
+
+#: static_src/ts/components/document_signing/SignDocument.ts:160
+msgid "Your signature could not be recorded. Your entries are preserved; try again."
+msgstr "Je handtekening kon niet worden vastgelegd. Je invoer is bewaard; probeer het opnieuw."
+
+#: static_src/ts/components/document_signing/SignDocument.ts:159
+msgid "Your signature was saved. Retry to open the confirmation."
+msgstr "Je handtekening is opgeslagen. Probeer het opnieuw om de bevestiging te openen."
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:327
+msgid "e.g. Director"
+msgstr "bijv. directeur"
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:371
+msgid "fields placed"
+msgstr "velden geplaatst"
+
+#: static_src/ts/components/document_signing/PrepareSign.ts:371
+msgid "roles"
+msgstr "rollen"
 
 #~ msgid "Calling failed. Check microphone permission, connection settings and line access."
 #~ msgstr ""
@@ -925,9 +1481,21 @@ msgstr "Je hebt de oproep verlaten"
 #~ msgid "Calling…"
 #~ msgstr "Bellen…"
 
+#~ msgid "Collapse call controls"
+#~ msgstr "Gespreksbediening inklappen"
+
+#~ msgid "Expand call controls"
+#~ msgstr "Gespreksbediening uitklappen"
+
 #~ msgid "Microphone muted"
 #~ msgstr "Microfoon gedempt"
 
 #~ msgid "No authorized voice lines are available"
 #~ msgstr "Er zijn geen geautoriseerde telefoonlijnen beschikbaar"
+
+#~ msgid "No incoming call accounts are available"
+#~ msgstr "Er zijn geen accounts voor inkomende oproepen beschikbaar"
+
+#~ msgid "Ready for incoming calls"
+#~ msgstr "Gereed voor inkomende oproepen"
 

@@ -1,23 +1,25 @@
 """Built-in notification folder and item definitions."""
 
 from typing import TYPE_CHECKING
+
 from django.db.models import QuerySet
-from bloomerp.filters.definition import Filter, FilterCondition
-from bloomerp.communication.definition import (
-    InboxFolderTypeDefinition,
-    InboxItemTypeDefinition,
-    InboxFolderTypeFilterDefinition,
-)
-from bloomerp.communication.inbox_sources import InboxEventSource, InboxSignalSource
+
 from bloomerp.communication.builtins.in_app_notifications.base import SystemMessage
 from bloomerp.communication.common.actions import (
+    DELETE_INBOX_FOLDER_ACTION,
+    DELETE_INBOX_ITEM_ACTION,
     MARK_ALL_AS_READ_ACTION,
     MARK_INBOX_ITEM_AS_READ_ACTION,
-    DELETE_INBOX_ITEM_ACTION,
-    DELETE_INBOX_FOLDER_ACTION,
 )
-from bloomerp.communication.common.filters import UNREAD_FILTER, IS_READ_FILTER
+from bloomerp.communication.common.filters import IS_READ_FILTER, UNREAD_FILTER
 from bloomerp.communication.common.queries import on_query_default
+from bloomerp.communication.definition import (
+    InboxFolderTypeDefinition,
+    InboxFolderTypeFilterDefinition,
+    InboxItemTypeDefinition,
+)
+from bloomerp.communication.inbox_sources import InboxEventSource, InboxSignalSource
+from bloomerp.filters.definition import Filter, FilterCondition
 
 if TYPE_CHECKING:
     from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
@@ -67,7 +69,6 @@ IN_APP_NOTIFICATIONS = InboxFolderTypeDefinition(
     icon="fa fa-bell",
     actions=[
         MARK_ALL_AS_READ_ACTION,
-        #
         DELETE_INBOX_FOLDER_ACTION,
     ],
     on_query=query_notifications,
@@ -84,6 +85,25 @@ IN_APP_NOTIFICATIONS = InboxFolderTypeDefinition(
     ),
     is_default=True,
     default_sources=[
+        InboxSignalSource(
+            key="document_signing.signature_required",
+            signal="django.db.models.signals.post_save",
+            sender="bloomerp.models.document_signing.signature_event.SignatureEvent",
+            dispatch_uid="bloomerp.inbox.document_signing.signature_required",
+            predicate=(
+                "bloomerp.communication.builtins.in_app_notifications.signature_request."
+                "should_notify_signature_request"
+            ),
+            folder_qs_resolver=(
+                "bloomerp.communication.builtins.in_app_notifications.signature_request."
+                "resolve_signature_request_folders"
+            ),
+            handler=(
+                "bloomerp.communication.builtins.in_app_notifications.signature_request."
+                "handle_signature_request"
+            ),
+            run_async=False,
+        ),
         InboxEventSource(
             key="mentions.created",
             folder_qs_resolver="bloomerp.communication.builtins.in_app_notifications.mention.resolve_mention_folders",

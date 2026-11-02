@@ -19,6 +19,7 @@ interface DataViewCreatedDetail {
 
 export class DataViewContainer extends BaseComponent {
     private renderedFilters?: RenderedFilters;
+    private initialQueryKeys: string[] = [];
 
     private unifiedFilterHandler = (event: Event): void => {
         const detail = (event as CustomEvent).detail;
@@ -26,6 +27,28 @@ export class DataViewContainer extends BaseComponent {
         event.stopPropagation();
         this.renderedFilters?.setFilters(detail.filters, detail);
         this.filter({ filter: JSON.stringify(detail.filters) }, false);
+    };
+
+    /** Attach the current checkbox selection to configured toolbar requests. */
+    private configureActionRequest = (event: Event): void => {
+        const detail = (event as CustomEvent).detail;
+        const source = detail?.elt as HTMLElement | undefined;
+        if (!source?.closest('[data-dataview-action]')) return;
+        if (source.closest('[data-base-url][data-content-type-id]') !== this.element) return;
+        detail.parameters.selected_ids = Array.from(this.selectedObjectIds);
+        if (detail.path && this.fullPath) {
+            const actionUrl = new URL(detail.path, window.location.origin);
+            const currentUrl = new URL(this.fullPath, window.location.origin);
+            for (const key of this.initialQueryKeys) {
+                if (key !== '_permission_token') actionUrl.searchParams.delete(key);
+            }
+            for (const key of new Set(currentUrl.searchParams.keys())) {
+                if (key === 'page' || key === 'selected_ids' || key === '_permission_token') continue;
+                actionUrl.searchParams.delete(key);
+                for (const value of currentUrl.searchParams.getAll(key)) actionUrl.searchParams.append(key, value);
+            }
+            detail.path = `${actionUrl.pathname}${actionUrl.search}`;
+        }
     };
 
     private target:HTMLElement|null = null;
@@ -66,8 +89,12 @@ export class DataViewContainer extends BaseComponent {
     /** Bind data-view controls without stealing focus when loaded inside a workspace tile. */
     public initialize(): void {
         this.element?.addEventListener('bloomerp:filters-apply', this.unifiedFilterHandler);
+        this.element?.addEventListener('htmx:configRequest', this.configureActionRequest);
         this.baseUrl = this.element?.dataset.baseUrl;
         this.fullPath = this.element?.dataset.url;
+        this.initialQueryKeys = this.fullPath
+            ? Array.from(new URL(this.fullPath, window.location.origin).searchParams.keys())
+            : [];
         this.contentTypeId = this.element?.dataset.contentTypeId ?? null;
         const renderedRoot = this.element?.querySelector<HTMLElement>('[data-rendered-filters]');
         if (renderedRoot) {
@@ -696,6 +723,7 @@ export class DataViewContainer extends BaseComponent {
         this.renderedFilters?.destroy();
         this.renderedFilters = undefined;
         this.element?.removeEventListener('bloomerp:filters-apply', this.unifiedFilterHandler);
+        this.element?.removeEventListener('htmx:configRequest', this.configureActionRequest);
         if (this.afterSwapHandler) {
             this.element?.removeEventListener('htmx:afterSwap', this.afterSwapHandler);
         }

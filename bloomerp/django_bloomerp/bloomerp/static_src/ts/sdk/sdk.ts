@@ -718,6 +718,277 @@ export class BookmarkApi extends ModelApi<Bookmark, BookmarkId, BookmarkCreate, 
   }
 }
 
+export interface CalendarBooking {
+  active: boolean;
+  availability_hours: unknown;
+  created_by: number | null;
+  datetime_created: string;
+  datetime_updated: string;
+  description: string;
+  id: string;
+  meeting_duration_minutes: number;
+  object_labels: unknown;
+  organizing_inbox: number;
+  public_token: string;
+  target_inboxes: Array<number>;
+  timezone: string;
+  title: string;
+  updated_by: number | null;
+}
+
+export type CalendarBookingId = string;
+export type CalendarBookingFieldName = "active" | "availability_hours" | "created_by" | "datetime_created" | "datetime_updated" | "description" | "id" | "meeting_duration_minutes" | "object_labels" | "organizing_inbox" | "public_token" | "target_inboxes" | "timezone" | "title" | "updated_by";
+
+export interface CalendarBookingCreate {
+  active?: boolean;
+  availability_hours?: unknown;
+  created_by?: number | null;
+  description?: string;
+  meeting_duration_minutes: number;
+  organizing_inbox: number;
+  target_inboxes?: Array<number>;
+  timezone: string;
+  title: string;
+  updated_by?: number | null;
+}
+
+export type CalendarBookingUpdate = Partial<CalendarBookingCreate>;
+export type CalendarBookingQuery = Partial<Record<CalendarBookingFieldName | `${CalendarBookingFieldName}__${string}`, QueryValue | QueryValue[]>>;
+
+export const calendarBookingsFields: Record<CalendarBookingFieldName, BloomerpFieldMetadata> = {
+  "active": {"name": "active", "title": "Active", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
+  "availability_hours": {"name": "availability_hours", "title": "Availability hours", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "description": {"name": "description", "title": "Description", "fieldType": "TextField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "meeting_duration_minutes": {"name": "meeting_duration_minutes", "title": "Meeting duration in minutes", "fieldType": "PositiveIntegerField", "dbFieldType": "integer unsigned", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "organizing_inbox": {"name": "organizing_inbox", "title": "Organizing inbox", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "Inbox", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
+  "public_token": {"name": "public_token", "title": "Public Token", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "target_inboxes": {"name": "target_inboxes", "title": "Destination inboxes", "fieldType": "ManyToManyField", "dbFieldType": null, "nullable": false, "many": true, "relatedModel": "Inbox", "editable": true, "requiredOnCreate": false, "tsType": "Array<number>", "choices": null},
+  "timezone": {"name": "timezone", "title": "Availability timezone", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "title": {"name": "title", "title": "Title", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+} as const;
+
+export const calendarBookingsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const calendarBookingsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+
+export class CalendarBookingApi extends ModelApi<CalendarBooking, CalendarBookingId, CalendarBookingCreate, CalendarBookingUpdate, CalendarBookingQuery, CalendarBookingFieldName> {
+  constructor(client: BloomerpHttpClient) {
+    super(client, "/api/calendar_bookings/");
+  }
+}
+
+export interface CalendarBookingSubmission {
+  calendar_booking: string;
+  created_by: number | null;
+  datetime_created: string;
+  datetime_updated: string;
+  email: string;
+  id: string;
+  name: string;
+  object_labels: unknown;
+  submitted_at: string;
+  updated_by: number | null;
+}
+
+export type CalendarBookingSubmissionId = string;
+export type CalendarBookingSubmissionFieldName = "calendar_booking" | "created_by" | "datetime_created" | "datetime_updated" | "email" | "id" | "name" | "object_labels" | "submitted_at" | "updated_by";
+
+export interface CalendarBookingSubmissionCreate {
+  calendar_booking: string;
+  created_by?: number | null;
+  email: string;
+  name: string;
+  submitted_at?: string;
+  updated_by?: number | null;
+}
+
+export type CalendarBookingSubmissionUpdate = Partial<CalendarBookingSubmissionCreate>;
+export type CalendarBookingSubmissionQuery = Partial<Record<CalendarBookingSubmissionFieldName | `${CalendarBookingSubmissionFieldName}__${string}`, QueryValue | QueryValue[]>>;
+
+export const calendarBookingSubmissionsFields: Record<CalendarBookingSubmissionFieldName, BloomerpFieldMetadata> = {
+  "calendar_booking": {"name": "calendar_booking", "title": "Calendar booking", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": "CalendarBooking", "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "email": {"name": "email", "title": "Email", "fieldType": "EmailField", "dbFieldType": "varchar(254)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "submitted_at": {"name": "submitted_at", "title": "Submitted at", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+} as const;
+
+export const calendarBookingSubmissionsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const calendarBookingSubmissionsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+
+export class CalendarBookingSubmissionApi extends ModelApi<CalendarBookingSubmission, CalendarBookingSubmissionId, CalendarBookingSubmissionCreate, CalendarBookingSubmissionUpdate, CalendarBookingSubmissionQuery, CalendarBookingSubmissionFieldName> {
+  constructor(client: BloomerpHttpClient) {
+    super(client, "/api/calendar_booking_submissions/");
+  }
+}
+
+export interface CalendarEvent {
+  all_day: boolean;
+  calendar_booking_submission: string | null;
+  calendar_uid: string;
+  cancelled: boolean;
+  conference_session: string | null;
+  content: string;
+  created_by: number | null;
+  datetime_created: string;
+  datetime_updated: string;
+  end: string;
+  end_date: string;
+  event_timezone: string | null;
+  id: string;
+  inboxes: Array<number>;
+  invitation_sent_at: string;
+  location: string;
+  object_labels: unknown;
+  organizer_email: string;
+  organizing_inbox: number | null;
+  scheduling_dtstamp: string;
+  sequence: number;
+  source_calendar: string;
+  start: string;
+  start_date: string;
+  title: string;
+  updated_by: number | null;
+}
+
+export type CalendarEventId = string;
+export type CalendarEventFieldName = "all_day" | "calendar_booking_submission" | "calendar_uid" | "cancelled" | "conference_session" | "content" | "created_by" | "datetime_created" | "datetime_updated" | "end" | "end_date" | "event_timezone" | "id" | "inboxes" | "invitation_sent_at" | "location" | "object_labels" | "organizer_email" | "organizing_inbox" | "scheduling_dtstamp" | "sequence" | "source_calendar" | "start" | "start_date" | "title" | "updated_by";
+
+export interface CalendarEventCreate {
+  all_day?: boolean;
+  calendar_booking_submission?: string | null;
+  content?: string;
+  created_by?: number | null;
+  end?: string;
+  end_date?: string;
+  event_timezone?: string | null;
+  inboxes?: Array<number>;
+  location?: string;
+  organizer_email: string;
+  organizing_inbox?: number | null;
+  start?: string;
+  start_date?: string;
+  title: string;
+  updated_by?: number | null;
+}
+
+export type CalendarEventUpdate = Partial<CalendarEventCreate>;
+export type CalendarEventQuery = Partial<Record<CalendarEventFieldName | `${CalendarEventFieldName}__${string}`, QueryValue | QueryValue[]>>;
+
+export const calendarEventsFields: Record<CalendarEventFieldName, BloomerpFieldMetadata> = {
+  "all_day": {"name": "all_day", "title": "All day", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
+  "calendar_booking_submission": {"name": "calendar_booking_submission", "title": "Booking submission", "fieldType": "OneToOneField", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "CalendarBookingSubmission", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
+  "calendar_uid": {"name": "calendar_uid", "title": "Calendar Uid", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "cancelled": {"name": "cancelled", "title": "Cancelled", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
+  "conference_session": {"name": "conference_session", "title": "Conference session", "fieldType": "OneToOneField", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "ConferenceSession", "editable": false, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
+  "content": {"name": "content", "title": "Content", "fieldType": "TextField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "end": {"name": "end", "title": "End", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "end_date": {"name": "end_date", "title": "Exclusive end date", "fieldType": "DateField", "dbFieldType": "date", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "event_timezone": {"name": "event_timezone", "title": "Event timezone", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
+  "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "inboxes": {"name": "inboxes", "title": "Calendar inboxes", "fieldType": "ManyToManyField", "dbFieldType": null, "nullable": false, "many": true, "relatedModel": "Inbox", "editable": true, "requiredOnCreate": false, "tsType": "Array<number>", "choices": null},
+  "invitation_sent_at": {"name": "invitation_sent_at", "title": "Invitation Sent At", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": true, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "location": {"name": "location", "title": "Location", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "organizer_email": {"name": "organizer_email", "title": "Organizer email", "fieldType": "EmailField", "dbFieldType": "varchar(254)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "organizing_inbox": {"name": "organizing_inbox", "title": "Organizing inbox", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "Inbox", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "scheduling_dtstamp": {"name": "scheduling_dtstamp", "title": "Scheduling Dtstamp", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "sequence": {"name": "sequence", "title": "Sequence", "fieldType": "PositiveIntegerField", "dbFieldType": "integer unsigned", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "number", "choices": null},
+  "source_calendar": {"name": "source_calendar", "title": "Source Calendar", "fieldType": "TextField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "start": {"name": "start", "title": "Start", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "start_date": {"name": "start_date", "title": "Start date", "fieldType": "DateField", "dbFieldType": "date", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "title": {"name": "title", "title": "Title", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+} as const;
+
+export const calendarEventsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const calendarEventsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+
+export class CalendarEventApi extends ModelApi<CalendarEvent, CalendarEventId, CalendarEventCreate, CalendarEventUpdate, CalendarEventQuery, CalendarEventFieldName> {
+  constructor(client: BloomerpHttpClient) {
+    super(client, "/api/calendar_events/");
+  }
+}
+
+export interface CalendarEventParticipant {
+  created_by: number | null;
+  datetime_created: string;
+  datetime_updated: string;
+  display_name: string;
+  email: string;
+  event: string;
+  id: string;
+  invitation_cancelled: boolean;
+  last_sent_reply_sequence: number;
+  last_sent_reply_status: string;
+  object_labels: unknown;
+  reply_dtstamp: string;
+  reply_sequence: number;
+  responded_at: string;
+  response_status: string;
+  updated_by: number | null;
+  user: number | null;
+}
+
+export type CalendarEventParticipantId = string;
+export type CalendarEventParticipantFieldName = "created_by" | "datetime_created" | "datetime_updated" | "display_name" | "email" | "event" | "id" | "invitation_cancelled" | "last_sent_reply_sequence" | "last_sent_reply_status" | "object_labels" | "reply_dtstamp" | "reply_sequence" | "responded_at" | "response_status" | "updated_by" | "user";
+
+export interface CalendarEventParticipantCreate {
+  created_by?: number | null;
+  display_name?: string;
+  email?: string;
+  event: string;
+  responded_at?: string;
+  response_status?: string;
+  updated_by?: number | null;
+  user?: number | null;
+}
+
+export type CalendarEventParticipantUpdate = Partial<CalendarEventParticipantCreate>;
+export type CalendarEventParticipantQuery = Partial<Record<CalendarEventParticipantFieldName | `${CalendarEventParticipantFieldName}__${string}`, QueryValue | QueryValue[]>>;
+
+export const calendarEventParticipantsFields: Record<CalendarEventParticipantFieldName, BloomerpFieldMetadata> = {
+  "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "display_name": {"name": "display_name", "title": "Display name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "email": {"name": "email", "title": "Invited email", "fieldType": "EmailField", "dbFieldType": "varchar(254)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "event": {"name": "event", "title": "Event", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": "CalendarEvent", "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "invitation_cancelled": {"name": "invitation_cancelled", "title": "Invitation Cancelled", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
+  "last_sent_reply_sequence": {"name": "last_sent_reply_sequence", "title": "Last Sent Reply Sequence", "fieldType": "PositiveIntegerField", "dbFieldType": "integer unsigned", "nullable": true, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "number", "choices": null},
+  "last_sent_reply_status": {"name": "last_sent_reply_status", "title": "Last Sent Reply Status", "fieldType": "CharField", "dbFieldType": "varchar(24)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "reply_dtstamp": {"name": "reply_dtstamp", "title": "Reply Dtstamp", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": true, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "reply_sequence": {"name": "reply_sequence", "title": "Reply Sequence", "fieldType": "PositiveIntegerField", "dbFieldType": "integer unsigned", "nullable": true, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "number", "choices": null},
+  "responded_at": {"name": "responded_at", "title": "Responded at", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "response_status": {"name": "response_status", "title": "Response status", "fieldType": "CharField", "dbFieldType": "varchar(24)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "awaiting_response", "label": "Awaiting response"}, {"value": "accepted", "label": "Accepted"}, {"value": "tentative", "label": "Tentative"}, {"value": "declined", "label": "Declined"}]},
+  "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "user": {"name": "user", "title": "User", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+} as const;
+
+export const calendarEventParticipantsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const calendarEventParticipantsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+
+export class CalendarEventParticipantApi extends ModelApi<CalendarEventParticipant, CalendarEventParticipantId, CalendarEventParticipantCreate, CalendarEventParticipantUpdate, CalendarEventParticipantQuery, CalendarEventParticipantFieldName> {
+  constructor(client: BloomerpHttpClient) {
+    super(client, "/api/calendar_event_participants/");
+  }
+}
+
 export interface Comment {
   content: string;
   content_type: number;
@@ -769,6 +1040,7 @@ export interface DocumentTemplate {
   custom_styling: string;
   datetime_created: string;
   datetime_updated: string;
+  default_signature_layout: string | null;
   footer: string | null;
   free_variables: unknown;
   id: string;
@@ -785,12 +1057,13 @@ export interface DocumentTemplate {
 }
 
 export type DocumentTemplateId = string;
-export type DocumentTemplateFieldName = "content_types" | "created_by" | "custom_styling" | "datetime_created" | "datetime_updated" | "footer" | "free_variables" | "id" | "include_page_numbers" | "name" | "object_labels" | "page_margin" | "page_orientation" | "page_size" | "style_sets" | "template" | "template_header" | "updated_by";
+export type DocumentTemplateFieldName = "content_types" | "created_by" | "custom_styling" | "datetime_created" | "datetime_updated" | "default_signature_layout" | "footer" | "free_variables" | "id" | "include_page_numbers" | "name" | "object_labels" | "page_margin" | "page_orientation" | "page_size" | "style_sets" | "template" | "template_header" | "updated_by";
 
 export interface DocumentTemplateCreate {
   content_types?: Array<number>;
   created_by?: number | null;
   custom_styling?: string;
+  default_signature_layout?: string | null;
   footer?: string | null;
   free_variables?: unknown;
   include_page_numbers?: boolean;
@@ -813,6 +1086,7 @@ export const documentTemplatesFields: Record<DocumentTemplateFieldName, Bloomerp
   "custom_styling": {"name": "custom_styling", "title": "Custom Styling", "fieldType": "CodeField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "default_signature_layout": {"name": "default_signature_layout", "title": "Default signature layout", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "SignatureLayout", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "footer": {"name": "footer", "title": "Footer", "fieldType": "TextField", "dbFieldType": "text", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "free_variables": {"name": "free_variables", "title": "Free Variables", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
@@ -951,12 +1225,13 @@ export interface EmailDraft {
   object_id: string;
   object_labels: unknown;
   payload: unknown;
+  pending_send: unknown;
   updated_by: number | null;
   user: number;
 }
 
 export type EmailDraftId = string;
-export type EmailDraftFieldName = "avatar" | "content_type" | "created_by" | "datetime_created" | "datetime_updated" | "email_account" | "id" | "object_id" | "object_labels" | "payload" | "updated_by" | "user";
+export type EmailDraftFieldName = "avatar" | "content_type" | "created_by" | "datetime_created" | "datetime_updated" | "email_account" | "id" | "object_id" | "object_labels" | "payload" | "pending_send" | "updated_by" | "user";
 
 export interface EmailDraftCreate {
   avatar?: string | null;
@@ -983,6 +1258,7 @@ export const emailDraftsFields: Record<EmailDraftFieldName, BloomerpFieldMetadat
   "object_id": {"name": "object_id", "title": "Object Id", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "payload": {"name": "payload", "title": "Payload", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "pending_send": {"name": "pending_send", "title": "Pending Send", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
   "user": {"name": "user", "title": "User", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
 } as const;
@@ -1592,6 +1868,8 @@ export interface Policy {
   created_by: number | null;
   datetime_created: string;
   datetime_updated: string;
+  default_policy_hash: string;
+  default_policy_key: string | null;
   description: string;
   field_policy: number;
   global_permissions: Array<number>;
@@ -1599,12 +1877,13 @@ export interface Policy {
   id: number;
   name: string;
   row_policy: number;
+  system_created: boolean;
   updated_by: number | null;
   users: Array<number>;
 }
 
 export type PolicyId = number;
-export type PolicyFieldName = "created_by" | "datetime_created" | "datetime_updated" | "description" | "field_policy" | "global_permissions" | "groups" | "id" | "name" | "row_policy" | "updated_by" | "users";
+export type PolicyFieldName = "created_by" | "datetime_created" | "datetime_updated" | "default_policy_hash" | "default_policy_key" | "description" | "field_policy" | "global_permissions" | "groups" | "id" | "name" | "row_policy" | "system_created" | "updated_by" | "users";
 
 export interface PolicyCreate {
   created_by?: number | null;
@@ -1625,6 +1904,8 @@ export const accessControlPoliciesFields: Record<PolicyFieldName, BloomerpFieldM
   "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
   "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "default_policy_hash": {"name": "default_policy_hash", "title": "Default Policy Hash", "fieldType": "CharField", "dbFieldType": "varchar(64)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "default_policy_key": {"name": "default_policy_key", "title": "Default Policy Key", "fieldType": "CharField", "dbFieldType": "varchar(512)", "nullable": true, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "description": {"name": "description", "title": "Description", "fieldType": "TextField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "field_policy": {"name": "field_policy", "title": "Field Policy", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "FieldPolicy", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
   "global_permissions": {"name": "global_permissions", "title": "Global Permissions", "fieldType": "ManyToManyField", "dbFieldType": null, "nullable": false, "many": true, "relatedModel": "Permission", "editable": true, "requiredOnCreate": false, "tsType": "Array<number>", "choices": null},
@@ -1632,6 +1913,7 @@ export const accessControlPoliciesFields: Record<PolicyFieldName, BloomerpFieldM
   "id": {"name": "id", "title": "ID", "fieldType": "BigAutoField", "dbFieldType": "integer", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
   "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
   "row_policy": {"name": "row_policy", "title": "Row Policy", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "RowPolicy", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
+  "system_created": {"name": "system_created", "title": "System Created", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
   "users": {"name": "users", "title": "Users", "fieldType": "ManyToManyField", "dbFieldType": null, "nullable": false, "many": true, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "Array<number>", "choices": null},
 } as const;
@@ -1891,6 +2173,250 @@ export const sidebarItemsPublicAccess: BloomerpModelPublicAccessMetadata = {"lis
 export class SidebarItemApi extends ModelApi<SidebarItem, SidebarItemId, SidebarItemCreate, SidebarItemUpdate, SidebarItemQuery, SidebarItemFieldName> {
   constructor(client: BloomerpHttpClient) {
     super(client, "/api/sidebar_items/");
+  }
+}
+
+export interface SignatureRecipient {
+  consent_text: string;
+  consented_at: string;
+  created_by: number | null;
+  datetime_created: string;
+  datetime_updated: string;
+  decline_reason: string;
+  declined_at: string;
+  email: string;
+  email_delivery: unknown;
+  id: string;
+  name: string;
+  object_labels: unknown;
+  request: string;
+  role_key: string;
+  role_label: string;
+  signed_at: string;
+  signing_order: number;
+  status: string;
+  updated_by: number | null;
+  user: number | null;
+}
+
+export type SignatureRecipientId = string;
+export type SignatureRecipientFieldName = "consent_text" | "consented_at" | "created_by" | "datetime_created" | "datetime_updated" | "decline_reason" | "declined_at" | "email" | "email_delivery" | "id" | "name" | "object_labels" | "request" | "role_key" | "role_label" | "signed_at" | "signing_order" | "status" | "updated_by" | "user";
+
+export interface SignatureRecipientCreate {
+  consent_text?: string;
+  consented_at?: string;
+  created_by?: number | null;
+  decline_reason?: string;
+  declined_at?: string;
+  email?: string;
+  name: string;
+  request: string;
+  role_key: string;
+  role_label: string;
+  signed_at?: string;
+  signing_order?: number;
+  status?: string;
+  updated_by?: number | null;
+  user?: number | null;
+}
+
+export type SignatureRecipientUpdate = Partial<SignatureRecipientCreate>;
+export type SignatureRecipientQuery = Partial<Record<SignatureRecipientFieldName | `${SignatureRecipientFieldName}__${string}`, QueryValue | QueryValue[]>>;
+
+export const signatureRecipientsFields: Record<SignatureRecipientFieldName, BloomerpFieldMetadata> = {
+  "consent_text": {"name": "consent_text", "title": "Accepted consent text", "fieldType": "TextField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "consented_at": {"name": "consented_at", "title": "Consented at", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "decline_reason": {"name": "decline_reason", "title": "Decline reason", "fieldType": "TextField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "declined_at": {"name": "declined_at", "title": "Declined at", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "email": {"name": "email", "title": "Email", "fieldType": "EmailField", "dbFieldType": "varchar(254)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "email_delivery": {"name": "email_delivery", "title": "Email delivery", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "name": {"name": "name", "title": "Name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "request": {"name": "request", "title": "Request", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": "SignatureRequest", "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "role_key": {"name": "role_key", "title": "Role key", "fieldType": "SlugField", "dbFieldType": "varchar(100)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "role_label": {"name": "role_label", "title": "Role label", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "signed_at": {"name": "signed_at", "title": "Signed at", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "signing_order": {"name": "signing_order", "title": "Signing order", "fieldType": "PositiveIntegerField", "dbFieldType": "integer unsigned", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
+  "status": {"name": "status", "title": "Status", "fieldType": "CharField", "dbFieldType": "varchar(16)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "pending", "label": "Pending"}, {"value": "viewed", "label": "Viewed"}, {"value": "signed", "label": "Signed"}, {"value": "declined", "label": "Declined"}]},
+  "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "user": {"name": "user", "title": "User", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+} as const;
+
+export const signatureRecipientsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const signatureRecipientsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+
+export class SignatureRecipientApi extends ModelApi<SignatureRecipient, SignatureRecipientId, SignatureRecipientCreate, SignatureRecipientUpdate, SignatureRecipientQuery, SignatureRecipientFieldName> {
+  constructor(client: BloomerpHttpClient) {
+    super(client, "/api/signature_recipients/");
+  }
+}
+
+export interface SignatureRequest {
+  completed_at: string;
+  created_by: number | null;
+  datetime_created: string;
+  datetime_updated: string;
+  email_account: string | null;
+  email_content: string;
+  expires_at: string;
+  id: string;
+  object_labels: unknown;
+  original_file: string;
+  original_sha256: string;
+  sent_at: string;
+  signature_level: string;
+  signed_file: string | null;
+  signed_sha256: string;
+  source_layout: string | null;
+  source_layout_name: string;
+  source_layout_revision: number;
+  source_preparation: string | null;
+  source_preparation_revision: number;
+  status: string;
+  title: string;
+  updated_by: number | null;
+}
+
+export type SignatureRequestId = string;
+export type SignatureRequestFieldName = "completed_at" | "created_by" | "datetime_created" | "datetime_updated" | "email_account" | "email_content" | "expires_at" | "id" | "object_labels" | "original_file" | "original_sha256" | "sent_at" | "signature_level" | "signed_file" | "signed_sha256" | "source_layout" | "source_layout_name" | "source_layout_revision" | "source_preparation" | "source_preparation_revision" | "status" | "title" | "updated_by";
+
+export interface SignatureRequestCreate {
+  completed_at?: string;
+  created_by?: number | null;
+  email_account?: string | null;
+  email_content?: string;
+  expires_at?: string;
+  original_file: string;
+  original_sha256?: string;
+  sent_at?: string;
+  signed_file?: string | null;
+  signed_sha256?: string;
+  source_layout?: string | null;
+  source_layout_name?: string;
+  source_layout_revision?: number;
+  source_preparation?: string | null;
+  source_preparation_revision?: number;
+  status?: string;
+  title: string;
+  updated_by?: number | null;
+}
+
+export type SignatureRequestUpdate = Partial<SignatureRequestCreate>;
+export type SignatureRequestQuery = Partial<Record<SignatureRequestFieldName | `${SignatureRequestFieldName}__${string}`, QueryValue | QueryValue[]>>;
+
+export const signatureRequestsFields: Record<SignatureRequestFieldName, BloomerpFieldMetadata> = {
+  "completed_at": {"name": "completed_at", "title": "Completed at", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "email_account": {"name": "email_account", "title": "Sending email account", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "EmailAccount", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
+  "email_content": {"name": "email_content", "title": "Invitation message", "fieldType": "TextField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "expires_at": {"name": "expires_at", "title": "Expires at", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "original_file": {"name": "original_file", "title": "Original PDF", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": "FileNode", "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "original_sha256": {"name": "original_sha256", "title": "Original SHA-256", "fieldType": "CharField", "dbFieldType": "varchar(64)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "sent_at": {"name": "sent_at", "title": "Sent at", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "signature_level": {"name": "signature_level", "title": "Signature level", "fieldType": "CharField", "dbFieldType": "varchar(16)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "simple", "label": "Simple electronic signature"}]},
+  "signed_file": {"name": "signed_file", "title": "Signed PDF", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "FileNode", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
+  "signed_sha256": {"name": "signed_sha256", "title": "Signed SHA-256", "fieldType": "CharField", "dbFieldType": "varchar(64)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "source_layout": {"name": "source_layout", "title": "Source layout", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "SignatureLayout", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
+  "source_layout_name": {"name": "source_layout_name", "title": "Source layout name", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "source_layout_revision": {"name": "source_layout_revision", "title": "Source layout revision", "fieldType": "PositiveIntegerField", "dbFieldType": "integer unsigned", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
+  "source_preparation": {"name": "source_preparation", "title": "Source preparation", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "SignaturePreparation", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
+  "source_preparation_revision": {"name": "source_preparation_revision", "title": "Source preparation revision", "fieldType": "PositiveIntegerField", "dbFieldType": "integer unsigned", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
+  "status": {"name": "status", "title": "Status", "fieldType": "CharField", "dbFieldType": "varchar(16)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "draft", "label": "Draft"}, {"value": "sent", "label": "Sent"}, {"value": "completed", "label": "Completed"}, {"value": "declined", "label": "Declined"}, {"value": "cancelled", "label": "Cancelled"}, {"value": "expired", "label": "Expired"}]},
+  "title": {"name": "title", "title": "Title", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+} as const;
+
+export const signatureRequestsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const signatureRequestsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+
+export class SignatureRequestApi extends ModelApi<SignatureRequest, SignatureRequestId, SignatureRequestCreate, SignatureRequestUpdate, SignatureRequestQuery, SignatureRequestFieldName> {
+  constructor(client: BloomerpHttpClient) {
+    super(client, "/api/signature_requests/");
+  }
+}
+
+export interface SignatureRequestField {
+  created_by: number | null;
+  datetime_created: string;
+  datetime_updated: string;
+  field_type: string;
+  filled_at: string;
+  height: number;
+  id: string;
+  key: string;
+  object_labels: unknown;
+  page_number: number;
+  recipient: string;
+  request: string;
+  required: boolean;
+  settings: unknown;
+  updated_by: number | null;
+  value: unknown;
+  width: number;
+  x: number;
+  y: number;
+}
+
+export type SignatureRequestFieldId = string;
+export type SignatureRequestFieldFieldName = "created_by" | "datetime_created" | "datetime_updated" | "field_type" | "filled_at" | "height" | "id" | "key" | "object_labels" | "page_number" | "recipient" | "request" | "required" | "settings" | "updated_by" | "value" | "width" | "x" | "y";
+
+export interface SignatureRequestFieldCreate {
+  created_by?: number | null;
+  field_type: string;
+  filled_at?: string;
+  height?: number;
+  key: string;
+  page_number?: number;
+  recipient: string;
+  request: string;
+  required?: boolean;
+  settings?: unknown;
+  updated_by?: number | null;
+  value?: unknown;
+  width?: number;
+  x?: number;
+  y?: number;
+}
+
+export type SignatureRequestFieldUpdate = Partial<SignatureRequestFieldCreate>;
+export type SignatureRequestFieldQuery = Partial<Record<SignatureRequestFieldFieldName | `${SignatureRequestFieldFieldName}__${string}`, QueryValue | QueryValue[]>>;
+
+export const signatureRequestFieldsFields: Record<SignatureRequestFieldFieldName, BloomerpFieldMetadata> = {
+  "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "field_type": {"name": "field_type", "title": "Field type", "fieldType": "CharField", "dbFieldType": "varchar(20)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": [{"value": "signature", "label": "Signature"}, {"value": "initials", "label": "Initials"}, {"value": "name", "label": "Name"}, {"value": "email", "label": "Email"}, {"value": "phone", "label": "Phone"}, {"value": "company", "label": "Company"}, {"value": "text", "label": "Text"}, {"value": "multiline_text", "label": "Multiline text"}, {"value": "checkbox", "label": "Checkbox"}, {"value": "radio", "label": "Radio buttons"}, {"value": "selection", "label": "Selection"}, {"value": "date", "label": "Date"}]},
+  "filled_at": {"name": "filled_at", "title": "Filled at", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "height": {"name": "height", "title": "Height", "fieldType": "DecimalField", "dbFieldType": "decimal", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
+  "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "key": {"name": "key", "title": "Key", "fieldType": "SlugField", "dbFieldType": "varchar(100)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "page_number": {"name": "page_number", "title": "Page number", "fieldType": "PositiveIntegerField", "dbFieldType": "integer unsigned", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
+  "recipient": {"name": "recipient", "title": "Recipient", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": "SignatureRecipient", "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "request": {"name": "request", "title": "Request", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": "SignatureRequest", "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "required": {"name": "required", "title": "Required", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
+  "settings": {"name": "settings", "title": "Settings", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "value": {"name": "value", "title": "Value", "fieldType": "JSONField", "dbFieldType": "text", "nullable": true, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "width": {"name": "width", "title": "Width", "fieldType": "DecimalField", "dbFieldType": "decimal", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
+  "x": {"name": "x", "title": "Left", "fieldType": "DecimalField", "dbFieldType": "decimal", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
+  "y": {"name": "y", "title": "Top", "fieldType": "DecimalField", "dbFieldType": "decimal", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "number", "choices": null},
+} as const;
+
+export const signatureRequestFieldsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const signatureRequestFieldsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+
+export class SignatureRequestFieldApi extends ModelApi<SignatureRequestField, SignatureRequestFieldId, SignatureRequestFieldCreate, SignatureRequestFieldUpdate, SignatureRequestFieldQuery, SignatureRequestFieldFieldName> {
+  constructor(client: BloomerpHttpClient) {
+    super(client, "/api/signature_request_fields/");
   }
 }
 
@@ -2298,7 +2824,7 @@ export const userListViewPreferencesFields: Record<UserListViewPreferenceFieldNa
   "shared_with_users": {"name": "shared_with_users", "title": "Shared With Users", "fieldType": "ManyToManyField", "dbFieldType": null, "nullable": false, "many": true, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "Array<number>", "choices": null},
   "source_object": {"name": "source_object", "title": "Source Object", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "UserListViewPreference", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
   "user": {"name": "user", "title": "User", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
-  "view_mode": {"name": "view_mode", "title": "View Mode", "fieldType": "CharField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "normal", "label": "Normal"}, {"value": "split", "label": "Split view"}, {"value": "drawer", "label": "Drawer"}]},
+  "view_mode": {"name": "view_mode", "title": "View mode", "fieldType": "CharField", "dbFieldType": "varchar(10)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "normal", "label": "Normal"}, {"value": "split", "label": "Split view"}, {"value": "drawer", "label": "Drawer"}]},
   "view_type": {"name": "view_type", "title": "View Type", "fieldType": "CharField", "dbFieldType": "varchar(50)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": [{"value": "table", "label": "Table"}, {"value": "kanban", "label": "Kanban"}, {"value": "card", "label": "Card"}, {"value": "calendar", "label": "Calendar"}, {"value": "gantt", "label": "Gantt"}, {"value": "pivot_table", "label": "Pivot"}, {"value": "file_browser", "label": "File Browser"}]},
 } as const;
 
@@ -2654,9 +3180,79 @@ export class WorkspaceApi extends ModelApi<Workspace, WorkspaceId, WorkspaceCrea
   }
 }
 
+export interface CustomWorkflowsSaveInputNodesItem {
+  "id"?: number;
+  "client_id": string;
+  "type": "TRIGGER" | "ACTION" | "FLOW";
+  "name"?: string | null;
+  "sub_type": string;
+  "parameters": unknown;
+  "pos_x"?: number | null;
+  "pos_y"?: number | null;
+}
+
+export interface CustomWorkflowsSaveInputEdgesItem {
+  "id"?: number;
+  "from_node": string;
+  "to_node": string;
+  "output_port"?: string;
+  "name"?: string | null;
+}
+
+export interface CustomWorkflowsSaveInput {
+  "workflow_id"?: number;
+  "name": string;
+  "nodes": Array<CustomWorkflowsSaveInputNodesItem>;
+  "edges": Array<CustomWorkflowsSaveInputEdgesItem>;
+}
+
+export interface CustomWorkflowsSaveOutputNodesItemOutputPortsItem {
+  "id": string;
+  "label": string;
+  "max_connections": number | null;
+}
+
+export interface CustomWorkflowsSaveOutputNodesItem {
+  "id": number;
+  "client_id": string;
+  "type": "TRIGGER" | "ACTION" | "FLOW";
+  "name"?: string | null;
+  "sub_type": string;
+  "parameters": Record<string, unknown | null>;
+  "pos_x": number;
+  "pos_y": number;
+  "output_ports": Array<CustomWorkflowsSaveOutputNodesItemOutputPortsItem>;
+}
+
+export interface CustomWorkflowsSaveOutputEdgesItem {
+  "id"?: number;
+  "from_node": string;
+  "to_node": string;
+  "output_port"?: string;
+  "name"?: string | null;
+}
+
+export interface CustomWorkflowsSaveOutput {
+  "workflow_id": number;
+  "name": string;
+  "nodes": Array<CustomWorkflowsSaveOutputNodesItem>;
+  "edges": Array<CustomWorkflowsSaveOutputEdgesItem>;
+}
+
+export class CustomApi {
+  /** Reuse the SDK authentication and request transport. */
+  constructor(private readonly client: BloomerpHttpClient) {}
+
+  /** Call POST /api/workflows/save/. */
+  workflowsSave(payload: CustomWorkflowsSaveInput, options?: BloomerpRequestOptions): Promise<CustomWorkflowsSaveOutput> {
+    return this.client.request<CustomWorkflowsSaveOutput>("/api/workflows/save/", { ...options, method: "POST", body: JSON.stringify(payload) });
+  }
+}
+
 export class BloomerpSdk {
   public readonly client: BloomerpHttpClient;
   public readonly auth: AuthApi;
+  public readonly custom: CustomApi;
   public readonly metadata = {
     authStrategies: bloomerpAuthStrategyTypes,
     models: {
@@ -2689,6 +3285,30 @@ export class BloomerpSdk {
         capabilities: bookmarksCapabilities,
         publicAccess: bookmarksPublicAccess,
         fields: bookmarksFields,
+      },
+      calendarBookings: {
+        endpoint: "/api/calendar_bookings/",
+        capabilities: calendarBookingsCapabilities,
+        publicAccess: calendarBookingsPublicAccess,
+        fields: calendarBookingsFields,
+      },
+      calendarBookingSubmissions: {
+        endpoint: "/api/calendar_booking_submissions/",
+        capabilities: calendarBookingSubmissionsCapabilities,
+        publicAccess: calendarBookingSubmissionsPublicAccess,
+        fields: calendarBookingSubmissionsFields,
+      },
+      calendarEvents: {
+        endpoint: "/api/calendar_events/",
+        capabilities: calendarEventsCapabilities,
+        publicAccess: calendarEventsPublicAccess,
+        fields: calendarEventsFields,
+      },
+      calendarEventParticipants: {
+        endpoint: "/api/calendar_event_participants/",
+        capabilities: calendarEventParticipantsCapabilities,
+        publicAccess: calendarEventParticipantsPublicAccess,
+        fields: calendarEventParticipantsFields,
       },
       comments: {
         endpoint: "/api/comments/",
@@ -2828,6 +3448,24 @@ export class BloomerpSdk {
         publicAccess: sidebarItemsPublicAccess,
         fields: sidebarItemsFields,
       },
+      signatureRecipients: {
+        endpoint: "/api/signature_recipients/",
+        capabilities: signatureRecipientsCapabilities,
+        publicAccess: signatureRecipientsPublicAccess,
+        fields: signatureRecipientsFields,
+      },
+      signatureRequests: {
+        endpoint: "/api/signature_requests/",
+        capabilities: signatureRequestsCapabilities,
+        publicAccess: signatureRequestsPublicAccess,
+        fields: signatureRequestsFields,
+      },
+      signatureRequestFields: {
+        endpoint: "/api/signature_request_fields/",
+        capabilities: signatureRequestFieldsCapabilities,
+        publicAccess: signatureRequestFieldsPublicAccess,
+        fields: signatureRequestFieldsFields,
+      },
       sqlQueries: {
         endpoint: "/api/sql_queries/",
         capabilities: sqlQueriesCapabilities,
@@ -2919,6 +3557,10 @@ export class BloomerpSdk {
   public readonly activityLogs: ActivityLogApi;
   public readonly applicationFields: ApplicationFieldApi;
   public readonly bookmarks: BookmarkApi;
+  public readonly calendarBookings: CalendarBookingApi;
+  public readonly calendarBookingSubmissions: CalendarBookingSubmissionApi;
+  public readonly calendarEvents: CalendarEventApi;
+  public readonly calendarEventParticipants: CalendarEventParticipantApi;
   public readonly comments: CommentApi;
   public readonly documentTemplates: DocumentTemplateApi;
   public readonly documentTemplateHeaders: DocumentTemplateHeaderApi;
@@ -2942,6 +3584,9 @@ export class BloomerpSdk {
   public readonly savedFilters: SavedFilterApi;
   public readonly sidebars: SidebarApi;
   public readonly sidebarItems: SidebarItemApi;
+  public readonly signatureRecipients: SignatureRecipientApi;
+  public readonly signatureRequests: SignatureRequestApi;
+  public readonly signatureRequestFields: SignatureRequestFieldApi;
   public readonly sqlQueries: SqlQueryApi;
   public readonly tiles: TileApi;
   public readonly todos: TodoApi;
@@ -2957,14 +3602,20 @@ export class BloomerpSdk {
   public readonly workflowRunSteps: WorkflowRunStepApi;
   public readonly workspaces: WorkspaceApi;
 
+  /** Configure shared transport and generated endpoint clients. */
   constructor(config: BloomerpSdkConfig) {
     this.client = new BloomerpHttpClient(config);
     this.auth = new AuthApi(this.client);
+    this.custom = new CustomApi(this.client);
     this.aiConversations = new AIConversationApi(this.client);
     this.aiMessages = new AIMessageApi(this.client);
     this.activityLogs = new ActivityLogApi(this.client);
     this.applicationFields = new ApplicationFieldApi(this.client);
     this.bookmarks = new BookmarkApi(this.client);
+    this.calendarBookings = new CalendarBookingApi(this.client);
+    this.calendarBookingSubmissions = new CalendarBookingSubmissionApi(this.client);
+    this.calendarEvents = new CalendarEventApi(this.client);
+    this.calendarEventParticipants = new CalendarEventParticipantApi(this.client);
     this.comments = new CommentApi(this.client);
     this.documentTemplates = new DocumentTemplateApi(this.client);
     this.documentTemplateHeaders = new DocumentTemplateHeaderApi(this.client);
@@ -2988,6 +3639,9 @@ export class BloomerpSdk {
     this.savedFilters = new SavedFilterApi(this.client);
     this.sidebars = new SidebarApi(this.client);
     this.sidebarItems = new SidebarItemApi(this.client);
+    this.signatureRecipients = new SignatureRecipientApi(this.client);
+    this.signatureRequests = new SignatureRequestApi(this.client);
+    this.signatureRequestFields = new SignatureRequestFieldApi(this.client);
     this.sqlQueries = new SqlQueryApi(this.client);
     this.tiles = new TileApi(this.client);
     this.todos = new TodoApi(this.client);

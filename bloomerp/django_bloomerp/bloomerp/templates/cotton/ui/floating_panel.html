@@ -1,16 +1,25 @@
+{% load i18n %}
 {% comment %}
-Floating panel shell. Pass a unique panel_id, title, logo URL, launcher_label,
-close_label and storage_key. Slots: launcher (orb artwork/badge), header_start
-(back controls), header_controls (history/new controls), and default content.
-Additional attributes are forwarded to the panel. Both consumers share its layout.
+Shared chat shell. Page mode places the sidebar slot in a persistent ResizableDiv;
+floating mode displays it inline and supplies the footer launcher and window controls.
 {% endcomment %}
-<c-vars panel_id="" title="" logo="" launcher_label="" close_label="" storage_key="" launcher_class="right-6 z-[85]" />
-<button type="button" data-floating-panel-action="open" data-floating-panel-launcher
+<c-vars panel_id="" title="" logo="" launcher_label="" close_label="" storage_key="" page_mode="" />
+{% if not page_mode %}
+<button type="button" data-floating-panel-action="toggle" data-floating-panel-launcher
     aria-controls="{{ panel_id }}" aria-expanded="false" aria-label="{{ launcher_label }}"
-    class="floating-panel-launcher fixed bottom-6 {{ launcher_class }} focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500">{{ launcher }}</button>
-<section id="{{ panel_id }}" data-floating-panel data-launcher-storage-key="{{ storage_key }}" hidden aria-label="{{ title }}"
-    class="fixed inset-y-3 right-3 z-[85] flex w-[calc(100%-1.5rem)] max-w-[420px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl {{ class }}" {{ attrs }}>
-    <header class="flex shrink-0 items-center justify-between border-b border-gray-200 px-5 py-4 text-sm text-gray-900">
+    class="workspace-tool rounded-lg">{{ launcher }}</button>
+{% endif %}
+<section id="{{ panel_id }}" data-floating-panel data-launcher-storage-key="{{ storage_key }}" {% if not page_mode %}hidden{% endif %} aria-label="{{ title }}"
+    class="{% if page_mode %}chat-workspace{% else %}workspace-tool-panel fixed top-3 right-3 z-[85] flex w-[calc(100%-1.5rem)] max-w-[420px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-900{% endif %} {{ class }}" {{ attrs }}>
+    {% if page_mode %}
+    <c-ui.resizable_div id="{{ panel_id }}-sidebar" start_width="300px" resize_from="right"
+        min_width="200" min_remaining_width="280" max_width_ratio="0.5" responsive="false" storage="local"
+        class="chat-workspace-sidebar border-r border-gray-200 dark:border-zinc-700">
+        <div data-resizable-div-panel class="flex h-full min-h-0 flex-col overflow-hidden">{{ sidebar }}</div>
+    </c-ui.resizable_div>
+    <div class="chat-workspace-main">
+    {% endif %}
+    <header class="flex shrink-0 items-center justify-between border-b border-gray-200 px-5 py-4 text-sm text-gray-900 dark:border-zinc-700 dark:text-zinc-100">
         <div class="flex min-w-0 items-center gap-3">
             {{ header_start }}
             {% if logo %}<img src="{{ logo }}" alt="" class="shrink-0 object-contain h-8 w-8" aria-hidden="true" />{% endif %}
@@ -18,9 +27,15 @@ Additional attributes are forwarded to the panel. Both consumers share its layou
         </div>
         <div class="flex items-center gap-1">
             {{ header_controls }}
+            {% if not page_mode %}
+            <button type="button" data-floating-panel-action="fullscreen" aria-label="{% translate 'Open fullscreen' %}" title="{% translate 'Open fullscreen' %}"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-expand" aria-hidden="true"></i></button>
             <button type="button" data-floating-panel-action="close" aria-label="{{ close_label }}"
                 class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+            {% endif %}
         </div>
     </header>
+    {% if not page_mode %}{{ sidebar }}{% endif %}
     {{ slot }}
+    {% if page_mode %}</div>{% endif %}
 </section>

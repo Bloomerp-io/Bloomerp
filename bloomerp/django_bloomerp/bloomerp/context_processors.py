@@ -1,14 +1,17 @@
 from django.conf import settings
 from django.http import HttpRequest
 
-def debug_mode(request: HttpRequest) -> dict:
+from bloomerp.frontend.settings import get_core_vite_dev_server_url
+
+
+def debug_mode(request: HttpRequest) -> dict[str, bool | str]:
     """
     Context processor to make DEBUG setting available in all templates.
     Usage in templates: {% if DEBUG %}...{% endif %}
     """
     return {
         'DEBUG': settings.DEBUG,
-        'BLOOMERP_VITE_DEV_SERVER_URL': getattr(getattr(settings, "BLOOMERP_CONFIG", None), "vite_dev_server_url", 'http://localhost:5173').rstrip('/'),
+        'BLOOMERP_VITE_DEV_SERVER_URL': get_core_vite_dev_server_url(),
     }
     
 def htmx_main_content_div(request: HttpRequest) -> dict:

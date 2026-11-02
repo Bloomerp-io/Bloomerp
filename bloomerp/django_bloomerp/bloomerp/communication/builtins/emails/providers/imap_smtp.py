@@ -151,7 +151,7 @@ class ImapSmtpAdapter(BaseEmailAdapter):
         in_reply_to: str | None = None,
         references: list[str] | None = None,
     ) -> str:
-        """Send ordinary or calendar scheduling mail and preserve existing Sent-copy behavior."""
+        """Send ordinary, inline-image, and calendar MIME parts while preserving Sent-copy behavior."""
         if not self.email_account.smtp_host or not self.email_account.smtp_port:
             raise ValidationError("SMTP host and port are required.")
         if not to:
@@ -181,6 +181,7 @@ class ImapSmtpAdapter(BaseEmailAdapter):
         if body_html:
             message.add_alternative(body_html, subtype="html")
 
+        html_part = message.get_body(preferencelist=("html",))
         for attachment in attachments:
             if attachment.calendar_method:
                 from bloomerp.communication.calendar.mime import (
@@ -191,6 +192,17 @@ class ImapSmtpAdapter(BaseEmailAdapter):
                 continue
             content_type = attachment.content_type or mimetypes.guess_type(attachment.filename)[0] or "application/octet-stream"
             maintype, _, subtype = content_type.partition("/")
+            if attachment.disposition == "inline":
+                if html_part is None or not re.fullmatch(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~@-]+", attachment.content_id):
+                    raise ValidationError("Inline images require an HTML body and a valid Content-ID.")
+                if maintype != "image":
+                    raise ValidationError("Inline email parts must be images.")
+                html_part.add_related(
+                    attachment.content, maintype=maintype, subtype=subtype,
+                    filename=attachment.filename, disposition="inline",
+                    cid=f"<{attachment.content_id}>",
+                )
+                continue
             message.add_attachment(
                 attachment.content,
                 maintype=maintype or "application",

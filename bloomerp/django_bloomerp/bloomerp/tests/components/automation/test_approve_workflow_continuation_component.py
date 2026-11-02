@@ -49,6 +49,7 @@ class TestApproveWorkflowContinuationComponent(BloomerpComponentTestCase):
         )
 
     def get_test_scenarios(self) -> list[RequestScenario]:
+        """Exercise approval permissions and reject forms for a previous pause."""
         view_kwargs = {"workflow_run_id": self.workflow_run.id}
         return [
             RequestScenario(
@@ -76,7 +77,31 @@ class TestApproveWorkflowContinuationComponent(BloomerpComponentTestCase):
                 view_kwargs=view_kwargs,
                 prepare=self._prepare_superuser,
             ),
+            RequestScenario(
+                name="reject stale approval after workflow pauses at a later step",
+                method="POST",
+                user=self.user,
+                view_kwargs=view_kwargs,
+                data={"data": "{}"},
+                prepare=self._prepare_stale_approval,
+                expected=ExpectedResult(status_code=404),
+            ),
         ]
+
+    def _prepare_stale_approval(self, scenario: RequestScenario) -> None:
+        """Bind the submitted form to a completed step before a later pause."""
+        self._prepare_explicit_approver(scenario)
+        old_step = self.workflow_run.steps.get()
+        old_step.status = WorkflowRunStepStatus.COMPLETED
+        old_step.save(update_fields=["status"])
+        scenario.data["step_id"] = str(old_step.pk)
+        WorkflowRunStep.objects.create(
+            workflow_run=self.workflow_run,
+            node=self.approval_node,
+            sequence=2,
+            action_id="HUMAN_IN_THE_LOOP",
+            status=WorkflowRunStepStatus.PAUSED,
+        )
 
     def _prepare_component(self, _setup: RequestScenario) -> None:
         output_patch = patch(

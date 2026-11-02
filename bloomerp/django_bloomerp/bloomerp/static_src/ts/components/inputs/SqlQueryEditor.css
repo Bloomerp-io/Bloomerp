@@ -1,0 +1,21 @@
+/* Let the query workspace consume the space beneath the breadcrumb header. */
+#main-content:has(> .sql-query-workspace) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#main-content:has(> .sql-query-workspace) > #htmx-addendum {
+    flex: 0 0 auto;
+}
+
+.sql-query-workspace {
+    flex: 1 1 0%;
+    min-width: 0;
+    min-height: 0;
+}
+
+/* Embedded editors retain their default height outside the query workspace. */
+.sql-query-workspace > [bloomerp-component="sql-query-editor"] {
+    height: 100%;
+}

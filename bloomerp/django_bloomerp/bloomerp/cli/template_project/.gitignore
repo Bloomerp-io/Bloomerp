@@ -15,3 +15,5 @@ dist/
 .bloomerp/wheels/
 .bloomerp/app-releases.json
 .bloomerp/marketplace-overrides.json
+node_modules/
+apps/*/static/*/frontend/

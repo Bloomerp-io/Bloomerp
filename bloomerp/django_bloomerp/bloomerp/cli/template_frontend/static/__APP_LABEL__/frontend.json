@@ -1,0 +1,4 @@
+{
+  "entry": "ts/main.ts",
+  "manifest": "__APP_LABEL__/frontend/manifest.json"
+}

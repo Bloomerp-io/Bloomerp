@@ -24,6 +24,7 @@ from bloomerp.models.document_templates.document_template_header import (
 from bloomerp.models.document_templates.document_template_styling import (
     DocumentTemplateStyling,
 )
+from bloomerp.modules.file_management import FileManagement
 
 
 class PageSize(models.TextChoices):
@@ -111,6 +112,9 @@ class DocumentTemplate(BloomerpModel):
         db_table = "bloomerp_document_template"
 
     bloomerp_config = BloomerpModelConfig(
+        module=FileManagement,
+        icon="fa fa-lines",
+        description=gettext_noop("A text based template that can be re-used to generate PDF's, Emails, ..."),
         model_view_settings=ModelViewSettings(
             default_dataviews=[
                 TableDataView(
@@ -150,6 +154,16 @@ class DocumentTemplate(BloomerpModel):
         ),
     )
     avatar = None
+
+    default_signature_layout = models.ForeignKey(
+        "bloomerp.SignatureLayout",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="default_for_document_templates",
+        verbose_name=_("Default signature layout"),
+        help_text=_("Optional reusable placements for PDFs generated from this template."),
+    )
 
     name = models.CharField(
         max_length=100,

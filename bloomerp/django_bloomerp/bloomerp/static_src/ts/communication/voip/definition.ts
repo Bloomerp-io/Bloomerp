@@ -1,5 +1,7 @@
 /** Carrier-neutral session controls consumed by the persistent phone component. */
 export interface BrowserCall {
+    /** Return caller display metadata without exposing SDK session objects. */
+    caller?(): { name: string; address: string };
     /** Answer an incoming call. */
     accept(): void;
     /** Reject an unanswered incoming call. */

@@ -1,0 +1,16 @@
+{
+  "name": "@bloomerp/frontend",
+  "private": true,
+  "description": "Public component API for frontend extensions of the Bloomerp Django framework",
+  "type": "module",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/Bloomerp-io/Bloomerp.git", "directory": "packages/frontend" },
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "node --experimental-strip-types scripts/build.ts",
+    "test": "npm run build && tsc --noEmit --strict --skipLibCheck --lib ES2020,DOM --module nodenext --moduleResolution nodenext tests/contract.ts && node --experimental-strip-types --test tests/dev-runtime.test.ts"
+  },
+  "engines": { "node": ">=22.6" },
+  "devDependencies": { "typescript": "5.7.3", "vite": "^6.0.1" }
+}

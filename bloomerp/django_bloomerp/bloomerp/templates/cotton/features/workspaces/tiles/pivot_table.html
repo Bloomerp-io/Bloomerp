@@ -1,0 +1,25 @@
+{% load i18n %}
+{% if not pivot_configured %}
+    <p class="p-4 text-sm text-dark">{% translate "Select at least one row field and one value field to configure the pivot table." %}</p>
+{% elif pivot_too_tall %}
+    <p class="p-4 text-sm text-dark">{% translate "This pivot has too many nested rows to display safely. Select fewer row fields or narrow the data." %}</p>
+{% else %}
+    {% include "cotton/features/dataviews/pivot_table.html" %}
+{% endif %}
+{% if show_global_pagination %}
+<nav
+    class="mt-3 flex items-center justify-between gap-2"
+    aria-label="{% translate 'Pivot table pagination' %}"
+    hx-target="closest [data-layout-item-body]"
+    hx-select="[data-layout-item-body]"
+    hx-swap="outerHTML"
+>
+    <button type="button" class="btn btn-sm"
+        {% if has_previous %}hx-get="{{ pagination_url }}?{{ pagination_querystring }}&page={{ previous_page_number }}"{% else %}disabled{% endif %}
+    >{% translate "Previous" %}</button>
+    <span class="text-sm text-gray-500">{% blocktrans %}Page {{ current_page }} of {{ total_pages }}{% endblocktrans %}</span>
+    <button type="button" class="btn btn-sm"
+        {% if has_next %}hx-get="{{ pagination_url }}?{{ pagination_querystring }}&page={{ next_page_number }}"{% else %}disabled{% endif %}
+    >{% translate "Next" %}</button>
+</nav>
+{% endif %}

@@ -10,9 +10,11 @@ class JavaScriptSdkGenerator(BaseSdkGenerator):
     default_filename = "index.js"
 
     def render_source(self, model_definitions: list[SdkModelDefinition]) -> str:
+        """Render model CRUD clients and opted-in custom operations."""
         sections = [
             self.render_prelude(),
             *[self.render_model_section(model_definition) for model_definition in model_definitions],
+            self.render_custom_endpoints(),
             self.render_sdk_class(model_definitions),
         ]
         return "\n\n".join(section.rstrip() for section in sections if section).strip() + "\n"
@@ -511,6 +513,7 @@ export const bloomerpAuthStrategyTypes = {auth_strategy_types};
         return "\n".join(lines)
 
     def render_sdk_class(self, model_definitions: list[SdkModelDefinition]) -> str:
+        """Expose shared authentication, model clients, and custom operations."""
         model_metadata_lines: list[str] = []
         for model_definition in model_definitions:
             model_metadata_lines.extend(
@@ -526,9 +529,11 @@ export const bloomerpAuthStrategyTypes = {auth_strategy_types};
 
         lines = [
             "export class BloomerpSdk {",
+            "  /** @param {BloomerpSdkConfig} config Configure generated endpoint clients. */",
             "  constructor(config) {",
             "    this.client = new BloomerpHttpClient(config);",
             "    this.auth = new AuthApi(this.client);",
+            "    this.custom = new CustomApi(this.client);",
             "    this.metadata = {",
             "      authStrategies: bloomerpAuthStrategyTypes,",
             "      models: {",

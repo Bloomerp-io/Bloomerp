@@ -24,7 +24,7 @@
     >
         {% csrf_token %}
 
-        <div class="border-gray-200 ">
+        <div class="border-gray-200 mb-4">
             <div class="grid grid-cols-1 md:grid-cols-3 items-center gap-3">
                 <div class="justify-self-start">
                 <c-ui.text.subtitle>{{ step_title }}</c-ui.text.subtitle>
@@ -53,12 +53,13 @@
                         </button>
                     </c-ui.shortcut_tooltip>
                     {% endif %}
-                    {% if step_index > 0 %}
+                    {% if step_index > 0 and not wizard_complete %}
                         <c-ui.shortcut_tooltip shortcut="mod+." action="click" position="bottom">
                             <button
                                 type="submit"
                                 name="_wizard_action"
                                 value="back"
+                                formnovalidate
                                 class="btn btn-sm btn-secondary"
                                 x-bind:disabled="wizardSubmitting"
                                 x-bind:class="{ 'opacity-60 cursor-not-allowed': wizardSubmitting }"
@@ -68,6 +69,7 @@
                         </c-ui.shortcut_tooltip>
                     {% endif %}
 
+                    {% if not wizard_hide_submit %}
                     <c-ui.shortcut_tooltip shortcut="mod+s" action="click" position="bottom">
                         <button
                             type="submit"
@@ -86,9 +88,12 @@
                             </span>
                         </button>
                     </c-ui.shortcut_tooltip>
+                    {% endif %}
                 </div>
             </div>
         </div>
+
+        {% if wizard_step_owns_form %}</form>{% endif %}
 
         {% if wizard_error %}
             <div class="alert alert-danger">
@@ -99,10 +104,10 @@
             </div>
         {% endif %}
 
-        <div class="">
+        <div {% if not include_padding %}class="-mx-4"{% endif %}>
             {% if step_template_name %}
                 {% include step_template_name %}
             {% endif %}
         </div>
-    </form>
+    {% if not wizard_step_owns_form %}</form>{% endif %}
 </div>

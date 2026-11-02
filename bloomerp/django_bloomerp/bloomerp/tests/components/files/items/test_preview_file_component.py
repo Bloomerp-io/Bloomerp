@@ -1,12 +1,13 @@
 from unittest.mock import patch
 
 from asgiref.sync import async_to_sync
+from bs4 import BeautifulSoup
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse, StreamingHttpResponse
 from django.test import AsyncRequestFactory, RequestFactory
 
-from bloomerp.components.files.items.preview import _media_response, preview_file
+from bloomerp.components.files.items.preview import MAX_TEXT_BYTES, _media_response, preview_file
 from bloomerp.models.files.file_node import FileNode, _can_view_file_node
 from bloomerp.models.files.file_reference import FileReference
 from bloomerp.permissions.definition import RowPolicyRuleContent
@@ -29,6 +30,12 @@ class TestPreviewFileComponent(BloomerpComponentTestCase):
             content=SimpleUploadedFile("widget.png", b"image"), kind="FILE", name="widget.png"
         )
         scenarios = [
+            RequestScenario(
+                name="Markdown formatting stays inert and respects the preview limit",
+                user=self.normal_user,
+                prepare=self.prepare_markdown,
+                expected=ExpectedResult(response_validators=self.validate_markdown),
+            ),
             RequestScenario(
                 name="File identifier renders an image preview",
                 user=self.admin_user,
@@ -200,6 +207,53 @@ class TestPreviewFileComponent(BloomerpComponentTestCase):
             expected=ExpectedResult(response_validators=lambda response: "<iframe" in response.content.decode()),
         ))
         return scenarios
+
+    def prepare_markdown(self, scenario: RequestScenario) -> None:
+        """Create an owned local Markdown file with formatting and hostile content."""
+        source = (
+            '# Preview heading\n\n**Bold** and *emphasis*\n\n- List item\n\n'
+            '```html\n<script>code example</script>\n```\n\n'
+            '| Name | Value |\n| --- | --- |\n| Example | 42 |\n\n'
+            '[Safe link](https://example.test)\n\n'
+            '[Unsafe link](javascript:alert%281%29)\n\n'
+            '![Remote image](https://example.test/tracker.png)\n\n'
+            '![Local image](secret.png)\n\n'
+            '<script>alert(1)</script>\n\n'
+            '<div hx-get="/danger" bloomerp-component="danger" onclick="alert(1)">Raw HTML</div>\n\n'
+            '{{ request.user }} {% include "secret.html" %}\n\n'
+        ).encode()
+        source += b" " * (MAX_TEXT_BYTES - len(source)) + b"OUTSIDE_PREVIEW_LIMIT"
+        file = FileNode.objects.create(
+            name="Notes.MD", kind="FILE", created_by=self.normal_user,
+            content=SimpleUploadedFile("notes.MD", source),
+        )
+        scenario.view_kwargs = {"file_id": str(file.pk)}
+
+    def validate_markdown(self, response: HttpResponse) -> bool:
+        """Assert formatted output, inert uploaded content, and visible truncation."""
+        html = response.content.decode()
+        soup = BeautifulSoup(html, "html.parser")
+        self.assertEqual(soup.h1.get_text(), "Preview heading")
+        self.assertIn("text-3xl", soup.h1["class"])
+        self.assertEqual(soup.strong.get_text(), "Bold")
+        self.assertEqual(soup.em.get_text(), "emphasis")
+        self.assertEqual(soup.ul.li.get_text(), "List item")
+        self.assertIn("<script>code example</script>", soup.pre.code.get_text())
+        self.assertEqual(soup.table.tbody.td.get_text(), "Example")
+        self.assertEqual(soup.find("a", string="Safe link")["href"], "https://example.test")
+        self.assertIsNone(soup.find(["script", "img", "iframe"]))
+        for element in soup.find_all(True):
+            self.assertFalse(any(
+                attr.startswith(("on", "hx-", "data-hx-")) or attr == "bloomerp-component"
+                for attr in element.attrs
+            ))
+        self.assertNotIn('href="javascript:', html)
+        self.assertIn("Remote image", soup.get_text())
+        self.assertIn("Local image", soup.get_text())
+        self.assertIn('{{ request.user }} {% include "secret.html" %}', soup.get_text())
+        self.assertIn("This is a partial preview.", soup.get_text())
+        self.assertNotIn("OUTSIDE_PREVIEW_LIMIT", html)
+        return True
 
     def grant_files_access(self, scenario: RequestScenario) -> None:
         """Grant the normal user read access to customer files through stored policy."""

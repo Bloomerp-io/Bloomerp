@@ -1,28 +1,47 @@
 {% load i18n %}
-<section bloomerp-component="bloomerp:calling" data-registrations-url="{% url 'components_im_call_registrations' %}" class="fixed bottom-4 left-4 z-[90] rounded-xl border border-gray-200 bg-base p-4 shadow-xl" data-call-panel data-collapsed="false" aria-label="{% translate 'Call' %}" hidden>
-    {% csrf_token %}
-    <div data-call-panel-header>
-        <p data-call-status role="status" aria-live="polite"></p>
-        <button type="button" class="btn btn-secondary btn-sm" data-call-panel-toggle aria-expanded="true" aria-label="{% translate 'Collapse call controls' %}" title="{% translate 'Collapse call controls' %}">
-            <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
-        </button>
-    </div>
-    <p data-call-error role="alert" hidden></p>
-    <div data-call-media></div>
-    <div data-call-admissions role="region" aria-label="{% translate 'Waiting to join' %}" aria-live="polite" class="space-y-2 my-3"></div>
-    <template data-call-admission-template><div class="flex items-center gap-2 rounded-xl border border-gray-200 p-3 bg-white"><span data-guest-name class="flex-1"></span><button type="button" class="btn btn-primary btn-sm" data-call-action="admit" data-decision="admit">{% translate 'Admit' %}</button><button type="button" class="btn btn-secondary btn-sm" data-call-action="admit" data-decision="reject">{% translate 'Decline' %}</button></div></template>
-    <div data-call-panel-actions class="flex flex-wrap gap-2 mt-2">
-        <button type="button" class="btn btn-secondary btn-sm" data-call-action="open" title="{% translate 'Open call' %}" hidden><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i><span>{% translate 'Open call' %}</span></button>
-        <button type="button" class="btn btn-primary btn-sm" data-call-action="answer" hidden><i class="fa-solid fa-phone" aria-hidden="true"></i><span>{% translate 'Join call' %}</span></button>
-        <button type="button" class="btn btn-secondary btn-sm" data-call-action="dismiss" hidden><i class="fa-solid fa-xmark" aria-hidden="true"></i><span>{% translate 'Dismiss' %}</span></button>
-        <button type="button" class="btn btn-secondary btn-sm" data-call-action="microphone" title="{% translate 'Microphone' %}" aria-pressed="true" hidden><i class="fa-solid fa-microphone" aria-hidden="true"></i><span>{% translate 'Microphone' %}</span></button>
-        <button type="button" class="btn btn-secondary btn-sm" data-call-action="screen" aria-pressed="false" hidden><i class="fa-solid fa-display" aria-hidden="true"></i><span data-share-start>{% translate 'Share screen' %}</span><span data-share-stop hidden>{% translate 'Stop sharing' %}</span></button>
-        <button type="button" class="btn btn-secondary btn-sm" data-call-action="share" hidden><i class="fa-solid fa-link" aria-hidden="true"></i><span>{% translate 'Copy meeting link' %}</span></button>
-        <button type="button" class="btn btn-secondary btn-sm" data-call-action="camera" aria-pressed="false" hidden><i class="fa-solid fa-video" aria-hidden="true"></i><span>{% translate 'Camera' %}</span></button>
-        <button type="button" class="btn btn-secondary btn-sm" data-call-action="audio" hidden><i class="fa-solid fa-volume-high" aria-hidden="true"></i><span>{% translate 'Enable sound' %}</span></button>
-        <button type="button" class="btn btn-danger btn-sm" data-call-action="leave" title="{% translate 'Leave call' %}" hidden><i class="fa-solid fa-phone-slash" aria-hidden="true"></i><span>{% translate 'Leave call' %}</span></button>
-        <button type="button" class="btn btn-secondary btn-sm" data-call-action="end" hidden><i class="fa-solid fa-stop" aria-hidden="true"></i><span>{% translate 'End for everyone' %}</span></button>
-    </div>
+<div bloomerp-component="bloomerp:calling" data-call-user="{{ request.user.pk }}" data-registrations-url="{% url 'components_im_call_registrations' %}" data-call-state="idle">
+    <button type="button" data-call-action="panel" data-call-launcher aria-controls="workspace-call-panel" aria-expanded="false" class="workspace-tool rounded-lg" title="{% translate 'Calls' %}">
+        <i data-call-launcher-icon class="fa-solid fa-phone" aria-hidden="true"></i><span>{% translate 'Calls' %}</span><span data-call-availability-dot class="call-availability-dot" aria-hidden="true"></span><span data-call-launcher-description class="sr-only">{% translate 'Offline' %}</span>
+    </button>
+    <section id="workspace-call-panel" data-call-panel class="workspace-tool-panel rounded-xl border border-gray-200 bg-white p-4 shadow-xl dark:border-zinc-700 dark:bg-zinc-900" aria-label="{% translate 'Call controls' %}" hidden>
+        {% csrf_token %}
+        <header data-call-panel-header>
+            <h2 class="flex items-center gap-2 font-semibold text-sm"><i class="fa-solid fa-headset text-primary-600" aria-hidden="true"></i>{% translate 'Calls' %}</h2>
+            <button type="button" class="im-icon-button" data-call-panel-toggle aria-label="{% translate 'Minimize call controls' %}" title="{% translate 'Minimize call controls' %}"><i class="fa-solid fa-minus" aria-hidden="true"></i></button>
+        </header>
+        <div class="call-preferences border-b border-gray-200 dark:border-zinc-700">
+            <button type="button" data-call-action="availability" role="switch" aria-checked="false" class="call-availability-switch"><i class="fa-solid fa-phone" aria-hidden="true"></i><span>{% translate 'Receive incoming calls' %}</span><span data-call-switch-indicator aria-hidden="true"></span></button>
+            <div class="flex items-center justify-between gap-2 mt-2">
+                <p data-call-availability role="status" class="text-xs text-gray-500">{% translate 'Offline' %}</p>
+                <button type="button" data-call-action="ringtone" aria-pressed="false" class="im-icon-button" title="{% translate 'Mute ringtone' %}" aria-label="{% translate 'Mute ringtone' %}"><i data-call-ringtone-icon class="fa-solid fa-bell" aria-hidden="true"></i></button>
+            </div>
+            <button type="button" data-call-action="ringtone-test" class="mt-2 text-xs text-primary-600" hidden><i class="fa-solid fa-volume-high mr-1" aria-hidden="true"></i>{% translate 'Test incoming ringtone' %}</button>
+            <button type="button" data-call-action="retry" class="mt-2 text-xs text-primary-600" hidden>{% translate 'Reconnect incoming calls' %}</button>
+        </div>
+        <div data-call-identity class="call-identity">
+            <span class="call-identity-icon bg-primary-50 text-primary-600"><i data-call-kind-icon class="fa-solid fa-phone" aria-hidden="true"></i></span>
+            <div class="min-w-0"><p data-call-caller class="truncate font-semibold text-sm"></p><p data-call-kind class="text-xs text-gray-500"></p></div>
+        </div>
+        <p data-call-status role="status" aria-live="polite" class="text-sm text-gray-600 dark:text-zinc-300">{% translate 'No active call' %}</p>
+        <p data-call-error role="alert" class="mt-2 text-sm text-red-600" hidden></p>
+        <button type="button" data-call-action="ringtone-enable" class="mt-2 text-sm text-primary-600" hidden><i class="fa-solid fa-volume-high mr-1" aria-hidden="true"></i>{% translate 'Enable ringtone sound' %}</button>
+        <div data-call-media></div>
+        <div data-call-admissions role="region" aria-label="{% translate 'Waiting to join' %}" aria-live="polite" class="space-y-2 my-3"></div>
+        <template data-call-admission-template><div class="flex items-center gap-2 rounded-xl border border-gray-200 p-3 bg-white"><span data-guest-name class="flex-1"></span><button type="button" class="btn btn-primary btn-sm" data-call-action="admit" data-decision="admit">{% translate 'Admit' %}</button><button type="button" class="btn btn-secondary btn-sm" data-call-action="admit" data-decision="reject">{% translate 'Decline' %}</button></div></template>
+        <div data-call-panel-actions class="flex flex-wrap gap-2 mt-3">
+            <button type="button" class="btn btn-secondary btn-sm" data-call-action="open" title="{% translate 'Open call' %}" hidden><i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i><span>{% translate 'Open call' %}</span></button>
+            <button type="button" class="btn btn-primary btn-sm" data-call-action="answer" hidden><i class="fa-solid fa-phone" aria-hidden="true"></i><span>{% translate 'Accept' %}</span></button>
+            <button type="button" class="btn btn-danger btn-sm" data-call-action="decline" hidden><i class="fa-solid fa-phone-slash" aria-hidden="true"></i><span>{% translate 'Decline' %}</span></button>
+            <button type="button" class="btn btn-secondary btn-sm" data-call-action="dismiss" hidden><i class="fa-solid fa-xmark" aria-hidden="true"></i><span>{% translate 'Dismiss' %}</span></button>
+            <button type="button" class="btn btn-secondary btn-sm" data-call-action="microphone" title="{% translate 'Microphone' %}" aria-pressed="true" hidden><i class="fa-solid fa-microphone" aria-hidden="true"></i><span>{% translate 'Microphone' %}</span></button>
+            <button type="button" class="btn btn-secondary btn-sm" data-call-action="screen" aria-pressed="false" hidden><i class="fa-solid fa-display" aria-hidden="true"></i><span data-share-start>{% translate 'Share screen' %}</span><span data-share-stop hidden>{% translate 'Stop sharing' %}</span></button>
+            <button type="button" class="btn btn-secondary btn-sm" data-call-action="share" hidden><i class="fa-solid fa-link" aria-hidden="true"></i><span>{% translate 'Copy meeting link' %}</span></button>
+            <button type="button" class="btn btn-secondary btn-sm" data-call-action="camera" aria-pressed="false" hidden><i class="fa-solid fa-video" aria-hidden="true"></i><span>{% translate 'Camera' %}</span></button>
+            <button type="button" class="btn btn-secondary btn-sm" data-call-action="audio" hidden><i class="fa-solid fa-volume-high" aria-hidden="true"></i><span>{% translate 'Enable sound' %}</span></button>
+            <button type="button" class="btn btn-danger btn-sm" data-call-action="leave" title="{% translate 'Leave call' %}" hidden><i class="fa-solid fa-phone-slash" aria-hidden="true"></i><span>{% translate 'Leave call' %}</span></button>
+            <button type="button" class="btn btn-secondary btn-sm" data-call-action="end" hidden><i class="fa-solid fa-stop" aria-hidden="true"></i><span>{% translate 'End for everyone' %}</span></button>
+        </div>
+    </section>
     <template data-call-view-template>
         <main data-call-view class="call-page bg-base text-gray-800">
             <section class="call-stage bg-white rounded-xl border border-gray-200">
@@ -64,4 +83,4 @@
             @media(max-width:600px){.call-page{padding:10px;gap:12px}.call-header{padding:14px}.call-participants{padding:12px;gap:12px}.call-toolbar button span{display:none}.call-stage{min-height:70vh}}
         </style>
     </template>
-</section>
+</div>

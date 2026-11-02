@@ -1,0 +1,9 @@
+{% load i18n %}
+<div bloomerp-component="bloomerp:signing-wizard"
+     {% if completed_request %}data-completed-request-id="{{ completed_request.pk }}"{% endif %}>
+    {% if not completed_request %}
+        <div hx-get="{{ signing_component_url }}" hx-trigger="load" hx-target="this" hx-swap="innerHTML" data-signing-component>
+            <p class="text-sm text-muted" role="status">{% trans 'Loading…' %}</p>
+        </div>
+    {% endif %}
+</div>

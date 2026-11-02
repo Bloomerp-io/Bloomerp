@@ -64,9 +64,6 @@ class BloomerpDetailFileListView(BaseBloomerpDetailView):
         context["filters"] = {
             "filter": json.dumps([reference_filter.model_dump(mode="json")])
         }
-        context["args"] = {
-            "hide_filters" "references"
-        }
         readable_files = FileAccessManager(self.request.user).get_queryset(
             FileNode.objects.all(), related_object=self.object,
         )

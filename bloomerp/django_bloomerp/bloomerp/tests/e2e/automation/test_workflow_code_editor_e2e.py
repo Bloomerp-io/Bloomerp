@@ -1,4 +1,4 @@
-from playwright.sync_api import expect
+from playwright.sync_api import Request, expect
 
 from bloomerp.models.automation.workflow import Workflow
 from bloomerp.models.automation.workflow_node import WorkflowNode
@@ -38,7 +38,8 @@ class TestWorkflowCodeEditorE2E(e2e.BloomerpE2ETestCase):
             )
         ]
 
-    def reopen_code_editor(self):
+    def reopen_code_editor(self) -> None:
+        """Verify reopened editors persist configuration through the save API."""
         nodes = self.page.locator("#drawflow .drawflow-node")
         expect(nodes).to_have_count(2)
         first_node = nodes.filter(has_text="First query")
@@ -63,9 +64,11 @@ class TestWorkflowCodeEditorE2E(e2e.BloomerpE2ETestCase):
         editor = self.page.locator("[data-code-editor-container]")
         expect(editor).to_be_visible()
         self.assertFalse(self.page.evaluate("window.__previousWorkflowWidget.destroyed"))
-        with self.page.expect_request(
-            lambda request: "/components/automation/save_workflow/" in request.url
-        ) as saved:
+        def is_save_request(request: Request) -> bool:
+            """Match the SDK request carrying the edited node configuration."""
+            return "/api/workflows/save/" in request.url
+
+        with self.page.expect_request(is_save_request) as saved:
             self.replace_editor_value(editor, "SELECT 2 FROM failed_request")
 
         payload = saved.value.post_data_json

@@ -123,6 +123,112 @@ function doubleClick(f: Fixture, element: HTMLElement): void {
     element.dispatchEvent(new f.w.MouseEvent('dblclick', { bubbles: true, cancelable: true }));
 }
 
+/** Supply browser geometry for an hourly grid while exercising the real component lifecycle. */
+function hourlyLayoutFixture(mode: string, dates: string[]): Fixture {
+    const f = fixture(mode);
+    const calendar = f.w.document.querySelector<HTMLElement>('[bloomerp-component="calendar"]')!;
+    const component = f.w.CalendarFixture.getComponent(calendar) as Calendar;
+    component.destroy();
+    calendar.dataset.calendarTimezone = 'Pacific/Kiritimati';
+    Object.defineProperty(f.w, 'innerHeight', { value: 988, configurable: true });
+    f.w.document.body.style.overflowY = 'auto';
+    Object.defineProperty(f.w.document.body, 'clientHeight', { value: 964, configurable: true });
+    /** Represent the bounded application content area. */
+    f.w.document.body.getBoundingClientRect = function contentBounds(): DOMRect {
+        return new f.w.DOMRect(0, 12, 1000, 964);
+    };
+    calendar.parentElement!.style.paddingBottom = '16px';
+    /** Position the calendar below its navigation and toolbar. */
+    calendar.getBoundingClientRect = function calendarBounds(): DOMRect {
+        return new f.w.DOMRect(0, 180 - f.w.document.body.scrollTop, 1000, Number.parseFloat(calendar.style.height) || 0);
+    };
+    const grid = calendar.querySelector<HTMLElement>('[data-calendar-grid]')!;
+    grid.innerHTML = `<div data-calendar-day-header></div>${dates.map(hourlyColumnMarkup).join('')}`;
+    Object.defineProperty(grid, 'clientHeight', { value: 700 });
+    Object.defineProperty(grid.querySelector('[data-calendar-day-header]'), 'offsetHeight', { value: 40 });
+    /** Keep the scroll viewport fixed while its time columns move internally. */
+    grid.getBoundingClientRect = function gridBounds(): DOMRect {
+        return new f.w.DOMRect(0, 240, 1000, 700);
+    };
+    for (const column of grid.querySelectorAll<HTMLElement>('[data-calendar-time-column]')) {
+        /** Model the 24 eighty-pixel hourly rows after scrolling. */
+        column.getBoundingClientRect = function columnBounds(): DOMRect {
+            return new f.w.DOMRect(0, 340 - grid.scrollTop, 120, 1920);
+        };
+    }
+    component.initialize();
+    return f;
+}
+
+/** Render only the hourly column contract needed by the layout and live marker. */
+function hourlyColumnMarkup(date: string): string {
+    return `<div data-calendar-time-column><div class="hidden" data-calendar-current-time="${date}">
+        <span class="hidden" data-calendar-current-time-dot></span></div></div>`;
+}
+
+/** Wait for the component's initial layout frame before checking its scroll position. */
+function nextLayoutFrame(f: Fixture): Promise<void> {
+    return new Promise<void>(function scheduleFrame(resolve: () => void): void {
+        /** Resolve after previously queued component layout work. */
+        f.w.requestAnimationFrame(function finishFrame(): void { resolve(); });
+    });
+}
+
+/** Constrain both hourly modes, center local time, and preserve manual scrolling on resize. */
+async function hourlyViewportAndCurrentTime(): Promise<void> {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Pacific/Kiritimati', year: 'numeric', month: '2-digit', day: '2-digit',
+    });
+    const today = formatter.format(new Date());
+    for (const mode of ['day', 'week']) {
+        const f = hourlyLayoutFixture(mode, mode === 'week' ? ['2000-01-01', today] : [today]);
+        try {
+            await nextLayoutFrame(f);
+            const calendar = f.w.document.querySelector<HTMLElement>('[bloomerp-component="calendar"]')!;
+            const grid = calendar.querySelector<HTMLElement>('[data-calendar-grid]')!;
+            const marker = calendar.querySelector<HTMLElement>(`[data-calendar-current-time="${today}"]`)!;
+            assert.equal(calendar.style.height, '780px');
+            const timeOffset = 100 + Number.parseFloat(marker.style.top) / 100 * 1920;
+            assert.equal(grid.scrollTop, Math.max(0, timeOffset - 370));
+            assert.equal(marker.classList.contains('hidden'), false);
+            assert.equal(calendar.querySelectorAll('[data-calendar-current-time-dot]:not(.hidden)').length, 1);
+            assert.equal(marker.querySelector('[data-calendar-current-time-dot]')!.classList.contains('hidden'), false);
+            if (mode === 'week') {
+                assert.equal(calendar.querySelector('[data-calendar-current-time="2000-01-01"]')!.classList.contains('hidden'), false);
+            }
+            f.w.document.body.scrollTop = 100;
+            f.w.dispatchEvent(new f.w.Event('resize'));
+            assert.equal(calendar.style.height, '780px');
+            f.w.document.body.scrollTop = 0;
+            grid.scrollTop = 42;
+            Object.defineProperty(f.w.document.body, 'clientHeight', { value: 764 });
+            f.w.dispatchEvent(new f.w.Event('resize'));
+            assert.equal(calendar.style.height, '580px');
+            assert.equal(grid.scrollTop, 42);
+            calendar.dispatchEvent(new f.w.Event('htmx:beforeCleanupElement', { bubbles: true }));
+            Object.defineProperty(f.w.document.body, 'clientHeight', { value: 664 });
+            f.w.dispatchEvent(new f.w.Event('resize'));
+            assert.equal(calendar.style.height, '580px');
+        } finally { f.dom.window.close(); }
+    }
+}
+test('hourly calendars fit their viewport, center timezone-local time, and mark only today', hourlyViewportAndCurrentTime);
+
+/** Keep other periods centered at the current hour without showing today's marker or dot. */
+async function hourlyPastPeriod(): Promise<void> {
+    const f = hourlyLayoutFixture('week', ['2000-01-01', '2000-01-02']);
+    try {
+        await nextLayoutFrame(f);
+        const calendar = f.w.document.querySelector<HTMLElement>('[bloomerp-component="calendar"]')!;
+        assert.equal(calendar.querySelectorAll('[data-calendar-current-time]:not(.hidden)').length, 0);
+        assert.equal(calendar.querySelectorAll('[data-calendar-current-time-dot]:not(.hidden)').length, 0);
+        const marker = calendar.querySelector<HTMLElement>('[data-calendar-current-time]')!;
+        const grid = calendar.querySelector<HTMLElement>('[data-calendar-grid]')!;
+        assert.equal(grid.scrollTop, Math.max(0, 100 + Number.parseFloat(marker.style.top) / 100 * 1920 - 370));
+    } finally { f.dom.window.close(); }
+}
+test('other weeks retain current-hour centering without a current-day marker', hourlyPastPeriod);
+
 /** Verify hour defaults, inherited filters, modal opening, and the shared create correlation ID. */
 function hourlyCreation(): void {
     for (const mode of ['day', 'week']) {
@@ -350,3 +456,54 @@ test('double-clicking an event opens its update URL inside the shared drawer', (
     assert.equal(container.querySelector('[data-dataview-detail-drawer]')!.classList.contains('hidden'), false);
     f.dom.window.close();
 });
+
+
+/** The shared toolbar must send the checkbox selection that exists when the action is clicked. */
+function toolbarSelection(): void {
+    const f = fixture('month', true, true, true, { filter: 'old-filter', _permission_token: 'view-token' });
+    try {
+        const container = f.w.document.getElementById('data-view-1')!;
+        container.insertAdjacentHTML('beforeend', `
+            <input type="checkbox" data-bulk-checkbox data-object-id="first">
+            <input type="checkbox" data-bulk-checkbox data-object-id="second">
+            <div data-data-view-button="reconcile" data-dataview-action="true"><button id="reconcile">Reconcile</button></div>
+            <div data-data-view-button="export"><button id="export">Export</button></div>
+            <div data-base-url="/nested/" data-content-type-id="2">
+                <div data-data-view-button="nested" data-dataview-action="true"><button id="nested">Nested</button></div>
+            </div>`);
+        const checkbox = container.querySelector<HTMLInputElement>('[data-object-id="first"]')!;
+        checkbox.checked = true;
+        checkbox.dispatchEvent(new f.w.Event('change', { bubbles: true }));
+
+        /** Emit HTMX's request configuration boundary and inspect its parameters. */
+        function parameters(id: string): Record<string, unknown> {
+            const button = f.w.document.getElementById(id)!;
+            const detail = { elt: button, path: '/action/?filter=old-filter&_permission_token=action-token', parameters: {} as Record<string, unknown> };
+            button.dispatchEvent(new f.w.CustomEvent('htmx:configRequest', { bubbles: true, detail }));
+            return { ...detail.parameters, path: detail.path };
+        }
+        assert.equal(JSON.stringify(parameters('reconcile').selected_ids), '["first"]');
+        assert.equal(parameters('nested').selected_ids, undefined);
+        assert.equal(parameters('export').selected_ids, undefined);
+        const dataSection = f.w.document.getElementById('data-view-data-section')!;
+        dataSection.dispatchEvent(new f.w.CustomEvent('htmx:afterSwap', {
+            bubbles: true, detail: { target: dataSection, xhr: { responseURL: 'https://app.example/dataview/?filter=current-filter&q=search' } },
+        }));
+        const updated = new URL(parameters('reconcile').path as string, f.w.location.origin);
+        assert.equal(updated.searchParams.get('filter'), 'current-filter');
+        assert.equal(updated.searchParams.get('q'), 'search');
+        assert.equal(updated.searchParams.get('_permission_token'), 'action-token');
+        dataSection.dispatchEvent(new f.w.CustomEvent('htmx:afterSwap', {
+            bubbles: true, detail: { target: dataSection, xhr: { responseURL: 'https://app.example/dataview/' } },
+        }));
+        assert.equal(new URL(parameters('reconcile').path as string, f.w.location.origin).searchParams.has('filter'), false);
+        checkbox.checked = false;
+        checkbox.dispatchEvent(new f.w.Event('change', { bubbles: true }));
+        assert.equal(JSON.stringify(parameters('reconcile').selected_ids), '[]');
+
+        // Teardown releases the listener even if the old DOM still exists.
+        f.w.CalendarFixture.getComponent(container)!.destroy();
+        assert.equal(parameters('reconcile').selected_ids, undefined);
+    } finally { f.dom.window.close(); }
+}
+test('toolbar requests carry the current checkbox selection and stay scoped to their container', toolbarSelection);

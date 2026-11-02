@@ -12,6 +12,12 @@ import ColoredChoices from './components/ColoredChoices';
 import CharFieldFormatting from './components/CharFieldFormatting';
 import MappingWidget from './components/MappingWidget';
 import MailboxSettings from './components/widgets/MailboxSettings';
+import PrepareSign from './components/document_signing/PrepareSign';
+import SigningWizard from './components/document_signing/SigningWizard';
+import SendSignatureRequest from './components/document_signing/SendSignatureRequest';
+import StartSelfSigning from './components/document_signing/StartSelfSigning';
+import SignDocument from './components/document_signing/SignDocument';
+import SignaturePad from './components/document_signing/SignaturePad';
 /**
  * Bloomerp Main TypeScript Entry Point
  * 
@@ -23,6 +29,7 @@ import 'htmx.org';
 import 'drawflow/dist/drawflow.min.css';
 
 import { registerComponent, setupComponentAutoInit } from './components/BaseComponent';
+import { loadFrontendExtensions } from './extensions';
 import { Modal } from './components/Modal';
 import { Drawer } from './components/Drawer';
 import { Sidebar } from './components/sidebar/Sidebar';
@@ -69,10 +76,12 @@ import OrderedFieldSelect from './components/inputs/OrderedFieldSelect';
 import BehaviorBuilder from './components/inputs/BehaviorBuilder';
 import FocusOnForm from './components/FocusOnForm';
 import { BloomerpTextEditor } from './components/text_editor/BloomerpTextEditor';
+import { DocumentTemplateTextEditor } from './components/text_editor/DocumentTemplateTextEditor';
 import { DocumentTemplateBuilder } from './components/DocumentTemplateBuilder';
 import { SetupAnimationListener } from './utils/animations';
 import BaseWizard from './components/BaseWizard';
 import showMessage from './utils/messages';
+import { copyToClipboard } from './utils/clipboard';
 import Breadcrumb from './components/Breadcrumb';
 import ResizableDiv from './components/ResizableDiv';
 import { DataViewDisplayOptions } from './components/data_view_components/DisplayOptions';
@@ -91,13 +100,20 @@ import { FileBrowser } from './components/data_view_components/FileBrowser';
 import { initBrowserAgent } from './utils/agent';
 import AgentChat from './components/agent/AgentChat';
 import MessagingPanel from './components/communication/MessagingPanel';
+import { setupMermaidDisplay } from './utils/mermaidDisplay';
 
 
-Object.assign(window, { showMessage });
+Object.assign(window, { showMessage, copyToClipboard });
 initBrowserAgent();
 setupLanguageSwitch();
 
 // Register components here
+registerComponent('bloomerp:prepare-sign', PrepareSign);
+registerComponent('bloomerp:signing-wizard', SigningWizard);
+registerComponent('bloomerp:send-signature-request', SendSignatureRequest);
+registerComponent('bloomerp:start-self-signing', StartSelfSigning);
+registerComponent('bloomerp:sign-document', SignDocument);
+registerComponent('bloomerp:signature-pad', SignaturePad);
 registerComponent('bloomerp:meeting-lobby', MeetingLobby);
 registerComponent('bloomerp:artifact-picker', ArtifactPicker);
 registerComponent('modal', Modal);
@@ -170,6 +186,7 @@ registerComponent('code-editor-widget', CodeEditorWidget);
 registerComponent('icon-picker-widget', IconPickerWidget);
 registerComponent('address-field-widget', AddressFieldWidget);
 registerComponent('bloomerp-text-editor', BloomerpTextEditor);
+registerComponent('document-template-text-editor', DocumentTemplateTextEditor);
 
 
 // Messages
@@ -217,15 +234,24 @@ registerComponent('calendar-event-editor', CalendarEventEditor);
 registerComponent('calendar-availability', CalendarAvailability);
 registerComponent('inbox-calendar-overlay', InboxCalendarOverlay);
 registerComponent('email-editor', EmailEditor)
+registerComponent("bloomerp:calling", Calling);
+
+/** Start component scanning after translations and implementation registrations settle. */
+function startApplication(): void {
+    setupComponentAutoInit();
+    setupMermaidDisplay();
+    initMessagesWebsocket();
+    SetupAnimationListener();
+}
+
+/** Report unavailable translations while allowing the application to start. */
+function reportTranslationFailure(error: unknown): void {
+    console.warn('Could not load the translation catalog', error);
+}
 
 loadTranslations()
-    .catch((error) => console.warn('Could not load the translation catalog', error))
-    .finally(() => {
-        // Components may synchronously render translated frontend labels.
-        registerComponent("bloomerp:calling", Calling);
-        setupComponentAutoInit();
-        initMessagesWebsocket();
-        SetupAnimationListener();
-    });
+    .catch(reportTranslationFailure)
+    .then(loadFrontendExtensions)
+    .finally(startApplication);
 
 registerComponent("reference-attachments", ReferenceAttachments);

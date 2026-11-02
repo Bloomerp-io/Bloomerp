@@ -1,0 +1,23 @@
+/* Builder sizing and PDF interactions supplement the shared BloomERP controls. */
+.sign-builder { height: min(82vh, 1100px); min-height: 480px; }
+.sign-builder [hidden] { display: none !important; }
+.sign-builder__sidebar { width: 282px; flex: 0 0 282px; }
+.sign-builder__signer-marker { background: var(--signer-color); }
+.sign-builder__tool { cursor: grab; user-select: none; }
+.sign-builder__pages { min-width: 100%; width: max-content; }
+.sign-builder__page { position: relative; flex-shrink: 0; background: white; box-shadow: 0 2px 12px #00000018; }
+.sign-builder__page canvas { display: block; width: 100%; height: 100%; }
+.sign-builder__overlay { position: absolute; inset: 0; touch-action: pan-y; }
+.sign-builder__overlay:focus-visible, .sign-builder__field:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 2px; }
+.sign-builder.is-placing .sign-builder__overlay { cursor: crosshair; }
+.sign-builder__overlay.is-drop-target { outline: 2px solid var(--brand-primary); outline-offset: -2px; background: color-mix(in srgb, var(--brand-primary) 4%, transparent); }
+.sign-builder__field { position: absolute; display: flex; align-items: center; gap: 6px; min-width: 12px; min-height: 12px; padding: 3px 7px; border: 1px dashed var(--signer-color); background: color-mix(in srgb, var(--signer-color) 13%, transparent); color: var(--color-secondary-900); border-radius: 3px; user-select: none; touch-action: none; cursor: move; overflow: hidden; font-size: clamp(8px, .8vw, 13px); }
+.sign-builder__field.is-selected { border-style: solid; outline: 2px solid color-mix(in srgb, var(--signer-color) 25%, transparent); z-index: 2; }
+.sign-builder__field-icon { color: var(--signer-color); flex-shrink: 0; }
+.sign-builder__field-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sign-builder__field-required { font-size: 9px; color: var(--signer-color); }
+.sign-builder__resize { position: absolute; right: 0; bottom: 0; width: 13px; height: 13px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, var(--signer-color) 51%); }
+.sign-builder.is-saving .sign-builder__sidebar, .sign-builder.is-saving [data-draft-title], .sign-builder.is-loading .sign-builder__sidebar { pointer-events: none; opacity: .65; }
+@media (max-width: 760px) {
+    .sign-builder__sidebar { width: 220px; flex-basis: 220px; }
+}

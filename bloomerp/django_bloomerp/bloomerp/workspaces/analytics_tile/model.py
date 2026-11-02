@@ -16,6 +16,7 @@ from bloomerp.services.sql_services import DatabaseTable
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 from bloomerp.workspaces.analytics_tile.kpi import AnalyticsKpiRenderer
 from bloomerp.workspaces.analytics_tile.pie_chart import AnalyticsPieChartRenderer
+from bloomerp.workspaces.analytics_tile.pivot_table import AnalyticsPivotTableRenderer, pivot_aggregator_choices
 from bloomerp.workspaces.analytics_tile.table import AnalyticsTableRenderer
 from bloomerp.workspaces.analytics_tile.two_dim_chart import AnalyticsTwoDimChartRenderer
 from bloomerp.workspaces.analytics_tile.utils import (
@@ -358,12 +359,43 @@ class AnalyticsTileType(Enum):
     #     icon="fa-cubes",
     # )
 
-    # PIVOT_TABLE = AnalyticsTileTypeDefinition(
-    #     key="PIVOT_TABLE",
-    #     name=str(_("Pivot Table")),
-    #     description=str(_("Displays data from a custom query in a pivot table format, allowing users to dynamically summarize, analyze, and explore large datasets by rearranging and aggregating data across multiple dimensions for enhanced insights and decision-making.")),
-    #     icon="fa-th",
-    # )
+    PIVOT_TABLE = AnalyticsTileTypeDefinition(
+        key="PIVOT_TABLE",
+        name=str(_("Pivot Table")),
+        description=str(_("Summarizes query results in expandable rows and nested columns.")),
+        icon="fa-table-cells",
+        fields=[
+            FieldDefinition(
+                key="rows", label=_("Rows"), icon="fa-solid fa-list",
+                description=_("Query columns used for the expandable row hierarchy."),
+                min_items=1,
+            ),
+            FieldDefinition(
+                key="columns", label=_("Columns"), icon="fa-solid fa-table-columns",
+                description=_("Query columns used for nested column headers."),
+            ),
+            FieldDefinition(
+                key="values", label=_("Values"), icon="fa-solid fa-hashtag",
+                description=_("Query columns aggregated into pivot values."),
+                min_items=1,
+                opts=[
+                    LABEL_OPTION,
+                    OptionDefinition(
+                        key="aggregator", label=_("Aggregation"),
+                        description=_("Defaults to count. Numbers support count, sum, minimum, maximum, and average; booleans support count and sum; other fields use count."),
+                        field_cls=ChoiceField, choices_provider=pivot_aggregator_choices,
+                    ),
+                ],
+            ),
+        ],
+        opts=[OptionDefinition(
+            key="page_size", label=_("Rows per page"),
+            description=_("The number of top-level pivot rows shown per page."),
+            field_cls=ChoiceField,
+            field_args={"choices": [(10, 10), (25, 25), (50, 50), (100, 100)]},
+        )],
+        render_cls=AnalyticsPivotTableRenderer,
+    )
 
     # MAP = AnalyticsTileTypeDefinition(
     #     key="MAP",

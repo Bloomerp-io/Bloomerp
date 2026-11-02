@@ -15,12 +15,14 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'ts/entry.ts'),
+        frontend: resolve(__dirname, 'ts/frontend.ts'),
       },
       output: {
         // Keep application startup in one hashed module. Every module, including
         // the entry, has a build-specific URL so lazy imports cannot load an
         // entry cached from an earlier release.
         manualChunks: {
+          'component-runtime': [resolve(__dirname, 'ts/components/BaseComponent.ts')],
           app: [resolve(__dirname, 'ts/main.ts')],
         },
         entryFileNames: '[name]-[hash].js',

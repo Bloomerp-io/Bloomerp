@@ -379,14 +379,15 @@ class OutlookConnectionValidationTests(SimpleTestCase):
                 cc=["cc@example.com"],
                 bcc=["hidden@example.com"],
                 subject="Reply",
-                body_html="<p>Hello</p>",
+                body_html='<p>Hello</p><img src="cid:logo@example.com">',
                 in_reply_to="<original@example.com>",
                 references=["<original@example.com>"],
                 reply_to="reply@example.com",
                 attachments=[
                     EmailAttachment(
                         filename="note.txt", content=b"note", content_type="text/plain"
-                    )
+                    ),
+                    EmailAttachment(filename="logo.png", content=b"image-bytes", content_type="image/png", disposition="inline", content_id="logo@example.com"),
                 ],
             )
         self.assertEqual(result.provider_message_id, "immutable-id")
@@ -400,8 +401,14 @@ class OutlookConnectionValidationTests(SimpleTestCase):
         self.assertEqual(mime["Reply-To"], "reply@example.com")
         self.assertEqual(
             [part.get_filename() for part in mime.walk() if part.get_filename()],
-            ["note.txt"],
+            ["logo.png", "note.txt"],
         )
+        inline = next(part for part in mime.walk() if part.get_content_disposition() == "inline")
+        self.assertEqual(inline["Content-ID"], "<logo@example.com>")
+        self.assertEqual(inline.get_payload(decode=True), b"image-bytes")
+        related = next(part for part in mime.walk() if part.get_content_type() == "multipart/related")
+        self.assertEqual(related.get_payload()[0].get_content_type(), "text/html")
+        self.assertIn(b'cid:logo@example.com', related.get_payload()[0].get_payload(decode=True))
         self.assertEqual(created.kwargs["headers"]["Prefer"], 'IdType="ImmutableId"')
         self.assertEqual(
             request.call_args_list[1].args,

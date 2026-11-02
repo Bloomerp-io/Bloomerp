@@ -61,11 +61,16 @@ const componentInstanceRegistry = new WeakMap<HTMLElement, BaseComponent>();
  * Register a component class
  * @param componentId - The ID used in attribute
  * @param componentClass - The component class constructor
+ * @param options - Require explicit intent when replacing an existing registration.
  */
 export function registerComponent(
     componentId: string,
-    componentClass: new (element: HTMLElement) => BaseComponent
+    componentClass: new (element: HTMLElement) => BaseComponent,
+    options: { override?: boolean } = {},
 ): void {
+    if (componentRegistry.has(componentId) && !options.override) {
+        throw new Error(`Component ${componentId} is already registered; use { override: true } to replace it.`);
+    }
     componentRegistry.set(componentId, componentClass);
 }
 

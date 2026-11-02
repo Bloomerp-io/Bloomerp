@@ -1,0 +1,76 @@
+{% load i18n %}
+<form id="{{ component_id }}" bloomerp-component="bloomerp:send-signature-request"
+      action="{{ send_url }}" method="post"
+      {% if reload_on_complete %}data-reload-on-complete="true"{% endif %}
+      {% if assign_only %}data-assign-only="true"{% endif %}
+      data-recipient-search-url="{% url 'components_search_email_address' %}?calendar_users=1"
+      class="space-y-5" aria-label="{% if assign_only %}{% trans 'Assign recipients' %}{% else %}{% trans 'Send signature request' %}{% endif %}">
+    {% csrf_token %}
+    {{ dispatch_form.submission_id }}{{ dispatch_form.source_revision }}
+    <input type="hidden" name="file_id" value="{{ file.pk }}">
+    {% if layout_id %}<input type="hidden" name="layout_id" value="{{ layout_id }}">{% endif %}
+    {% if preparation_id %}<input type="hidden" name="preparation_id" value="{{ preparation_id }}">{% endif %}
+    <div class="flex min-w-0 items-center gap-2 text-sm">
+        <i class="fa-regular fa-file-pdf text-primary" aria-hidden="true"></i>
+        <span class="truncate">{{ file.name }}</span>
+    </div>
+    <div class="grid grid-cols-1 items-start gap-6 {% if not assign_only %}md:grid-cols-2{% endif %}">
+        <fieldset class="min-w-0 space-y-3">
+            <legend class="mb-2 text-sm font-semibold text-primary-900">{% trans 'Recipients' %}</legend>
+            {% for recipient in existing_recipients %}
+            <div class="space-y-1">
+                <p class="font-medium">{{ recipient.role_label }}</p>
+                <p class="text-sm">{{ recipient.name }}{% if recipient.email %} &lt;{{ recipient.email }}&gt;{% endif %}</p>
+            </div>
+            {% endfor %}
+            {% for field, users in form.recipient_fields %}
+            <div data-signature-recipient>
+                <label for="{{ field.id_for_label }}" class="text-sm font-medium">{{ field.label }}</label>
+                <div class="border-b border-gray-200 focus-within:border-primary">{{ field }}{{ users }}</div>
+            </div>
+            {% endfor %}
+        </fieldset>
+        {% if not assign_only %}
+        <fieldset class="min-w-0 space-y-3 text-sm">
+            <legend class="mb-2 text-sm font-semibold text-primary-900">{% trans 'Delivery options' %}</legend>
+            {% if not existing_request %}
+            <div class="space-y-1">
+                <label class="inline-flex items-center gap-2 text-sm font-medium">
+                    {{ form.send_email }} <span>{{ form.send_email.label }}</span>
+                </label>
+                <input type="hidden" name="{{ form.send_email.html_name }}" value="on" data-send-email-value disabled>
+                <p data-email-required hidden class="text-xs text-muted">{% trans 'Email is required for external recipients.' %}</p>
+            </div>
+            {% endif %}
+            <div class="space-y-1" data-email-options>
+                {{ form.sender.label_tag }}
+                {{ form.sender }}
+            </div>
+            {% if not existing_request %}
+            <div class="space-y-1">
+                {{ form.valid_until.label_tag }}
+                {{ form.valid_until }}
+                <p class="text-xs text-muted">{{ form.valid_until.help_text }}</p>
+            </div>
+            {% endif %}
+        </fieldset>
+        {% endif %}
+    </div>
+    {% if not assign_only %}
+    <div class="space-y-2 border-t border-gray-200 pt-4" data-email-content>
+        <div id="{{ component_id }}-content-label" class="text-sm font-medium">{{ form.content.label }} <span class="font-normal text-muted">({% trans 'optional' %})</span></div>
+        {{ form.content }}
+    </div>
+    {% endif %}
+    <footer class="flex justify-end gap-2 border-t border-gray-200 pt-4">
+        <p data-send-status hidden class="mr-auto text-sm" role="status"></p>
+        <button type="button" class="btn btn-secondary btn-sm" data-action="cancel">{% trans 'Cancel' %}</button>
+        <button type="submit" class="btn btn-primary btn-sm" data-send-request>
+            {% if assign_only %}
+            <i class="fa-solid fa-user-plus" aria-hidden="true"></i> {% trans 'Assign recipients' %}
+            {% else %}
+            <i class="fa-regular fa-paper-plane" aria-hidden="true"></i> {% trans 'Send signature request' %}
+            {% endif %}
+        </button>
+    </footer>
+</form>

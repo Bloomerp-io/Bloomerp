@@ -111,8 +111,10 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
         this.resetButtonHandler = () => this.resetChanges();
         this.backBtn?.addEventListener("click", this.backButtonHandler);
         this.resetBtn?.addEventListener("click", this.resetButtonHandler);
-        this.undoShortcutHandler = (event: KeyboardEvent) => {
-            const isUndoShortcut = (event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === "z";
+        /** Leave rich-text history to its action registry and reserve plain undo for form snapshots. */
+        this.undoShortcutHandler = (event: KeyboardEvent): void => {
+            if ((event.target as Element | null)?.closest('.bloomerp-text-editor[contenteditable]:not([contenteditable="false"])')) return;
+            const isUndoShortcut = (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "z";
             if (!isUndoShortcut) return;
             if (this.pendingChanges.length === 0) return;
 

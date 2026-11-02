@@ -119,7 +119,14 @@ class TestAutomationModels(TestCase):
         self.assertIn(self.other_node, output_nodes)
         self.assertNotIn(self.yet_another_node, output_nodes)
 
-    def test_update_workflow_keeps_new_nodes_and_response_client_ids(self):
+    def test_update_workflow_keeps_new_nodes_and_response_client_ids(self) -> None:
+        """
+        Use case: An authorized user updates a workflow with new and existing nodes.
+        Expected result: The API preserves every client ID and persists the graph.
+        """
+        # 1. Authenticate a user permitted to update this workflow.
+        self.user.is_superuser = True
+        self.user.save(update_fields=["is_superuser"])
         self.client.force_login(self.user)
 
         payload = {
@@ -167,12 +174,14 @@ class TestAutomationModels(TestCase):
             ],
         }
 
+        # 2. Submit the graph through the workflow API.
         response = self.client.post(
-            reverse("components_automation_save_workflow"),
+            reverse("workflows_save"),
             data=json.dumps(payload),
             content_type="application/json",
         )
 
+        # 3. Verify persisted graph data and the editor response.
         self.assertEqual(response.status_code, 200)
         response_data = response.json()
         self.assertEqual(len(response_data["nodes"]), 3)
@@ -190,7 +199,14 @@ class TestAutomationModels(TestCase):
         )
         self.assertEqual(self.workflow.nodes.count(), 3)
 
-    def test_update_workflow_defaults_invalid_node_positions(self):
+    def test_update_workflow_defaults_invalid_node_positions(self) -> None:
+        """
+        Use case: An authorized user saves draft nodes with incomplete positions.
+        Expected result: The API normalizes invalid positions to zero.
+        """
+        # 1. Authenticate a user permitted to update this workflow.
+        self.user.is_superuser = True
+        self.user.save(update_fields=["is_superuser"])
         self.client.force_login(self.user)
 
         payload = {
@@ -222,12 +238,14 @@ class TestAutomationModels(TestCase):
             "edges": [{"from_node": "node-1", "to_node": "node-2"}],
         }
 
+        # 2. Submit the graph through the workflow API.
         response = self.client.post(
-            reverse("components_automation_save_workflow"),
+            reverse("workflows_save"),
             data=json.dumps(payload),
             content_type="application/json",
         )
 
+        # 3. Verify persisted graph data and the editor response.
         self.assertEqual(response.status_code, 200)
         response_data = response.json()
         node_by_client_id = {
@@ -238,7 +256,14 @@ class TestAutomationModels(TestCase):
         self.assertEqual(node_by_client_id["node-2"]["pos_x"], 0)
         self.assertEqual(node_by_client_id["node-2"]["pos_y"], 0)
 
-    def test_update_workflow_uses_db_shaped_client_ids_when_ids_are_missing(self):
+    def test_update_workflow_uses_db_shaped_client_ids_when_ids_are_missing(self) -> None:
+        """
+        Use case: An authorized user saves persisted nodes without explicit database IDs.
+        Expected result: The API resolves database-shaped client IDs without duplicating nodes.
+        """
+        # 1. Authenticate a user permitted to update this workflow.
+        self.user.is_superuser = True
+        self.user.save(update_fields=["is_superuser"])
         self.client.force_login(self.user)
         payload = {
             "workflow_id": self.workflow.id,
@@ -285,12 +310,14 @@ class TestAutomationModels(TestCase):
             ],
         }
 
+        # 2. Submit the graph through the workflow API.
         response = self.client.post(
-            reverse("components_automation_save_workflow"),
+            reverse("workflows_save"),
             data=json.dumps(payload),
             content_type="application/json",
         )
 
+        # 3. Verify persisted graph data and the editor response.
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             WorkflowNode.objects.filter(
@@ -500,7 +527,14 @@ class TestWorkflowSaveDraftClientIds(TestCase):
         )
         return super().setUp()
 
-    def test_update_workflow_accepts_draft_client_ids_for_new_nodes(self):
+    def test_update_workflow_accepts_draft_client_ids_for_new_nodes(self) -> None:
+        """
+        Use case: An authorized user adds a node using an editor draft identifier.
+        Expected result: The API preserves the draft identifier in returned nodes and edges.
+        """
+        # 1. Authenticate a user permitted to update this workflow.
+        self.user.is_superuser = True
+        self.user.save(update_fields=["is_superuser"])
         self.client.force_login(self.user)
         payload = {
             "workflow_id": self.workflow.id,
@@ -545,12 +579,14 @@ class TestWorkflowSaveDraftClientIds(TestCase):
             ],
         }
 
+        # 2. Submit the graph through the workflow API.
         response = self.client.post(
-            reverse("components_automation_save_workflow"),
+            reverse("workflows_save"),
             data=json.dumps(payload),
             content_type="application/json",
         )
 
+        # 3. Verify persisted graph data and the editor response.
         self.assertEqual(response.status_code, 200)
         response_data = response.json()
         self.assertIn(

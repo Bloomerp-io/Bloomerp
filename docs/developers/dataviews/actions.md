@@ -276,3 +276,33 @@ For Kanban, component tests exercise column pagination, shared-preference
 resolution, and card movement through the preference-scoped renderer-operation
 URL. A browser test is warranted when verifying that dragging calls the right
 endpoint and keeps or rolls back the optimistic DOM update.
+
+
+## Toolbar action context and HTML callbacks
+
+`DataviewActionContext.filters` contains the parsed filters after preference
+defaults are applied. `queryset` contains all matching rows the caller can view,
+independently of pagination and selection. `selected_ids` contains unique string
+primary keys from the current checkbox selection, restricted to that queryset.
+An empty selection produces an empty list. Toolbar requests send repeated
+`selected_ids` parameters in the query string for GET or form body for POST.
+Invalid primary keys discard the submitted selection.
+
+Selection is supplied when the browser configures an HTMX toolbar request.
+Custom HTML actions can opt into this behavior by wrapping their controls in
+`data-dataview-action="true"`, as the standard action and modal templates do.
+Rendering callbacks see the selection only if it was supplied with the rendering
+request. A modal endpoint can read its current selection from its GET parameters;
+it must rebuild and authorize its own object scope before processing records.
+Write operations still require their own change and field authorization.
+
+`DataviewHTMLAction.context_func` optionally accepts the same action context and
+returns a dictionary merged into the template context. `ObjectHTMLAction` also
+accepts this callback: its context has the object's model/content type, a
+view-authorized queryset restricted to the object, its ID in `selected_ids`
+when viewable, and `preference=None`. Existing template variables such as `action`, `object`,
+and `request` remain available unless the callback explicitly overrides them.
+Callbacks run only after the action's visibility check passes.
+
+Both `DataviewModalAction` and `ObjectModalAction` default `modal_title` to
+`label` when it is omitted, null, or empty. An explicit title is preserved.

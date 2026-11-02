@@ -36,6 +36,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.urls import NoReverseMatch, reverse
 
+from bloomerp.models.definition import get_model_config
 from bloomerp.modules.definition import module_registry
 from bloomerp.router import router
 from bloomerp.services.search_services import (
@@ -177,6 +178,12 @@ def global_search(request: HttpRequest) -> HttpResponse:
                 query_tokens = set(re.findall(r"[^\W_]+", normalized_query))
                 for route in router.get_routes():
                     if not route.searchable:
+                        continue
+                    config = get_model_config(route.model) if route.model else None
+                    if (
+                        config
+                        and not config.string_search_settings.include_search_routes
+                    ):
                         continue
 
                     # We don't want to include routes that require arguments in the global search, as they cannot be directly navigated to without additional input. This is because the global search is designed for quick navigation, and including routes with required arguments could lead to confusion or dead ends in the search results.

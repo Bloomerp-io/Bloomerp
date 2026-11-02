@@ -11,9 +11,11 @@ class PythonSdkGenerator(BaseSdkGenerator):
     default_filename = "sdk.py"
 
     def render_source(self, model_definitions: list[SdkModelDefinition]) -> str:
+        """Render model CRUD clients and opted-in custom operations."""
         sections = [
             self.render_prelude(),
             *[self.render_model_section(model_definition) for model_definition in model_definitions],
+            self.render_custom_endpoints(),
             self.render_sdk_class(model_definitions),
         ]
         return "\n\n".join(section.rstrip() for section in sections if section).strip() + "\n"
@@ -109,6 +111,7 @@ except BloomerpHttpError as error:
 """
 
     def render_prelude(self) -> str:
+        """Render shared Python transports, authentication, and typing imports."""
         auth_strategy_types = repr(self.get_enabled_auth_strategy_types())
         return f"""from __future__ import annotations
 
@@ -118,7 +121,7 @@ from dataclasses import dataclass
 from http.cookiejar import CookieJar
 from typing import Any, Generic, Literal, NotRequired, TypedDict, TypeVar, cast
 from urllib.error import HTTPError
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 from urllib.request import HTTPCookieProcessor, Request, build_opener
 
 
@@ -507,6 +510,7 @@ bloomerp_auth_strategy_types: tuple[str, ...] = tuple({auth_strategy_types})
         return None
 
     def render_sdk_class(self, model_definitions: list[SdkModelDefinition]) -> str:
+        """Expose shared authentication, model clients, and custom operations."""
         metadata_lines: list[str] = [
             "        self.metadata = {",
             "            \"auth_strategies\": bloomerp_auth_strategy_types,",
@@ -532,9 +536,11 @@ bloomerp_auth_strategy_types: tuple[str, ...] = tuple({auth_strategy_types})
 
         lines = [
             "class BloomerpSdk:",
-            "    def __init__(self, base_url: str, auth: BloomerpAuth | None = None, headers: dict[str, str] | None = None):",
+            '    def __init__(self, base_url: str, auth: BloomerpAuth | None = None, headers: dict[str, str] | None = None) -> None:',
+            '        """Configure shared transport and generated endpoint clients."""',
             "        self.client = BloomerpHttpClient(base_url=base_url, auth=auth, headers=headers)",
             "        self.auth = AuthApi(self.client)",
+            "        self.custom = CustomApi(self.client)",
             *metadata_lines,
             *[
                 f"        self.{model_definition.variable_name}: {model_definition.class_name}Api = {model_definition.class_name}Api(self.client)"

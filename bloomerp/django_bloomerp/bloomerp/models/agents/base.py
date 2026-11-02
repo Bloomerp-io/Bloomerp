@@ -20,6 +20,16 @@ from bloomerp.modules.bloomai import BloomAIModule
 from .fields import AgentJSONField
 
 
+def agent_search_settings(
+    *, include_search_routes: bool = False, allow_global_search: bool = False
+) -> StringSearchSettings:
+    """Build agent search settings with search routes disabled unless opted in."""
+    return StringSearchSettings(
+        allow_global_search=allow_global_search,
+        include_search_routes=include_search_routes,
+    )
+
+
 class AgentQuerySet(models.QuerySet):
     """Require validated instance saves for cross-row and immutable invariants."""
 
@@ -60,7 +70,7 @@ class AgentModel(BloomerpModel):
         module=BloomAIModule,
         is_internal=True,
         api_settings=ApiSettings(enable_auto_generation=False),
-        string_search_settings=StringSearchSettings(allow_global_search=False),
+        string_search_settings=agent_search_settings(),
         activity_log_settings=ActivityLogSettings(enabled=False),
     )
     
