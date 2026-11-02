@@ -1,11 +1,12 @@
 from typing import Any, ClassVar
+from unittest.mock import patch
 
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import models
 
-from bloomerp.filters.definition import FilterCondition
+from bloomerp.filters.definition import Filter, FilterCondition
 from bloomerp.lookups import builtins as lookups
 from bloomerp.model_fields.address_field import AddressField
 from bloomerp.models import (
@@ -15,11 +16,12 @@ from bloomerp.models import (
     RowPolicy,
     RowPolicyRule,
 )
+from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.permissions.definition import (
     RowPolicyRuleCondition,
     RowPolicyRuleContent,
 )
-from bloomerp.permissions.manager import ensure_model_permissions
+from bloomerp.permissions.manager import PolicyManager, ensure_model_permissions
 from bloomerp.services.bulk_action_services import BulkActionService
 from bloomerp.tests.base import BaseBloomerpTestCaseWithModels
 from bloomerp.tests.utils.dynamic_models import create_test_models
@@ -130,6 +132,117 @@ class TestBulkActionService(BaseBloomerpTestCaseWithModels):
         self.assertEqual(deleted_count, 1)
         self.assertFalse(self.CustomerModel.objects.filter(pk=permitted.pk).exists())
         self.assertTrue(self.CustomerModel.objects.filter(pk=protected.pk).exists())
+
+
+class TestBaseFilterBulkActionService(BaseBloomerpTestCaseWithModels):
+    """Verify bulk mutations intersect selected IDs, model filters and row grants."""
+
+    auto_create_customers = False
+
+    def setUp(self) -> None:
+        """Configure a model-wide age filter and a narrower caller row policy."""
+        super().setUp()
+        config = BloomerpModelConfig(
+            base_filter=Filter(
+                connector="AND",
+                conditions=[
+                    FilterCondition(field_path="age", lookup_id="equals", value=30)
+                ],
+            )
+        )
+        self.enterContext(
+            patch.object(self.CustomerModel, "bloomerp_config", config, create=True)
+        )
+        policy = PolicyManager.create_policy(
+            self.CustomerModel,
+            field_permissions={"last_name": ["change"]},
+            row_permissions=[
+                RowPolicyRuleContent(
+                    permissions=["bulk_change", "bulk_delete"],
+                    conditions=[
+                        FilterCondition(
+                            field_path="first_name",
+                            lookup_id="equals",
+                            value="Permitted",
+                        )
+                    ],
+                )
+            ],
+        )
+        PolicyManager.assign(policy, self.normal_user)
+
+    def create_bulk_targets(self) -> tuple[models.Model, models.Model, models.Model]:
+        """Create rows included by both filters, only the policy, or only the model."""
+        included = self.create_customer("Permitted", "Before", 30)
+        excluded = self.create_customer("Permitted", "Before", 31)
+        denied_by_policy = self.create_customer("Denied", "Before", 30)
+        return included, excluded, denied_by_policy
+
+    def test_update_excludes_filtered_ids_for_every_user(self) -> None:
+        """
+        Use case: Bulk updates include IDs outside the model filter or caller policy.
+        Expected result: Excluded rows remain unchanged even for a superuser.
+        """
+        for user in (self.admin_user, self.normal_user):
+            with self.subTest(superuser=user.is_superuser):
+                # 1. Select rows distinguishing the model filter from the row policy.
+                included, excluded, denied_by_policy = self.create_bulk_targets()
+
+                # 2. Submit every selected ID through the public bulk service.
+                updated = BulkActionService(
+                    model=self.CustomerModel, user=user
+                ).update_field(
+                    application_field=ApplicationField.get_by_field(
+                        self.CustomerModel, "last_name"
+                    ),
+                    object_ids=[
+                        str(row.pk) for row in (included, excluded, denied_by_policy)
+                    ],
+                    value="After",
+                )
+
+                # 3. Confirm the model filter always applies alongside caller access.
+                self.assertEqual(updated, 2 if user.is_superuser else 1)
+                for row in (included, excluded, denied_by_policy):
+                    row.refresh_from_db()
+                self.assertEqual(included.last_name, "After")
+                self.assertEqual(excluded.last_name, "Before")
+                self.assertEqual(
+                    denied_by_policy.last_name,
+                    "After" if user.is_superuser else "Before",
+                )
+
+    def test_delete_excludes_filtered_ids_for_every_user(self) -> None:
+        """
+        Use case: Bulk deletions include IDs outside the model filter or caller policy.
+        Expected result: Excluded rows survive deletion even for a superuser.
+        """
+        for user in (self.admin_user, self.normal_user):
+            with self.subTest(superuser=user.is_superuser):
+                # 1. Select rows distinguishing the model filter from the row policy.
+                included, excluded, denied_by_policy = self.create_bulk_targets()
+
+                # 2. Request deletion of every selected ID through the bulk service.
+                deleted = BulkActionService(
+                    model=self.CustomerModel, user=user
+                ).delete_objects(
+                    object_ids=[
+                        str(row.pk) for row in (included, excluded, denied_by_policy)
+                    ]
+                )
+
+                # 3. Confirm excluded rows survive and permitted rows are removed.
+                self.assertEqual(deleted, 2 if user.is_superuser else 1)
+                self.assertFalse(
+                    self.CustomerModel.objects.filter(pk=included.pk).exists()
+                )
+                self.assertTrue(
+                    self.CustomerModel.objects.filter(pk=excluded.pk).exists()
+                )
+                self.assertEqual(
+                    self.CustomerModel.objects.filter(pk=denied_by_policy.pk).exists(),
+                    not user.is_superuser,
+                )
 
 
 class TestBulkAddressUpdateService(BaseBloomerpTestCaseWithModels):

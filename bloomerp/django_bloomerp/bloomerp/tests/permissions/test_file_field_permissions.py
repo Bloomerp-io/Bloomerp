@@ -1,4 +1,5 @@
 from uuid import uuid4
+from unittest.mock import patch
 
 from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
@@ -19,7 +20,7 @@ from bloomerp.models import (
     RowPolicy,
     RowPolicyRule,
 )
-from bloomerp.filters.definition import FilterCondition
+from bloomerp.filters.definition import Filter, FilterCondition
 from bloomerp.models.project_management.todo import Todo
 from bloomerp.permissions.definition import RowPolicyRuleContent
 from bloomerp.permissions.manager import PolicyManager
@@ -28,6 +29,32 @@ from bloomerp.tests.base import BaseBloomerpTestCaseWithModels
 
 class TestFileFieldPermissions(BaseBloomerpTestCaseWithModels):
     auto_create_customers = False
+
+    def test_file_collections_respect_model_base_filter(self) -> None:
+        """
+        Use case: A file collection excludes an otherwise readable attachment.
+        Expected result: Its base filter applies to both admins and ordinary users.
+        """
+        # 1. Grant both attachments and restrict the model to the generic file.
+        self.grant_field("files")
+        self.grant_field("picture")
+        base_filter = Filter(connector="AND", conditions=[
+            FilterCondition(
+                field_path="id", lookup_id="equals", value=str(self.generic_file.pk)
+            )
+        ])
+
+        # 2. Resolve the specialized file scope for each caller with the same filter.
+        with patch.object(FileNode.bloomerp_config, "base_filter", base_filter):
+            for user in (self.admin_user, self.normal_user):
+                with self.subTest(superuser=user.is_superuser):
+                    self.assertEqual(
+                        list(FileAccessManager(user).get_queryset(FileNode.objects.all())),
+                        [self.generic_file],
+                    )
+                    self.assertFalse(
+                        FileAccessManager(user).can_mutate_file_node(self.picture_file)
+                    )
 
     def extendedSetup(self) -> None:
         """Create a field-owned attachment and a generic object attachment."""

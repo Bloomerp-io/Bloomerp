@@ -302,7 +302,7 @@ def get_object_from_content_type(content_type_id:int, object_id:str) -> Model | 
 
 
 def get_object_model_and_content_type_or_404(content_type_id:int, object_id:str) -> tuple[Model, type[Model], ContentType]:
-    """Returns the object, model, and content type or a 404 based on the parameters
+    """Resolve an application object within its model's configured base filter.
 
     Args:
         content_type_id (int): the content type id
@@ -311,9 +311,13 @@ def get_object_model_and_content_type_or_404(content_type_id:int, object_id:str)
     Returns:
         tuple[Model, type[Model], ContentType]: the repsonse
     """
+    from bloomerp.models.definition import apply_model_base_filter
+
     content_type = get_object_or_404(ContentType, id=content_type_id)
     ModelCls = content_type.model_class()
-    object = get_object_or_404(ModelCls, id=object_id)
+    object = get_object_or_404(
+        apply_model_base_filter(ModelCls._default_manager.all()), id=object_id
+    )
     
     return object, ModelCls, content_type
 

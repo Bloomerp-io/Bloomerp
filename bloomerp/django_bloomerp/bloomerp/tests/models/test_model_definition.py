@@ -1,6 +1,7 @@
 from django.test import SimpleTestCase
 from pydantic import ValidationError
 
+from bloomerp.filters.definition import Filter, FilterCondition
 from bloomerp.dataviews.kanban.config import KanbanDataView
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models.definition import (
@@ -24,6 +25,46 @@ from bloomerp.models.definition import (
 )
 
 from bloomerp.workspaces.text_tile.model import TextTileConfig
+
+
+class BloomerpModelBaseFilterConfigTests(SimpleTestCase):
+    """Validate optional model-wide filters without querying the database."""
+
+    def test_base_filter_defaults_to_none(self) -> None:
+        """
+        Use case: An existing model does not declare a base filter.
+        Expected result: Configuration leaves its querysets unrestricted.
+        """
+        # 1. Read the default configuration without creating model records.
+        self.assertIsNone(BloomerpModelConfig().base_filter)
+
+    def test_base_filter_parses_the_shared_filter_schema(self) -> None:
+        """
+        Use case: A model declares a base filter using serialized configuration.
+        Expected result: The shared connector and typed conditions are retained.
+        """
+        # 1. Parse the same filter payload accepted by the shared filter compiler.
+        payload = {
+            "connector": "AND",
+            "conditions": [
+                {"field_path": "status", "lookup_id": "equals", "value": "backlog"}
+            ],
+        }
+        config = BloomerpModelConfig.model_validate({"base_filter": payload})
+
+        # 2. Check the typed configuration and its serialized representation.
+        self.assertIsInstance(config.base_filter, Filter)
+        self.assertIsInstance(config.base_filter.conditions[0], FilterCondition)
+        self.assertEqual(config.model_dump()["base_filter"], payload)
+
+    def test_invalid_base_filter_is_rejected(self) -> None:
+        """
+        Use case: A model declares an unsupported filter connector.
+        Expected result: Configuration fails validation instead of ignoring it.
+        """
+        # 1. Reject a malformed filter before any application query is made.
+        with self.assertRaises(ValidationError):
+            BloomerpModelConfig.model_validate({"base_filter": {"connector": "XOR"}})
 
 
 class DefaultDataviewActionTests(SimpleTestCase):

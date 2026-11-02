@@ -1,9 +1,11 @@
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Model, QuerySet
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 
 from bloomerp.router import router
+from bloomerp.models.definition import apply_model_base_filter
 from bloomerp.views.generic.detail.delete import BloomerpDeleteView
 
 
@@ -25,8 +27,14 @@ class DeleteObjectComponentView(BloomerpDeleteView):
             return HttpResponse("Invalid content type", status=400)
         return super().dispatch(request, *args, **kwargs)
 
-    def get_object(self, queryset=None):
-        return get_object_or_404(self.model, id=self.kwargs["object_id"])
+    def get_object(self, queryset: QuerySet[Model] | None = None) -> Model:
+        """Resolve modal deletions through the same base filter as detail views."""
+        queryset = (
+            self.get_queryset()
+            if queryset is None
+            else apply_model_base_filter(queryset)
+        )
+        return get_object_or_404(queryset, id=self.kwargs["object_id"])
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

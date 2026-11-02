@@ -26,6 +26,7 @@ from bloomerp.models.access_control.policy import Policy
 from bloomerp.models.access_control.row_policy import RowPolicy
 from bloomerp.models.access_control.row_policy_rule import RowPolicyRule
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.definition import apply_model_base_filter
 from bloomerp.models import BloomerpModel
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.modules.definition import ModuleConfig
@@ -437,7 +438,7 @@ class UserPolicyManager:
         """Filter rows through the same stored and request-scoped rules used for fields."""
         model, content_type = resolve_model_and_content_type(model_or_content_type)
         if getattr(self.user, "is_superuser", False):
-            return model.objects.all()
+            return apply_model_base_filter(model.objects.all())
         if self.is_anonymous and self._token_rule(model) is None:
             return model.objects.none()
 
@@ -470,7 +471,9 @@ class UserPolicyManager:
             permissions,
             match,
         )
-        return model.objects.filter(compilation.row_filter).distinct()
+        return apply_model_base_filter(model.objects.all()).filter(
+            compilation.row_filter
+        ).distinct()
 
     def _compile_access_rules(
         self,

@@ -10,6 +10,7 @@ from django.urls import resolve, reverse
 from django_htmx.http import HttpResponseClientRedirect
 
 from bloomerp.forms.model_form import BloomerpModelForm, bloomerp_modelform_factory
+from bloomerp.models.definition import apply_model_base_filter
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
 from bloomerp.utils.models import get_create_view_url, get_detail_view_url
@@ -148,7 +149,7 @@ class CreateObjectComponentView(BloomerpCreateView):
     name="components_update_object",
 )
 def update_object(request:HttpRequest, content_type_id:int, object_id:str|int) -> HttpResponse:
-    """Returns the delete object component
+    """Resolve the update component within the model's configured base filter.
 
     Args:
         request (HttpRequest): the request object
@@ -161,7 +162,9 @@ def update_object(request:HttpRequest, content_type_id:int, object_id:str|int) -
     # TODO : Integrate permissions using permissions services
     content_type = ContentType.objects.get(id=content_type_id)
     ModelCls = content_type.model_class()
-    object = get_object_or_404(ModelCls, id=object_id)
+    object = get_object_or_404(
+        apply_model_base_filter(ModelCls._default_manager.all()), id=object_id
+    )
     FormCls = bloomerp_modelform_factory(ModelCls, "__all__")
     
     if request.method == "GET":    

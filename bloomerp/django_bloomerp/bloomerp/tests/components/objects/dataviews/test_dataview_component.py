@@ -3,6 +3,7 @@ from collections.abc import Callable
 from datetime import timedelta
 from django.utils import timezone
 from unittest import skip
+from unittest.mock import patch
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model, QuerySet
@@ -19,6 +20,7 @@ from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.communication.label import Label
 from bloomerp.models.communication.object_label import ObjectLabel
 from bloomerp.models.document_templates.document_template import DocumentTemplate
+from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.models.filters.filter import SavedFilter
 from bloomerp.models.project_management.initiative import Initiative
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
@@ -168,6 +170,47 @@ class TestDataviewComponent(BloomerpComponentTestCase):
             "first_name", '<strong class="custom-name">{{ value }}</strong>',
         )(scenario)
 
+    def prepare_base_filter(self, _scenario: RequestScenario) -> None:
+        """Restrict this request to customers older than two for every viewer."""
+        config = BloomerpModelConfig(
+            base_filter=Filter(
+                connector="AND",
+                conditions=[
+                    FilterCondition(
+                        field_path="age", lookup_id="greater_than", value=2,
+                    ),
+                ],
+            ),
+        )
+        self._base_filter_patch = patch.object(
+            self.CustomerModel, "bloomerp_config", config, create=True,
+        )
+        self._base_filter_patch.start()
+
+    def cleanup_base_filter(self, _scenario: RequestScenario) -> None:
+        """Restore model configuration before the next isolated request scenario."""
+        self._base_filter_patch.stop()
+
+    def grant_younger_customer_access(self, scenario: RequestScenario) -> None:
+        """Grant a normal viewer customer rows below seven and their fields."""
+        PolicyManager.create_policy(
+            self.CustomerModel,
+            access_rule=AccessRule(
+                row_permissions=[
+                    RowPolicyRuleContent(
+                        permissions=[BloomerpPermission.VIEW],
+                        conditions=[
+                            FilterCondition(
+                                field_path="age", lookup_id="less_than", value=7,
+                            ),
+                        ],
+                    ),
+                ],
+                field_permissions={"__all__": [BloomerpPermission.VIEW]},
+            ),
+            global_permissions=[BloomerpPermission.VIEW],
+        ).assign_user(scenario.user)
+
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Exercise rendering, filtering, and permission-aware field choices."""
         for i in range(10):
@@ -268,6 +311,48 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                 user=self.admin_user,
                 view_kwargs=kwargs,
                 expected=ExpectedResult(response_validators=self.contains_entries(customers.all())),
+            ),
+            RequestScenario(
+                name="BASE FILTER: Superuser sees only model-scoped entries",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                prepare=self.prepare_base_filter,
+                cleanup=self.cleanup_base_filter,
+                expected=ExpectedResult(
+                    response_validators=self.contains_entries(customers.filter(age__gt=2)),
+                ),
+            ),
+            RequestScenario(
+                name="BASE FILTER: Normal user sees the intersection with row permissions",
+                user=self.normal_user,
+                view_kwargs=kwargs,
+                prepare=[self.prepare_base_filter, self.grant_younger_customer_access],
+                cleanup=self.cleanup_base_filter,
+                expected=ExpectedResult(
+                    response_validators=self.contains_entries(
+                        customers.filter(age__gt=2, age__lt=7),
+                    ),
+                ),
+            ),
+            RequestScenario(
+                name="BASE FILTER: Request filters cannot widen model or permission scope",
+                user=self.normal_user,
+                view_kwargs=kwargs,
+                prepare=[self.prepare_base_filter, self.grant_younger_customer_access],
+                cleanup=self.cleanup_base_filter,
+                query_params=filter_query_params(
+                    Filter(
+                        connector="OR",
+                        conditions=[
+                            FilterCondition(field_path="age", lookup_id="equals", value=1),
+                            FilterCondition(field_path="age", lookup_id="equals", value=5),
+                            FilterCondition(field_path="age", lookup_id="equals", value=8),
+                        ],
+                    ),
+                ),
+                expected=ExpectedResult(
+                    response_validators=self.contains_entries(customers.filter(age=5)),
+                ),
             ),
             RequestScenario(
                 name="ACCESS: User without access receives 403",

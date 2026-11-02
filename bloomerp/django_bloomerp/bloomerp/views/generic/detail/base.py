@@ -3,7 +3,8 @@ from typing import Any
 
 from django.views.generic.detail import DetailView
 from bloomerp.models.application_field import ApplicationField
-from bloomerp.models.definition import get_model_config
+from bloomerp.models.definition import apply_model_base_filter, get_model_config
+from django.db.models import Model, QuerySet
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.permissions.manager import create_permission_str
@@ -26,6 +27,10 @@ class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, Detail
     permissions : list[str] = ["view"]
     permission_fields : list[tuple[str, str]] = []
     htmx_include_addendum_padding = False
+
+    def get_queryset(self) -> QuerySet[Model]:
+        """Exclude base-filtered rows from every generic detail view lookup."""
+        return apply_model_base_filter(super().get_queryset())
     
     @cached_property
     def detail_tabs_preference(self) -> UserDetailViewTabsPreference:
