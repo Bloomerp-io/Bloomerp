@@ -829,12 +829,13 @@ export default class ForeignFieldWidget extends BaseWidget {
         return this.isM2M ? values : (values[0] || '');
     }
 
-    /** Replace the widget selection with the supplied relation identifiers. */
+    /** Restore string or numeric relation identifiers while retaining existing labels. */
     public setValue(value: unknown, emitChange: boolean = false): void {
         const previousValue = this.getValue();
         const nextValues = Array.isArray(value)
-            ? value.map((item) => String(item))
-            : (typeof value === "string" && value ? [value] : []);
+            ? value.map((item: unknown): string => String(item))
+            : ((typeof value === "string" && value !== "") || (typeof value === "number" && Number.isFinite(value))
+                ? [String(value)] : []);
         const existingSelections = this.getSelections();
         this.selectionAbortController?.abort();
         const selectionRequestId = ++this.selectionRequestId;

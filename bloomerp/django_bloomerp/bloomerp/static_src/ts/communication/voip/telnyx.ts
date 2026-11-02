@@ -18,6 +18,10 @@ class TelnyxCall implements BrowserCall {
         document.body.append(this.audio);
         call.options.remoteElement = this.audio;
     }
+    /** Normalize remote caller metadata for the shared incoming-call panel. */
+    public caller(): { name: string; address: string } {
+        return { name: this.call.options.remoteCallerName || this.call.options.callerName || '', address: this.call.options.remoteCallerNumber || this.call.options.callerNumber || '' };
+    }
     /** Accept capture only after the shared UI receives explicit consent. */
     public accept(): void { void this.call.answer({ remoteElement: this.audio }).catch(this.failed); }
     /** Reject a pending session without requesting capture. */
@@ -68,7 +72,7 @@ export class TelnyxDevice implements BrowserDevice {
     /** Accept only a server-issued JWT envelope; never expose account API keys. */
     public constructor(token: string) {
         this.credentials = this.decode(token);
-        this.client = new TelnyxRTC({ login_token: this.credentials.token, enableCallReports: false, enableCallRecording: false });
+        this.client = new TelnyxRTC({ login_token: this.credentials.token, ringtoneFile: '', enableCallReports: false, enableCallRecording: false });
         this.client.on('telnyx.notification', this.notification);
         this.client.on('telnyx.error', this.failed);
     }

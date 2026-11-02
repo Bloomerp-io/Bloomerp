@@ -29,6 +29,11 @@ export interface CallCredentials {
     token_url?: string;
     carrier_driver?: string;
     participants?: CallParticipant[];
+    caller_name?: string;
+    caller_address?: string;
+    call_kind?: 'phone' | 'audio' | 'video';
+    decline_url?: string;
+    recipient_status?: 'invited' | 'accepted' | 'unanswered';
 }
 
 /** Media lifecycle independent of the IM provider and its underlying SDK. */
@@ -54,7 +59,7 @@ export interface BrowserCallTransport {
 }
 
 /** Report SDK state using application-owned labels. */
-export type TransportState = 'connected' | 'reconnecting' | 'disconnected';
+export type TransportState = 'waiting' | 'connected' | 'reconnecting' | 'disconnected';
 
 /** Incoming media is supplied by the driver, never by a UI provider branch. */
 export interface IncomingCall {

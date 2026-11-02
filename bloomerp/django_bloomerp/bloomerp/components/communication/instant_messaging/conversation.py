@@ -22,6 +22,7 @@ from bloomerp.models.communication.instant_messaging import (
     IMConversationParticipant,
 )
 from bloomerp.router import router
+from bloomerp.utils.rich_text import sanitize_html
 
 
 @router.register(
@@ -143,6 +144,7 @@ def render_conversation(request: HttpRequest, conversation_id: UUID) -> HttpResp
             "activity_token": activity_token,
             "thread_root": root,
             "editor_name": f"im_body_{uuid4().hex}",
+            "initial_query": sanitize_html(request.GET.get("query", "")),
         },
     )
     response["Cache-Control"] = "private, no-store"

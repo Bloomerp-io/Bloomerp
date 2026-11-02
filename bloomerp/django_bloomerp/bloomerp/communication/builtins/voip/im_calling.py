@@ -61,6 +61,7 @@ def start(
     return {
         "session_id": str(call.pk),
         "media_mode": "audio",
+        "call_kind": "phone",
         "status": call.status,
         "join_url": reverse("components_voip_join_call", kwargs={"call_id": call.pk}),
         "cancel_url": reverse(
@@ -115,6 +116,7 @@ def join(user: AbstractBloomerpUser, call_id: UUID) -> dict[str, Any]:
         "session_id": str(call.pk),
         "call_id": adapter_for(call.connection).browser_call_reference(call.pk),
         "media_mode": "audio",
+        "call_kind": "phone",
         "join_url": reverse("components_voip_join_call", kwargs={"call_id": call.pk}),
         "cancel_url": reverse(
             "components_voip_cancel_call", kwargs={"call_id": call.pk}

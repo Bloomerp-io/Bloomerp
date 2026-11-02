@@ -11,6 +11,7 @@ from django.views.decorators.http import require_GET
 from bloomerp.communication.builtins.instant_messaging.access import IMAccessManager
 from bloomerp.communication.builtins.instant_messaging.presentation import (
     conversation_identity,
+    messaging_prefix,
 )
 from bloomerp.models.communication.instant_messaging import (
     IMConversationParticipant,
@@ -128,7 +129,7 @@ def conversations(request: HttpRequest) -> HttpResponse:
     response = render(
         request,
         "components/communication/instant_messaging/conversations.html",
-        {"rows": rows, "unread_total": unread_total},
+        {"rows": rows, "unread_total": unread_total, "im_prefix": messaging_prefix(request)},
     )
     response["Cache-Control"] = "private, no-store"
     return response

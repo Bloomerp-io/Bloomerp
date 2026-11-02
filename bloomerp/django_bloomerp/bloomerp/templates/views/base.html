@@ -62,8 +62,9 @@
 
 		{% if request.user.is_authenticated %}
 		<div class="workspace-tools" role="group" aria-label="{% translate 'Workspace tools' %}">
+			{% include "components/communication/calling/controls.html" %}
 			<c-features.agent.body />
-			{% include "components/communication/messaging_panel.html" %}
+			{% include "components/communication/messaging_panel.html" with chat_page=False im_prefix="" initial_conversation="" initial_query="" initial_thread="" initial_search="" %}
 		</div>
 		{% endif %}
 

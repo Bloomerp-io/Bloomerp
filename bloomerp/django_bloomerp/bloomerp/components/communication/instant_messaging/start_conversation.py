@@ -8,6 +8,7 @@ from django.http import HttpRequest, HttpResponse
 from django.views.decorators.http import require_POST
 
 from bloomerp.router import router
+from bloomerp.communication.builtins.instant_messaging.presentation import messaging_prefix
 
 from .conversation import render_conversation
 
@@ -50,12 +51,13 @@ def start_conversation(request: HttpRequest) -> HttpResponse:
                     "selected": selected,
                     "step": step,
                     "options": options.items,
+                    "im_prefix": messaging_prefix(request),
                 },
             )
             response["HX-Trigger"] = json.dumps(
                 {
                     "im:selection-opened": {
-                        "target": "[bloomerp-component='bloomerp:messaging-panel']"
+                        "target": f"#{messaging_prefix(request)}im-conversation-host"
                     }
                 }
             )
@@ -69,7 +71,7 @@ def start_conversation(request: HttpRequest) -> HttpResponse:
         {
             "im:conversation-opened": {
                 "id": str(chat.pk),
-                "target": "[bloomerp-component='bloomerp:messaging-panel']",
+                "target": f"#{messaging_prefix(request)}im-conversation-host",
             }
         }
     )

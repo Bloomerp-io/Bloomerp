@@ -15,6 +15,7 @@ export class LiveKitTransport implements BrowserCallTransport {
         this.room.on(RoomEvent.LocalTrackUnpublished, this.localUnpublished);
         this.room.on(RoomEvent.Reconnecting, this.reconnecting);
         this.room.on(RoomEvent.Reconnected, this.connected);
+        this.room.on(RoomEvent.ParticipantConnected, this.connected);
         this.room.on(RoomEvent.Disconnected, this.disconnected);
     }
 
@@ -133,8 +134,10 @@ export class LiveKitTransport implements BrowserCallTransport {
         for (const element of track.detach()) element.remove();
     };
 
-    /** Report recovered connectivity through the normalized lifecycle. */
-    private connected = (): void => { if (!this.disposed) this.onState('connected'); };
+    /** Distinguish joining an empty room from actually connecting with another participant. */
+    private connected = (): void => {
+        if (!this.disposed) this.onState(this.room.remoteParticipants.size > 0 ? 'connected' : 'waiting');
+    };
     /** Keep controls visible during automatic SDK reconnection. */
     private reconnecting = (): void => { if (!this.disposed) this.onState('reconnecting'); };
     /** Notify the shell of remote termination or unrecoverable disconnection. */

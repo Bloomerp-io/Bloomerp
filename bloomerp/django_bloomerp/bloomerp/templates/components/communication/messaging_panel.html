@@ -1,11 +1,13 @@
 {% load i18n static %}
 {% if request.user.is_authenticated %}
-{% include "components/communication/calling/controls.html" %}
-<div bloomerp-component="bloomerp:messaging-panel" class="im-theme">
+<div bloomerp-component="bloomerp:messaging-panel" class="im-theme {% if chat_page %}chat-workspace-host{% endif %}"
+    data-chat-kind="messages" data-chat-page="{{ chat_page|yesno:'true,false' }}"
+    data-fullscreen-url="{% url 'communication_module_chat' %}"
+    {% if chat_page %}hx-vals='{"chat_page":"1"}'{% endif %}>
     {% static 'bloomerp/img/messaging-header-logo.png' as messaging_logo %}
-    <c-ui.floating_panel panel_id="im-messaging-panel" title="{% translate 'Messages' %}" :logo="messaging_logo"
+    <c-ui.floating_panel panel_id="{{ im_prefix }}im-messaging-panel" title="{% translate 'Messages' %}" :logo="messaging_logo"
         launcher_label="{% translate 'Open messages' %}" close_label="{% translate 'Close messages' %}"
-        storage_key="bloomerp-im-draft-position">
+        storage_key="bloomerp-im-draft-position" :page_mode="chat_page">
         <c-slot name="launcher"><i class="fa-regular fa-comment" aria-hidden="true"></i><span>{% translate 'Chat' %}</span><span class="workspace-tool-count" data-count hidden></span></c-slot>
         <c-slot name="header_start"><button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50" data-action="back" data-floating-panel-focus hidden aria-label="{% translate 'Back to search' %}"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i></button></c-slot>
         <c-slot name="header_controls">
@@ -13,9 +15,9 @@
                         <c-slot name="trigger_html">
                             <button type="button" x-ref="trigger" aria-label="{% translate 'Settings' %}" aria-haspopup="true" :aria-expanded="open.toString()" @click="open = !open; if (open) $nextTick(() => resolvePlacement())" class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-gear" aria-hidden="true"></i></button>
                         </c-slot>
-                        <button type="button" role="menuitem" data-call-action="enable" @click="$dispatch('dropdown-close')" class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-primary-800 transition-colors hover:bg-primary-50 focus:bg-primary-50">
+                        <button type="button" role="menuitemcheckbox" aria-checked="false" data-call-action="availability" @click="$dispatch('dropdown-close')" class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-primary-800 transition-colors hover:bg-primary-50 focus:bg-primary-50">
                             <i class="fa-solid fa-phone w-4" aria-hidden="true"></i>
-                            <span>{% translate 'Enable incoming calls' %}</span>
+                            <span>{% translate 'Receive incoming calls' %}</span><i data-call-availability-check class="fa-solid fa-check ml-auto" aria-hidden="true" hidden></i>
                         </button>
                     </c-ui.dropdown.body>
                     <c-ui.dropdown.body width="w-80" :fixed="True">
@@ -23,23 +25,30 @@
                             <button type="button" x-ref="trigger" aria-label="{% translate 'New conversation' %}" aria-haspopup="true" :aria-expanded="open.toString()" @click="open = !open; if (open) $nextTick(() => resolvePlacement())" class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
                         </c-slot>
                         <div class="im-recipient-search">
-                            <c-ui.search name="recipient_query" placeholder="{% translate 'Search people and phone numbers…' %}" aria-label="{% translate 'Search people and phone numbers' %}" hx-get="{% url 'components_im_recipients' %}" hx-trigger="input changed delay:300ms" hx-target="#im-recipient-results" hx-sync="this:replace" />
+                            <c-ui.search name="recipient_query" placeholder="{% translate 'Search people and phone numbers…' %}" aria-label="{% translate 'Search people and phone numbers' %}" hx-get="{% url 'components_im_recipients' %}" hx-trigger="input changed delay:300ms" hx-target="#{{ im_prefix }}im-recipient-results" hx-sync="this:replace" />
                         </div>
-                        <div id="im-recipient-results" class="im-recipient-results" hx-get="{% url 'components_im_recipients' %}" hx-trigger="load"></div>
+                        <div id="{{ im_prefix }}im-recipient-results" class="im-recipient-results" hx-get="{% url 'components_im_recipients' %}" hx-trigger="load"></div>
                     </c-ui.dropdown.body>
         </c-slot>
+        <c-slot name="sidebar">
         <div data-list-view class="im-list-view">
-            <div class="im-search-wrap"><form id="im-conversation-search-form" hx-get="{% url 'components_im_conversations' %}" hx-trigger="submit, input delay:300ms" hx-target="#im-conversations" hx-sync="this:replace">
+            <div class="im-search-wrap"><form id="{{ im_prefix }}im-conversation-search-form" hx-get="{% url 'components_im_conversations' %}" hx-trigger="submit, input delay:300ms" hx-target="#{{ im_prefix }}im-conversations" hx-sync="this:replace">
                 <div class="im-search-row">
                     {% translate 'Search messages and people…' as message_search_placeholder %}
-                    <c-ui.search name="q" type="search" input_id="im-conversation-search" :placeholder="message_search_placeholder" data-search data-floating-panel-focus aria-label="{% translate 'Search messages and people' %}" />
+                    <c-ui.search name="q" type="search" input_id="{{ im_prefix }}im-conversation-search" value="{{ initial_search }}" :placeholder="message_search_placeholder" data-search data-floating-panel-focus aria-label="{% translate 'Search messages and people' %}" />
                 </div>
                 <label class="im-unread-filter"><input type="checkbox" name="unread" value="1"> {% translate 'Unread only' %}</label>
             </form>
             </div>
-            <div id="im-conversations" class="im-conversations" hx-sync="this:replace" hx-get="{% url 'components_im_conversations' %}" hx-trigger="load, im:conversation-opened from:body, im:message-sent from:body, im:unread-changed from:body delay:100ms" hx-include="#im-conversation-search-form"></div>
+            <div id="{{ im_prefix }}im-conversations" data-conversation-list class="im-conversations" hx-sync="this:replace" hx-get="{% url 'components_im_conversations' %}" hx-trigger="load, im:conversation-opened from:body, im:message-sent from:body, im:unread-changed from:body delay:100ms" hx-include="#{{ im_prefix }}im-conversation-search-form"></div>
         </div>
-        <div data-chat-view class="im-chat-view" hidden><div id="im-conversation-host" class="im-chat-view"></div></div>
+        </c-slot>
+        <div data-chat-view class="im-chat-view" {% if not chat_page %}hidden{% endif %}>
+            <div id="{{ im_prefix }}im-conversation-host" data-conversation-host class="im-chat-view"
+                {% if chat_page and initial_conversation %}hx-get="{% url 'components_conversation' initial_conversation %}?query={{ initial_query|urlencode }}&amp;thread={{ initial_thread|urlencode }}" hx-trigger="load"{% endif %}>
+                {% if chat_page %}<p class="im-empty">{% translate 'Select a conversation to start chatting.' %}</p>{% endif %}
+            </div>
+        </div>
         <p data-load-error class="im-empty" role="alert" hidden>{% translate 'Could not load messages. Please try again.' %}</p>
     </c-ui.floating_panel>
 </div>

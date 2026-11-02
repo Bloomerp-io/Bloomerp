@@ -1,6 +1,7 @@
 """Authorized call lifecycle orchestration independent of any IM provider key."""
 
 from collections.abc import Iterable
+from datetime import timedelta
 from uuid import UUID, uuid4
 
 from asgiref.sync import async_to_sync
@@ -32,17 +33,34 @@ class ConferenceUnavailable(Exception):
 
 
 def session_payload(session: ConferenceSession) -> dict[str, str]:
-    """Return application identifiers and endpoints without transport credentials."""
+    """Return authorized session endpoints and aggregate recipient progress without credentials."""
+    recipient_statuses = set(
+        session.participants.exclude(user_id=session.created_by_id).values_list(
+            "invitation_status", flat=True
+        )
+    )
+    recipient_status = "unanswered"
+    if "accepted" in recipient_statuses:
+        recipient_status = "accepted"
+    elif "invited" in recipient_statuses:
+        recipient_status = "invited"
     return {
         "session_id": str(session.pk),
         "room_id": str(session.room_id),
         "status": session.status,
         "media_mode": session.initial_media_mode,
+        "call_kind": session.initial_media_mode,
+        "caller_name": str(session.created_by) if session.created_by_id else "",
+        "created_by": str(session.created_by_id or ""),
+        "recipient_status": recipient_status,
         "join_url": reverse(
             "components_conferencing_join", kwargs={"session_id": session.pk}
         ),
         "end_url": reverse(
             "components_conferencing_end", kwargs={"session_id": session.pk}
+        ),
+        "decline_url": reverse(
+            "components_conferencing_decline", kwargs={"session_id": session.pk}
         ),
     }
 
@@ -53,11 +71,12 @@ def publish_session(session_id: UUID) -> None:
 
     from bloomerp.utils.callables import resolve_hook
 
-    session = ConferenceSession.objects.select_related("room__conversation").get(
+    session = ConferenceSession.objects.select_related("room__conversation", "created_by").get(
         pk=session_id
     )
     layer = get_channel_layer()
     if layer:
+        payload = session_payload(session)
         for participant in session.participants.filter(
             user__is_active=True
         ).select_related("user"):
@@ -71,7 +90,14 @@ def publish_session(session_id: UUID) -> None:
                     "type": "notify",
                     "payload": {
                         "action": "conferencing.session.changed",
-                        **session_payload(session),
+                        **payload,
+                        "invitation_status": participant.invitation_status,
+                        "ring_expires_at": (
+                            max(
+                                participant.invited_at or session.datetime_updated,
+                                session.started_at or session.datetime_updated,
+                            ) + timedelta(seconds=60)
+                        ).isoformat(),
                     },
                 },
             )
@@ -280,6 +306,7 @@ class ConferenceController:
             participant.invitation_status = "accepted"
             participant.responded_at = participant.responded_at or timezone.now()
             participant.save()
+            notify_after_commit(session)
             from .sharing import sharing_controls
 
             return {
@@ -293,6 +320,21 @@ class ConferenceController:
                 "can_screen_share": "true" if allow_screen_share else "false",
                 "can_end": "true" if participant.role == "host" else "false",
             }
+
+    def decline(self, session_id: UUID) -> ConferenceSession:
+        """Decline only this actor's unanswered invitation without ending the room."""
+        authorized_session(self.user, session_id)
+        with transaction.atomic():
+            session = ConferenceSession.objects.select_for_update().get(pk=session_id)
+            participant = require_participant(self.user, session)
+            if participant.role == "host":
+                raise ValidationError(_("The host must end the call instead."))
+            if participant.invitation_status == "invited" and session.status in OPEN_STATES:
+                participant.invitation_status = "declined"
+                participant.responded_at = timezone.now()
+                participant.save(update_fields=["invitation_status", "responded_at"])
+                notify_after_commit(session)
+            return session
 
     def browser_driver(self, session: ConferenceSession) -> str:
         """Resolve the browser transport declared by the source provider."""

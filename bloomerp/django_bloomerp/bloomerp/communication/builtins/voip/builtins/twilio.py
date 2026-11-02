@@ -147,7 +147,7 @@ class TwilioAdapter(BaseVoIPAdapter):
             VoIPCallData(
                 c.sid,
                 c.parent_call_sid or "",
-                c.from_ or "",
+                c._from or "",
                 c.to or "",
                 "inbound" if c.direction == "inbound" else "outbound",
                 c.status,

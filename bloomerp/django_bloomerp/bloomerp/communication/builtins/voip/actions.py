@@ -179,14 +179,16 @@ def dial(
         except (ValueError, ValidationError) as error:
             form.add_error(None, error)
         else:
+            from bloomerp.communication.builtins.instant_messaging.presentation import messaging_prefix
+
             response = render_conversation(request, chat.pk)
-            response["HX-Retarget"] = "#im-conversation-host"
+            response["HX-Retarget"] = f"#{messaging_prefix(request)}im-conversation-host"
             response["HX-Reswap"] = "innerHTML"
             response["HX-Trigger"] = json.dumps(
                 {
                     "im:conversation-opened": {
                         "id": str(chat.pk),
-                        "target": "[bloomerp-component='bloomerp:messaging-panel']",
+                        "target": f"#{messaging_prefix(request)}im-conversation-host",
                     }
                 }
             )
