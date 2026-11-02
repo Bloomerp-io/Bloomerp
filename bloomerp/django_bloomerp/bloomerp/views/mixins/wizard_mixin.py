@@ -72,6 +72,7 @@ class WizardStep:
     description: str = ""
     context_func: Callable[[HttpRequest, View, BaseStateOrchestrator], dict[str, Any]] | None = None
     process_func: Callable[[HttpRequest, View, BaseStateOrchestrator], "WizardError | HttpResponse | None"] | None = None
+    include_padding:bool = True
 
 
 @dataclass
@@ -260,6 +261,7 @@ class WizardMixin:
         context["wizard_step_query_param"] = self.step_query_param
         context["wizard_error"] = self.get_wizard_error(step_index)
         context["wizard_has_data"] = self.wizard_has_data()
+        context["include_padding"] = step.include_padding
         return context
 
     def get_wizard_step(self, step:int) -> WizardStep | None:

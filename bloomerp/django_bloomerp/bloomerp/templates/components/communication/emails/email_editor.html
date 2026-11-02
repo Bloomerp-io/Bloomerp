@@ -5,8 +5,8 @@
     class="flex h-full min-h-0 flex-col bg-white"
     data-recipient-search-url="{% url 'components_search_email_address' %}"
     data-from-email="{{ from_email }}"
-    {% if enhanced_composer %}
     data-send-url="{{ form_action }}"
+    {% if enhanced_composer %}
     data-template-url="{% url 'components_email_template' %}"
     data-draft-user-id="{{ request.user.pk }}"
     {% endif %}
@@ -26,11 +26,6 @@
 
     <form
         class="flex min-h-0 flex-1 flex-col"
-        {% if form_action and not enhanced_composer %}
-            hx-post="{{ form_action }}"
-            hx-target="#inbox-item-render-target"
-            hx-swap="innerHTML"
-        {% endif %}
         enctype="multipart/form-data"
     >
         {% csrf_token %}
@@ -140,6 +135,8 @@
             </label>
         </div>
 
+        {% include 'components/communication/emails/attachments.html' %}
+
         {% if enhanced_composer %}
         <input type="hidden" name="document_template_id" value="">
         <div data-template-arguments hidden class="shrink-0 border-b border-gray-200 px-5 py-3"></div>
@@ -173,14 +170,11 @@
 
         <footer class="flex shrink-0 items-center justify-between border-t border-gray-200 px-5 py-3">
             <div class="flex min-w-0 items-center gap-2">
-            <label class="btn btn-secondary btn-sm">
-                <i class="fa fa-paperclip"></i>
-                <span>{% blocktrans %}Attach{% endblocktrans %}</span>
-                <input class="hidden" type="file" name="attachments" multiple>
-            </label>
-            {% if enhanced_composer %}
+            {% translate 'Attach' as attach_text %}
+            <c-ui.dropdown.body trigger_icon_class="fa-solid fa-paperclip" trigger_class="gap-2" :trigger_text="attach_text" trigger_button_name="reference-attach" trigger_button_class="btn-secondary" size="sm" position="left" fixed="True">
+                <c-features.references.search kind="file" />
+            </c-ui.dropdown.body>
             <p data-email-status role="status" aria-live="polite" class="min-w-0 text-xs text-gray-500"></p>
-            {% endif %}
             </div>
 
             <div class="flex items-center gap-3">

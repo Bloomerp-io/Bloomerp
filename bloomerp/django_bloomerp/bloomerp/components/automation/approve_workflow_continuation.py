@@ -1,7 +1,7 @@
 from functools import partial
+from typing import TYPE_CHECKING
 
 from django import forms
-from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import HttpRequest
@@ -27,6 +27,24 @@ from bloomerp.utils.requests import (
     render_page_refresh_with_message,
 )
 from bloomerp.widgets.code_editor_widget import CodeEditorWidget
+
+if TYPE_CHECKING:
+    from bloomerp.models.users.user import AbstractBloomerpUser
+
+
+def can_approve_workflow_step(user: "AbstractBloomerpUser", step: WorkflowRunStep) -> bool:
+    """Check the shared approval policy for a workflow step and inbox action."""
+    if not user.is_authenticated or step.node is None:
+        return False
+    parameters = step.node.parameters or {}
+    return (
+        str(user.pk) in {str(pk) for pk in parameters.get("approver_users", [])}
+        or user.groups.filter(id__in=parameters.get("approver_groups", [])).exists()
+        or UserPolicyManager(user).has_access_to_object(
+            step.workflow_run.workflow, BloomerpPermission.CHANGE
+        )
+    )
+
 
 class ApproveWorkflowContinuationForm(forms.Form):
     data = forms.JSONField(
@@ -57,28 +75,19 @@ def approve_workflow_continuation(request: HttpRequest, workflow_run_id: str) ->
         status=WorkflowRunStepStatus.PAUSED
     ).first()
     
-    if not paused_step:
+    requested_step_id = request.GET.get("step_id") or request.POST.get("step_id")
+    if (
+        not paused_step
+        or paused_step.node is None
+        or (requested_step_id and requested_step_id != str(paused_step.pk))
+    ):
         return HttpResponse(
             status=404,
-            content="Workflow run doesn't have a paused step"
+            content="This approval is no longer available."
         )
     
     parameters: dict = paused_step.node.parameters or {}
-    approver_groups = parameters.get("approver_groups", [])
-    approver_users = parameters.get("approver_users", [])
-    
-    user_in_users = get_user_model().objects.filter(
-        id__in=approver_users
-    ).contains(
-        request.user
-    )
-    user_in_groups = request.user.groups.filter(
-        id__in=approver_groups
-    ).exists()
-    has_access_to_workflow = UserPolicyManager(request.user).has_access_to_object(workflow_run.workflow, BloomerpPermission.CHANGE)
-    
-    
-    if not (user_in_users or user_in_groups or has_access_to_workflow):
+    if not can_approve_workflow_step(request.user, paused_step):
         return HttpResponse(status=403, content="No permission to approve this workflow")
     
     output_step_data = load_step_output(paused_step)
@@ -141,6 +150,8 @@ def approve_workflow_continuation(request: HttpRequest, workflow_run_id: str) ->
                 "workflow_run_id" : workflow_run_id
             }
         ),
+        hidden_args={"step_id": paused_step.pk},
+        submit_label="Approve and continue",
         text=parameters.get(
             "message",
             "You have been asked to review the output for the workflow node"

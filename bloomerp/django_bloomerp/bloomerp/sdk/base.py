@@ -103,6 +103,23 @@ class BaseSdkGenerator(ABC):
         target.write_text(content, encoding="utf-8")
         return target
 
+    def render_custom_endpoints(self) -> str:
+        """Discover opted-in API routes, including model-specific serializer factories."""
+        from bloomerp.router import router
+        from bloomerp.sdk.endpoints import EndpointRenderer
+
+        routes = [
+            route for route in router.filter()
+            if route.sdk is not None and (
+                not self.app_labels
+                or (route.model._meta.app_label if route.model is not None else route.owner_app_label) in self.app_labels
+            )
+        ]
+        from operator import attrgetter
+
+        routes.sort(key=attrgetter("url_name"))
+        return EndpointRenderer(self.language).render(routes)
+
     def get_model_definitions(self) -> list[SdkModelDefinition]:
         return [self.build_model_definition(model) for model in self.get_api_models()]
 

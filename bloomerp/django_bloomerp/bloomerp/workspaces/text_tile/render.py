@@ -35,6 +35,7 @@ ALLOWED_TAGS = [
 ]
 ALLOWED_ATTRIBUTES = {
     "a": ["href", "title", "rel", "target"],
+    "pre": ["data-text-editor-mermaid"],
 }
 ALLOWED_PROTOCOLS = ["http", "https", "mailto"]
 TAG_CLASSES = {

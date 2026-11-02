@@ -38,12 +38,12 @@
         class="relative flex items-center overflow-visible rounded-xl cursor-grab active:cursor-grabbing"
     >
         {% if item.is_folder %}
-        <div class="text-gray-700 flex min-w-0 flex-1 items-center gap-3 px-1 py-0.5 rounded">
+        <div class="text-gray-700 flex min-w-0 flex-1 items-center gap-2 px-1 py-px rounded">
         {% else %}
         <a
             href="{{ item.url }}"
             draggable="false"
-            class="text-gray-700 flex min-w-0 flex-1 items-center gap-3 px-1 py-0.5 rounded hover:text-primary-800"
+            class="text-gray-700 flex min-w-0 flex-1 items-center gap-2 px-1 py-px rounded hover:text-primary-800"
             {% if item.is_internal_url %}
             hx-get="{{ item.url }}"
             hx-target="{{ HTMX_MAIN_CONTENT_DIV_ID|default:'#main-content' }}"
@@ -57,13 +57,13 @@
         >
         {% endif %}
             {% with parsed_icon=item.icon|parse_icon_value %}
-                <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center">
-                    <span class="inline-flex h-8 w-8 items-center justify-center rounded {{ parsed_icon.bg_class|default:'bg-gray-100' }}">
+                <span class="inline-flex h-7 w-7 shrink-0 items-center justify-center">
+                    <span class="inline-flex h-7 w-7 items-center justify-center rounded {{ parsed_icon.bg_class|default:'bg-gray-100' }}">
                         <i class="{{ parsed_icon.icon }} {{ parsed_icon.text_class|default:'text-gray-700' }} text-sm leading-none"></i>
                     </span>
                 </span>
             {% endwith %}
-            <div class="min-w-0 flex-1 text-sm font-medium leading-6 break-words">{{ item.name }}</div>
+            <div class="min-w-0 flex-1 text-sm font-medium leading-5 break-words">{{ item.name }}</div>
 
             {% if item.is_folder and children %}
             <button
@@ -159,7 +159,7 @@
     </div>
 
     {% if children %}
-    <ul data-sidebar-children hidden class="mt-1 ml-8 text-gray-500 text-sm overflow-visible">
+    <ul data-sidebar-children hidden class="mt-1 ml-7 text-gray-500 text-sm overflow-visible">
         {% for child in children %}
         <c-app.sidebar.item :sidebar="sidebar" :item="child" :can_manage="can_manage" />
         {% endfor %}

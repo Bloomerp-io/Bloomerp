@@ -449,7 +449,7 @@ def render_object_action(
     request:HttpRequest,
     content_type_id:int|None=None,
 ) -> str:
-    """Render an authorized action with its response target and escaped button attributes."""
+    """Render an authorized action with its configured icon and escaped button attributes."""
     from bloomerp.permissions.access_tokens import permission_token_url
 
     try:
@@ -498,7 +498,7 @@ def render_object_action(
                 'bloomerp-set-modal-title-to="{title}" '
                 'bloomerp-set-modal-size-to="{size}" '
                 'bloomerp-open-modal="bloomerp-general-use-modal">'
-                '{label}'
+                '{icon}{label}'
                 '</button>'
             ),
             style=action.style,
@@ -506,6 +506,10 @@ def render_object_action(
             label=gettext(action.label),
             title=gettext(action.modal_title) if action.modal_title else "",
             size=action.modal_size,
+            icon=(
+                format_html('<i class="{}" aria-hidden="true"></i>', action.icon)
+                if action.icon else ""
+            ),
         )
 
     if content_type_id is None:

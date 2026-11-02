@@ -33,9 +33,10 @@ from bloomerp.models.definition import (
     LayoutItem,
     LayoutRow,
     ModelViewSettings,
-    StringSearchSettings,
 )
 from bloomerp.modules.bloomai import BloomAIModule
+
+from .base import agent_search_settings
 
 
 class EncryptedCredentialsEnvelope(BaseModel):
@@ -117,7 +118,10 @@ class AIAgent(BloomerpModel):
         ),
         api_settings=ApiSettings(enable_auto_generation=False),
         activity_log_settings=ActivityLogSettings(enabled=True),
-        string_search_settings=StringSearchSettings(allow_global_search=True),
+        string_search_settings=agent_search_settings(
+            allow_global_search=True,
+            include_search_routes=True,
+        ),
     )
 
     avatar = None

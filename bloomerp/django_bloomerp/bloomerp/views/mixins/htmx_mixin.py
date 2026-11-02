@@ -150,7 +150,7 @@ class HtmxMixin(GetPreferenceMixin):
         items.append({"text": route_name, "url": self.request.path, "active": True})
         return items
 
-    def get_context_data(self, **kwargs:Any) -> dict:
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         """Select full-page, embedded detail-frame, or content-only rendering."""
         import random
         try:
@@ -237,5 +237,7 @@ class HtmxMixin(GetPreferenceMixin):
         context["rand_int"] = random.randint(0,10000)
         context["route_title"] = self._resolve_route_title()
         context["breadcrumbs"] = self._build_breadcrumb_items(context)
-        context["htmx_include_addendum_padding"] = self.htmx_include_addendum_padding
+        context["htmx_include_addendum_padding"] = (
+            self.include_padding and self.htmx_include_addendum_padding
+        )
         return context

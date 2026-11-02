@@ -101,8 +101,7 @@ def _join_recipients(value: object) -> str:
 
 
 def _get_attachments(request: HttpRequest) -> list[EmailAttachment]:
-    """Read uploaded files into the provider's shared attachment contract."""
-    return [EmailAttachment(
-        filename=uploaded_file.name, content=uploaded_file.read(),
-        content_type=uploaded_file.content_type or "application/octet-stream",
-    ) for uploaded_file in request.FILES.getlist("attachments") if uploaded_file.size]
+    """Resolve current authorized selections through the shared email attachment service."""
+    from bloomerp.services.email_attachment_services import get_email_attachments
+
+    return get_email_attachments(request)

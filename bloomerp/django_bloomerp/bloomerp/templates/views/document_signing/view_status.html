@@ -1,0 +1,63 @@
+{% load i18n %}
+
+<section class="w-full min-w-0 space-y-6" aria-labelledby="signature-request-{{ object.pk }}-status-title">
+    <ol class="space-y-8" aria-label="{% trans 'Signing timeline' %}">
+        <li class="relative grid grid-cols-[2.75rem_1fr] gap-4">
+            <div class="relative flex justify-center">
+                {% if parties %}<span class="absolute -bottom-8 top-8 w-px bg-gray-200 dark:bg-zinc-700" aria-hidden="true"></span>{% endif %}
+                <span class="relative z-10 inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white">
+                    <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                </span>
+            </div>
+            <div class="min-w-0 pt-1">
+                <h3 class="font-medium text-primary-900">{% trans 'Created' %}</h3>
+                <time class="mt-1 block text-sm text-muted" datetime="{{ object.datetime_created|date:'c' }}">{{ object.datetime_created|date:'SHORT_DATETIME_FORMAT' }}</time>
+            </div>
+        </li>
+
+        {% for party in parties %}
+        <li class="relative grid grid-cols-[2.75rem_1fr] gap-4">
+            <div class="relative flex justify-center">
+                {% if not forloop.last %}<span class="absolute -bottom-8 top-8 w-px bg-gray-200 dark:bg-zinc-700" aria-hidden="true"></span>{% endif %}
+                <span class="relative z-10 inline-flex h-8 w-8 items-center justify-center rounded-full {% if party.status == 'signed' %}bg-success-light text-success-dark{% elif party.status == 'declined' %}bg-danger-light text-danger-dark{% else %}bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-zinc-300{% endif %}">
+                    {% if party.status == 'signed' %}
+                        <i class="fa-solid fa-check" aria-hidden="true"></i>
+                    {% elif party.status == 'declined' %}
+                        <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                    {% else %}
+                        <span class="text-xs font-semibold">{{ party.order }}</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="min-w-0 pt-1">
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                    <h3 class="min-w-0 break-words font-medium text-primary-900">{{ party.recipient }}</h3>
+                    <span class="badge badge-sm {% if party.status == 'signed' %}badge-success{% elif party.status == 'declined' %}badge-danger{% else %}badge-secondary{% endif %}">{{ party.status_label }}</span>
+                </div>
+                <p class="mt-1 text-sm text-muted">{% if party.role %}{{ party.role }} &middot; {% endif %}{% blocktrans with order=party.order %}Signing order {{ order }}{% endblocktrans %}</p>
+                {% if party.status == 'signed' and party.signed_at %}
+                    <p class="mt-2 text-sm text-muted">{% trans 'Signed' %} <time datetime="{{ party.signed_at|date:'c' }}">{{ party.signed_at|date:'SHORT_DATETIME_FORMAT' }}</time></p>
+                {% elif party.status == 'declined' and party.declined_at %}
+                    <p class="mt-2 text-sm text-muted">{% trans 'Declined' %} <time datetime="{{ party.declined_at|date:'c' }}">{{ party.declined_at|date:'SHORT_DATETIME_FORMAT' }}</time></p>
+                {% elif party.status == 'pending' or party.status == 'viewed' %}
+                    <p class="mt-2 text-sm text-muted">{% trans 'Awaiting signature' %}</p>
+                {% endif %}
+            </div>
+        </li>
+        {% empty %}
+            <li class="pl-16 text-sm text-muted">{% trans 'No recipients to display.' %}</li>
+        {% endfor %}
+    </ol>
+
+    {% if pdf_file %}
+    <section class="space-y-3 border-t border-gray-200 pt-6" aria-labelledby="signature-request-{{ object.pk }}-pdf-title">
+        <header class="flex flex-wrap items-center justify-between gap-3">
+            <h3 id="signature-request-{{ object.pk }}-pdf-title" class="font-semibold text-primary-900">{% if pdf_is_signed %}{% trans 'Signed PDF' %}{% else %}{% trans 'Document' %}{% endif %}</h3>
+            <a href="{{ pdf_download_url }}" class="btn btn-secondary btn-sm"><i class="fa-solid fa-download" aria-hidden="true"></i> {% trans 'Download PDF' %}</a>
+        </header>
+        <div class="h-[70vh] min-h-96 overflow-hidden rounded-lg border border-gray-200">
+            {% include "components/files/preview.html" with kind="pdf" file=pdf_file media_url=pdf_preview_url only %}
+        </div>
+    </section>
+    {% endif %}
+</section>

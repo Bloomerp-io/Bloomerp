@@ -65,6 +65,31 @@ class SentEmailCopyTests(SimpleTestCase):
             references=["<parent@example.com>"],
         )
 
+    def test_inline_images_preserve_calendar_alternatives_and_sent_copy(self) -> None:
+        """Keep HTML-related images, downloadable files and every scheduling method in one wire message."""
+        from itertools import permutations
+        for method in ("REQUEST", "REPLY", "CANCEL"):
+            calendar = EmailAttachment(filename="invite.ics", content=b"BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n", content_type="text/calendar", calendar_method=method)
+            first = EmailAttachment(filename="one.png", content=b"image-one", content_type="image/png", disposition="inline", content_id="one@example.test")
+            second = EmailAttachment(filename="two.gif", content=b"image-two", content_type="image/gif", disposition="inline", content_id="two@example.test")
+            document = EmailAttachment(filename="report.pdf", content=b"report", content_type="application/pdf")
+            for attachments in permutations([calendar, first, second, document]):
+                with self.subTest(method=method, order=[item.filename for item in attachments]):
+                    self.adapter.send_email(to=["recipient@example.com"], bcc=["hidden@example.com"], subject="Mixed", body_html='<p>Before</p><img src="cid:one@example.test"><img src="cid:two@example.test"><p>After</p>', attachments=list(attachments), in_reply_to="<parent@example.com>")
+                    message = self.smtp.send_message.call_args.args[0]
+                    self.assertEqual(message.get_content_type(), "multipart/mixed")
+                    alternative = message.get_payload()[0]
+                    self.assertEqual(alternative.get_content_type(), "multipart/alternative")
+                    related = next(part for part in alternative.iter_parts() if part.get_content_type() == "multipart/related")
+                    self.assertEqual([part.get_content_type() for part in related.iter_parts()], ["text/html", *[item.content_type for item in attachments if item.content_id]])
+                    self.assertEqual({part["Content-ID"] for part in related.iter_parts() if part["Content-ID"]}, {"<one@example.test>", "<two@example.test>"})
+                    scheduling = next(part for part in alternative.iter_parts() if part.get_content_type() == "text/calendar")
+                    self.assertEqual(scheduling.get_param("method"), method)
+                    self.assertEqual(scheduling.get_content_disposition(), "inline")
+                    self.assertIsNone(message["Bcc"])
+                    self.assertEqual(message["In-Reply-To"], "<parent@example.com>")
+                    self.assertEqual(self.imap.append.call_args.args[3], message.as_bytes(policy=SMTP))
+
     def test_enabled_saves_the_complete_sent_message(self) -> None:
         """Use case: Save an outgoing message. Expected result: A read MIME copy follows SMTP."""
         # 1. Capture the operation order across both servers.

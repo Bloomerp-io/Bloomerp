@@ -1,18 +1,31 @@
 import BaseComponent from './BaseComponent';
-import FloatingPanelLauncher from '../utils/FloatingPanelLauncher';
+import { navigateAgentPage } from '../utils/agent';
 
 /** Shared floating shell; subclasses own the content and application state. */
 export default class FloatingPanel extends BaseComponent {
     protected panel: HTMLElement | null = null;
     private previousFocus: HTMLElement | null = null;
 
-    /** Bind shared opening, dismissal, focus restoration and draggable positioning. */
+    /** Identify a full-page host using the same content component as the panel. */
+    protected get isPage(): boolean {
+        return this.element.dataset.chatPage === 'true';
+    }
+
+    /** Bind persistent footer controls, panel switching and focus restoration. */
     protected initializeFloatingPanel(signal: AbortSignal): void {
         this.panel = this.element?.querySelector('[data-floating-panel]') ?? null;
-        const launcher = this.element?.querySelector<HTMLButtonElement>('[data-floating-panel-launcher]');
-        if (launcher && this.panel) new FloatingPanelLauncher(launcher, this.panel.dataset.launcherStorageKey || this.panel.id, signal);
         this.element?.addEventListener('click', this.onShellClick, { signal });
         document.addEventListener('keydown', this.onShellKeyDown, { signal });
+        document.addEventListener('bloomerp:panel-opened', this.onPanelOpened, { signal });
+        if (this.isPage) {
+            if (this.panel) this.panel.hidden = false;
+            document.dispatchEvent(new CustomEvent('bloomerp:panel-opened', { detail: 'fullscreen' }));
+            return;
+        }
+        if (document.querySelector('[data-chat-page="true"]')) {
+            this.setPanelOpen(false);
+            return;
+        }
         try { this.setPanelOpen(sessionStorage.getItem(`${this.panel?.dataset.launcherStorageKey || this.panel?.id}:open`) === 'true'); }
         catch { /* Visibility remains usable when storage is unavailable. */ }
     }
@@ -20,16 +33,23 @@ export default class FloatingPanel extends BaseComponent {
     /** Reveal the panel and focus the first visible content control. */
     protected open(): void {
         if (!this.panel) return;
+        const page = document.querySelector<HTMLElement>(`[data-chat-page="true"][data-chat-kind="${this.element.dataset.chatKind}"]`);
+        if (page && !this.isPage) {
+            const composer = page.querySelector<HTMLElement>('[data-agent-input], [contenteditable="true"]');
+            (composer ?? page.querySelector<HTMLElement>('[data-search]'))?.focus();
+            return;
+        }
         this.previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
         this.setPanelOpen(true);
         Array.from(this.panel.querySelectorAll<HTMLElement>('[data-floating-panel-focus]'))
             .find(this.isVisibleControl)?.focus();
     }
 
-    /** Hide the shell without discarding content and restore the user's focus. */
-    protected close(): void {
-        if (!this.panel) return;
+    /** Hide the shell, optionally restoring focus when dismissal is explicit. */
+    protected close(restoreFocus: boolean = true): void {
+        if (!this.panel || this.isPage) return;
         this.setPanelOpen(false);
+        if (!restoreFocus) return;
         const launcher = this.element?.querySelector<HTMLElement>('[data-floating-panel-launcher]');
         (this.previousFocus?.isConnected ? this.previousFocus : launcher)?.focus();
     }
@@ -39,9 +59,10 @@ export default class FloatingPanel extends BaseComponent {
         if (!this.panel) return;
         this.panel.hidden = !open;
         const launcher = this.element?.querySelector<HTMLElement>('[data-floating-panel-launcher]');
-        if (launcher) { launcher.hidden = open; launcher.setAttribute('aria-expanded', String(open)); }
+        launcher?.setAttribute('aria-expanded', String(open));
         try { sessionStorage.setItem(`${this.panel.dataset.launcherStorageKey || this.panel.id}:open`, String(open)); }
         catch { /* Storage is optional; controls continue to work. */ }
+        if (open) document.dispatchEvent(new CustomEvent('bloomerp:panel-opened', { detail: this.panel.id }));
     }
 
     /** Skip controls in hidden content views when opening the panel. */
@@ -49,16 +70,47 @@ export default class FloatingPanel extends BaseComponent {
         return control.getClientRects().length > 0;
     }
 
-    /** Dispatch only shell actions, leaving content controls to subclasses. */
-    private onShellClick = (event: MouseEvent): void => {
+    /** Build the dedicated view URL; content components add their selected chat and draft. */
+    protected getFullscreenUrl(): URL {
+        return new URL(this.element.dataset.fullscreenUrl!, window.location.origin);
+    }
+
+    /** Keep page drafts and selections recoverable on refresh through GET parameters. */
+    protected syncPageUrl(): void {
+        if (!this.isPage) return;
+        const url = this.getFullscreenUrl();
+        if (url.href !== window.location.href) window.history.replaceState(window.history.state, '', url);
+    }
+
+    /** Handle shell controls and open full-page chats through the shared HTMX navigator. */
+    private onShellClick = async (event: MouseEvent): Promise<void> => {
         const action = (event.target as Element).closest<HTMLElement>('[data-floating-panel-action]')?.dataset.floatingPanelAction;
         if (action === 'open') this.open();
+        else if (action === 'toggle') {
+            if (this.panel?.hidden) this.open();
+            else this.close();
+        }
         else if (action === 'close') this.close();
+        else if (action === 'fullscreen') {
+            const url = this.getFullscreenUrl();
+            document.dispatchEvent(new CustomEvent('bloomerp:panel-opened', { detail: 'fullscreen' }));
+            try {
+                await navigateAgentPage(`${url.pathname}${url.search}`);
+            } catch {
+                this.open();
+            }
+        }
+    };
+
+    /** Close the other tool without stealing focus from the newly opened panel. */
+    private onPanelOpened = (event: Event): void => {
+        if (this.isPage || !(event instanceof CustomEvent) || event.detail === this.panel?.id || this.panel?.hidden !== false) return;
+        this.close(false);
     };
 
     /** Dismiss the focused panel with Escape without closing another open panel. */
     private onShellKeyDown = (event: KeyboardEvent): void => {
-        if (event.key !== 'Escape' || this.panel?.hidden !== false || !this.element?.contains(event.target as Node)) return;
+        if (this.isPage || event.key !== 'Escape' || this.panel?.hidden !== false || !this.element?.contains(event.target as Node)) return;
         event.preventDefault();
         event.stopPropagation();
         this.close();

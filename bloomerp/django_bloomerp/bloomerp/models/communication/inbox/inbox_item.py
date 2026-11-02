@@ -10,7 +10,8 @@ from bloomerp.communication.registry import (
     inbox_item_type_choices,
 )
 from bloomerp.models import BloomerpModel
-from bloomerp.models.definition import ActivityLogSettings, BloomerpModelConfig
+from bloomerp.models.definition import ActivityLogSettings, BloomerpModelConfig, SearchSettings
+from bloomerp.modules.communication import CommunicationModule
 
 class InboxItem(BloomerpModel):
     class Meta:
@@ -29,8 +30,12 @@ class InboxItem(BloomerpModel):
         ]
     
     bloomerp_config = BloomerpModelConfig(
-        module="communication",
-        activity_log_settings=ActivityLogSettings(enabled=False)
+        module=CommunicationModule,
+        activity_log_settings=ActivityLogSettings(enabled=False),
+        string_search_settings=SearchSettings(
+            allow_global_search=False,
+            include_search_routes=False,
+        )
     )
     
     item_type = models.CharField(

@@ -350,11 +350,15 @@ def bloomerp_modelform_factory(
         form_field = _build_registered_form_field(application_field)
 
         # Lifecycle-managed values remain visible, but ignore submitted changes.
-        # Reverse relations report editable=False but their registered structured
-        # editors own persistence; only actual model fields use Django's flag.
+        # Reverse and generic relations have structured editors that own
+        # persistence. Only stored model fields use Django's editable flag.
         if (
             managed_by_application
-            or (isinstance(model_field, Field) and not model_field.editable)
+            or (
+                isinstance(model_field, Field)
+                and (model_field.concrete or model_field.many_to_many)
+                and not model_field.editable
+            )
             or form_field.disabled
         ):
             form_field.disabled = True

@@ -1,0 +1,12 @@
+{% load i18n %}
+<c-ui.dropdown.body trigger_text="{% trans 'Copy links' %}" trigger_icon_class="fa fa-link"
+                    trigger_button_class="btn-secondary btn-xs" position="right" :fixed="True">
+    {% for link in signing_links %}
+    <button type="button" role="menuitem"
+            class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm hover:bg-gray-100"
+            @click="if (await copyToClipboard('{{ link.url|escapejs }}')) $dispatch('dropdown-close')">
+        <i class="fa fa-copy" aria-hidden="true"></i>
+        <span class="truncate">{{ link.label }}</span>
+    </button>
+    {% endfor %}
+</c-ui.dropdown.body>

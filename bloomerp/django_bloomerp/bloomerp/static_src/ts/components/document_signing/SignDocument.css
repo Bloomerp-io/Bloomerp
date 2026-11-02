@@ -1,0 +1,18 @@
+.sign-document { height: min(78vh, 1050px); min-height: 440px; gap: 12px; }
+.sign-document [hidden] { display: none !important; }
+.sign-document__pages { min-width: 100%; width: max-content; }
+.sign-document__page { position: relative; flex-shrink: 0; background: white; box-shadow: 0 2px 12px #00000018; }
+.sign-document__page canvas { display: block; width: 100%; height: 100%; }
+.sign-document__field { position: absolute; min-width: 8px; min-height: 8px; overflow: auto; background: #fffbe8; border: 1px solid #c59a32; border-radius: 2px; color: #111827; }
+.sign-document__field:focus-within { outline: 2px solid var(--color-primary); outline-offset: 1px; z-index: 1; }
+.sign-document__field .sign-document__control { display: block; width: 100%; height: 100%; padding: 2px; border: 0; border-radius: 0; outline: none; color: #111827; background: transparent; font: inherit; line-height: 1.2; resize: none; box-shadow: none; }
+.sign-document__field .sign-document__control::placeholder { color: #687080; }
+.sign-document__field .sign-document__signature { font-family: cursive; font-size: 1.5em; }
+.sign-document__field input[type="checkbox"] { width: auto; height: auto; margin: 3px; }
+.sign-document__field .sign-document__control:has(input[type="radio"]) { overflow: auto; }
+.sign-document__field .sign-document__control input[type="radio"] { width: auto; height: auto; }
+.sign-document__drawing { display: block; width: 100%; height: 100%; }
+.sign-document__drawing [hidden] { display: none !important; }
+.sign-document__draw-button { display: block; width: 100%; height: 100%; padding: 2px; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.sign-document__draw-button svg { display: block; width: 100%; height: 100%; pointer-events: none; }
+.sign-document__signature-pad canvas { display: block; width: 100%; height: auto; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; touch-action: none; cursor: crosshair; }

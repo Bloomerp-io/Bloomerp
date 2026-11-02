@@ -41,7 +41,7 @@ export default class CallWindow {
         doc.body.className = 'bg-base text-gray-800 font-sans';
         doc.title = `${doc.querySelector('h1')!.textContent} · Bloomerp`;
         const controls = doc.querySelector<HTMLElement>('[data-call-toolbar]')!;
-        for (const source of this.owner.querySelectorAll<HTMLButtonElement>('[data-call-action]')) {
+        for (const source of this.owner.querySelectorAll<HTMLButtonElement>('[data-call-panel-actions] [data-call-action]')) {
             if (['open', 'admit'].includes(source.dataset.callAction || '')) continue;
             const button = doc.importNode(source, true);
             button.title = source.textContent?.trim() || '';

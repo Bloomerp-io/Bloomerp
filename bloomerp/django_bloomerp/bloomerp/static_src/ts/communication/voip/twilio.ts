@@ -5,6 +5,10 @@ import type { BrowserCall, BrowserDevice } from './definition';
 class TwilioCall implements BrowserCall {
     /** Retain the SDK session behind a carrier-neutral interface. */
     constructor(private readonly call: Call) {}
+    /** Normalize the carrier-provided caller name and telephone address. */
+    public caller(): { name: string; address: string } {
+        return { name: this.call.parameters.CallerName || '', address: this.call.parameters.From || '' };
+    }
     /** Answer this incoming session. */
     public accept(): void { this.call.accept(); }
     /** Decline this incoming session. */
@@ -23,7 +27,10 @@ class TwilioCall implements BrowserCall {
 export class TwilioDevice implements BrowserDevice {
     private readonly device: Device;
     /** Build a device with bounded token-refresh lead time. */
-    constructor(token: string) { this.device = new Device(token, { tokenRefreshMs: 60000 }); }
+    constructor(token: string) {
+        this.device = new Device(token, { tokenRefreshMs: 60000 });
+        this.device.audio?.incoming(false);
+    }
     /** Register with Twilio for incoming calls. */
     public async register(): Promise<void> { await this.device.register(); }
     /** Release Twilio registration and audio resources. */

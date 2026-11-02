@@ -127,17 +127,17 @@ def generate_pdf(
         page_margin: float = 1,
         is_landscape: bool = False,
         # Header options
-        header_url:str=None,
+        header_url: str | None = None,
         header_height:float=1.0,
         header_margin_top:float=0.5,
         header_margin_bottom:float=0.0,
         header_margin_left:float=1.0,
         header_margin_right:float=1.0,
         # Page size options
-        page_size:str = None,
+        page_size: str | None = None,
         include_page_numbers:bool = True,
         # Footer options
-        footer : str = None,
+        footer: str | None = None,
         title:str = "PDF Document"
         )->bytes:
     '''
@@ -269,6 +269,16 @@ def generate_pdf(
 
         #headerContent {{
             position: running(headerContent);
+        }}
+
+        div[data-document-template-page-break="true"] {{
+            display: block;
+            break-after: page;
+            page-break-after: always;
+            height: 0;
+            margin: 0;
+            padding: 0;
+            border: 0;
         }}
 
         {font_face_css}

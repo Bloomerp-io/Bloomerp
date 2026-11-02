@@ -209,6 +209,7 @@ function ensureImageInput(editor: LexicalEditor, host: HTMLElement, state: Image
         const key = state.pendingImageTargetKey;
         try {
             const reference = await uploadReferenceFile(host, file, state.lifecycle.signal);
+            if (state.lifecycle.signal.aborted) return;
             const src = `${host.dataset.referenceServeUrl}?file_id=${encodeURIComponent(reference.target_id)}`;
             /** Retain the occurrence while replacing the stored image target. */
             function replaceStoredImage(): void {

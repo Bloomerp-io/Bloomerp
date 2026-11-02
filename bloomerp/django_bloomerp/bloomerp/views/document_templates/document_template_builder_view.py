@@ -88,7 +88,9 @@ def get_document_template_builder_form_class() -> type[BloomerpModelForm]:
     return type(
         "DocumentTemplateBuilderForm",
         (DocumentTemplateBuilderFormMixin, base_form_class),
-        {},
+        {
+            
+        },
     )
 
 

@@ -499,12 +499,14 @@ class ModelViewSettings(BaseModel):
             )
         return self
 
-class StringSearchSettings(BaseModel):
+class SearchSettings(BaseModel):
     """Optional settings for a model's search functionality."""
 
     allow_global_search: bool = True
 
     string_search_fields: list[str] | None = None
+    
+    include_search_routes:bool = True
 
 class ActivityLogSettings(BaseModel):
     """Optional settings for a model's audit functionality."""
@@ -557,6 +559,8 @@ class FieldSettings(BaseModel):
     field: str
     advanced_rendering: str | None = None
 
+# 
+StringSearchSettings = SearchSettings
 
 class BloomerpModelConfig(BaseModel):
     """
@@ -595,6 +599,7 @@ class BloomerpModelConfig(BaseModel):
     is_internal: bool = False
 
     api_settings: Optional[ApiSettings] = None
+    
     permission_settings: PermissionSettings = Field(default_factory=PermissionSettings)
     
     create_redirect_url_func : Optional[Callable[[Model], str]] = None
@@ -605,7 +610,10 @@ class BloomerpModelConfig(BaseModel):
     
     object_actions : Optional[list[ObjectAction | ObjectHTMLAction | ObjectModalAction]] = None
 
-    string_search_settings : StringSearchSettings = StringSearchSettings(allow_global_search=True)
+    string_search_settings : SearchSettings = SearchSettings(
+        allow_global_search=True,
+        include_search_routes=True
+    )
     
     activity_log_settings : ActivityLogSettings = ActivityLogSettings(enabled=True)
     

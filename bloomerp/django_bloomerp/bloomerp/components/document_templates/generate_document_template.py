@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 
+from bloomerp.files.access import FileAccessManager
 from bloomerp.models.document_templates import DocumentTemplate
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
@@ -13,107 +14,112 @@ from bloomerp.services.document_services import DocumentTemplateService
 
 
 @router.register(
-    path='components/document_templates/generate/<str:id>/', 
-    name='components_generate_document_template'
-    )
+    path="components/document_templates/generate/<str:id>/",
+    name="components_generate_document_template",
+)
 @login_required
 def generate_document_template(
-    request:HttpRequest, 
-    id:str,
-    ) -> HttpResponse:
-    """Component to generate document templates
+    request: HttpRequest,
+    id: str,
+    *,
+    allow_persist: bool = True,
+) -> HttpResponse:
+    """Render template inputs and PDF previews, optionally allowing saved output.
 
     Args:
         request (HttpRequest): the request object
         id (str): the ID of the document template
-        
+        allow_persist (bool): whether this instance may offer and perform saving.
+
     GET Args:
         content_type_id (str, optional): the content type ID of the object to generate the document template for. Defaults to None.
         object_id (str, optional): the object ID of the object to generate the document template for. Defaults to None.
+        allow_persist (str, optional): set to false to disable saving for an HTMX instance.
 
     Returns:
         HttpResponse: response containing a form
     """
+    allow_persist = allow_persist and request.GET.get(
+        "allow_persist", "true"
+    ).lower() not in {"false", "0"}
     # Get the document template
-    document_template = get_object_or_404(
-        DocumentTemplate,
-        id=id
-    )
+    document_template = get_object_or_404(DocumentTemplate, id=id)
     service = DocumentTemplateService(document_template, request.user)
-    
+    file_access = FileAccessManager(request.user)
+
     # Perform permission check
     # TODO: We need a more elaborate permission system that checks the fields here
     policy_manager = UserPolicyManager(request.user)
-    for content_type in list(document_template.content_types.all()) + [ContentType.objects.get_for_model(DocumentTemplate)]:
+    for content_type in list(document_template.content_types.all()) + [
+        ContentType.objects.get_for_model(DocumentTemplate)
+    ]:
         if not policy_manager.has_global_permission(
-            content_type,
-            BloomerpPermission.VIEW
+            content_type, BloomerpPermission.VIEW
         ):
-            return HttpResponse("You do not have permission to view this document template.", status=403)
-    
+            return HttpResponse(
+                "You do not have permission to view this document template.", status=403
+            )
+
     # Conditionally get the object ID and template ID
     content_type_id = request.GET.get("content_type_id")
     object_id = request.GET.get("object_id")
     instance = None
     if content_type_id and object_id:
-        content_type : ContentType = get_object_or_404(
-            ContentType,
-            id=content_type_id
-        )
-        instance = get_object_or_404(
-            content_type.model_class(),
-            id=object_id
-        )
-    
+        content_type: ContentType = get_object_or_404(ContentType, id=content_type_id)
+        instance = get_object_or_404(content_type.model_class(), id=object_id)
+
     # Get the form instance
-    form = service.get_form(
-        instance=instance
-    )(
+    form = service.get_form(instance=instance)(
         data=request.POST if request.method == "POST" else None,
+        allow_persist=allow_persist,
     )
-    
+
     context = {
-        "form" : form,
-        "id" : id,
+        "form": form,
+        "id": id,
         "form_action": request.get_full_path(),
-        "files" : service.get_files(instance).order_by("-datetime_created"),
-        "apply_mx" : False
+        "files": file_access.get_queryset(service.get_files(instance)).order_by(
+            "-datetime_created"
+        ),
+        "allow_persist": allow_persist,
     }
-    
+
     match request.method:
         case "GET":
-            context["apply_mx"] = True          
             return render(
                 request,
                 "components/document_templates/generate_document_template.html",
-                context
-            )    
-        
+                context,
+            )
+
         case "POST":
             if form.is_valid():
                 pdf_bytes = service.generate(form)
                 generated_file = None
-                if form.cleaned_data.get("persist"):
+                if allow_persist and form.cleaned_data.get("persist"):
                     generated_file = service.create_file(
                         pdf_bytes,
                         objects=form.objects,
                     )
-                
+
                 # Add extra context
                 context["file_bytes"] = base64.b64encode(pdf_bytes).decode("ascii")
                 context["generated_file"] = generated_file
-                
+                context["file_saved"] = generated_file is not None
+
                 # Reload the files in case a new one was generated
-                context["files"] = service.get_files(getattr(form, "instance", instance)).order_by("-datetime_created")
-                
+                context["files"] = file_access.get_queryset(
+                    service.get_files(getattr(form, "instance", instance))
+                ).order_by("-datetime_created")
+
                 return render(
                     request,
                     "components/document_templates/generate_document_template.html",
-                    context
+                    context,
                 )
             else:
                 return render(
                     request,
                     "components/document_templates/generate_document_template.html",
-                    context
+                    context,
                 )

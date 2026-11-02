@@ -3,6 +3,7 @@
 import base64
 import hashlib
 import json
+import re
 import secrets
 import time
 from datetime import UTC, date, datetime, timedelta
@@ -623,6 +624,7 @@ class OutlookAdapter(BaseEmailAdapter):
         message.set_content(body_text or strip_tags(body_html or ""))
         if body_html:
             message.add_alternative(body_html, subtype="html")
+        html_part = message.get_body(preferencelist=("html",))
         for attachment in attachments or []:
             if attachment.calendar_method:
                 from bloomerp.communication.calendar.mime import (
@@ -632,6 +634,17 @@ class OutlookAdapter(BaseEmailAdapter):
                 add_calendar_alternative(message, attachment)
                 continue
             maintype, _, subtype = attachment.content_type.partition("/")
+            if attachment.disposition == "inline":
+                if html_part is None or not re.fullmatch(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~@-]+", attachment.content_id):
+                    raise ValidationError("Inline images require an HTML body and a valid Content-ID.")
+                if maintype != "image":
+                    raise ValidationError("Inline email parts must be images.")
+                html_part.add_related(
+                    attachment.content, maintype=maintype, subtype=subtype,
+                    filename=attachment.filename, disposition="inline",
+                    cid=f"<{attachment.content_id}>",
+                )
+                continue
             message.add_attachment(
                 attachment.content,
                 maintype=maintype or "application",

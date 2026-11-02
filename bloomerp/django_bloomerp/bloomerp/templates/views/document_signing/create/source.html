@@ -1,0 +1,5 @@
+{% load i18n %}
+<c-ui.inputs.selectable_cards.container name="source" :include_search="False" :allow_multiple="False" value="{{ selected_source }}">
+    <c-ui.inputs.selectable_cards.item value="file" name="{% trans 'From file' %}" description="{% trans 'Use an existing PDF file.' %}" icon="fa-file-pdf" />
+    <c-ui.inputs.selectable_cards.item value="template" name="{% trans 'From document template' %}" description="{% trans 'Generate a document from a template.' %}" icon="fa-file-lines" />
+</c-ui.inputs.selectable_cards.container>

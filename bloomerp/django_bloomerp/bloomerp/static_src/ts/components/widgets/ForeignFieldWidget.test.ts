@@ -28,10 +28,11 @@ const result = await build({
                 import { DetailViewCell } from '${root}/ts/components/detail_view_components/DetailViewCell';
                 import ObjectCRUDViewContainer from '${root}/ts/components/detail_view_components/ObjectCRUDViewContainer';
                 import { registerComponent, initComponents, getComponent } from '${root}/ts/components/BaseComponent';
+                import { initializeWidget } from '${root}/ts/components/filters/widget';
                 registerComponent('foreign-field-widget', ForeignFieldWidget);
                 registerComponent('detail-view-value', DetailViewCell);
                 registerComponent('object-crud-view-container', ObjectCRUDViewContainer);
-                export { ForeignFieldWidget, InboxCalendarOverlay, DetailViewCell, ObjectCRUDViewContainer, initComponents, getComponent };
+                export { ForeignFieldWidget, InboxCalendarOverlay, DetailViewCell, ObjectCRUDViewContainer, initComponents, getComponent, initializeWidget };
             `;
         },
     }],
@@ -54,6 +55,8 @@ interface FixtureWindow extends DOMWindow {
         ObjectCRUDViewContainer: typeof ObjectCRUDViewContainer;
         initComponents(element: HTMLElement): void;
         getComponent(element: HTMLElement): ForeignFieldWidget | DetailViewCell | ObjectCRUDViewContainer | null;
+        /** Restore a filter value through the shared component-widget adapter. */
+        initializeWidget(root: HTMLElement, value?: unknown): void;
     };
 }
 interface Fixture {
@@ -158,6 +161,17 @@ function dispose(f: Fixture): void {
     f.component.destroy();
     f.dom.window.close();
 }
+
+/** Keep numeric ContentType IDs selected when the filter editor restores a Django widget. */
+test('filter editor restores numeric relation IDs and preserves their rendered labels', async (): Promise<void> => {
+    const f = await fixture(false, { initiallySelected: true });
+    try {
+        f.w.ForeignFieldFixture.initializeWidget(f.widget.parentElement!, 3);
+        assert.equal(f.component.getValue(), '3');
+        assert.match(f.widget.querySelector('.foreign-field-selected')!.textContent!, /Original owner/);
+        assert.deepEqual(f.errors, []);
+    } finally { dispose(f); }
+});
 
 /** Keep transformed top-layer result placement covered alongside the form pipeline. */
 test('foreign-key results remain inside the top-layer filter and use host coordinates', async (): Promise<void> => {

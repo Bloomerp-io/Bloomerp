@@ -18,10 +18,13 @@ def im_provider_choices() -> list[tuple[str, str]]:
         if not provider.internal
     ]
 
+_config = IMModel.bloomerp_config
+_config.string_search_settings.include_search_routes = True
 
 class IMConnection(IMModel):
     """Own a provider account, its endpoints and provider-scoped identities."""
-
+    bloomerp_config = _config   
+    
     immutable_fields = ("provider",)
     name = models.CharField(max_length=255)
     provider = models.CharField(max_length=32, choices=im_provider_choices)
