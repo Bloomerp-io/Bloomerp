@@ -89,12 +89,29 @@ export default class AgentChat extends FloatingPanel {
         this.bridge?.addEventListener('bridge.error', this.onProtocolError, { signal });
         document.addEventListener('htmx:beforeCleanupElement', this.onCleanup, { signal });
         window.addEventListener('pagehide', this.saveEditorState, { signal });
-        if (!this.restoreEditorState()) this.restoreActiveRun();
+        const restored = this.restoreEditorState();
+        if (this.isPage) {
+            this.conversationId = this.element.dataset.initialConversation || null;
+            if (this.input) this.input.value = this.element.dataset.initialQuery || '';
+            this.historyVisible = false;
+        } else if (!restored) this.restoreActiveRun();
         this.onConnectionChanged();
+    }
+
+    /** Preserve the selected AI conversation and unsent prompt in the dedicated view URL. */
+    protected override getFullscreenUrl(): URL {
+        const url = super.getFullscreenUrl();
+        if (this.conversationId) url.searchParams.set('conversation', this.conversationId);
+        if (this.input?.value) url.searchParams.set('query', this.input.value);
+        return url;
     }
 
     /** Show conversation history without cancelling or detaching the selected run. */
     private showHistory(show: boolean): void {
+        if (this.isPage) {
+            if (show) this.element.querySelector<HTMLInputElement>('[data-agent-search]')?.focus();
+            return;
+        }
         const history = this.element?.querySelector<HTMLElement>('[data-agent-history]');
         const scroll = this.element?.querySelector<HTMLElement>('[data-agent-scroll]');
         const footer = this.element?.querySelector<HTMLElement>('[data-agent-footer]');
@@ -301,6 +318,7 @@ export default class AgentChat extends FloatingPanel {
         const requestId = crypto.randomUUID();
         this.selectionRequest = {id: requestId, conversationId: id, beforeSequence};
         this.bridge.loadConversation(requestId, id, beforeSequence);
+        if (this.isPage) this.renderHistory();
         this.syncComposer();
     }
 
@@ -334,7 +352,7 @@ export default class AgentChat extends FloatingPanel {
                     this.toggleRename(false);
                     this.syncComposer();
                 }
-                if (this.historyVisible) this.loadHistory();
+                if (this.isPage || this.historyVisible) this.loadHistory();
             }
         }
         return true;
@@ -465,9 +483,9 @@ export default class AgentChat extends FloatingPanel {
         if (badge) badge.hidden = !this.unreadConversations.size;
     }
 
-    /** Scope the active-run pointer to this authenticated account and browser tab. */
+    /** Scope run and editor pointers to the account, browser tab and presentation. */
     private storageKey(): string {
-        return `bloomerp.agent.active.${this.element?.getAttribute('data-agent-user') ?? ''}`;
+        return `bloomerp.agent.active.${this.element?.getAttribute('data-agent-user') ?? ''}${this.isPage ? '.page' : ''}`;
     }
 
     /** Save the selected chat and unsent editor state independently of run completion. */
@@ -481,21 +499,29 @@ export default class AgentChat extends FloatingPanel {
                 historyVisible: this.historyVisible,
             }));
         } catch { /* Storage can be unavailable without disabling the editor. */ }
+        this.syncPageUrl();
     };
 
-    /** Restore drafts, then fetch the selected transcript on connection. */
+    /** Restore editor metadata, accepting page attachments only when they match URL state. */
     private restoreEditorState(): boolean {
         try {
-            const saved = parseAgentEditorState(sessionStorage.getItem(`${this.storageKey()}.editor`));
-            if (!saved) return false;
-            this.conversationId = saved.conversationId;
-            if (this.input) this.input.value = saved.draft;
-            this.attachments = saved.attachments;
-            const form = this.element?.querySelector<HTMLElement>('[data-artifact-search-url]');
-            const picker = form ? getComponent(form) : null;
-            if (picker instanceof ArtifactPicker) picker.restoreSelection(saved.attachments);
-            this.historyVisible = saved.historyVisible;
-            return true;
+            const keys = [this.storageKey()];
+            if (this.isPage) keys.push(`bloomerp.agent.active.${this.element.dataset.agentUser}`);
+            for (const key of keys) {
+                const saved = parseAgentEditorState(sessionStorage.getItem(`${key}.editor`));
+                if (!saved) continue;
+                if (this.isPage && (saved.conversationId !== (this.element.dataset.initialConversation || null)
+                    || saved.draft !== (this.element.dataset.initialQuery || ''))) continue;
+                this.conversationId = saved.conversationId;
+                if (this.input) this.input.value = saved.draft;
+                this.attachments = saved.attachments;
+                const form = this.element?.querySelector<HTMLElement>('[data-artifact-search-url]');
+                const picker = form ? getComponent(form) : null;
+                if (picker instanceof ArtifactPicker) picker.restoreSelection(saved.attachments);
+                this.historyVisible = this.isPage ? false : saved.historyVisible;
+                return true;
+            }
+            return false;
         } catch { return false; }
     }
 
@@ -536,9 +562,9 @@ export default class AgentChat extends FloatingPanel {
         this.saveEditorState();
     }
 
-    /** Close the shared shell without discarding the current conversation. */
-    protected override close(): void {
-        super.close();
+    /** Persist dismissal or tool switching without discarding the conversation. */
+    protected override close(restoreFocus: boolean = true): void {
+        super.close(restoreFocus);
         this.saveEditorState();
     }
 
@@ -718,7 +744,7 @@ export default class AgentChat extends FloatingPanel {
             if (typeof message.sequence === 'number') {
                 this.unreadConversations.add(message.conversation_id);
                 this.updateUnreadBadge();
-                if (this.historyVisible && ['run.completed', 'run.failed', 'run.cancelled', 'run.paused'].includes(String(message.event_type))) this.loadHistory();
+                if ((this.isPage || this.historyVisible) && ['run.completed', 'run.failed', 'run.cancelled', 'run.paused'].includes(String(message.event_type))) this.loadHistory();
             }
             return;
         }
@@ -1013,7 +1039,7 @@ export default class AgentChat extends FloatingPanel {
             this.setStatus('ready');
             if (this.historyVisible) this.showHistory(true);
         }
-        if (this.bridge?.connected && this.historyVisible) this.loadHistory();
+        if (this.bridge?.connected && (this.isPage || this.historyVisible)) this.loadHistory();
         this.syncComposer();
     };
 
@@ -1062,6 +1088,7 @@ export default class AgentChat extends FloatingPanel {
         for (const card of this.approvalCards.values()) {
             for (const button of card.element.querySelectorAll('button')) button.disabled = true;
         }
+        if (this.isPage && this.bridge?.connected) this.loadHistory();
         this.syncComposer();
     }
 

@@ -2,19 +2,16 @@
     bloomerp-component="sql-query-editor"
     data-sql-schema-url="{% url 'api_sql_accessible_tables' %}"
     data-sql-execute-url="{% url 'components_execute_sql_query' %}"
-    data-sql-queries-url=""
-    
-    class="w-full h-[700px] rounded-xl border border-base bg-white overflow-hidden"
+    class="block w-full min-w-0 max-w-full h-[700px] rounded-none bg-white overflow-hidden"
     >
-    <input type="hidden" data-sql-csrf value="{{ csrf_token }}">
     <input type="hidden" data-sql-hidden-query-input name="{{ name|default:'query' }}" value="{{ value|default:'' }}">
     <input type="hidden" data-sql-active-query-id name="query_id" value="">
 
     <div class="grid grid-cols-12 h-full overflow-hidden">
-        <aside class="col-span-3 border-r border-base bg-base flex flex-col min-h-0 overflow-hidden">
+        <aside class="col-span-3 border-r border-base bg-base flex flex-col min-w-0 min-h-0 overflow-hidden">
             <div class="flex items-center justify-between p-3 border-b border-base">
                 <h3 class="text-sm font-semibold text-primary-900">Catalog</h3>
-                <button data-sql-refresh class="w-7 h-7 rounded-md border border-base bg-white text-gray-600 hover:text-primary-700 hover:border-primary-300">
+                <button type="button" data-sql-refresh class="w-7 h-7 rounded-md border border-base bg-white text-gray-600 hover:text-primary-700 hover:border-primary-300">
                     <i class="fa-solid fa-rotate"></i>
                 </button>
             </div>
@@ -34,7 +31,7 @@
             </div>
         </aside>
 
-        <section class="col-span-9 flex flex-col min-h-0">
+        <section class="col-span-9 flex flex-col min-w-0 min-h-0 overflow-hidden">
             <div class="border-b border-base bg-white">
                 <ul class="flex items-center text-sm overflow-x-auto no-scrollbar" data-sql-tabs>
                     <li class="px-4 py-3 border-b-2 border-primary bg-primary/5 text-primary font-medium" data-sql-tab-id="unsaved" data-sql-tab-query="{{ value|default:'' }}" title="Unsaved Query">
@@ -44,9 +41,9 @@
                 </ul>
             </div>
 
-            <div class="px-3 py-2 border-b border-base bg-base flex items-center justify-between gap-3">
+            <div class="px-3 py-2 border-b border-base bg-base flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-2">
-                    <button data-sql-execute class="btn btn-sm btn-primary text-white border-0 hover:bg-primary-700">
+                    <button type="button" data-sql-execute class="btn btn-sm btn-primary text-white border-0 hover:bg-primary-700">
                         <i class="fa-solid fa-play mr-1"></i>
                         Execute
                     </button>
@@ -62,16 +59,17 @@
                         <option value="100">100</option>
                     </select>
                 </div>
-                <div class="flex items-center gap-2">
+                <div class="flex min-w-0 flex-wrap items-center gap-2">
                     <input
                         type="text"
                         data-sql-query-name
-                        class="input input-sm border border-base bg-white w-64"
+                        class="input input-sm border border-base bg-white w-64 max-w-full"
                         placeholder="Query name"
                         value="Unsaved Query"
                         >
-                    <button data-sql-save class="btn btn-sm bg-white border border-base text-gray-700 hover:bg-base">Save</button>
+                    <button type="button" data-sql-save class="btn btn-sm bg-white border border-base text-gray-700 hover:bg-base">Save</button>
                 </div>
+                <p data-sql-status role="status" aria-live="polite" class="w-full text-xs text-gray-600" hidden></p>
             </div>
 
             <div class="border-b border-base bg-white h-[320px] overflow-hidden" data-sql-editor-pane>

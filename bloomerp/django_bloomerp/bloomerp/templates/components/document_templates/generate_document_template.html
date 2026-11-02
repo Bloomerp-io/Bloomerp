@@ -4,20 +4,31 @@
 
 {% generate_uuid as uuid %}
 
-<div id="id-{{ uuid }}" class="h-[calc(100dvh-8rem)] min-h-[72vh] {% if apply_mx %} -m-4 {% endif %}">
+<style>
+    .document-template-preview-loading:not(.htmx-request) {
+        display: none;
+    }
+    .htmx-request .document-template-preview-loading {
+        display: flex;
+    }
+</style>
+
+<div id="id-{{ uuid }}" class="h-[calc(100dvh-8rem)] min-h-[72vh]">
     <div class="grid h-full items-stretch lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]" >
         <div class="flex min-h-0 flex-col border-r border-gray-200 bg-slate-50">
-            <form
+            {% if generator_embedded %}<div class="flex min-h-0 flex-1 flex-col">{% else %}<form
                 hx-post="{{ form_action|default:request.get_full_path }}"
                 hx-target="#id-{{ uuid }}"
+                hx-indicator="#id-{{ uuid }}-preview-loading"
+                hx-disabled-elt="find button[type='submit']"
                 class="flex min-h-0 flex-1 flex-col"
-            >
+            >{% endif %}
                 <div class="bg-white px-5 py-4 border-b border-gray-200">
-                    <h3 class="text-base font-semibold text-slate-900">Document details</h3>
-                    <p class="mt-1 text-sm text-slate-500">Choose the source records and values for this document.</p>
+                    <h3 class="text-base font-semibold text-slate-900">{% blocktrans %}Document details{% endblocktrans %}</h3>
+                    <p class="mt-1 text-sm text-slate-500">{% blocktrans %}Choose the source records and values for this document.{% endblocktrans %}</p>
                 </div>
 
-                <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+                <div class="min-h-0 flex-1 overflow-y-auto bg-base px-5 py-4">
                     {% csrf_token %}
                     <div class="space-y-4" bloomerp-component="focus-on-form">
                         {{ form | crispy }}
@@ -25,24 +36,24 @@
                 </div>
 
                 <div class="flex items-center justify-between gap-3 border-t border-gray-200 bg-white px-5 py-4">
-                    <p class="text-xs text-slate-500">PDF preview updates after generation.</p>
-                    <button class="btn btn-primary">
+                    <p class="text-xs text-slate-500">{% blocktrans %}PDF preview updates after generation.{% endblocktrans %}</p>
+                    <button type="submit" name="_wizard_action" value="preview" class="btn btn-primary" {% if generator_embedded %}x-bind:disabled="wizardSubmitting"{% endif %}>
                         <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
-                        <span>{% blocktrans %}Generate{% endblocktrans %}</span>
+                        <span>{% trans 'Generate' %}</span>
                     </button>
                 </div>
-            </form>
+            {% if generator_embedded %}</div>{% else %}</form>{% endif %}
 
             <div class="border-t border-gray-200 bg-white">
                 <div class="flex items-center justify-between px-5 py-3">
-                    <h3 class="text-sm font-semibold text-slate-900">Generated files</h3>
+                    <h3 class="text-sm font-semibold text-slate-900">{% blocktrans %}Generated files{% endblocktrans %}</h3>
                     {% if files %}
                         <span class="text-xs font-medium text-slate-500">{{ files|length }}</span>
                     {% endif %}
                 </div>
-                {% if generated_file %}
+                {% if file_saved %}
                     <div class="border-b border-emerald-100 bg-emerald-50 px-5 py-2 text-xs font-medium text-emerald-700">
-                        Saved {{ generated_file.name }}
+                        {% blocktrans with filename=generated_file.name %}Saved {{ filename }}{% endblocktrans %}
                     </div>
                 {% endif %}
                 {% if files %}
@@ -72,7 +83,7 @@
                                     hx-target="#id-{{ uuid }}-preview-body"
                                     hx-swap="innerHTML"
                                     class="btn btn-ghost btn-xs"
-                                    title="View"
+                                    title="{% trans 'View' %}"
                                 >
                                     <i class="fa-regular fa-eye" aria-hidden="true"></i>
                                 </a>
@@ -81,7 +92,7 @@
                     </div>
                 {% else %}
                     <div class="px-5 py-5 text-sm text-slate-500">
-                        Saved PDFs will appear here.
+                        {% blocktrans %}Saved PDFs will appear here.{% endblocktrans %}
                     </div>
                 {% endif %}
             </div>
@@ -93,34 +104,40 @@
                     <h3 class="text-base font-semibold text-slate-900">
                         {% blocktrans %}Preview{% endblocktrans %}
                     </h3>
-                    <p class="mt-1 text-sm text-slate-500">Review the generated PDF before using it.</p>
+                    <p class="mt-1 text-sm text-slate-500">{% blocktrans %}Review the generated PDF before using it.{% endblocktrans %}</p>
                 </div>
-                {% if file_bytes %}
-                    <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Generated</span>
-                {% else %}
-                    <span class="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">Waiting</span>
-                {% endif %}
             </div>
-            <div id="id-{{ uuid }}-preview-body" class="min-h-0 flex-1">
-                {% if file_bytes %}
-                    <div class="h-full bg-slate-900">
-                        <iframe
-                            src="data:application/pdf;base64,{{ file_bytes }}"
-                            class="h-full w-full"
-                            title="Generated PDF preview"
-                        ></iframe>
-                    </div>
-                {% else %}
-                    <div class="flex h-full items-center justify-center bg-slate-50 px-8 text-center">
-                        <div class="max-w-sm">
-                            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white text-slate-400 shadow-xs">
-                                <i class="fa-regular fa-file-pdf text-2xl" aria-hidden="true"></i>
-                            </div>
-                            <h4 class="text-sm font-semibold text-slate-900">No preview yet</h4>
-                            <p class="mt-2 text-sm text-slate-500">Generate the document to preview the PDF here.</p>
+            <div class="relative min-h-0 flex-1">
+                <div
+                    id="id-{{ uuid }}-preview-loading"
+                    class="document-template-preview-loading absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-base px-8 text-center"
+                    role="status"
+                    aria-live="polite"
+                >
+                    <i class="fa-solid fa-circle-notch fa-spin text-3xl text-primary" aria-hidden="true"></i>
+                    <p class="text-sm">{% blocktrans %}Generating document…{% endblocktrans %}</p>
+                </div>
+                <div id="id-{{ uuid }}-preview-body" class="h-full min-h-0">
+                    {% if file_bytes or generated_file %}
+                        <div class="h-full bg-slate-900">
+                            <iframe
+                                src="{% if file_bytes %}data:application/pdf;base64,{{ file_bytes }}{% else %}{% url 'components_preview_file' generated_file.pk %}?raw=1{% endif %}"
+                                class="h-full w-full"
+                                title="{% trans 'Generated PDF preview' %}"
+                            ></iframe>
                         </div>
-                    </div>
-                {% endif %}
+                    {% else %}
+                        <div class="flex h-full items-center justify-center bg-base px-8 text-center">
+                            <div class="max-w-sm">
+                                <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-white text-slate-400 shadow-xs">
+                                    <i class="fa-regular fa-file-pdf text-2xl" aria-hidden="true"></i>
+                                </div>
+                                <h4 class="text-sm font-semibold text-slate-900">{% blocktrans %}No preview yet{% endblocktrans %}</h4>
+                                <p class="mt-2 text-sm text-slate-500">{% blocktrans %}Generate the document to preview the PDF here.{% endblocktrans %}</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>

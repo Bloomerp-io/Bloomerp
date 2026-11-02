@@ -7,6 +7,7 @@ from .api.api_key import *
 from .users import *
 from .files import *
 from .document_templates import *
+from .document_signing import *
 from .workspaces import *
 from .forms import *
 from .document_templates import *

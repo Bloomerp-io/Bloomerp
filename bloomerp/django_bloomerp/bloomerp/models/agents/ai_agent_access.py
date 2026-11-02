@@ -19,6 +19,8 @@ from bloomerp.models.definition import (
 )
 from bloomerp.modules.bloomai import BloomAIModule
 
+from .base import agent_search_settings
+
 
 class AIAgentAccess(BloomerpModel):
     """Grant agent use without granting configuration or credential access."""
@@ -68,6 +70,9 @@ class AIAgentAccess(BloomerpModel):
         ),
         module=BloomAIModule,
         api_settings=ApiSettings(enable_auto_generation=False),
+        string_search_settings=agent_search_settings(
+            include_search_routes=True, allow_global_search=True
+        ),
     )
     avatar = None
     name = models.CharField(max_length=255, verbose_name=_("Name"))

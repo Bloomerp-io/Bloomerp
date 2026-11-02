@@ -122,7 +122,7 @@ class TestBloomerpDetailFileListView(BloomerpDetailViewTestCase):
         ).assign_user(self.normal_user)
 
     def token_browses_only_record_files(self, response: HttpResponse) -> bool:
-        """Exercise the real file dataview, its action token, and removal of the visible filter."""
+        """Render record files with hidden filter chips and retain the token's read scope."""
         self.assertFalse(UserPolicyManager(self.normal_user).has_global_permission(FileNode, "view"))
         query = self.dataview_query(response)
         endpoint = reverse("components_dataview", kwargs={
@@ -130,6 +130,10 @@ class TestBloomerpDetailFileListView(BloomerpDetailViewTestCase):
         })
         browser = self.client.get(endpoint, query)
         self.assertContains(browser, self.linked_file.name)
+        self.assertContains(browser, f'data-file-id="{self.linked_file.pk}"')
+        self.assertContains(browser, f'data-upload-object-id="{self.file_owner.pk}"')
+        self.assertNotContains(browser, "data-rendered-filters")
+        self.assertContains(browser, 'data-data-view-button="filter"')
         action_url = reverse("components_objects_actions", kwargs={
             "content_type_id": ContentType.objects.get_for_model(FileNode).pk,
             "object_id": self.linked_file.pk, "action_id": "view_file",

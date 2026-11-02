@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import json
 import mimetypes
 from pathlib import PurePath
 from typing import Any, ClassVar
+from urllib.parse import urlencode
 
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import connections, models, router, transaction
+from django.db.models import Model, QuerySet
 from django.http import HttpRequest
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
@@ -19,6 +23,7 @@ from bloomerp.dataviews.file_browser.config import FileBrowserDataview
 from bloomerp.files.definition import FileNodeMetaData
 from bloomerp.files.querysets import FileIntegrityQuerySet
 from bloomerp.models import BloomerpModel
+from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import (
     BloomerpModelConfig,
     ModelViewSettings,
@@ -27,6 +32,7 @@ from bloomerp.models.definition import (
     StringSearchSettings,
     get_default_dataview_actions,
 )
+from bloomerp.models.files.file_reference import FileReference
 from bloomerp.modules.file_management import FileManagement
 
 
@@ -76,6 +82,30 @@ def _delete_url(file: FileNode) -> str:
     return reverse("components_files_delete", kwargs={"file_id": file.pk})
 
 
+def _email_url(file: FileNode) -> str:
+    """Open the shared email composer with this file preselected as an attachment."""
+    selection = {"manual": [{"kind": "file", "target_id": str(file.pk)}], "fields": {}}
+    return f"{reverse('components_new_email')}?{urlencode({'object_references': json.dumps(selection)})}"
+
+
+def _prepare_sign_url(file: FileNode) -> str:
+    """Open the reusable signing wizard for this immutable PDF."""
+    return reverse("components_document_signing_wizard", kwargs={"file_id": file.pk})
+
+
+def _can_prepare_sign(request: HttpRequest, file: FileNode) -> bool:
+    """Offer the signing wizard for readable PDFs when request creation is allowed."""
+    from bloomerp.document_signing.access import can_create_request
+    from bloomerp.permissions.manager import UserPolicyManager
+
+    return (
+        file.kind == "FILE"
+        and file.metadata.extension == "pdf"
+        and _can_view_file_node(request, file)
+        and can_create_request(UserPolicyManager(request.user))
+    )
+
+
 FILE_NODE_CONFIG = BloomerpModelConfig(
     module=FileManagement,
     model_view_settings=ModelViewSettings(
@@ -91,6 +121,14 @@ FILE_NODE_CONFIG = BloomerpModelConfig(
             execution_func=preview_file,
             target="#bloomerp-general-use-drawer-body",
             button_attrs={"bloomerp-open-drawer": "bloomerp-general-use-drawer"},
+        ),
+        ObjectModalAction(
+            id="email",
+            label=gettext_noop("Email"),
+            endpoint=_email_url,
+            should_render_func=_can_view_file_node,
+            modal_size="full",
+            modal_title=gettext_noop("New email"),
         ),
         ObjectModalAction(
             id="rename_file",
@@ -112,6 +150,14 @@ FILE_NODE_CONFIG = BloomerpModelConfig(
             endpoint=_delete_url,
             should_render_func=_can_delete_file_node,
             modal_title=gettext_noop("Delete file"),
+        ),
+        ObjectModalAction(
+            id="sign",
+            label=gettext_noop("Sign"),
+            endpoint=_prepare_sign_url,
+            should_render_func=_can_prepare_sign,
+            modal_size="full",
+            modal_title=gettext_noop("Sign document"),
         ),
     ],
 )
@@ -269,3 +315,41 @@ class FileNode(BloomerpModel):
     def __str__(self) -> str:
         """Display the user-facing file or folder name."""
         return self.name
+
+    def get_references(self, models: list[type[Model]] | None = None) -> QuerySet[FileReference]:
+        """Return file usages, optionally limited to model types; callers enforce target access."""
+        references = self.references.all()
+        if models is not None:
+            content_types = ContentType.objects.get_for_models(*models)
+            references = references.filter(
+                content_type_id__in=[item.pk for item in content_types.values()]
+            )
+        return references
+
+    def create_reference(
+        self, object: Model, field: ApplicationField | None = None
+    ) -> FileReference:
+        """Link a saved record or attachment field, reusing an existing reference.
+
+        Callers authorize the target; FileReference validates the association.
+        """
+        if (
+            self._state.adding
+            or self.pk is None
+            or object._state.adding
+            or object.pk is None
+        ):
+            raise ValidationError(_("Save the file and referenced record first."))
+        database = self._state.db or router.db_for_write(FileReference, instance=self)
+        if object._state.db != database or (
+            field is not None and field._state.db != database
+        ):
+            raise ValidationError(_("File references must use the same database."))
+        reference, _created = FileReference.objects.using(database).get_or_create(
+            file=self,
+            content_type=ContentType.objects.db_manager(database).get_for_model(object),
+            object_id=str(object.pk),
+            application_field=field,
+            occurrence_id=None,
+        )
+        return reference

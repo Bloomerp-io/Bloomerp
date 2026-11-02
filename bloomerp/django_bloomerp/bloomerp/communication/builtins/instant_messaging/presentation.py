@@ -3,6 +3,7 @@
 from typing import Any
 from urllib.parse import urlsplit
 
+from django.http import HttpRequest
 from django.utils.translation import gettext as _
 
 from bloomerp.models.communication.instant_messaging import (
@@ -11,6 +12,15 @@ from bloomerp.models.communication.instant_messaging import (
 )
 
 from .registry import IM_PROVIDER_REGISTRY
+
+
+def messaging_prefix(request: HttpRequest) -> str:
+    """Choose a fixed DOM namespace for page fragments or the floating panel."""
+    return (
+        "page-"
+        if request.GET.get("chat_page") == "1" or request.POST.get("chat_page") == "1"
+        else ""
+    )
 
 
 def participant_label(participant: IMConversationParticipant) -> str:

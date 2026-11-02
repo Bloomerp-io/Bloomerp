@@ -1,5 +1,7 @@
 import type { TemplateSelection } from "../text_editor/utils/templatePicker";
 import { EmailRecipients } from "./EmailRecipients";
+import ReferenceAttachments from "../detail_view_components/ReferenceAttachments";
+import { registerEmailImagePaste } from "./emailImagePaste";
 import BaseComponent, { getComponent, initComponents } from "../BaseComponent";
 import { BloomerpTextEditor } from "../text_editor/BloomerpTextEditor";
 import { getSdk } from "../../sdk/getSdk";
@@ -26,11 +28,16 @@ export class EmailEditor extends BaseComponent {
     private templateIds = new Set<string>();
     private revision = 0;
     private recipients: EmailRecipients[] = [];
+    private pendingUploads = 0;
+    private attachments: ReferenceAttachments | null = null;
+    private disposeImagePaste: (() => void) | null = null;
 
     /** Initialize instance-local controls and preserve the existing reply form. */
     public initialize(): void {
         if (!this.element) return;
         this.form = this.element.querySelector("form");
+        const picker = this.element.querySelector<HTMLElement>('[bloomerp-component="reference-attachments"]');
+        this.attachments = picker ? getComponent(picker) as ReferenceAttachments : null;
         for (const input of this.element.querySelectorAll<HTMLInputElement>("[data-recipient-input]")) {
             this.recipients.push(new EmailRecipients(input, this.lifecycle.signal, this.element!.dataset.recipientSearchUrl));
         }
@@ -40,9 +47,13 @@ export class EmailEditor extends BaseComponent {
         if (!this.element.dataset.sendUrl || !this.form) return;
         this.form.addEventListener("submit", this.onSubmit, { signal: this.lifecycle.signal });
         this.form.addEventListener("input", this.onInput, { signal: this.lifecycle.signal });
-        this.form.addEventListener("bloomerp:template-selected", this.onTemplateSelected, { signal: this.lifecycle.signal });
+        if (this.element.dataset.templateUrl) {
+            this.form.addEventListener("bloomerp:template-selected", this.onTemplateSelected, { signal: this.lifecycle.signal });
+        }
         this.form.addEventListener("change", this.onInput, { signal: this.lifecycle.signal });
         this.form.addEventListener("bloomerp:widget-change", this.onInput, { signal: this.lifecycle.signal });
+        this.form.addEventListener("bloomerp:attachments-changed", this.onInput, { signal: this.lifecycle.signal });
+        this.form.addEventListener("bloomerp:file-upload-state", this.onUploadState, { signal: this.lifecycle.signal });
         document.body.addEventListener("htmx:beforeCleanupElement", this.onCleanup, { signal: this.lifecycle.signal });
     }
 
@@ -50,6 +61,8 @@ export class EmailEditor extends BaseComponent {
     public setupEditor(): void {
         const element = this.element?.querySelector<HTMLElement>('[bloomerp-component="bloomerp-text-editor"]');
         this.editor = element ? getComponent(element) as BloomerpTextEditor : null;
+        this.disposeImagePaste?.();
+        this.disposeImagePaste = this.editor?.editor && element ? registerEmailImagePaste(this.editor.editor, element, this.showError) : null;
         this.editor?.editor?.focus();
     }
 
@@ -85,7 +98,7 @@ export class EmailEditor extends BaseComponent {
 
     /** Mark the snapshot dirty and invalidate any preview of earlier content. */
     private markChanged(): void {
-        if (this.sent) return;
+        if (this.sent || !this.element?.dataset.draftUserId) return;
         this.dirty = true;
         this.setStatus(_("Saving draft…"));
         this.revision += 1;
@@ -105,7 +118,7 @@ export class EmailEditor extends BaseComponent {
     /** Capture current editor HTML, including edits before its next change event. */
     private formData(): FormData {
         const data = new FormData(this.form!);
-        data.set("body", this.editor?.getValue() ?? String(data.get("body") ?? ""));
+        data.set("body", this.editor?.editor ? this.editor.getValue() : String(data.get("body") ?? ""));
         return data;
     }
 
@@ -158,6 +171,7 @@ export class EmailEditor extends BaseComponent {
             document_template_ids: [...new Set(data.getAll("document_template_id").map(String).filter(Boolean))],
             arguments: args,
             attachments: await Promise.all(attachments.map(this.draftAttachment)),
+            object_references: String(data.get("object_references") ?? ""),
         };
         for (const key of ["to", "cc", "bcc", "subject", "body"]) payload[key] = String(data.get(key) ?? "");
         const snapshot: EmailDraftUpdate = {
@@ -257,7 +271,15 @@ export class EmailEditor extends BaseComponent {
     /** Prevent duplicate submissions and let the component own sending. */
     private onSubmit = (event: SubmitEvent): void => {
         event.preventDefault();
-        if (!this.sending && !this.loadingTemplate && !this.sent) void this.send();
+        if (!this.sending && !this.loadingTemplate && !this.pendingUploads && !this.sent) void this.send();
+    };
+
+    /** Aggregate every shared file upload so concurrent inline and ordinary uploads block sending. */
+    private onUploadState = (event: Event): void => {
+        this.pendingUploads = Math.max(0, this.pendingUploads + (event as CustomEvent<{ delta: number }>).detail.delta);
+        this.setBusy(this.sending || this.loadingTemplate || this.sent);
+        if (this.pendingUploads) this.setStatus(_("Uploading attachment…"));
+        else if (!this.dirty && !this.sending) this.setStatus("");
     };
 
     /** Finish autosave before sending and retain entered values on failure. */
@@ -290,7 +312,7 @@ export class EmailEditor extends BaseComponent {
     /** Disable submission during operations and show sending activity. */
     private setBusy(busy: boolean): void {
         const send = this.form?.querySelector<HTMLButtonElement>('button[type="submit"]');
-        if (send) send.disabled = busy;
+        if (send) send.disabled = busy || this.pendingUploads > 0;
         this.form?.setAttribute("aria-busy", String(busy));
         if (this.form) this.form.inert = busy;
         const icon = this.element?.querySelector<HTMLElement>("[data-send-icon]");
@@ -320,11 +342,16 @@ export class EmailEditor extends BaseComponent {
 
     /** Release handlers and pending loads while letting a started save finish. */
     public destroy(): void {
+        const body = this.form?.elements.namedItem("body") as HTMLInputElement | null;
+        if (body && this.editor?.editor) body.value = this.editor.getValue();
         this.lifecycle.abort();
+        this.attachments?.destroy();
+        this.disposeImagePaste?.();
         this.templateRequest?.abort();
         if (this.saveTimer) clearTimeout(this.saveTimer);
         this.saveTimer = null;
         if (this.dirty && !this.sending && !this.loadingTemplate && !this.sent) void this.flushDraft().catch(this.showError);
+        this.editor?.destroy();
         super.destroy();
     }
 }

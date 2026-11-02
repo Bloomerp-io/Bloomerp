@@ -109,7 +109,7 @@ def sanitize_html(content: str) -> str:
             "*": ["class", "style", "dir"],
             "a": ["href", "title"],
             "span": REFERENCE_ATTRIBUTES,
-            "pre": ["data-text-editor-code-block"],
+            "pre": ["data-text-editor-code-block", "data-text-editor-mermaid"],
             "ul": ["__lexicallisttype"],
             "ol": ["start", "__lexicallisttype"],
             "li": ["value", "role", "aria-checked"],

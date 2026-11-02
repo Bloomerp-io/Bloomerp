@@ -35,6 +35,7 @@ export default class Conversation extends BaseComponent {
         for (let parent: HTMLElement | null = this.element; parent; parent = parent.parentElement) {
             this.visibilityObserver.observe(parent, { attributes: true, attributeFilter: ['hidden', 'class', 'style'] });
         }
+        if (this.element.dataset.initialQuery) this.getEditor()?.setValue(this.element.dataset.initialQuery);
         this.onAfterSwap();
         this.scrollMessages();
     }
@@ -43,6 +44,13 @@ export default class Conversation extends BaseComponent {
     private getEditor(): BloomerpTextEditor | null {
         const node = this.element.querySelector<HTMLElement>('[bloomerp-component="bloomerp-text-editor"]');
         return node ? getComponent(node) as BloomerpTextEditor : null;
+    }
+
+    /** Return meaningful rich-text content for a host switching into the full-page view. */
+    public getDraft(): string {
+        const html = this.getEditor()?.getValue() ?? '';
+        const draft = new DOMParser().parseFromString(html, 'text/html');
+        return draft.body.textContent?.trim() || draft.body.querySelector('img, table, hr') ? html : '';
     }
 
     /** Handle group-name keyboard edits independently from composer submission. */

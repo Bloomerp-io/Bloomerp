@@ -1,0 +1,27 @@
+{% load i18n %}
+<span class="sign-document__drawing" bloomerp-component="bloomerp:signature-pad"
+      data-required="{{ signature_required|yesno:'true,false' }}">
+    {% include "django/forms/widgets/hidden.html" %}
+    <button type="button" class="sign-document__draw-button" data-signature-open aria-label="{{ signature_label }}">
+        <svg data-signature-preview viewBox="0 0 1000 300" aria-hidden="true" hidden></svg>
+        <span data-signature-placeholder>{% trans 'Draw signature' %}</span>
+    </button>
+    <template data-signature-modal>
+    <div id="{{ widget.attrs.id }}-pad" bloomerp-component="modal" class="hidden" data-modal-size="md" data-modal-title="{% trans 'Draw your signature' %}">
+        <div data-modal-content>
+            <div class="sign-document__signature-pad">
+                <p class="mb-3 text-sm text-muted">{% trans 'Draw using your mouse, finger or pen.' %}</p>
+                <canvas data-signature-canvas width="1000" height="300" tabindex="0" aria-label="{% trans 'Signature drawing area' %}"></canvas>
+                <p data-signature-error hidden role="alert" class="mt-2 text-sm text-danger-dark">{% trans 'Draw your signature before continuing.' %}</p>
+                <div class="mt-4 flex items-center justify-between gap-3">
+                    <button type="button" class="btn btn-secondary btn-sm" data-signature-clear>{% trans 'Clear' %}</button>
+                    <div class="flex gap-2">
+                        <button type="button" class="btn btn-secondary btn-sm" data-signature-cancel>{% trans 'Cancel' %}</button>
+                        <button type="button" class="btn btn-primary btn-sm" data-signature-apply>{% trans 'Use signature' %}</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </template>
+</span>

@@ -1,0 +1,6 @@
+{% load i18n %}
+<c-ui.inputs.selectable_cards.container name="signing_action" :include_search="False" :allow_multiple="False" value="{{ selected_action }}">
+    <c-ui.inputs.selectable_cards.item value="send" name="{% trans 'Send for signing' %}" description="{% trans 'Choose recipients and send a signature request.' %}" icon="fa-envelope" />
+    <c-ui.inputs.selectable_cards.item value="self" name="{% trans 'Sign myself' %}" description="{% trans 'Fill in and sign your own assigned fields.' %}" icon="fa-signature" />
+    <c-ui.inputs.selectable_cards.item value="complete" name="{% trans 'Complete without sending' %}" description="{% trans 'Save the prepared request and choose recipients later.' %}" icon="fa-check" />
+</c-ui.inputs.selectable_cards.container>

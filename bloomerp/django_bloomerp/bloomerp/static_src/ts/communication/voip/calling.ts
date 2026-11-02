@@ -17,10 +17,13 @@ class CarrierRegistration implements CallingRegistration {
 
     /** Offer an incoming carrier session through the common invitation contract. */
     private incoming = (call: BrowserCall): void => {
+        if (this.disposed) return;
         const transport = new CarrierTransport(null, this.context, call);
+        const caller = call.caller?.();
         const credentials: CallCredentials = {
             session_id: crypto.randomUUID(), driver: this.options.driver, media_mode: 'audio',
             join_url: '', end_url: '', url: '', token: '', can_video: 'false', can_end: 'false',
+            caller_name: caller?.name || caller?.address || '', caller_address: caller?.address || '', call_kind: 'phone',
         };
         this.context.incoming({ credentials, transport });
     };
@@ -70,6 +73,7 @@ export class CarrierTransport implements BrowserCallTransport {
     private call: BrowserCall | null;
     private disposed = false;
     private onState: (state: TransportState) => void;
+    private state: TransportState | null = null;
 
     /** Keep incoming or outgoing carrier state behind the shared media interface. */
     public constructor(onState: ((state: TransportState) => void) | null, private context: CallingContext, incoming: BrowserCall | null = null) {
@@ -79,11 +83,14 @@ export class CarrierTransport implements BrowserCallTransport {
     }
 
     /** Bind the invitation to the active shell before the user accepts it. */
-    public setStateListener(listener: (state: TransportState) => void): void { this.onState = listener; }
+    public setStateListener(listener: (state: TransportState) => void): void {
+        this.onState = listener;
+        if (this.state) listener(this.state);
+    }
 
     /** Accept an offered call or connect only the opaque server-authorized reservation. */
     public async connect(credentials: CallCredentials): Promise<void> {
-        if (this.disposed) throw new Error('Call is no longer available');
+        if (this.disposed || this.state === 'disconnected') throw new Error('Call is no longer available');
         if (this.call) { this.call.accept(); return; }
         const registered = await registration({ id: credentials.registration_id!, driver: credentials.driver, token_url: credentials.token_url! }, this.context);
         if (this.disposed) return;
@@ -117,9 +124,9 @@ export class CarrierTransport implements BrowserCallTransport {
     /** Let drivers resume remote audio when their browser playback requires consent. */
     public async playAudio(): Promise<void> { await this.call?.playAudio?.(); }
     /** Report carrier acceptance. */
-    private accepted = (): void => { if (!this.disposed) this.onState('connected'); };
+    private accepted = (): void => { if (!this.disposed) { this.state = 'connected'; this.onState('connected'); } };
     /** Report remote termination or cancellation, including unanswered invitations. */
-    private ended = (): void => { if (!this.disposed) this.onState('disconnected'); };
+    private ended = (): void => { if (!this.disposed) { this.state = 'disconnected'; this.onState('disconnected'); } };
     /** Ignore state only before an incoming invitation has a shell listener. */
     private ignoreState(_state: TransportState): void {}
 }

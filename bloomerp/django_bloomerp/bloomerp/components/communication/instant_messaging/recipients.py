@@ -12,6 +12,7 @@ from bloomerp.communication.builtins.instant_messaging.registry import (
     IM_PROVIDER_REGISTRY,
 )
 from bloomerp.router import router
+from bloomerp.communication.builtins.instant_messaging.presentation import messaging_prefix
 
 
 @router.register(
@@ -70,6 +71,7 @@ def recipients(request: HttpRequest) -> HttpResponse:
         {
             "groups": groups,
             "query": query,
+            "im_prefix": messaging_prefix(request),
         },
     )
     response["Cache-Control"] = "private, no-store"

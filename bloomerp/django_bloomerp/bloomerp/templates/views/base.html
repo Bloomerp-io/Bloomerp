@@ -18,7 +18,7 @@
 		<!-- End Sidebar-->		
 		 
 		<!--Main -->
-		<main id="main" class="relative z-0 transition-all duration-300 ease-in-out m-3 bg-white dark:bg-zinc-900 h-[calc(100vh-1.5rem)] rounded-xl overflow-y-auto border border-gray-200 dark:border-zinc-700">
+		<main id="main" class="workspace-main relative z-0 transition-all duration-300 ease-in-out m-3 bg-white dark:bg-zinc-900 rounded-xl overflow-y-auto border border-gray-200 dark:border-zinc-700">
 			<div id="main-content" hx-history-elt class="h-full overflow-y-auto">
 				{% block main %}
 					{% if include_main_content %}
@@ -60,8 +60,13 @@
 			<c-icons.lines_horizontal size="24"/>
 		</button>
 
-		<c-features.agent.body />
-		{% include "components/communication/messaging_panel.html" %}
+		{% if request.user.is_authenticated %}
+		<div class="workspace-tools" role="group" aria-label="{% translate 'Workspace tools' %}">
+			{% include "components/communication/calling/controls.html" %}
+			<c-features.agent.body />
+			{% include "components/communication/messaging_panel.html" with chat_page=False im_prefix="" initial_conversation="" initial_query="" initial_thread="" initial_search="" %}
+		</div>
+		{% endif %}
 
 		<!--Messages -->
 		<c-ui.modal id="bloomerp-general-use-modal"/>

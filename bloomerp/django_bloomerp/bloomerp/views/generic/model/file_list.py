@@ -1,6 +1,7 @@
 from typing import Any
 
 from bloomerp.models.files.file_node import FileNode
+from bloomerp.modules.file_management import FileManagement
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
@@ -11,10 +12,11 @@ from django.views.generic import TemplateView
 
 @router.register(
     path="files",
-    route_type="app",
+    route_type="module",
     name="Files",
-    url_name="app",
+    url_name="files",
     description="List of all files across the application.",
+    modules=[FileManagement]
 )
 class BloomerpFileListView(BaseBloomerpView, TemplateView):
     template_name = "views/generic/model/bloomerp_file_list.html"

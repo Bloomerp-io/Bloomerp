@@ -62,6 +62,10 @@ export class Calendar extends BaseDataViewComponent {
     private activeGestureController: AbortController | null = null;
     private activeGestureCleanup: (() => void) | null = null;
     private currentTimeTimer: number | null = null;
+    private timeGridObserver: ResizeObserver | null = null;
+    private timeGridFrame: number | null = null;
+    private currentTimeMinutes = 0;
+    private timeGridCentered = false;
 
     /** Bind calendar navigation, preference changes, and event editing to this instance. */
     public override initialize(): void {
@@ -119,13 +123,81 @@ export class Calendar extends BaseDataViewComponent {
             );
         }, { capture: true, signal: controller.signal });
 
-        this.restorePendingFocus();
         this.updateCurrentTime();
         if (this.element.querySelector("[data-calendar-current-time]")) {
+            this.initializeTimeGrid();
             if (this.currentTimeTimer !== null) window.clearInterval(this.currentTimeTimer);
             this.currentTimeTimer = window.setInterval(this.updateCurrentTime, 30_000);
         }
+        this.restorePendingFocus();
+        this.element.addEventListener("htmx:beforeCleanupElement", this.onBeforeCleanup, {
+            signal: controller.signal,
+        });
     }
+
+    /** Fit hourly calendars to their visible container and center the time after layout. */
+    private initializeTimeGrid(): void {
+        this.timeGridCentered = false;
+        this.fitTimeGrid();
+        window.addEventListener("resize", this.fitTimeGrid, { signal: this.ensureAbortController().signal });
+        this.timeGridObserver?.disconnect();
+        if (typeof ResizeObserver !== "undefined") {
+            this.timeGridObserver = new ResizeObserver(this.fitTimeGrid);
+            const container = this.dataViewContainer?.element ?? this.element;
+            if (container) this.timeGridObserver.observe(container);
+            for (let ancestor = this.element?.parentElement; ancestor; ancestor = ancestor.parentElement) {
+                if (["auto", "scroll", "hidden", "clip"].includes(getComputedStyle(ancestor).overflowY)) {
+                    this.timeGridObserver.observe(ancestor);
+                }
+            }
+        }
+        if (this.timeGridFrame !== null) window.cancelAnimationFrame(this.timeGridFrame);
+        this.timeGridFrame = window.requestAnimationFrame(this.onTimeGridLayout);
+    }
+
+    /** Size the day/week grid within viewport and ancestor clipping boundaries. */
+    private fitTimeGrid = (): void => {
+        if (!this.element?.isConnected || !["day", "week"].includes(this.viewMode)) return;
+        let top = this.element.getBoundingClientRect().top;
+        let bottom = window.innerHeight;
+        let padding = 0;
+        for (let ancestor = this.element.parentElement; ancestor; ancestor = ancestor.parentElement) {
+            const style = getComputedStyle(ancestor);
+            padding += Number.parseFloat(style.paddingBottom) || 0;
+            if (["auto", "scroll", "hidden", "clip"].includes(style.overflowY)) {
+                top += ancestor.scrollTop;
+                const bounds = ancestor.getBoundingClientRect();
+                bottom = Math.min(bottom, bounds.top + ancestor.clientTop + ancestor.clientHeight - padding);
+            }
+        }
+        bottom = Math.min(bottom, window.innerHeight - padding);
+        this.element.style.height = `${Math.max(0, Math.floor(bottom - top))}px`;
+    };
+
+    /** Center the current hour once, leaving later scrolling and clock updates undisturbed. */
+    private onTimeGridLayout = (): void => {
+        this.timeGridFrame = null;
+        this.fitTimeGrid();
+        const grid = this.element?.querySelector<HTMLElement>("[data-calendar-grid]");
+        const column = grid?.querySelector<HTMLElement>("[data-calendar-time-column]");
+        if (this.timeGridCentered || !grid || !column || grid.clientHeight === 0) return;
+        const headerHeight = grid.querySelector<HTMLElement>("[data-calendar-day-header]")?.offsetHeight ?? 0;
+        const columnBounds = column.getBoundingClientRect();
+        const timeOffset = columnBounds.top - grid.getBoundingClientRect().top + grid.scrollTop
+            + columnBounds.height * this.currentTimeMinutes / 1440;
+        grid.scrollTop = Math.max(0, timeOffset - (grid.clientHeight + headerHeight) / 2);
+        this.timeGridCentered = true;
+    };
+
+    /** Refit an existing calendar when HTMX changes its surrounding controls or content. */
+    public override onAfterSwap(): void {
+        this.fitTimeGrid();
+    }
+
+    /** Release layout observers and timers before HTMX removes this calendar. */
+    private onBeforeCleanup = (event: Event): void => {
+        if (event.target === this.element) this.destroy();
+    };
 
     /** Position the current-time indicator across today or the entire current week. */
     private updateCurrentTime = (): void => {
@@ -142,17 +214,24 @@ export class Calendar extends BaseDataViewComponent {
         const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
         const today = `${values.year}-${values.month}-${values.day}`;
         const minutes = Number(values.hour) * 60 + Number(values.minute);
+        this.currentTimeMinutes = minutes;
         const markers = Array.from(this.element.querySelectorAll<HTMLElement>("[data-calendar-current-time]"));
         const showAcrossWeek = this.viewMode === "week"
             && markers.some((marker) => marker.dataset.calendarCurrentTime === today);
         for (const marker of markers) {
-            marker.classList.toggle("hidden", !showAcrossWeek && marker.dataset.calendarCurrentTime !== today);
+            const isToday = marker.dataset.calendarCurrentTime === today;
+            marker.classList.toggle("hidden", !showAcrossWeek && !isToday);
             marker.style.top = `${minutes / 1440 * 100}%`;
+            marker.querySelector<HTMLElement>("[data-calendar-current-time-dot]")?.classList.toggle("hidden", !isToday);
         }
     };
 
-    /** Release event gestures and the live current-time indicator timer. */
+    /** Release calendar layout, event gestures, and the live current-time indicator timer. */
     public override destroy(): void {
+        this.timeGridObserver?.disconnect();
+        this.timeGridObserver = null;
+        if (this.timeGridFrame !== null) window.cancelAnimationFrame(this.timeGridFrame);
+        this.timeGridFrame = null;
         if (this.currentTimeTimer !== null) window.clearInterval(this.currentTimeTimer);
         this.currentTimeTimer = null;
         this.activeGestureController?.abort();

@@ -130,9 +130,11 @@ try {{
 """
 
     def render_source(self, model_definitions: list[SdkModelDefinition]) -> str:
+        """Render model CRUD clients and opted-in custom operations."""
         sections = [
             self.render_prelude(),
             *[self.render_model_section(model_definition) for model_definition in model_definitions],
+            self.render_custom_endpoints(),
             self.render_sdk_class(model_definitions),
         ]
         return "\n\n".join(section.rstrip() for section in sections if section).strip() + "\n"
@@ -727,6 +729,7 @@ export const bloomerpAuthStrategyTypes = {auth_strategy_types} as const;
         return None
 
     def render_sdk_class(self, model_definitions: list[SdkModelDefinition]) -> str:
+        """Expose shared authentication, model clients, and custom operations."""
         model_metadata_lines: list[str] = []
         for model_definition in model_definitions:
             model_metadata_lines.extend(
@@ -751,15 +754,18 @@ export const bloomerpAuthStrategyTypes = {auth_strategy_types} as const;
             "export class BloomerpSdk {",
             "  public readonly client: BloomerpHttpClient;",
             "  public readonly auth: AuthApi;",
+            "  public readonly custom: CustomApi;",
             *metadata_lines,
             *[
                 f"  public readonly {model_definition.variable_name}: {model_definition.class_name}Api;"
                 for model_definition in model_definitions
             ],
             "",
+            "  /** Configure shared transport and generated endpoint clients. */",
             "  constructor(config: BloomerpSdkConfig) {",
             "    this.client = new BloomerpHttpClient(config);",
             "    this.auth = new AuthApi(this.client);",
+            "    this.custom = new CustomApi(this.client);",
             *[
                 f"    this.{model_definition.variable_name} = new {model_definition.class_name}Api(this.client);"
                 for model_definition in model_definitions

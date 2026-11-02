@@ -1,0 +1,29 @@
+{% load i18n %}
+<section class="rounded-xl border border-warning-light bg-warning-light/20 p-5">
+    <h2 class="text-sm font-semibold text-dark">{% translate "Workflow approval" %}</h2>
+    {% if approval_message %}
+        <p class="mt-2 whitespace-pre-line text-sm text-gray-700">{{ approval_message }}</p>
+    {% endif %}
+    {% if approval_step.status == "PAUSED" %}
+        {% if can_approve %}
+            <button
+                type="button"
+                class="btn btn-primary btn-sm mt-4"
+                hx-get="{% url 'components_automation_approve_workflow_continuation' workflow_run_id=workflow.workflow_run_id %}?step_id={{ approval_step.pk }}"
+                hx-target="#bloomerp-general-use-modal-body"
+                bloomerp-set-modal-title-for="bloomerp-general-use-modal"
+                bloomerp-set-modal-title-to="{% translate 'Review workflow' %}"
+                bloomerp-set-modal-size-to="lg"
+                bloomerp-open-modal="bloomerp-general-use-modal"
+            >
+                {% translate "Review and approve" %}
+            </button>
+        {% else %}
+            <p class="mt-3 text-sm text-gray-600">{% translate "Waiting for an authorized approver to review this step." %}</p>
+        {% endif %}
+    {% elif approval_step %}
+        <p class="mt-3 text-sm text-gray-600">{% translate "This approval has already been handled." %}</p>
+    {% else %}
+        <p class="mt-3 text-sm text-gray-600">{% translate "This approval is no longer available." %}</p>
+    {% endif %}
+</section>

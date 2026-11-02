@@ -94,6 +94,8 @@ class EmailAttachment(BaseModel):
     content: bytes
     content_type: str = "application/octet-stream"
     calendar_method: str = ""
+    content_id: str = ""
+    disposition: Literal["attachment", "inline"] = "attachment"
 
 
 class EmailSendResult(BaseModel):

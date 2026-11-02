@@ -1,0 +1,18 @@
+{% load i18n %}
+<form id="{{ component_id }}" bloomerp-component="bloomerp:start-self-signing"
+      data-start-url="{{ start_url }}" data-single-role="{{ single_role|yesno:'true,false' }}"
+      class="space-y-4" aria-label="{% trans 'Sign myself' %}">
+    {% csrf_token %}
+    {{ form.preparation_id }}{{ form.revision }}
+    <p class="truncate text-sm font-medium">{{ file.name }}</p>
+    <div class="space-y-2">
+        {{ form.role_key.label_tag }}{{ form.role_key }}
+        <p class="text-xs text-muted">{% trans 'This request includes the selected role and its fields.' %}</p>
+    </div>
+    <p data-signing-error hidden role="alert" class="alert alert-danger"></p>
+    <footer class="flex items-center justify-end border-t border-gray-200 pt-4">
+        <button type="submit" class="btn btn-primary btn-sm" data-start-signing>
+            <i class="fa-solid fa-signature" aria-hidden="true"></i> {% trans 'Continue to signing' %}
+        </button>
+    </footer>
+</form>

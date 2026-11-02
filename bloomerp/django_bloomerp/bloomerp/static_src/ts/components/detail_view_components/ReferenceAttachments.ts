@@ -363,7 +363,10 @@ export default class ReferenceAttachments extends BaseComponent {
     /** Upload the selected draft and add its identity to pending attachments. */
     private async uploadSelection(input: HTMLInputElement): Promise<void> {
         const file = input.files?.[0]; if (!file) return;
-        try { this.add(await uploadReferenceFile(this.element, file, this.lifecycle.signal)); }
+        try {
+            const target = await uploadReferenceFile(this.element, file, this.lifecycle.signal);
+            if (!this.lifecycle.signal.aborted) this.add(target);
+        }
         catch (error) { if (!this.lifecycle.signal.aborted) window.alert(String(error)); }
     }
     /** Limit presentation colors to the same hex contract accepted by the endpoint. */
