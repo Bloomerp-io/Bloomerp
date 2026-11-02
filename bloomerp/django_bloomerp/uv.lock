@@ -458,11 +458,7 @@ wheels = [
 
 [[package]]
 name = "bloomerp"
-<<<<<<< HEAD
-version = "1.18.12"
-=======
 version = "1.19.0"
->>>>>>> f52d6e80c457cfb10e2207674b9706adc2e2a48b
 source = { editable = "." }
 dependencies = [
     { name = "annotated-types" },
