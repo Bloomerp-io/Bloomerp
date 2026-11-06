@@ -62,6 +62,7 @@ export class SelectionToolbar {
 
     /** Measure a visible text range or selected cells inside this editable widget. */
     private selectionRect(): DOMRect | null {
+        if (this.host.linkToolbar?.isVisible()) return null;
         const editor = this.host.editor;
         const root = editor?.getRootElement();
         if (!root || !editor.isEditable() || this.host.element.dataset.disabled === "true") return null;

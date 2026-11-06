@@ -17,7 +17,7 @@
     "test:editor-actions": "node --experimental-strip-types --test ts/components/text_editor/actionRegistry.test.ts",
     "test:mermaid": "node --experimental-strip-types --test ts/components/text_editor/utils/mermaidBehavior.test.ts",
     "test:text-editor-tables": "node --experimental-strip-types --test ts/components/text_editor/utils/tableBehavior.test.ts",
-    "test:text-editor-links": "node --experimental-strip-types --test ts/components/text_editor/utils/linkBehavior.test.ts",
+    "test:text-editor-links": "node --experimental-strip-types --test ts/components/text_editor/utils/linkBehavior.test.ts ts/components/text_editor/linkToolbar.test.ts",
     "test:url-widget": "node --experimental-strip-types --test ts/components/widgets/URLWidget.test.ts",
     "test:document-header": "node --experimental-strip-types --test ts/components/DocumentTemplateBuilder.test.ts",
     "test:sdk": "node --experimental-transform-types --test ts/sdk/sdk.test.ts",
