@@ -20,7 +20,7 @@ from bloomerp.permissions.definition import BloomerpPermission, PermissionMatch
 @dataclass(frozen=True)
 class CompiledSqlAccess:
     query: str
-    params: tuple[Any, ...] = ()
+    params: tuple[Any, ...] | None = None
     denied: bool = False
 
 
@@ -53,11 +53,12 @@ class SqlPermissionCompiler(BasePermissionCompiler[CompiledSqlAccess]):
     def compile(
         self,
         query: str,
-        permissions=BloomerpPermission.VIEW,
+        permissions: list[str] | list[BloomerpPermission] | str | BloomerpPermission = BloomerpPermission.VIEW,
         match: PermissionMatch = PermissionMatch.ANY,
         *,
         dialect: str | None = None,
     ) -> CompiledSqlAccess:
+        """Secure table references and preserve literal percent signs during binding."""
         dialect = dialect or self._connection_dialect()
         tree = self._parse_single_read_query(query, dialect)
         physical_tables = self._physical_tables_from_tree(tree)
@@ -97,10 +98,15 @@ class SqlPermissionCompiler(BasePermissionCompiler[CompiledSqlAccess]):
             )
 
         compiled_query = tree.sql(dialect=dialect)
+        # Driver binding interprets every percent sign, including string literals
+        # and modulo operators. Escape authored SQL before adding placeholders.
+        if marker_values:
+            compiled_query = compiled_query.replace("%", "%%")
         marker_pattern = re.compile(rf"{re.escape(marker_prefix)}(\d+)__")
         ordered_params = []
 
-        def replace_marker(match_object: re.Match) -> str:
+        def replace_marker(match_object: re.Match[str]) -> str:
+            """Restore a driver placeholder while preserving policy parameter order."""
             marker_index = int(match_object.group(1))
             ordered_params.append(marker_values[marker_index])
             return "%s"
@@ -108,7 +114,7 @@ class SqlPermissionCompiler(BasePermissionCompiler[CompiledSqlAccess]):
         compiled_query = marker_pattern.sub(replace_marker, compiled_query)
         if len(ordered_params) != len(marker_values):
             raise ValueError("Could not preserve all SQL policy parameters")
-        return CompiledSqlAccess(compiled_query, tuple(ordered_params))
+        return CompiledSqlAccess(compiled_query, tuple(ordered_params) or None)
 
     @staticmethod
     def _connection_dialect() -> str:
@@ -214,6 +220,7 @@ class SqlPermissionCompiler(BasePermissionCompiler[CompiledSqlAccess]):
         marker_prefix: str,
         marker_values: dict[int, Any],
     ) -> str:
+        """Embed ORM policy SQL without its driver-level percent escaping."""
         queryset = (
             model.objects.filter(row_filter)
             .order_by()
@@ -232,4 +239,6 @@ class SqlPermissionCompiler(BasePermissionCompiler[CompiledSqlAccess]):
             marker = f"{marker_prefix}{marker_index}__"
             sql = sql.replace("%s", marker, 1)
             marker_values[marker_index] = value
-        return sql
+        # Django SQL is already escaped for binding; the final query is escaped
+        # once after all raw fragments and authored expressions are combined.
+        return sql.replace("%%", "%")

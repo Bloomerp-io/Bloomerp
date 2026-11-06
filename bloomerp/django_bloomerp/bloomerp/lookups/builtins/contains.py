@@ -20,8 +20,9 @@ def contains(actual: Any, expected: Any) -> bool:
 
 
 def contains_form_factory(context: FilterFieldContext) -> forms.CharField:
+    """Build the full-width text input used by Contains filter editors."""
     del context
-    return forms.CharField(required=False)
+    return forms.CharField(required=False, widget=forms.TextInput(attrs={"class": "input w-full"}))
 
 
 def contains_sql_factory(
@@ -29,15 +30,17 @@ def contains_sql_factory(
     expression: str,
     value: Any,
 ) -> CompiledSQL:
+    """Compile literal substring matching with bound, escaped LIKE patterns."""
     del expression
-    pattern = f"%{value}%"
+    escaped = str(value).replace("!", "!!").replace("%", "!%").replace("_", "!_")
+    pattern = f"%{escaped}%"
     if context.dialect == "postgres":
         return CompiledSQL(
-            clause=f"{context.field_path} ILIKE %s",
+            clause=f"{context.field_path} ILIKE %s ESCAPE '!'",
             parameters=(pattern,),
         )
     return CompiledSQL(
-        clause=f"LOWER({context.field_path}) LIKE LOWER(%s)",
+        clause=f"LOWER({context.field_path}) LIKE LOWER(%s) ESCAPE '!'",
         parameters=(pattern,),
     )
 
