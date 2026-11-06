@@ -315,7 +315,7 @@ class TestDetailViewE2E(e2e_test_cases.BloomerpE2ETestCase):
         pane = self.page.locator('[data-split-view-detail-pane]')
         sidebar = pane.locator('#resizable-div-detail-aside')
         expect(sidebar).to_be_visible()
-        expect(sidebar.locator('#object-sidesection')).not_to_contain_text('Loading activity...')
+        expect(sidebar.locator('[data-detail-sidebar-content]')).not_to_contain_text('Loading activity...')
         button = sidebar.locator('[data-detail-sidebar-view="comments"]')
         with self.expect_response_for(button.get_attribute('hx-get'), method="GET") as response:
             button.click()
