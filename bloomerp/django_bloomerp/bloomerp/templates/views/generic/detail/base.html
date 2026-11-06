@@ -159,20 +159,7 @@
 							{% blocktrans %}Create Todo{% endblocktrans %}
 						</button>
 						{% endif %}
-                        {% if object_email_fields %}
-                        {% translate "Email" as email_action_label %}
-                        <c-ui.dropdown.body :trigger_text="email_action_label" trigger_icon_class="fa fa-envelope" trigger_button_class="btn btn-secondary btn-sm" :fixed="True">
-                            {% for email_field in object_email_fields %}
-                            <button type="button" class="block w-full px-4 py-2 text-left text-sm hover:bg-base"
-                                hx-get="{% url 'components_new_email' %}?content_type_id={{ content_type_id }}&amp;object_id={{ object.pk|urlencode }}&amp;email_field={{ email_field.name|urlencode }}"
-                                hx-target="#detail-email-modal-body" hx-push-url="false"
-                                bloomerp-open-modal="detail-email-modal">
-                                <span class="block truncate" title="{{ email_field.value }}">{{ email_field.value }}</span>
-                                <span class="block text-xs text-gray-500">{{ email_field.label }}</span>
-                            </button>
-                            {% endfor %}
-                        </c-ui.dropdown.body>
-                        {% endif %}
+                        {% include "components/objects/details/contact_actions.html" %}
 						{% for action in object_actions %}
 							{% render_object_action action=action object=object request=request content_type_id=content_type_id %}
 						{% endfor %}
@@ -205,5 +192,9 @@
 ></c-ui.modal>
 
 {% if object_email_fields %}
-<c-ui.modal id="detail-email-modal" :title="email_action_label" size="xl"></c-ui.modal>
+<c-ui.modal id="detail-email-modal" title="{% translate 'Email' %}" size="xl"></c-ui.modal>
+{% endif %}
+
+{% if object_calendar_fields %}
+<c-ui.modal id="detail-calendar-modal" title="{% translate 'Calendar invite' %}" size="xl"></c-ui.modal>
 {% endif %}

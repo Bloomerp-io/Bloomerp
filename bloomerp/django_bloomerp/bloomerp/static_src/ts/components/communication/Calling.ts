@@ -28,7 +28,8 @@ export default class Calling extends BaseComponent {
     private microphone = false;
     private camera = false;
     private attempts = new Map<string, string>();
-    private terminal = new Set<string>();
+    private handledInvitations = new Set<string>();
+    private closedSessions = new Set<string>();
     private admissionsUrl = '';
     private admissionsBusy = false;
     private admissionsTimer: number | null = null;
@@ -215,7 +216,7 @@ export default class Calling extends BaseComponent {
     private onTabMessage = (message: CallTabMessage): void => {
         if (message.type === 'focus' && this.coordinator?.owner) { this.setPanelOpen(true); window.focus(); }
         else if (message.type === 'handled') {
-            this.terminal.add(message.sessionId);
+            this.handledInvitations.add(message.sessionId);
             if (this.session?.session_id === message.sessionId && !this.transport && !this.busy) void this.leave(_('Call handled in another tab')).catch(this.registrationError.bind(this));
         }
     };
@@ -326,7 +327,7 @@ export default class Calling extends BaseComponent {
     /** Bound ringing when no transport or server cancellation notification arrives. */
     private expireInvitation = (): void => {
         if (!this.session || this.element.dataset.callState !== 'ringing' || this.busy) return;
-        this.terminal.add(this.session.session_id);
+        this.handledInvitations.add(this.session.session_id);
         this.coordinator?.send({ type: 'handled', sessionId: this.session.session_id });
         void this.leave(_('Missed call')).catch(this.registrationError.bind(this));
     };
@@ -418,7 +419,7 @@ export default class Calling extends BaseComponent {
                 this.stopRinging();
                 const declining = this.session;
                 if (declining.decline_url) await this.post(declining.decline_url);
-                this.terminal.add(declining.session_id);
+                this.handledInvitations.add(declining.session_id);
                 this.coordinator?.send({ type: 'handled', sessionId: declining.session_id });
                 await this.leave(_('Call declined'));
             } else if (action === 'leave' || action === 'dismiss') {
@@ -484,11 +485,11 @@ export default class Calling extends BaseComponent {
         } finally { this.busy = false; }
     }
 
-    /** Accept a call explicitly and use only its server-selected browser driver. */
+    /** Join with authorized credentials unless the server reports that the session closed. */
     private async join(url: string): Promise<void> {
         this.status(_('Joining call…'));
         const credentials = await this.post<CallCredentials>(url);
-        if (this.terminal.has(credentials.session_id)) throw new Error(_('This call has ended.'));
+        if (this.closedSessions.has(credentials.session_id)) throw new Error(_('This call has ended.'));
         await this.connect(credentials);
     }
 
@@ -717,7 +718,7 @@ export default class Calling extends BaseComponent {
         if (this.session?.session_id === sessionId) this.onState(state);
     }
 
-    /** Surface an invitation without enabling camera or microphone automatically. */
+    /** Reconcile call closure independently of invitation responses and incoming ringing. */
     private onChanged = (event: Event): void => {
         const session = (event as CustomEvent<Session>).detail;
         if (!session?.session_id) return;
@@ -727,15 +728,17 @@ export default class Calling extends BaseComponent {
             this.status(session.recipient_status === 'accepted' ? _('Connecting…') : _('No answer'));
         }
         const resolved = ['accepted', 'declined', 'missed', 'cancelled'].includes(session.invitation_status || '');
-        if (['ended', 'cancelled', 'failed'].includes(session.status || '') || resolved) {
-            if (resolved && !['ended', 'cancelled', 'failed'].includes(session.status || '')
+        const closed = ['ended', 'cancelled', 'failed'].includes(session.status || '');
+        if (closed) this.closedSessions.add(session.session_id);
+        if (closed || resolved) {
+            if (resolved && !closed
                 && this.session?.session_id === session.session_id && (this.transport || this.busy)) return;
-            this.terminal.add(session.session_id);
+            this.handledInvitations.add(session.session_id);
             if (this.session?.session_id === session.session_id && (!resolved || (!this.transport && !this.busy))) {
                 void this.leave(session.invitation_status === 'accepted' ? _('Answered on another tab or device') : _('Call ended')).catch(this.registrationError.bind(this));
             }
         } else if (['ringing', 'active'].includes(session.status || '') && this.incomingEnabled && this.coordinator?.owner
-            && session.created_by !== this.element.dataset.callUser && !this.terminal.has(session.session_id)
+            && session.created_by !== this.element.dataset.callUser && !this.handledInvitations.has(session.session_id)
             && !this.transport && !this.busy && !this.session) {
             this.offerInvitation(session);
         }

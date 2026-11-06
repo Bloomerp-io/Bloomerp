@@ -10,13 +10,24 @@ from playwright.sync_api import Route, expect
 
 from bloomerp.communication.builtins.emails.providers.imap_smtp import ImapSmtpAdapter
 from bloomerp.models import DocumentTemplate, EmailAccount, EmailDraft, FileNode, User
+from bloomerp.models.communication.calendar import CalendarEvent
+from bloomerp.models.communication.inbox.inbox import Inbox
 from bloomerp.tests.base import BloomerpE2ETestCase, E2EAction, E2ERequestScenario
+from bloomerp.tests.components.communication.instant_messaging.phone_fixtures import (
+    PhoneDirectoryFixtures,
+)
 
 
-class TestObjectEmailE2E(BloomerpE2ETestCase):
+class TestObjectEmailE2E(PhoneDirectoryFixtures, BloomerpE2ETestCase):
     """Prove template copying, rich-text edits, autosave, preview, and sending."""
 
     auto_create_customers = False
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        """Expose the phone fixture through the same generated object-detail routes."""
+        super().setUpClass()
+        cls._register_dynamic_model_routes([cls.PhoneContact])
 
     def get_test_scenarios(self) -> list[E2ERequestScenario]:
         """Open a real detail sidebar and complete a templated email without SMTP."""
@@ -27,6 +38,7 @@ class TestObjectEmailE2E(BloomerpE2ETestCase):
         self.account = EmailAccount.objects.create(name="Sender", email_address="sender@example.com")
         self.admin_user.default_email_account = self.account
         self.admin_user.save(update_fields=["default_email_account"])
+        self.calendar = Inbox.objects.create(user=self.admin_user, name="Contact calendar", selected=True)
         self.template = DocumentTemplate.objects.create(
             name="Greeting", template="<p>Hello {{ user.first_name }}</p>",
             free_variables=[{"slug": "note", "label": "Note", "type": "text", "required": True}],
@@ -55,7 +67,49 @@ class TestObjectEmailE2E(BloomerpE2ETestCase):
                 E2EAction(name="Preview the resolved edited email", execute=self.preview_email),
                 E2EAction(name="Send the email and remove its draft", execute=self.send_email),
             ],
+        ), E2ERequestScenario(
+            name="Create a calendar invitation from the same Contact dropdown",
+            user=self.admin_user, url=self.normal_user.get_absolute_url(),
+            actions=[E2EAction(name="Prefill and save using the existing calendar composer", execute=self.create_calendar_invite)],
+        ), E2ERequestScenario(
+            name="Open an object's telephone chat in the existing messaging panel",
+            user=self.normal_user, url=self.phone_detail_url, prepare=self.phone_setup,
+            actions=[E2EAction(name="Use Contact without automatically starting a call", execute=self.open_phone_chat)],
         )]
+
+    def phone_detail_url(self) -> str:
+        """Open the real registered detail page after preparing its phone and carrier fixtures."""
+        return self.contact.get_absolute_url()
+
+    def create_calendar_invite(self) -> None:
+        """Use the grouped action, recipient editor, event form, and modal completion together."""
+        self.page.get_by_role("button", name="Contact", exact=True).click()
+        self.page.locator('[bloomerp-open-modal="detail-calendar-modal"]').click()
+        modal = self.page.locator("#detail-calendar-modal")
+        form = modal.locator('[bloomerp-component="calendar-event-editor"]')
+        expect(form.locator('[name="attendees"]')).to_have_value("recipient@example.com")
+        expect(form.locator('[data-recipient-chip="recipient@example.com"]')).to_be_visible()
+        form.locator('[name="title"]').fill("Contact browser meeting")
+        form.locator('[name="inbox"]').select_option(str(self.calendar.pk))
+        form.get_by_role("button", name="Send", exact=True).click()
+        expect(modal).to_be_hidden()
+        event = CalendarEvent.objects.get(title="Contact browser meeting")
+        self.assertTrue(event.participants.filter(email="recipient@example.com").exists())
+        self.assertIsNone(event.invitation_sent_at)
+
+    def open_phone_chat(self) -> None:
+        """Reuse phone selection and the messaging panel without acquiring audio or placing a call."""
+        contact = self.page.get_by_role("button", name="Contact", exact=True)
+        expect(contact.locator("i")).to_have_class("fa fa-address-book")
+        contact.click()
+        self.page.locator('#resizable-div-detail-aside form:has(input[name="provider"][value="phone"]) button[type="submit"]').click()
+        panel = self.page.locator("#im-messaging-panel")
+        expect(panel).to_be_visible()
+        conversation = panel.locator('[bloomerp-component="bloomerp:im-conversation"]')
+        expect(conversation).to_be_visible()
+        expect(conversation.locator('[data-call-action="start"]')).to_be_visible()
+        expect(conversation).to_contain_text("Phone directory contact")
+        expect(self.page.locator('[bloomerp-component="bloomerp:calling"]')).to_have_attribute("data-call-state", "idle")
 
     def mock_delivery(self) -> None:
         """Prevent the browser test from contacting an actual SMTP server."""
@@ -84,7 +138,7 @@ class TestObjectEmailE2E(BloomerpE2ETestCase):
 
     def open_composer(self) -> None:
         """Use the detail action and verify the recipient and preferred sender."""
-        self.page.get_by_role("button", name="Email", exact=True).click()
+        self.page.get_by_role("button", name="Contact", exact=True).click()
         self.page.locator('[bloomerp-open-modal="detail-email-modal"]').click()
         self.composer = self.page.locator('[bloomerp-component="email-editor"]')
         expect(self.composer.locator('[name="to"]')).to_have_value("recipient@example.com")
@@ -103,7 +157,7 @@ class TestObjectEmailE2E(BloomerpE2ETestCase):
         expect(modal).to_have_class(re.compile(r".*\bmax-w-6xl\b.*"))
         entry.press("ControlOrMeta+Shift+Comma")
         expect(modal).to_be_hidden()
-        self.page.get_by_role("button", name="Email", exact=True).click()
+        self.page.get_by_role("button", name="Contact", exact=True).click()
         self.page.locator('[bloomerp-open-modal="detail-email-modal"]').click()
         expect(modal).to_be_visible()
         expect(self.composer.get_by_role("combobox", name="To", exact=True)).to_be_visible()

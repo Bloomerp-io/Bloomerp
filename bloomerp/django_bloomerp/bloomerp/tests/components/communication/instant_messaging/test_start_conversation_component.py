@@ -16,6 +16,7 @@ from django.utils import timezone
 
 from bloomerp.communication.builtins.instant_messaging.access import IMAccessManager
 from bloomerp.communication.builtins.instant_messaging.builtins.phone import (
+    phone_fields_for_object,
     start_phone_address,
 )
 from bloomerp.communication.builtins.instant_messaging.controller import IMController
@@ -96,6 +97,19 @@ class TestStartConversationComponent(PhoneDirectoryFixtures, BloomerpComponentTe
     def select_recipient(self, scenario: RequestScenario) -> None:
         """Choose another active staff user from the standard fixtures."""
         scenario.data = {"recipient_id": str(self.normal_user.pk)}
+
+    def select_object_phone(self, scenario: RequestScenario) -> None:
+        """Use the detail action's signed recipient with the existing phone chat component."""
+        self.phone_setup()
+        fields = phone_fields_for_object(self.normal_user, self.contact)
+        self.assertEqual(len(fields), 1)
+        scenario.data = {"provider": "phone", "recipient_id": fields[0]["recipient_id"]}
+
+    def hidden_object_phone(self, scenario: RequestScenario) -> None:
+        """Withhold phone fields and verify the detail action does not disclose them."""
+        self.select_object_phone(scenario)
+        self.normal_user.access_control_policies.clear()
+        self.assertEqual(phone_fields_for_object(self.normal_user, self.contact), [])
 
     def existing_conversation(self, scenario: RequestScenario) -> None:
         """Create the same direct conversation before retrying selection."""
@@ -268,6 +282,19 @@ class TestStartConversationComponent(PhoneDirectoryFixtures, BloomerpComponentTe
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Exercise creation, duplicate selection, denied access and request methods."""
         return [
+            RequestScenario(
+                name="Detail contact action reuses the phone chat component",
+                method="POST", user=self.normal_user, prepare=self.select_object_phone,
+                expected=ExpectedResult(response_validators=[
+                    self.contains_text("Phone directory contact"),
+                    self.contains_text('data-call-action="start"'),
+                ]),
+            ),
+            RequestScenario(
+                name="Detail contact action revalidates field access before creating a chat",
+                method="POST", user=self.normal_user, prepare=self.hidden_object_phone,
+                expected=ExpectedResult(status_code=403),
+            ),
             RequestScenario(
                 name="Outbound phone chat enrolls all active assigned staff",
                 method="POST",

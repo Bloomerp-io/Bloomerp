@@ -78,6 +78,7 @@ export default class MessagingPanel extends FloatingPanel {
         this.find('[data-list-view]').hidden = !this.isPage;
         this.find('[data-action="back"]').hidden = this.isPage;
         this.find('[data-load-error]').hidden = true;
+        this.open();
         for (const dropdown of this.element.querySelectorAll('[bloomerp-component="dropdown-keyboard"]')) {
             dropdown.dispatchEvent(new CustomEvent('dropdown-dismiss', { bubbles: true }));
         }

@@ -2,25 +2,28 @@
 
 from __future__ import annotations
 
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
+
 from django.apps import apps
+from django.contrib.contenttypes.models import ContentType
 from django.core import signing
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import RegexValidator
-from django.contrib.contenttypes.models import ContentType
-from django.db import transaction
+from django.db import models, transaction
 from django.utils.translation import gettext_lazy as _
-from bloomerp.models.users.user import AbstractBloomerpUser
-from bloomerp.model_fields.phone_number_field import PhoneNumberField
-from bloomerp.permissions.manager import UserPolicyManager, field_access_annotation_name
-from bloomerp.models.application_field import ApplicationField
+
 from bloomerp.communication.builtins.voip.access import VoIPAccessManager
 from bloomerp.form_fields.phone_number_field import normalize_phone_number
+from bloomerp.model_fields.phone_number_field import PhoneNumberField
+from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.users.user import AbstractBloomerpUser
+from bloomerp.permissions.manager import UserPolicyManager, field_access_annotation_name
+
 from ..definition import (
     BaseIMAdapter,
-    IMCapabilities,
     IMCallingDefinition,
+    IMCapabilities,
     IMConnectionValidation,
     IMConversationActions,
     IMCreationAction,
@@ -79,6 +82,40 @@ def source_recipient(user: AbstractBloomerpUser, token: str) -> tuple[Any, str, 
         raise ValidationError(_("Select an available phone recipient.")) from error
 
 
+def phone_recipient_token(obj: models.Model, field_name: str, address: str) -> str:
+    """Sign readable source provenance for revalidation by the existing phone selector."""
+    return signing.dumps(
+        {"model": obj._meta.label, "pk": str(obj.pk), "field": field_name, "address": address},
+        salt="im-phone-recipient",
+        compress=True,
+    )
+
+
+def phone_fields_for_object(
+    user: AbstractBloomerpUser, obj: models.Model
+) -> list[dict[str, str]]:
+    """Offer readable international phone fields when the caller has a business line."""
+    if not user.is_authenticated or not user.is_active or not user.is_staff:
+        return []
+    fields = [field for field in obj._meta.fields if isinstance(field, PhoneNumberField)]
+    if not fields or not VoIPAccessManager(user).get_numbers().exists():
+        return []
+    manager = UserPolicyManager(user)
+    if not manager.has_access_to_object(obj, "view"):
+        return []
+    readable = set(manager.get_accessible_fields_for_object(obj, "view").values_list("field", flat=True))
+    return [
+        {
+            "name": field.name,
+            "label": str(field.verbose_name),
+            "value": str(getattr(obj, field.name)),
+            "recipient_id": phone_recipient_token(obj, field.name, str(getattr(obj, field.name))),
+        }
+        for field in fields
+        if field.name in readable and str(getattr(obj, field.name) or "").startswith("+")
+    ]
+
+
 def phone_recipients(
     user: AbstractBloomerpUser, selected: dict[str, str], query: str, value: str
 ) -> IMSelectionPage:
@@ -132,16 +169,7 @@ def phone_recipients(
                 matched += 1
                 if matched <= offset:
                     continue
-                token = signing.dumps(
-                    {
-                        "model": model._meta.label,
-                        "pk": str(obj.pk),
-                        "field": field.name,
-                        "address": address,
-                    },
-                    salt="im-phone-recipient",
-                    compress=True,
-                )
+                token = phone_recipient_token(obj, field.name, address)
                 results.append(
                     IMSelectionOption(token, label, f"{field.verbose_name} · {address}")
                 )

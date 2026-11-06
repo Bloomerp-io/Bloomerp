@@ -2,15 +2,24 @@
 """Membership and session-state enforcement for admission credentials."""
 
 import json
+from datetime import timedelta
 from unittest.mock import patch
 
 import jwt
 from django.http import HttpResponse
+from django.utils import timezone
 
+from bloomerp.communication.builtins.conferencing.controller import ConferenceController
+from bloomerp.communication.builtins.conferencing.webhooks import reconcile_event
 from bloomerp.communication.builtins.instant_messaging.definition import (
     IMCallCapabilities,
 )
-from bloomerp.models.communication.conferencing import ConferenceAttendance
+from bloomerp.models.communication.calendar import CalendarEvent
+from bloomerp.models.communication.conferencing import (
+    ConferenceAttendance,
+    ConferenceRoom,
+)
+from bloomerp.services.calendar_conferencing import reserve_calendar_conference
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
@@ -25,6 +34,20 @@ class TestJoinComponent(CallFixtures, BloomerpComponentTestCase):
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Cover scoped admission and current source access rather than historical membership alone."""
         return [
+            RequestScenario(
+                name="Ad hoc host receives fresh credentials for the same meeting after leaving",
+                method="POST",
+                user=self.normal_user,
+                prepare=self.prepare_left_ad_hoc_host,
+                expected=ExpectedResult(response_validators=self.rejoined_host_credentials),
+            ),
+            RequestScenario(
+                name="Calendar host can start two minutes after the scheduled start",
+                method="POST",
+                user=self.normal_user,
+                prepare=self.prepare_late_calendar_host,
+                expected=ExpectedResult(response_validators=self.late_host_credentials),
+            ),
             RequestScenario(
                 name="Provider can allow camera while denying screen capture",
                 method="POST",
@@ -74,6 +97,76 @@ class TestJoinComponent(CallFixtures, BloomerpComponentTestCase):
                 expected=ExpectedResult(status_code=405),
             ),
         ]
+
+    def prepare_left_ad_hoc_host(self, scenario: RequestScenario) -> None:
+        """Record a solo host's attendance and departure before reusing the join endpoint."""
+        self.prepare_call()
+        room = ConferenceRoom.objects.create(
+            title="Host rejoining", created_by=self.normal_user
+        )
+        controller = ConferenceController(self.normal_user)
+        self.session = controller.start(
+            room, [self.normal_user], "video", "host-rejoining"
+        )
+        self.original_session_id = self.session.pk
+        self.original_share_token = self.session.share_token
+        self.previous_identity = controller.join(self.session.pk)["identity"]
+        reconcile_event(
+            self.connection_event(
+                "EV_host_joined", "participant_joined", self.previous_identity
+            )
+        )
+        reconcile_event(
+            self.connection_event(
+                "EV_host_left", "participant_left", self.previous_identity, offset=1
+            )
+        )
+        scenario.view_kwargs = {"session_id": self.original_session_id}
+
+    def rejoined_host_credentials(self, response: HttpResponse) -> bool:
+        """Keep the meeting code and host authority while issuing a fresh connection identity."""
+        self.session.refresh_from_db()
+        data = response.json()
+        return (
+            data["session_id"] == str(self.original_session_id)
+            and self.session.share_token == self.original_share_token
+            and self.session.status == "active"
+            and data["can_end"] == "true"
+            and data["identity"] != self.previous_identity
+            and bool(data["token"])
+            and self.create_room.await_count == 1
+            and ConferenceAttendance.objects.filter(left_at__isnull=False).count() == 1
+            and not ConferenceAttendance.objects.filter(left_at__isnull=True).exists()
+        )
+
+    def prepare_late_calendar_host(self, scenario: RequestScenario) -> None:
+        """Reserve an unstarted meeting whose scheduled start was two minutes ago."""
+        self.prepare_call()
+        start = timezone.now() - timedelta(minutes=2)
+        event = CalendarEvent.objects.create(
+            title="Late host arrival",
+            organizer_email="host@example.com",
+            start=start,
+            end=start + timedelta(hours=1),
+            event_timezone="UTC",
+        )
+        reserve_calendar_conference(event, self.normal_user, [], "https://testserver/")
+        self.session = event.conference_session
+        scenario.view_kwargs = {"session_id": self.session.pk}
+
+    def late_host_credentials(self, response: HttpResponse) -> bool:
+        """Verify a late host can provision and join without creating attendance prematurely."""
+        self.session.refresh_from_db()
+        data = response.json()
+        return (
+            data["session_id"] == str(self.session.pk)
+            and data["can_end"] == "true"
+            and data["driver"] == "livekit"
+            and bool(data["token"])
+            and self.session.status == "ringing"
+            and self.create_room.await_count == 1
+            and not ConferenceAttendance.objects.exists()
+        )
 
     def valid_credentials(self, response: HttpResponse) -> bool:
         """Verify the real token and ensure credential issuance is not counted as attendance."""

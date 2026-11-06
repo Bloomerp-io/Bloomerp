@@ -140,10 +140,91 @@ async function click(f: Fixture, action: string): Promise<void> {
     await new Promise<void>(function settle(resolve: () => void): void { setTimeout(resolve, 0); });
 }
 
-/** Deliver the same normalized event as the notification module. */
-function notify(f: Fixture, status: string): void {
-    f.w.document.dispatchEvent(new f.w.CustomEvent('im:call-changed', { detail: { ...session, status } }));
+/** Deliver session state and invitation progress through the real notification listener. */
+function notify(f: Fixture, status: string, invitationStatus?: string): void {
+    f.w.document.dispatchEvent(new f.w.CustomEvent('im:call-changed', { detail: { ...session, status, invitation_status: invitationStatus } }));
 }
+
+/** Add the explicit join action rendered on a shared calendar or ad hoc meeting page. */
+function addMeetingJoin(f: Fixture): void {
+    const button = f.w.document.createElement('button');
+    button.dataset.callAction = 'join';
+    button.dataset.joinUrl = '/join';
+    f.w.document.body.append(button);
+}
+
+/** Reproduce a notification arriving before the corresponding join response is processed. */
+function notifyDuringJoin(f: Fixture, status: string, invitationStatus: string): void {
+    const fetchResponse = f.w.fetch;
+    /** Publish the socket event after server authorization but before returning credentials. */
+    f.w.fetch = async function fetch(input: URL | string, init: RequestInit): Promise<Response> {
+        const response = await fetchResponse(input, init);
+        if (new URL(String(input), 'https://app.example').pathname === '/join') notify(f, status, invitationStatus);
+        return response;
+    } as typeof fetch;
+}
+
+/** A host acceptance notification must not turn a successful direct join into an ended call. */
+test('direct meeting join survives acceptance arriving before its credentials', async function (): Promise<void> {
+    const f = fixture();
+    try {
+        addMeetingJoin(f);
+        notifyDuringJoin(f, 'ringing', 'accepted');
+        await click(f, 'join');
+        assert.equal(f.shell.dataset.callState, 'connected');
+        assert.equal(f.shell.querySelector<HTMLElement>('[data-call-action="leave"]')!.hidden, false);
+        assert.equal(f.shell.querySelector<HTMLElement>('[data-call-action="end"]')!.hidden, false);
+        assert.equal(f.children.length, 1);
+        assert.equal(f.shell.querySelector('[data-call-error]')!.textContent, '');
+    } finally { f.component.destroy(); f.dom.window.close(); }
+});
+
+/** Previously resolved invitations suppress ringing without blocking an explicitly authorized join. */
+test('direct meeting join ignores earlier invitation resolution', async function (): Promise<void> {
+    for (const status of ['accepted', 'declined', 'missed']) {
+        const f = fixture();
+        try {
+            addMeetingJoin(f);
+            notify(f, 'active', status);
+            await click(f, 'join');
+            assert.equal(f.shell.dataset.callState, 'connected', status);
+            assert.equal(f.children.length, 1, status);
+        } finally { f.component.destroy(); f.dom.window.close(); }
+    }
+});
+
+/** A real terminal session notification must still win over an in-flight credential response. */
+test('closed meeting notification prevents connecting with in-flight credentials', async function (): Promise<void> {
+    for (const status of ['ended', 'cancelled', 'failed']) {
+        const f = fixture();
+        try {
+            addMeetingJoin(f);
+            notifyDuringJoin(f, status, 'accepted');
+            await click(f, 'join');
+            assert.match(f.shell.querySelector('[data-call-error]')!.textContent!, /This call has ended/);
+            assert.equal(f.children.length, 0, status);
+            assert.equal(f.w.calls.length, 0, status);
+        } finally { f.component.destroy(); f.dom.window.close(); }
+    }
+});
+
+/** Leaving locally must allow the host to reuse an open meeting's explicit join action. */
+test('host can leave and rejoin after an accepted invitation notification', async function (): Promise<void> {
+    const f = fixture();
+    try {
+        addMeetingJoin(f);
+        await click(f, 'join');
+        await click(f, 'leave');
+        assert.equal(f.children[0].window.closed, true);
+        notify(f, 'active', 'accepted');
+        await click(f, 'join');
+        assert.equal(f.shell.dataset.callState, 'connected');
+        assert.equal(f.children.length, 2);
+        assert.equal(f.requests.length, 2);
+        assert.equal(f.requests[0].url, '/join');
+        assert.equal(f.requests[1].url, '/join');
+    } finally { f.component.destroy(); f.dom.window.close(); }
+});
 
 /** Verify provider dispatch, navigation survival and host termination. */
 test('provider driver controls media; chat replacement preserves call; host can end', async function (): Promise<void> {
@@ -168,12 +249,14 @@ test('provider driver controls media; chat replacement preserves call; host can 
 test('incoming invitation requires consent and dismiss makes no request', async function (): Promise<void> {
     const f = fixture();
     try {
+        await click(f, 'enable');
+        f.requests.length = 0;
         notify(f, 'ringing');
-        assert.equal(f.shell.hidden, false);
+        assert.equal(f.shell.querySelector<HTMLElement>('[data-call-panel]')!.hidden, false);
         assert.equal(f.w.calls.length, 0);
         await click(f, 'dismiss');
         assert.equal(f.requests.length, 0);
-        assert.equal(f.shell.hidden, true);
+        assert.equal(f.shell.querySelector<HTMLElement>('[data-call-panel]')!.hidden, true);
     } finally { f.component.destroy(); f.dom.window.close(); }
 });
 
@@ -181,6 +264,8 @@ test('incoming invitation requires consent and dismiss makes no request', async 
 test('audio-only capabilities hide camera and leaving does not end for everyone', async function (): Promise<void> {
     const f = fixture(false);
     try {
+        await click(f, 'enable');
+        f.requests.length = 0;
         notify(f, 'ringing');
         await click(f, 'answer');
         assert.equal(f.shell.querySelector<HTMLElement>('[data-call-action="camera"]')!.hidden, true);
@@ -188,6 +273,26 @@ test('audio-only capabilities hide camera and leaving does not end for everyone'
         await click(f, 'leave');
         assert.equal(f.children[0].window.closed, true);
         assert.equal(f.requests.length, 1);
+    } finally { f.component.destroy(); f.dom.window.close(); }
+});
+
+/** Handled invitations must remain silent while allowing an explicit join of the open meeting. */
+test('accepted invitation stops incoming ringing without closing the meeting', async function (): Promise<void> {
+    const f = fixture();
+    try {
+        await click(f, 'enable');
+        notify(f, 'ringing', 'invited');
+        assert.equal(f.shell.dataset.callState, 'ringing');
+        notify(f, 'active', 'accepted');
+        /** Allow the asynchronous invitation dismissal to update the controls. */
+        await new Promise<void>(function settle(resolve: () => void): void { setTimeout(resolve, 0); });
+        assert.equal(f.shell.dataset.callState, 'idle');
+        notify(f, 'active', 'invited');
+        assert.equal(f.shell.dataset.callState, 'idle');
+        assert.equal(f.children.length, 0);
+        addMeetingJoin(f);
+        await click(f, 'join');
+        assert.equal(f.shell.dataset.callState, 'connected');
     } finally { f.component.destroy(); f.dom.window.close(); }
 });
 
@@ -496,25 +601,27 @@ test('meeting controls copy links and admit guests without provider branches', a
 });
 
 /** Resizing the owner panel preserves the active transport and full companion controls. */
-test('owner controls collapse and expand independently of the call tab', async function (): Promise<void> {
+test('owner controls minimize and reopen independently of the call tab', async function (): Promise<void> {
     const f = fixture();
     try {
         await click(f, 'start');
         const toggle = f.shell.querySelector<HTMLButtonElement>('[data-call-panel-toggle]')!;
+        const panel = f.shell.querySelector<HTMLElement>('[data-call-panel]')!;
+        const launcher = f.shell.querySelector<HTMLButtonElement>('[data-call-launcher]')!;
         const requestCount = f.requests.length;
         const operationCount = f.w.calls.length;
         toggle.click();
-        assert.equal(f.shell.dataset.collapsed, 'true');
-        assert.equal(toggle.getAttribute('aria-expanded'), 'false');
-        assert.equal(toggle.getAttribute('aria-label'), 'Expand call controls');
+        assert.equal(panel.hidden, true);
+        assert.equal(launcher.getAttribute('aria-expanded'), 'false');
+        assert.equal(f.w.document.activeElement, launcher);
         await new Promise<void>(function settle(resolve: () => void): void { setTimeout(resolve, 300); });
         const doc = f.children[0].window.document;
         assert.equal(doc.querySelector('[data-call-panel-toggle]'), null);
         assert.equal(doc.querySelector<HTMLButtonElement>('[data-call-action="camera"]')!.hidden, false);
         assert.equal(f.children[0].window.closed, false);
-        toggle.click();
-        assert.equal(f.shell.dataset.collapsed, 'false');
-        assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+        launcher.click();
+        assert.equal(panel.hidden, false);
+        assert.equal(launcher.getAttribute('aria-expanded'), 'true');
         assert.equal(f.requests.length, requestCount);
         assert.equal(f.w.calls.length, operationCount);
     } finally { f.component.destroy(); f.dom.window.close(); }
@@ -535,12 +642,11 @@ test('start, join and answer delay the call tab until media permissions settle',
                 settleCamera = (): void => { if (denied) reject(new f.w.Error('Camera permission denied')); else resolve(); };
             });
             try {
-                if (action === 'answer') notify(f, 'ringing');
-                if (action === 'join') {
-                    const button = f.w.document.createElement('button');
-                    button.dataset.callAction = 'join'; button.dataset.joinUrl = '/join';
-                    f.w.document.body.append(button);
+                if (action === 'answer') {
+                    await click(f, 'enable');
+                    notify(f, 'ringing');
                 }
+                if (action === 'join') addMeetingJoin(f);
                 await click(f, action);
                 assert.equal(f.children.length, 0);
                 allowMicrophone();

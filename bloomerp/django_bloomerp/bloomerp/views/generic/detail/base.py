@@ -1,21 +1,21 @@
 from functools import cached_property
 from typing import Any
 
-from django.views.generic.detail import DetailView
-from bloomerp.models.application_field import ApplicationField
-from bloomerp.models.definition import get_model_config
-from bloomerp.permissions.definition import BloomerpPermission
-from bloomerp.permissions.manager import UserPolicyManager
-from bloomerp.permissions.manager import create_permission_str
-from bloomerp.views.base import BaseBloomerpView
-from bloomerp.views.mixins.model_context_mixin import BloomerpModelContextMixin
-from bloomerp.router import router
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldDoesNotExist
+from django.views.generic.detail import DetailView
+
+from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.definition import get_model_config
 from bloomerp.models.users.user_detail_view_tabs_preference import (
     UserDetailViewTabsPreference,
 )
+from bloomerp.permissions.definition import BloomerpPermission
+from bloomerp.permissions.manager import UserPolicyManager, create_permission_str
+from bloomerp.router import router
 from bloomerp.services.preference_services import PreferenceManager
+from bloomerp.views.base import BaseBloomerpView
+from bloomerp.views.mixins.model_context_mixin import BloomerpModelContextMixin
 
 # Note: we'd wanna make sure all the detail views adhere to the permission checks
 
@@ -98,7 +98,7 @@ class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, Detail
 
         return True
 
-    def get_context_data(self, **kwargs: Any) -> dict:
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         """Build detail context, honoring an explicit sidebar deep link."""
         context = super().get_context_data(**kwargs)
         context["exclude_header"] = self.exclude_header
@@ -132,9 +132,9 @@ class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, Detail
         context["tabs"] = [
             item for item in context["tab_items"] if not item["is_folder"]
         ]
-        from bloomerp.services.email_composer_services import email_fields_for_object
+        from bloomerp.services.object_contact_services import object_contact_context
 
-        context["object_email_fields"] = email_fields_for_object(self.request.user, self.object)
+        context.update(object_contact_context(self.request.user, self.object))
         context["object_actions"] = self.get_object_actions()
         return context
 
