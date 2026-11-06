@@ -1,0 +1,51 @@
+{% load i18n %}
+{% if object_email_fields or object_phone_fields %}
+{% translate "Contact" as contact_action_label %}
+<c-ui.dropdown.body :trigger_text="contact_action_label" trigger_icon_class="fa fa-address-book" trigger_button_class="btn btn-secondary btn-sm" :fixed="True">
+    {% if object_email_fields %}
+    <c-ui.dropdown.title>{% translate "Email" %}</c-ui.dropdown.title>
+    {% for email_field in object_email_fields %}
+    <button type="button" role="menuitem" class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-base"
+        hx-get="{% url 'components_new_email' %}?content_type_id={{ content_type_id }}&amp;object_id={{ object.pk|urlencode }}&amp;email_field={{ email_field.name|urlencode }}"
+        hx-target="#detail-email-modal-body" hx-push-url="false"
+        bloomerp-open-modal="detail-email-modal" @click="$dispatch('dropdown-close')">
+        <i class="fa fa-envelope" aria-hidden="true"></i>
+        <span class="min-w-0"><span class="block truncate" title="{{ email_field.value }}">{{ email_field.value }}</span>
+        <span class="block text-xs text-gray-500">{{ email_field.label }}</span></span>
+    </button>
+    {% endfor %}
+    {% endif %}
+    {% if object_phone_fields %}
+    {% if object_email_fields %}<c-ui.dropdown.divider />{% endif %}
+    <c-ui.dropdown.title>{% translate "Open chat" %}</c-ui.dropdown.title>
+    {% for phone_field in object_phone_fields %}
+    <form hx-post="{% url 'components_im_start_conversation' %}" hx-target="#im-conversation-host"
+          hx-swap="innerHTML settle:0ms" hx-push-url="false" hx-disabled-elt="find button"
+          hx-sync="#im-conversation-host:replace">
+        {% csrf_token %}
+        <input type="hidden" name="provider" value="phone">
+        <input type="hidden" name="recipient_id" value="{{ phone_field.recipient_id }}">
+        <button type="submit" role="menuitem" class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-base"
+                @click="$dispatch('dropdown-close')">
+            <i class="fa fa-phone" aria-hidden="true"></i>
+            <span class="min-w-0"><span class="block truncate">{{ phone_field.value }}</span>
+            <span class="block text-xs text-gray-500">{{ phone_field.label }}</span></span>
+        </button>
+    </form>
+    {% endfor %}
+    {% endif %}
+    {% if object_calendar_fields %}
+    <c-ui.dropdown.divider />
+    <c-ui.dropdown.title>{% translate "Calendar invite" %}</c-ui.dropdown.title>
+    {% for calendar_field in object_calendar_fields %}
+    <button type="button" role="menuitem" class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-base"
+        hx-get="{{ calendar_field.url }}" hx-target="#detail-calendar-modal-body" hx-push-url="false"
+        bloomerp-open-modal="detail-calendar-modal" @click="$dispatch('dropdown-close')">
+        <i class="fa fa-calendar" aria-hidden="true"></i>
+        <span class="min-w-0"><span class="block truncate" title="{{ calendar_field.value }}">{{ calendar_field.value }}</span>
+        <span class="block text-xs text-gray-500">{{ calendar_field.label }}</span></span>
+    </button>
+    {% endfor %}
+    {% endif %}
+</c-ui.dropdown.body>
+{% endif %}

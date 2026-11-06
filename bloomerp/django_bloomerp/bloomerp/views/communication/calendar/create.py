@@ -268,6 +268,10 @@ class CalendarEventMixin(LayoutFormMixin):
                     "text": _("Event saved, but guest cancellations could not be sent. Edit the event to retry sending."),
                     "type": "warning",
                 }
+        return self.get_success_response(event, notice)
+
+    def get_success_response(self, event: CalendarEvent, notice: dict[str, str]) -> HttpResponse:
+        """Complete the existing composer in its dataview, modal, or full-page context."""
         caller = self.request.POST.get("data_view_create_id") or self.request.GET.get(
             "data_view_create_id"
         )
@@ -290,7 +294,7 @@ class CalendarEventMixin(LayoutFormMixin):
             messages.WARNING if notice["type"] == "warning" else messages.SUCCESS,
             notice["text"],
         )
-        if form.original is not None and self.request.htmx:
+        if self.get_form().original is not None and self.request.htmx:
             response = HttpResponse(status=204)
             response["HX-Refresh"] = "true"
             return response
