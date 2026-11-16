@@ -4,6 +4,7 @@ import {
     CLICK_COMMAND, COMMAND_PRIORITY_HIGH, type LexicalEditor, type LexicalNode,
 } from "lexical";
 import { normalizeLinkHref } from "./utils/linkBehavior.ts";
+import { decorateToolbarControl, placeFloatingToolbar } from "./toolbarPresentation.ts";
 import { getContextMenuLayer } from "../../utils/contextMenuLayer.ts";
 import { t } from "../../utils/i18n.ts";
 
@@ -13,6 +14,7 @@ export class LinkToolbar {
     private readonly href = document.createElement("input");
     private readonly open = document.createElement("a");
     private readonly lifecycle = new AbortController();
+    private readonly tooltipCleanups: Array<() => void> = [];
     private readonly unregister: (() => void)[];
     private readonly editor: LexicalEditor;
     private readonly host: HTMLElement;
@@ -27,16 +29,20 @@ export class LinkToolbar {
         this.element.dataset.editorLinkToolbar = host.dataset.editorId ?? "";
         this.element.hidden = true;
         if (typeof this.element.showPopover === "function") this.element.setAttribute("popover", "manual");
-        this.href.className = "input";
+        this.href.className = "input input-sm";
         this.href.setAttribute("aria-label", t("Link URL"));
         this.href.required = true;
-        this.open.className = "text-editor-action-button";
-        this.open.textContent = t("Open in new tab");
+        this.tooltipCleanups.push(decorateToolbarControl(
+            this.open, t("Open in new tab"), "fa-solid fa-arrow-up-right-from-square",
+        ));
         this.open.target = "_blank";
         this.open.rel = "noopener noreferrer";
-        this.element.append(this.href, this.button(t("Save"), "submit"),
-            this.button(t("Cancel"), "button", this.cancel),
-            this.button(t("Remove link"), "button", this.unlink), this.open);
+        const controls = document.createElement("div");
+        controls.className = "text-editor-action-toolbar";
+        controls.append(this.href, this.button(t("Save"), "fa-solid fa-check", "submit"),
+            this.button(t("Cancel"), "fa-solid fa-xmark", "button", this.cancel),
+            this.button(t("Remove link"), "fa-solid fa-link-slash", "button", this.unlink), this.open);
+        this.element.appendChild(controls);
         document.body.appendChild(this.element);
         const options = { signal: this.lifecycle.signal };
         this.element.addEventListener("submit", this.save, options);
@@ -53,11 +59,10 @@ export class LinkToolbar {
     }
 
     /** Create a labelled action without submitting the surrounding application form. */
-    private button(label: string, type: "button" | "submit", handler?: () => void): HTMLButtonElement {
+    private button(label: string, icon: string, type: "button" | "submit", handler?: () => void): HTMLButtonElement {
         const button = document.createElement("button");
         button.type = type;
-        button.className = "text-editor-action-button";
-        button.textContent = label;
+        this.tooltipCleanups.push(decorateToolbarControl(button, label, icon));
         if (handler) button.addEventListener("click", handler, { signal: this.lifecycle.signal });
         return button;
     }
@@ -125,12 +130,9 @@ export class LinkToolbar {
         if (!this.isVisible() || !this.key) return;
         const anchor = this.editor.getElementByKey(this.key);
         if (!anchor?.isConnected) { this.hide(); return; }
-        const rect = anchor.getBoundingClientRect();
         this.element.style.zIndex = String(getContextMenuLayer(this.host));
         if (this.element.hasAttribute("popover") && !this.element.matches(":popover-open")) this.element.showPopover();
-        const bounds = this.element.getBoundingClientRect();
-        this.element.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - bounds.width - 8))}px`;
-        this.element.style.top = `${Math.max(8, rect.top - bounds.height - 8)}px`;
+        placeFloatingToolbar(this.element, anchor.getBoundingClientRect());
     };
 
     /** Clear validation after the user edits the destination. */
@@ -198,6 +200,7 @@ export class LinkToolbar {
         this.lifecycle.abort();
         for (const unregister of this.unregister) unregister();
         this.hide();
+        for (const cleanup of this.tooltipCleanups) cleanup();
         this.element.remove();
     }
 }

@@ -42,7 +42,7 @@ function html(editor: LexicalEditor): string {
 }
 /** Invoke a floating control by accessible text. */
 function button(toolbar: InstanceType<typeof LinkToolbar>, name: string): void {
-    Array.from(toolbar.element.querySelectorAll("button")).find((item: HTMLButtonElement): boolean => item.textContent === name)!.click();
+    toolbar.element.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`)!.click();
 }
 /** Release the editor and its fixture DOM. */
 function dispose(f: ReturnType<typeof fixture>): void {
