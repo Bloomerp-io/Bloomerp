@@ -61,6 +61,7 @@ import { Action, ACTIONS } from "./actions";
 import { EditorActionRegistry, type ActionSurface } from "./actionRegistry";
 import { ActionToolbar, createActionToolbarButton } from "./actionToolbar";
 import { SelectionToolbar } from "./selectionToolbar";
+import { LinkToolbar } from "./linkToolbar";
 import { ResizableTableNode, $replaceTableNode } from "./nodes/ResizableTableNode";
 import { registerTableColumnResizing } from "./utils/tableColumnResizing";
 import { registerTableCellSelection } from "./utils/tableCellSelection";
@@ -85,6 +86,7 @@ export class BloomerpTextEditor extends BaseWidget {
     private commands: Array<Command> = [];
     public readonly actionRegistry = new EditorActionRegistry(this, ACTIONS);
     private actionToolbar: ActionToolbar | null = null;
+    public linkToolbar: LinkToolbar | null = null;
     private selectionToolbar: SelectionToolbar | null = null;
     /** Dispose portal controls when HTMX removes the owning editor widget. */
     private readonly beforeCleanup = (event: Event): void => {
@@ -293,6 +295,7 @@ export class BloomerpTextEditor extends BaseWidget {
         );
 
         this.registerActionsToolbar()
+        this.linkToolbar = new LinkToolbar(this.editor, this.element);
         this.selectionToolbar = new SelectionToolbar(this);
         queueMicrotask(() => {
             this.isInitializing = false;
@@ -304,6 +307,8 @@ export class BloomerpTextEditor extends BaseWidget {
     public destroy(): void {
         this.toolbarToggleCleanup?.();
         this.toolbarToggleCleanup = null;
+        this.linkToolbar?.destroy();
+        this.linkToolbar = null;
         this.selectionToolbar?.destroy();
         this.selectionToolbar = null;
         this.actionToolbar?.destroy();

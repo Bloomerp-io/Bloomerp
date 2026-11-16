@@ -2,11 +2,11 @@ import type { BaseSelection } from "lexical";
 import { $isTableSelection } from "@lexical/table";
 import { getContextMenu, type ContextMenuController } from "@/utils/contextMenu";
 import { t } from "@/utils/i18n";
-import { addTooltip } from "@/utils/tooltip";
 import { formatShortcutForAria, formatShortcutForDisplay, parseShortcut } from "@/utils/shortcuts";
 import type { BloomerpTextEditor } from "./BloomerpTextEditor";
 import type { ActionGroup, ActionSurface, RegisteredAction } from "./actionRegistry";
 import { createActionMenuItems } from "./actionMenu";
+import { decorateToolbarControl } from "./toolbarPresentation";
 import "./actionToolbar.css";
 
 type ActionToolbarButton = { element: HTMLButtonElement; destroy: () => void };
@@ -15,19 +15,11 @@ type ActionToolbarButton = { element: HTMLButtonElement; destroy: () => void };
 export function createActionToolbarButton(label: string, icon: string, shortcuts: readonly string[] = []): ActionToolbarButton {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "text-editor-action-button";
     button.dataset.actionControl = "true";
-    button.setAttribute("aria-label", label);
-    const image = document.createElement("i");
-    image.className = icon;
-    image.setAttribute("aria-hidden", "true");
-    button.appendChild(image);
     const definitions = shortcuts.map(parseShortcut).filter(isShortcut);
     const hint = definitions.map(formatShortcutForDisplay).join(", ");
     if (definitions.length) button.setAttribute("aria-keyshortcuts", definitions.map(formatShortcutForAria).join(" "));
-    const destroy = addTooltip(button, {
-        title: hint ? label : undefined, text: hint || label, position: "top", portal: true,
-    });
+    const destroy = decorateToolbarControl(button, label, icon, hint);
     return { element: button, destroy };
 }
 

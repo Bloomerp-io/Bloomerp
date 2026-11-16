@@ -2,6 +2,7 @@ import type { BaseSelection } from "lexical";
 import { $isTableCellNode, $isTableSelection } from "@lexical/table";
 import type { BloomerpTextEditor } from "./BloomerpTextEditor";
 import { ActionToolbar } from "./actionToolbar";
+import { placeFloatingToolbar } from "./toolbarPresentation";
 import { getContextMenuLayer } from "@/utils/contextMenuLayer";
 
 const SELECTION_SHOW_DELAY_MS = 150;
@@ -62,6 +63,7 @@ export class SelectionToolbar {
 
     /** Measure a visible text range or selected cells inside this editable widget. */
     private selectionRect(): DOMRect | null {
+        if (this.host.linkToolbar?.isVisible()) return null;
         const editor = this.host.editor;
         const root = editor?.getRootElement();
         if (!root || !editor.isEditable() || this.host.element.dataset.disabled === "true") return null;
@@ -116,10 +118,7 @@ export class SelectionToolbar {
         this.element.hidden = false;
         this.element.style.zIndex = String(getContextMenuLayer(this.host.element));
         if (this.element.hasAttribute("popover") && !this.element.matches(":popover-open")) this.element.showPopover();
-        const bounds = this.element.getBoundingClientRect();
-        this.element.style.left = `${Math.max(8, Math.min(rect.left + rect.width / 2 - bounds.width / 2, window.innerWidth - bounds.width - 8))}px`;
-        const top = rect.top - bounds.height - 8;
-        this.element.style.top = `${Math.max(8, Math.min(top >= 8 ? top : rect.bottom + 8, window.innerHeight - bounds.height - 8))}px`;
+        placeFloatingToolbar(this.element, rect);
     }
 
     /** Cancel a pending appearance when selection changes, collapses, or is dismissed. */
