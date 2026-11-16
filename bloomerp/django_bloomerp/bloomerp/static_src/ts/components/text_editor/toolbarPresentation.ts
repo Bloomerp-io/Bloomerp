@@ -5,7 +5,7 @@ export function decorateToolbarControl(
     control: HTMLButtonElement | HTMLAnchorElement,
     label: string,
     icon: string,
-    shortcutHint = "",
+    shortcutHint: string = "",
 ): () => void {
     control.classList.add("text-editor-action-button");
     control.setAttribute("aria-label", label);
