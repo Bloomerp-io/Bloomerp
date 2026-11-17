@@ -99,7 +99,7 @@ Parameters:
                     {% if object_actions %}
                         <td class="w-32 whitespace-nowrap">
                             {% for action in object_actions %}
-                                {% render_object_action action=action object=object request=request content_type_id=content_type_id %}
+                                {% render_object_action action=action object=object request=request content_type_id=content_type_id dataview=dataview_action_context %}
                             {% endfor %}
                         </td>
                     {% endif %}

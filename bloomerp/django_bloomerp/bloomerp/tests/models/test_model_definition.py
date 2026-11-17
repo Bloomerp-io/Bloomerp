@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.test import SimpleTestCase
 from pydantic import ValidationError
 
@@ -12,9 +14,15 @@ from bloomerp.models.definition import (
     LayoutItem,
     LayoutRow,
     ModelViewSettings,
+    ObjectActionGrouping,
+    get_dataview_actions,
     get_default_dataview_actions,
+    get_default_object_actions,
+    get_object_actions,
 )
+from bloomerp.models.project_management.initiative import Initiative
 from bloomerp.models.project_management.todo import Todo
+from bloomerp.models.users.user import User
 
 from bloomerp.models.definition import (
     DetailTab,
@@ -31,29 +39,84 @@ class DefaultDataviewActionTests(SimpleTestCase):
 
     def test_include_limits_actions_in_standard_order(self) -> None:
         """Select requested defaults while retaining their established toolbar order."""
-        actions = get_default_dataview_actions(include=["display-options", "add"])
+        actions = get_default_dataview_actions(Todo, include=["display-options", "add"])
         self.assertEqual([action.id for action in actions], ["add", "display-options"])
 
     def test_empty_include_returns_no_actions(self) -> None:
         """Distinguish an explicit empty selection from the default toolbar."""
-        self.assertEqual(get_default_dataview_actions(include=[]), [])
+        self.assertEqual(get_default_dataview_actions(Todo, include=[]), [])
 
     def test_skip_takes_precedence_over_include(self) -> None:
         """Keep excluded actions absent even when explicitly included."""
         actions = get_default_dataview_actions(
-            include=["add", "export"], skip=["add"]
+            Todo, include=["add", "export"], skip=["add"]
         )
         self.assertEqual([action.id for action in actions], ["export"])
 
     def test_omitted_include_preserves_existing_skip_behavior(self) -> None:
-        """Preserve the full toolbar and positional skip argument for existing callers."""
-        defaults = get_default_dataview_actions()
-        actions = get_default_dataview_actions(["add"])
+        """Preserve the full toolbar and pass exclusions after the model."""
+        defaults = get_default_dataview_actions(Todo)
+        actions = get_default_dataview_actions(Todo, ["add"])
         self.assertEqual(len(defaults), 6)
         self.assertEqual(
             [action.id for action in actions],
             [action.id for action in defaults if action.id != "add"],
         )
+
+    def test_configured_action_factory_receives_the_model(self) -> None:
+        """Resolve a callable toolbar configuration with its owning model class."""
+        settings = ModelViewSettings(dataview_actions=lambda model: get_default_dataview_actions(
+            model, include=["filter"] if model is Todo else [],
+        ))
+        with patch.object(Todo, "bloomerp_config", BloomerpModelConfig(model_view_settings=settings)):
+            self.assertEqual([action.id for action in get_dataview_actions(Todo)], ["filter"])
+
+
+class DefaultObjectActionTests(SimpleTestCase):
+    """Check model-aware defaults independently of any saved records."""
+
+    def test_contact_requires_a_supported_model_field(self) -> None:
+        """Include Contact for users with an email field and omit it for todos."""
+        self.assertEqual(
+            [action.id for action in get_default_object_actions(User)],
+            ["activity", "comments", "create-todo", "contact"],
+        )
+        self.assertEqual(
+            [action.id for action in get_default_object_actions(Todo)],
+            ["activity", "comments"],
+        )
+        self.assertEqual(
+            [action.id for action in get_default_object_actions(Initiative)],
+            ["activity", "comments"],
+        )
+
+    def test_config_defaults_to_the_object_action_factory(self) -> None:
+        """Bind the model at read time for callers that omit object_actions."""
+        self.assertIs(BloomerpModelConfig().object_actions, get_default_object_actions)
+        self.assertEqual(
+            [action.id for action in get_object_actions(Todo, surface="detail")],
+            ["activity", "comments"],
+        )
+
+    def test_dataview_groups_create_todo_and_contact(self) -> None:
+        """Combine the two defaults in rows and expose them separately on detail pages."""
+        dataview_actions = get_object_actions(User, surface="dataview_item")
+        self.assertEqual(len(dataview_actions), 1)
+        menu = dataview_actions[0]
+        self.assertIsInstance(menu, ObjectActionGrouping)
+        self.assertEqual([action.id for action in menu.actions], ["create-todo", "contact"])
+        self.assertEqual(
+            [action.id for action in get_object_actions(User, surface="detail")],
+            ["activity", "comments", "create-todo", "contact"],
+        )
+
+    def test_skip_takes_precedence_over_include(self) -> None:
+        """Keep built-in IDs selectable in their standard order."""
+        actions = get_default_object_actions(
+            User, skip=["comments"], include=["contact", "comments", "activity"],
+        )
+        self.assertEqual([action.id for action in actions], ["activity", "contact"])
+        self.assertEqual(get_default_object_actions(User, include=[]), [])
 
 
 class BloomerpModelConfigTileTests(SimpleTestCase):
@@ -356,10 +419,12 @@ class ModelConfigExtensionTests(SimpleTestCase):
                         id="review", label="Review", endpoint=self.modal_endpoint,
                         modal_title=title,
                     )
-                    self.assertEqual(action.modal_title, title or "Review")
+                    self.assertEqual(
+                        action.default_button_attrs()["bloomerp-set-modal-title-to"], title or "Review",
+                    )
             # 2. Omitting the argument also uses the label.
             action = action_type(id="review", label="Review", endpoint=self.modal_endpoint)
-            self.assertEqual(action.modal_title, "Review")
+            self.assertEqual(action.default_button_attrs()["bloomerp-set-modal-title-to"], "Review")
 
     @staticmethod
     def modal_endpoint(context: object) -> str:

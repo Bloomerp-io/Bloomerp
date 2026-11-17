@@ -5,6 +5,7 @@ import secrets
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models import BloomerpModel
 from bloomerp.models.definition import (
+    get_default_object_actions,
     ApiSettings,
     BloomerpModelConfig,
     DetailViewSettings,
@@ -13,8 +14,10 @@ from bloomerp.models.definition import (
     LayoutRow,
     ModelViewSettings,
     ObjectAction,
+    ObjectActionContext,
 )
 from bloomerp.modules.users import UsersModule
+from bloomerp.permissions.definition import BloomerpPermission
 from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
 from django.db import models
@@ -25,11 +28,21 @@ from django.utils.translation import gettext_noop
 from django_htmx.http import HttpResponseClientRefresh
 
 
-def revoke_api_key_action(request, api_key) -> HttpResponse:
-    # TODO: Integrate with permissions
+def _can_revoke_api_key(context: ObjectActionContext) -> bool:
+    """Allow revocation of an active key when the requester may change it."""
+    from bloomerp.permissions.manager import UserPolicyManager
+
+    return context.object.is_usable and UserPolicyManager(
+        context.request.user,
+    ).has_access_to_object(context.object, BloomerpPermission.CHANGE)
+
+
+def revoke_api_key_action(context: ObjectActionContext) -> HttpResponse:
+    """Revoke the current API key and refresh its page."""
     from django.contrib import messages
-    api_key.revoke()
-    messages.success(request, "API key revoked successfully.")
+
+    context.object.revoke()
+    messages.success(context.request, "API key revoked successfully.")
     return HttpResponseClientRefresh()
 
 class ApiKey(BloomerpModel):
@@ -49,13 +62,14 @@ class ApiKey(BloomerpModel):
         module=UsersModule,
         # is_internal=True,
         api_settings=ApiSettings(enable_auto_generation=False),
-        object_actions=[
+        object_actions=lambda model: [
+            *get_default_object_actions(model),
             ObjectAction(
                 id="revoke_api_key",
                 label=gettext_noop("Revoke API Key"),
                 icon="fa fa-solid fa-xmark",
                 execution_func=revoke_api_key_action,
-                should_render_func=lambda request, obj: obj.is_usable
+                should_render_func=_can_revoke_api_key,
             )
         ],
         detail_view_settings=DetailViewSettings(

@@ -9,8 +9,9 @@ from django.conf import settings
 from django.core.exceptions import FieldDoesNotExist, ImproperlyConfigured, ObjectDoesNotExist
 from django.db.models import ForeignKey, Model
 from django.http import HttpRequest
-from bloomerp.models.definition import DataviewActionContext, ObjectAction, ObjectHTMLAction, ObjectModalAction
+from bloomerp.models.definition import DataviewActionContext, ObjectActionContext, ObjectActionDefinition
 from bloomerp.models.users.base_preference import BasePreference
+from bloomerp.services.action_services import render_action, with_dataview_context
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.utils.models import get_initials, get_detail_view_url, get_delete_view_url
 from django.urls import reverse 
@@ -18,14 +19,10 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils.safestring import mark_safe
 from django.utils.html import escape, format_html
 from django.utils.text import Truncator
-from django.utils.translation import gettext
-from django.middleware.csrf import get_token
 import re
 import uuid
 from bloomerp.models import Bookmark, AbstractBloomerpUser, ApplicationField
 import uuid
-from django.template.loader import render_to_string
-from django.forms.utils import flatatt
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.config.settings import BLOOMERP_LANGUAGES
 from bloomerp.permissions.manager import (
@@ -455,94 +452,48 @@ def parse_icon_value(value):
 
 @register.simple_tag
 def render_object_action(
-    action:ObjectAction|ObjectHTMLAction|ObjectModalAction,
-    object:Model,
-    request:HttpRequest,
-    content_type_id:int|None=None,
+    action: ObjectActionDefinition,
+    object: Model,
+    request: HttpRequest,
+    content_type_id: int | None = None,
+    dataview: DataviewActionContext | None = None,
 ) -> str:
-    """Render an authorized action with its configured icon and escaped button attributes."""
-    from bloomerp.permissions.access_tokens import permission_token_url
+    """Render a configured action on a detail page or for a dataview record."""
+    dataview = dataview or None
+    content_type = (
+        ContentType.objects.get_for_id(content_type_id) if content_type_id
+        else ContentType.objects.get_for_model(object)
+    )
+    context = ObjectActionContext(
+        request=request,
+        model=object._meta.model,
+        content_type=content_type,
+        object=object,
+        surface="dataview_item" if dataview is not None else "detail",
+        dataview=dataview,
+    )
 
-    try:
-        should_render_action = action.should_render_func(request, object)
-    except:
-        should_render_action = False
-    
-    if not should_render_action:
-        return ""
-
-    if isinstance(action, ObjectHTMLAction):
-        context = {
-            "action": action,
-            "object": object,
-            "request": request,
-            "content_type_id": content_type_id,
-        }
-        if action.context_func is not None:
-            from bloomerp.permissions.manager import UserPolicyManager
-
-            queryset = UserPolicyManager(request.user).get_queryset(type(object), "view").filter(pk=object.pk)
-            context.update(action.context_func(DataviewActionContext(
-                request=request,
-                model=type(object),
-                content_type=ContentType.objects.get_for_model(object),
-                preference=None,
-                queryset=queryset,
-                querystring=request.GET.urlencode(),
-                selected_ids=[str(pk) for pk in queryset.values_list("pk", flat=True)],
-            )))
-        return mark_safe(
-            render_to_string(
-                action.template_name,
-                context,
-                request=request,
-            )
-        )
-    
-    if isinstance(action, ObjectModalAction):
-        return format_html(
-            (
-                '<button class="btn btn-xs btn-{style}" '
-                'hx-get="{url}" '
-                'hx-target="#bloomerp-general-use-modal-body" '
-                'bloomerp-set-modal-title-for="bloomerp-general-use-modal" '
-                'bloomerp-set-modal-title-to="{title}" '
-                'bloomerp-set-modal-size-to="{size}" '
-                'bloomerp-open-modal="bloomerp-general-use-modal">'
-                '{icon}{label}'
-                '</button>'
-            ),
-            style=action.style,
-            url=permission_token_url(request, action.endpoint(object)),
-            label=gettext(action.label),
-            title=gettext(action.modal_title) if action.modal_title else "",
-            size=action.modal_size,
-            icon=(
-                format_html('<i class="{}" aria-hidden="true"></i>', action.icon)
-                if action.icon else ""
-            ),
-        )
-
-    if content_type_id is None:
-        content_type_id = ContentType.objects.get_for_model(object).pk
-
-    attrs = {
-        "class": f"btn btn-xs btn-{action.style}",
-        f"hx-{action.method.lower()}": permission_token_url(request, reverse(
+    def execution_url(action_id: str) -> str:
+        """Route a configured callback to the server with its originating view."""
+        url = reverse(
             "components_objects_actions",
             kwargs={
-                "content_type_id": content_type_id,
+                "content_type_id": content_type.pk,
                 "object_id": object.pk,
-                "action_id": action.id,
+                "action_id": action_id,
             },
-        )),
-        "hx-vals": json.dumps({"csrfmiddlewaretoken": get_token(request)})
-        if action.method == "POST" else "{}",
-        **(action.button_attrs or {}),
-        "hx-target": action.target,
-    }
-    return format_html("<button{}>{}</button>", flatatt(attrs), gettext(action.label))
-    
+        )
+        if dataview is not None and dataview.content_type.pk == content_type.pk:
+            return with_dataview_context(url, dataview)
+        return url
+
+    return mark_safe(render_action(action, context, {
+        "object": object,
+        "request": request,
+        "content_type_id": content_type.pk,
+    }, execution_url))
+
+
 @register.simple_tag
 def can_manage_preference_object(user:AbstractBloomerpUser, object:BasePreference) -> bool:
     """Checks if a user can manage a preference object.

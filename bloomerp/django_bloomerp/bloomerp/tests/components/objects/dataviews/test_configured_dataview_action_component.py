@@ -17,6 +17,7 @@ from bloomerp.models.communication.inbox.inbox import Inbox
 from bloomerp.models.definition import (
     BloomerpModelConfig, DataviewAction, DataviewActionContext,
     DataviewHTMLAction, DataviewModalAction, ModelViewSettings,
+    get_dataview_actions,
 )
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
@@ -69,10 +70,7 @@ class TestConfiguredDataviewActionComponent(BloomerpComponentTestCase):
                 prepare=self.prepare_calendar_action,
                 query_params={"inboxes": "1"},
                 expected=ExpectedResult(
-                    response_validators=[
-                        self.opens_inbox,
-                        self.header_equals("HX-Retarget", "#main-content"),
-                    ]
+                    response_validators=[self.opens_inbox],
                 ),
             ),
             RequestScenario(
@@ -144,7 +142,7 @@ class TestConfiguredDataviewActionComponent(BloomerpComponentTestCase):
         actions = [
             action.model_copy(update={"method": "POST"})
             if isinstance(action, DataviewAction) else action
-            for action in settings.dataview_actions
+            for action in get_dataview_actions(CalendarEvent)
         ]
         self.enterContext(patch.object(settings, "dataview_actions", actions))
 
@@ -169,15 +167,20 @@ class TestConfiguredDataviewActionComponent(BloomerpComponentTestCase):
         }
         settings = CalendarEvent.bloomerp_config.model_view_settings
         actions = [
-            action.model_copy(update={
-                "button_attrs": {
-                    "title": 'A "quoted" title',
-                    "data-navigation": "inbox",
-                }
-            }) if isinstance(action, DataviewAction) else action
-            for action in settings.dataview_actions
+            action.model_copy(update={"button_attrs": self.navigation_attrs})
+            if isinstance(action, DataviewAction) else action
+            for action in get_dataview_actions(CalendarEvent)
         ]
         self.enterContext(patch.object(settings, "dataview_actions", actions))
+
+    @staticmethod
+    def navigation_attrs(context: DataviewActionContext) -> dict[str, str]:
+        """Provide the swap target and additional attributes from a toolbar callback."""
+        return {
+            "hx-target": "#main-content",
+            "title": 'A "quoted" title',
+            "data-navigation": "inbox",
+        }
 
     def opens_inbox(self, response: HttpResponse) -> bool:
         """Require navigation to the Inbox page inside the main content panel."""

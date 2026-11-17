@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from bloomerp.models.definition import ObjectAction, ObjectHTMLAction
+from bloomerp.models.definition import ObjectAction, ObjectHTMLAction, get_object_actions
 from bloomerp.models.project_management.todo import Todo, TodoStatus
 from bloomerp.tests.base import BloomerpModelTestCase, ModelScenario
 
@@ -17,7 +17,7 @@ class TestTodoModel(BloomerpModelTestCase):
         """Keep completion and developer branch-copy actions out of the framework."""
         config = self.get_model_config()
         self.assertIsNotNone(config)
-        for action in config.object_actions or []:
+        for action in get_object_actions(Todo, surface="detail"):
             with self.subTest(action=action):
                 if isinstance(action, ObjectAction):
                     self.assertNotEqual(action.id, "mark_as_completed")

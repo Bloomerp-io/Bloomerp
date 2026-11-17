@@ -6,13 +6,21 @@ from django.core.exceptions import FieldDoesNotExist
 from django.views.generic.detail import DetailView
 
 from bloomerp.models.application_field import ApplicationField
-from bloomerp.models.definition import get_model_config
+from bloomerp.models.definition import (
+    ObjectAction,
+    ObjectActionContext,
+    ObjectActionDefinition,
+    get_object_actions,
+    iter_object_actions,
+)
 from bloomerp.models.users.user_detail_view_tabs_preference import (
     UserDetailViewTabsPreference,
 )
+from bloomerp.permissions.access_tokens import permission_token_url
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager, create_permission_str
 from bloomerp.router import router
+from bloomerp.services.action_services import action_is_visible
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.model_context_mixin import BloomerpModelContextMixin
@@ -107,16 +115,10 @@ class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, Detail
             
         content_type = ContentType.objects.get_for_model(self.model)
         context["detail_view_content_type_id"] = content_type.pk
-        requested_sidebar = self.request.GET.get("sidebar")
-        context["detail_sidebar_view"] = (
-            requested_sidebar if requested_sidebar in {"activity", "comments"}
-            else self.request.user.detail_sidebar_view_preference
-        )
-        comment_id = self.request.GET.get("comment", "")
-        context["highlight_comment_id"] = (
-            comment_id
-            if context["detail_sidebar_view"] == "comments" and comment_id.isascii() and comment_id.isdecimal()
-            else ""
+        actions = self.get_object_actions()
+        context["object_actions"] = actions
+        context["detail_sidebar_url"], context["highlight_comment_id"] = self._sidebar_initial_state(
+            actions, content_type,
         )
         context["can_change_avatar"] = self._can_change_avatar(content_type)
         tabs_preference = self.detail_tabs_preference
@@ -132,11 +134,41 @@ class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, Detail
         context["tabs"] = [
             item for item in context["tab_items"] if not item["is_folder"]
         ]
-        from bloomerp.services.object_contact_services import object_contact_context
-
-        context.update(object_contact_context(self.request.user, self.object))
-        context["object_actions"] = self.get_object_actions()
         return context
+
+    def _sidebar_initial_state(
+        self,
+        actions: list[ObjectActionDefinition],
+        content_type: ContentType,
+    ) -> tuple[str, str]:
+        """Use enabled sidebar actions to resolve the initial URL and any comment deep link."""
+        action_context = ObjectActionContext(
+            request=self.request, model=self.model, content_type=content_type,
+            object=self.object, surface="detail",
+        )
+        sidebar_actions = {
+            action.id: action for action in iter_object_actions(actions)
+            if isinstance(action, ObjectAction) and action.id in {"activity", "comments"}
+            and action.endpoint and action_is_visible(action, action_context)
+        }
+        preferences = (
+            self.request.GET.get("sidebar"), self.request.user.detail_sidebar_view_preference,
+            "activity", "comments",
+        )
+        for name in preferences:
+            action = sidebar_actions.get(name)
+            if action is None:
+                continue
+            endpoint = action.endpoint
+            url = endpoint(action_context) if callable(endpoint) else endpoint
+            if not url:
+                continue
+            comment_id = self.request.GET.get("comment", "")
+            if name == "comments" and comment_id.isascii() and comment_id.isdecimal():
+                separator = "&" if "?" in url else "?"
+                return permission_token_url(self.request, f"{url}{separator}highlight={comment_id}"), comment_id
+            return permission_token_url(self.request, url), ""
+        return "", ""
 
     def get_tabs(self):
         tabs = []
@@ -157,12 +189,9 @@ class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, Detail
         return tabs
     
 
-    def get_object_actions(self):
-        config = get_model_config(self.model)
-        if config and config.object_actions:
-            return config.object_actions
-
-        return []
+    def get_object_actions(self) -> list[ObjectActionDefinition]:
+        """Return the model's built-in and configured detail actions."""
+        return get_object_actions(self.model, surface="detail")
     
     
     

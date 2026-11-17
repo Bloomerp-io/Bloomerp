@@ -7,19 +7,18 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.http import HttpRequest
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import gettext_noop
 
 from bloomerp.models.definition import (
+    get_default_object_actions,
     BloomerpModelConfig,
-    DataviewActionContext,
+    ObjectActionContext,
     FieldSettings,
     ModelViewSettings,
     ObjectHTMLAction,
     ObjectModalAction,
-    get_default_dataview_actions,
 )
 from bloomerp.modules.file_management import FileManagement
 
@@ -30,72 +29,48 @@ if TYPE_CHECKING:
     from bloomerp.models import FileNode
 
 
-def _can_sign_request(request: HttpRequest, signing_request: SignatureRequest) -> bool:
+def _can_sign_request(context: ObjectActionContext) -> bool:
     """Offer signing only for the caller's eligible, authorized recipient assignment."""
     from bloomerp.document_signing.access import get_request_signing_recipient
     from bloomerp.permissions.manager import UserPolicyManager
 
     return (
-        get_request_signing_recipient(UserPolicyManager(request.user), signing_request)
+        get_request_signing_recipient(UserPolicyManager(context.request.user), context.object)
         is not None
     )
 
 
-def _sign_request_url(signing_request: SignatureRequest) -> str:
-    """Open the request's model detail route in the signing modal."""
-    return reverse(
-        "signature_requests_detail_sign",
-        kwargs={"pk": signing_request.pk},
-    )
-
-
-def _can_send_request(request: HttpRequest, signing_request: SignatureRequest) -> bool:
+def _can_send_request(context: ObjectActionContext) -> bool:
     """Expose delivery only to request managers with unsent email recipients."""
     from bloomerp.document_signing.access import can_send_signing_request
     from bloomerp.permissions.manager import UserPolicyManager
 
-    return can_send_signing_request(signing_request, UserPolicyManager(request.user))
+    return can_send_signing_request(context.object, UserPolicyManager(context.request.user))
 
 
-def _send_request_url(signing_request: SignatureRequest) -> str:
-    """Open the existing request's invitation composer in a modal."""
-    return reverse("signature_requests_detail_send", kwargs={"pk": signing_request.pk})
-
-
-def _can_assign_request(
-    request: HttpRequest, signing_request: SignatureRequest
-) -> bool:
+def _can_assign_request(context: ObjectActionContext) -> bool:
     """Expose recipient assignment only for manageable drafts with prepared roles."""
     from bloomerp.document_signing.access import can_assign_signing_request
     from bloomerp.permissions.manager import UserPolicyManager
 
-    return can_assign_signing_request(signing_request, UserPolicyManager(request.user))
+    return can_assign_signing_request(context.object, UserPolicyManager(context.request.user))
 
 
-def _assign_request_url(signing_request: SignatureRequest) -> str:
-    """Open the saved request's role assignment form in the shared modal."""
-    return reverse(
-        "signature_requests_detail_assign", kwargs={"pk": signing_request.pk}
-    )
-
-
-def _can_copy_links(request: HttpRequest, signing_request: SignatureRequest) -> bool:
+def _can_copy_links(context: ObjectActionContext) -> bool:
     """Restrict bearer signing links to users allowed to distribute this request."""
     from bloomerp.document_signing.access import can_share_signing_request
     from bloomerp.permissions.manager import UserPolicyManager
 
-    return can_share_signing_request(signing_request, UserPolicyManager(request.user))
+    return can_share_signing_request(context.object, UserPolicyManager(context.request.user))
 
 
-def _signing_links_context(context: DataviewActionContext) -> dict[str, Any]:
+def _signing_links_context(context: ObjectActionContext) -> dict[str, Any]:
     """Build personal invitation links only for this authorized request's open recipients."""
     from bloomerp.document_signing.access import signing_invitation
 
-    signing_request = context.queryset.first()
+    signing_request = context.object
     links = []
-    if signing_request is not None and _can_copy_links(
-        context.request, signing_request
-    ):
+    if _can_copy_links(context):
         for recipient in signing_request.recipients.filter(
             status__in=["pending", "viewed"]
         ):
@@ -106,7 +81,7 @@ def _signing_links_context(context: DataviewActionContext) -> dict[str, Any]:
                         reverse(
                             "signature_requests_detail_invitation",
                             kwargs={
-                                "pk": signing_request.pk,
+                                "pk": context.object.pk,
                                 "token": signing_invitation(recipient),
                             },
                         )
@@ -137,12 +112,15 @@ class SignatureRequest(SigningModel):
                 ),
             ),
         ],
-        object_actions=[
+        object_actions=lambda model: [
+            *get_default_object_actions(model),
             ObjectModalAction(
                 id="assign",
                 label=gettext_noop("Assign"),
                 icon="fa-solid fa-user-plus",
-                endpoint=_assign_request_url,
+                endpoint=lambda context: reverse(
+                    "signature_requests_detail_assign", kwargs={"pk": context.object.pk}
+                ),
                 should_render_func=_can_assign_request,
                 modal_title=gettext_noop("Assign recipients"),
                 modal_size="lg",
@@ -151,12 +129,15 @@ class SignatureRequest(SigningModel):
                 id="send",
                 label=gettext_noop("Send"),
                 icon="fa-regular fa-paper-plane",
-                endpoint=_send_request_url,
+                endpoint=lambda context: reverse(
+                    "signature_requests_detail_send", kwargs={"pk": context.object.pk}
+                ),
                 should_render_func=_can_send_request,
                 modal_title=gettext_noop("Send signature request"),
                 modal_size="xl",
             ),
             ObjectHTMLAction(
+                id="signing_links",
                 template_name="models/document_signing/copy_links.html",
                 context_func=_signing_links_context,
                 should_render_func=_can_copy_links,
@@ -165,17 +146,15 @@ class SignatureRequest(SigningModel):
                 id="sign",
                 label=gettext_noop("Sign"),
                 icon="fa-solid fa-signature",
-                endpoint=_sign_request_url,
+                endpoint=lambda context: reverse(
+                    "signature_requests_detail_sign", kwargs={"pk": context.object.pk}
+                ),
                 should_render_func=_can_sign_request,
                 modal_title=gettext_noop("Sign document"),
                 modal_size="xl",
             ),
         ],
-        model_view_settings=ModelViewSettings(
-            dataview_actions=[
-                *get_default_dataview_actions(),
-            ]
-        ),
+        model_view_settings=ModelViewSettings(),
     )
 
     class Status(models.TextChoices):

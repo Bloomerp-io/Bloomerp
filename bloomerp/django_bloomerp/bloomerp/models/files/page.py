@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from functools import partial
 from typing import Any, ClassVar
 from uuid import UUID
@@ -15,11 +16,15 @@ from django.db.models import Exists, OuterRef, Q, Subquery, Value
 from django.db.models.functions import Cast, Replace
 from django.http import HttpRequest
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from bloomerp.filters.definition import FilterCondition
 from bloomerp.models import BloomerpModel
 from bloomerp.models.definition import (
+    ActivityLogContext,
+    ActivityLogDecision,
+    ActivityLogSettings,
     ApiAccessSettings,
     ApiSettings,
     BloomerpModelConfig,
@@ -83,6 +88,30 @@ PAGE_OWNER_ACCESS = AccessRule(
     },
 )
 
+PAGE_SNAPSHOT_FIELDS = frozenset({"title", "content"})
+
+
+def record_page_activity(context: ActivityLogContext) -> ActivityLogDecision:
+    """Record Page edits and capture at most one full version per 30 minutes."""
+    from bloomerp.models.audit.activity_log import ActivityLogAction
+    from bloomerp.services.activity_log_services import ActivityLogManager
+
+    if context.action == ActivityLogAction.CREATE:
+        return ActivityLogDecision(record=True, snapshot_fields=PAGE_SNAPSHOT_FIELDS)
+    if context.action == ActivityLogAction.DELETE:
+        return ActivityLogDecision(record=True)
+    if PAGE_SNAPSHOT_FIELDS.isdisjoint(context.changed_fields):
+        return ActivityLogDecision(record=False)
+
+    has_recent_snapshot = ActivityLogManager(context.instance).get_for_object().filter(
+        timestamp__gt=timezone.now() - timedelta(minutes=30),
+        payload__0__snapshot__isnull=False,
+    ).exists()
+    return ActivityLogDecision(
+        record=True,
+        snapshot_fields=frozenset() if has_recent_snapshot else PAGE_SNAPSHOT_FIELDS,
+    )
+
 
 class Page(BloomerpModel):
     """Store a page whose owner controls sharing and deletion."""
@@ -97,6 +126,7 @@ class Page(BloomerpModel):
         module=FileManagement,
         icon="fa-regular fa-file-lines",
         description="Personal and shared rich-text pages.",
+        activity_log_settings=ActivityLogSettings(should_record=record_page_activity),
         api_settings=ApiSettings(
             enable_auto_generation=True,
             serializer_class="bloomerp.serializers.page.PageSerializer",
@@ -150,12 +180,12 @@ class Page(BloomerpModel):
         """Return the ten accessible pages most recently edited by this user."""
         from bloomerp.models.audit.activity_log import ActivityLog, ActivityLogAction
 
-        # JSON index lookups work on both SQLite and PostgreSQL. The standard
-        # logger emits at most one change per serialized model field.
+        # Include old logs, including migrated edit timestamps. A new snapshot
+        # occupies the first slot before the per-field change entries.
         content_edit = Q(action=ActivityLogAction.CREATE) | Q(
             action=ActivityLogAction.CHANGE, payload=[]
         )
-        for index in range(len(cls._meta.get_fields())):
+        for index in range(len(cls._meta.get_fields()) + 1):
             content_edit |= Q(
                 action=ActivityLogAction.CHANGE,
                 **{f"payload__{index}__field__in": ["title", "content"]},

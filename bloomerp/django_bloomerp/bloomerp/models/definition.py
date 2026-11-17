@@ -1,13 +1,18 @@
 import inspect
 import json
 import re
-from dataclasses import dataclass, field as dataclass_field
-from typing import Any, Callable, Literal, Optional, Type
+from collections.abc import Callable, Iterator, Sequence
+from dataclasses import dataclass
+from dataclasses import field as dataclass_field
+from typing import TYPE_CHECKING, Any, Literal, Optional, Self, Type
 from urllib.parse import urlsplit
 
 from django.conf import settings
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model, QuerySet
 from django.http import HttpRequest, HttpResponse, StreamingHttpResponse
+from django.utils.translation import gettext
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -20,8 +25,12 @@ from pydantic import (
 from bloomerp.config.definition import BloomerpConfig
 from bloomerp.dataviews.definition import BaseDataview
 from bloomerp.filters.definition import Filters
+from bloomerp.models.object_actions.defaults import get_default_object_actions
 from bloomerp.permissions.definition import AccessRule, BloomerpPermission
 from bloomerp.workspaces.base import BaseTileConfig
+
+if TYPE_CHECKING:
+    from bloomerp.models.audit.activity_log import ActivityLogAction
 
 
 class LayoutItem(BaseModel):
@@ -39,7 +48,7 @@ class LayoutItem(BaseModel):
     edit_url: Optional[str] = None
     search_keywords: Optional[str] = None
     extra_attrs: Optional[dict] = Field(default_factory=dict)
-    label_content_right : Optional[str] = None
+    label_content_right: Optional[str] = None
 
     @property
     def config_json(self) -> str:
@@ -48,10 +57,12 @@ class LayoutItem(BaseModel):
     def set_content(self, content: str):
         self.content = content
 
+
 class LayoutRow(BaseModel):
     columns: int
     items: list[LayoutItem] = Field(default_factory=list)
     title: Optional[str] = None
+
 
 class BaseLayout(BaseModel):
     """Base layout class for defining layouts in Bloomerp.
@@ -64,16 +75,20 @@ class BaseLayout(BaseModel):
     is_default: bool = True
     rows: list[LayoutRow] = Field(default_factory=list)
 
+
 class FieldLayout(BaseLayout):
     pass
 
+
 class WorkspaceLayout(BaseLayout):
     pass
+
 
 # ----------------------------------
 # DETAIL TABS CONFIGURATION
 # ----------------------------------
 DETAIL_TAB_TEMPLATE_ARGUMENT = re.compile(r"{{\s*([^{}]+?)\s*}}")
+
 
 def validate_detail_tab_url(url: str) -> str:
     """Validate and normalize a declarative detail-tab URL template."""
@@ -89,17 +104,14 @@ def validate_detail_tab_url(url: str) -> str:
         raise ValueError("Only the {{pk}} placeholder is supported.")
 
     parsed = urlsplit(normalized)
-    is_internal = (
-        not parsed.scheme
-        and not parsed.netloc
-        and normalized.startswith("/")
-    )
+    is_internal = not parsed.scheme and not parsed.netloc and normalized.startswith("/")
     is_external = parsed.scheme in {"http", "https"} and bool(parsed.netloc)
     if not is_internal and not is_external:
         raise ValueError(
             "Enter an internal URL beginning with / or a complete http(s) URL."
         )
     return normalized
+
 
 class DetailTab(BaseModel):
     """A declarative tab shown on a model's detail view."""
@@ -139,6 +151,7 @@ class DetailTab(BaseModel):
             raise ValueError("Provide exactly one of url or url_name.")
         return self
 
+
 class DetailTabFolder(BaseModel):
     """A top-level folder containing declarative detail tabs."""
 
@@ -155,6 +168,7 @@ class DetailTabFolder(BaseModel):
             raise ValueError("Name is required.")
         return normalized
 
+
 class DetailTabsConfiguration(BaseModel):
     """A collection of declarative tabs shown on a model's detail view."""
 
@@ -170,6 +184,7 @@ class DetailTabsConfiguration(BaseModel):
         if not normalized:
             raise ValueError("Name is required.")
         return normalized
+
 
 def validate_declarative_tile_configs(
     tiles: list[BaseTileConfig],
@@ -188,6 +203,7 @@ def validate_declarative_tile_configs(
         seen_ids.add(tile_id)
     return tiles
 
+
 class ApiNesting(BaseModel):
     for_field: str
     fields: list[str | Literal["__all__"]] = Field(default_factory=lambda: ["__all__"])
@@ -204,11 +220,8 @@ class ApiNesting(BaseModel):
         if "__all__" in self.fields:
             return None
 
-        return {
-            field_name
-            for field_name in self.fields
-            if field_name != "__all__"
-        }
+        return {field_name for field_name in self.fields if field_name != "__all__"}
+
 
 class ApiAccessSettings(BaseModel):
     """Declarative access granted outside a user's assigned policies."""
@@ -216,6 +229,7 @@ class ApiAccessSettings(BaseModel):
     anonymous: list[AccessRule] = Field(default_factory=list)
     authenticated: list[AccessRule] = Field(default_factory=list)
     inherit_anonymous_for_authenticated: bool = True
+
 
 class ApiSettings(BaseModel):
     """
@@ -248,69 +262,21 @@ class ApiSettings(BaseModel):
 
     def get_nesting_rules(self, action: str) -> list[ApiNesting]:
         normalized_action = str(action or "").strip().lower()
-        return [
-            rule
-            for rule in self.nesting
-            if normalized_action in rule.on_action
-        ]
-
-class ObjectHTMLAction(BaseModel):
-    template_name:str
-    context_func: Callable[["DataviewActionContext"], dict[str, Any]] | None = None
-
-    should_render_func:Callable[[HttpRequest, Model], bool] = lambda req, obj : True
+        return [rule for rule in self.nesting if normalized_action in rule.on_action]
 
 
-# Preserve the public name used by existing models and client instances.
-ObjectHTML = ObjectHTMLAction
+# ------------------------------------
+# OBJECT ACTIONS & DATAVIEW ACTIONS
+# ------------------------------------
+ActionMethod = Literal["GET", "POST"]
+ActionModalSize = Literal["sm", "md", "lg", "xl", "full"]
+ObjectActionSurface = Literal["detail", "dataview_item"]
 
-class ObjectAction(BaseModel):
-    id:str
-
-    label:str
-
-    execution_func:Callable[[HttpRequest, Model], HttpResponse | StreamingHttpResponse | None]
-    method: Literal["GET", "POST"] = "POST"
-    
-    should_render_func:Callable[[HttpRequest, Model], bool] = lambda req, obj : True
-    
-    icon:Optional[str] = None
-    
-    style:Literal["primary", "secondary"] = "secondary"
-    
-    success_message:Optional[str] = None
-    
-    target: str = "#object-actions-target"
-
-    button_attrs: dict[str, Any] | None = None
-
-
-class ObjectModalAction(BaseModel):
-    id:str
-    
-    label:str
-    
-    endpoint:Callable[[Model], str]
-    
-    icon:Optional[str] = None
-    
-    style:Literal["primary", "secondary"] = "secondary"
-    
-    should_render_func:Callable[[HttpRequest, Model], bool] = lambda req, obj : True
-    
-    modal_title:Optional[str] = ""
-
-    @model_validator(mode="after")
-    def default_modal_title(self) -> "ObjectModalAction":
-        """Use the button label when no modal title was supplied."""
-        if not self.modal_title:
-            self.modal_title = self.label
-        return self
-
-    modal_size:Literal["sm", "md", "lg", "xl", "full"] = "md"
 
 @dataclass(frozen=True)
 class DataviewActionContext:
+    """Describe the accessible collection and selection for a dataview action."""
+
     request: HttpRequest
     model: type[Model]
     content_type: Any
@@ -319,46 +285,249 @@ class DataviewActionContext:
     querystring: str = ""
     filters: Filters = dataclass_field(default_factory=list)
     selected_ids: list[str] = dataclass_field(default_factory=list)
+    operation_context_token: str | None = None
 
 
-class DataviewHTMLAction(BaseModel):
-    context_func: Callable[[DataviewActionContext], dict[str, Any]] | None = None
-    id: str
-    template_name: str
-    shortcut: str | None = None
-    should_render_func: Callable[[DataviewActionContext], bool] = lambda context: True
+@dataclass(frozen=True)
+class ObjectActionContext:
+    """Identify the action's record, surface, and optional originating dataview."""
+
+    request: HttpRequest
+    model: type[Model]
+    content_type: ContentType
+    object: Model
+    surface: ObjectActionSurface
+    dataview: DataviewActionContext | None = None
 
 
-class DataviewAction(BaseModel):
-    id: str
-    label: str
-    execution_func: Callable[[DataviewActionContext], HttpResponse]
-    method: Literal["GET", "POST"] = "POST"
-    shortcut: str | None = None
-    should_render_func: Callable[[DataviewActionContext], bool] = lambda context: True
-    icon: str | None = None
-    style: Literal["primary", "secondary"] = "secondary"
-    target: str | None = None
-    button_attrs: dict[str, Any] | None = None
+ActionResponse = HttpResponse | StreamingHttpResponse | None
 
 
-class DataviewModalAction(BaseModel):
-    id: str
-    label: str
-    endpoint: Callable[[DataviewActionContext], str]
-    shortcut: str | None = None
-    should_render_func: Callable[[DataviewActionContext], bool] = lambda context: True
-    icon: str | None = None
-    style: Literal["primary", "secondary"] = "secondary"
-    modal_title: str | None = ""
+def _always_show_action(context: ObjectActionContext | DataviewActionContext) -> bool:
+    """Show actions that have no configured visibility predicate."""
+    return True
+
+
+class _ActionItem[Context](BaseModel):
+    """Define the identity and visibility of an action or group."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(
+        min_length=1, description="Stable identifier used to reference the action."
+    )
+    should_render_func: Callable[[Context], bool] = Field(
+        default=_always_show_action,
+        description="Python callback that decides whether the action is available in this context.",
+    )
+
+
+class _ActionTrigger[Context](_ActionItem[Context]):
+    """Define the label and icon shared by buttons and dropdown triggers."""
+
+    label: str | None = Field(
+        default=None, description="Visible label. Omit it for an icon-only trigger."
+    )
+    icon: str | None = Field(
+        default=None, description="CSS classes for the trigger icon."
+    )
+    shortcut: str | None = Field(
+        default=None,
+        description="Optional keyboard shortcut for a dataview toolbar trigger.",
+    )
+
+
+class _Action[Context](_ActionTrigger[Context]):
+    """Render a button with defaults that can be overridden through its attributes."""
+
+    endpoint: str | Callable[[Context], str] | None = Field(
+        default=None,
+        description="URL to request or a callback that resolves it from the action context.",
+    )
+    method: ActionMethod = Field(
+        default="POST", description="HTTP method for the action request."
+    )
+    execution_func: Callable[[Context], ActionResponse] | None = Field(
+        default=None,
+        description="Server callback invoked through the configured action endpoint.",
+    )
+    button_attrs: dict[str, Any] | Callable[[Context], dict[str, Any]] = Field(
+        default_factory=dict,
+        description="HTML attributes or a callback that computes them. Overrides the button defaults.",
+    )
+    success_message: str | None = Field(
+        default=None,
+        description="Message displayed when the execution callback returns no response.",
+    )
 
     @model_validator(mode="after")
-    def default_modal_title(self) -> "DataviewModalAction":
-        """Use the button label when no modal title was supplied."""
-        if not self.modal_title:
-            self.modal_title = self.label
+    def validate_activation(self) -> Self:
+        """Require one server request source or explicit client-side attributes."""
+        if self.endpoint is not None and self.execution_func is not None:
+            raise ValueError("Specify either endpoint or execution_func.")
+        if (
+            self.endpoint is None
+            and self.execution_func is None
+            and not self.button_attrs
+        ):
+            raise ValueError("Specify endpoint, execution_func, or button_attrs.")
         return self
-    modal_size: Literal["sm", "md", "lg", "xl", "full"] = "md"
+
+    def default_button_attrs(self) -> dict[str, Any]:
+        """Return additional defaults contributed by this button type."""
+        return {}
+
+    def get_button_attrs(self, context: Context) -> dict[str, Any]:
+        """Combine button-type defaults with attributes configured on the action."""
+        overrides = (
+            self.button_attrs(context)
+            if callable(self.button_attrs)
+            else self.button_attrs
+        )
+        return {**self.default_button_attrs(), **overrides}
+
+
+class ObjectAction(_Action[ObjectActionContext]):
+    """Declare a button that acts on a single record."""
+
+
+class DataviewAction(_Action[DataviewActionContext]):
+    """Declare a button that acts on a dataview or its selection."""
+
+
+class _ModalButton(BaseModel):
+    """Supply standard modal attributes to an ordinary action button."""
+
+    modal_title: str | None = Field(
+        default=None, description="Modal heading. Defaults to the button label."
+    )
+    modal_size: ActionModalSize = Field(default="md", description="Modal width preset.")
+
+    def modal_button_attrs(self, label: str | None) -> dict[str, str]:
+        """Build attributes for loading and opening the shared modal."""
+        modal_id = "bloomerp-general-use-modal"
+        title = self.modal_title or label
+        return {
+            "hx-target": f"#{modal_id}-body",
+            "bloomerp-open-modal": modal_id,
+            "bloomerp-set-modal-title-for": modal_id,
+            "bloomerp-set-modal-title-to": gettext(title) if title else "",
+            "bloomerp-set-modal-size-to": self.modal_size,
+        }
+
+
+class ObjectModalAction(ObjectAction, _ModalButton):
+    """Provide modal button defaults for a record action."""
+
+    method: ActionMethod = Field(
+        default="GET", description="HTTP method used to load the modal."
+    )
+
+    def default_button_attrs(self) -> dict[str, str]:
+        """Open the shared modal and load the response into it."""
+        return self.modal_button_attrs(self.label)
+
+
+class DataviewModalAction(DataviewAction, _ModalButton):
+    """Provide modal button defaults for a dataview action."""
+
+    method: ActionMethod = Field(
+        default="GET", description="HTTP method used to load the modal."
+    )
+
+    def default_button_attrs(self) -> dict[str, str]:
+        """Open the shared modal and load the response into it."""
+        return self.modal_button_attrs(self.label)
+
+
+class _HTMLAction[Context](_ActionItem[Context]):
+    """Render a custom action template with optional context variables."""
+
+    shortcut: str | None = Field(
+        default=None, description="Optional dataview toolbar shortcut."
+    )
+    template_name: str = Field(description="Django template rendered for the action.")
+    context_func: Callable[[Context], dict[str, Any]] | None = Field(
+        default=None,
+        description="Python callback that supplies extra template variables.",
+    )
+
+
+class ObjectHTMLAction(_HTMLAction[ObjectActionContext]):
+    """Render an action template for a single record."""
+
+
+class DataviewHTMLAction(_HTMLAction[DataviewActionContext]):
+    """Render an action template in the dataview toolbar."""
+
+
+class ObjectActionGrouping(_ActionTrigger[ObjectActionContext]):
+    """Render record actions and subgroups in a dropdown."""
+
+    actions: "list[ObjectActionDefinition]" = Field(
+        description="Child record actions and subgroups in display order."
+    )
+
+
+class DataviewActionGrouping(_ActionTrigger[DataviewActionContext]):
+    """Render dataview actions and subgroups in a dropdown."""
+
+    actions: "list[DataviewActionDefinition]" = Field(
+        description="Child dataview actions and subgroups in display order."
+    )
+
+
+ObjectActionDefinition = (
+    ObjectAction | ObjectModalAction | ObjectHTMLAction | ObjectActionGrouping
+)
+DataviewActionDefinition = (
+    DataviewAction | DataviewModalAction | DataviewHTMLAction | DataviewActionGrouping
+)
+ObjectActionGrouping.model_rebuild()
+DataviewActionGrouping.model_rebuild()
+
+
+def iter_object_actions(
+    actions: Sequence[ObjectActionDefinition],
+) -> Iterator[ObjectActionDefinition]:
+    """Yield actions and their group members in display order."""
+    for action in actions:
+        yield action
+        if isinstance(action, ObjectActionGrouping):
+            yield from iter_object_actions(action.actions)
+
+
+def get_object_actions(
+    model: type[Model],
+    *,
+    surface: ObjectActionSurface,
+    group_all: bool = False,
+) -> list[ObjectActionDefinition]:
+    """Resolve built-ins and model overrides for an object action surface."""
+    from bloomerp.models.object_actions.sidebar import detail_only
+
+    config = get_model_config(model)
+    configured = config.object_actions if config else get_default_object_actions
+    actions = configured(model) if callable(configured) else configured
+    if surface == "detail":
+        return actions
+    actions = [
+        action for action in actions if action.should_render_func is not detail_only
+    ]
+    if group_all:
+        return (
+            [ObjectActionGrouping(id="more-actions", actions=actions)]
+            if actions
+            else []
+        )
+    grouped_ids = {"create-todo", "contact"}
+    grouped = [action for action in actions if action.id in grouped_ids]
+    if grouped:
+        return [
+            ObjectActionGrouping(id="more-actions", actions=grouped),
+            *(action for action in actions if action.id not in grouped_ids),
+        ]
+    return actions
 
 
 def can_create_dataview_object(context: DataviewActionContext) -> bool:
@@ -368,7 +537,9 @@ def can_create_dataview_object(context: DataviewActionContext) -> bool:
     from bloomerp.permissions.manager import UserPolicyManager
     from bloomerp.utils.models import get_create_view_url
 
-    if not UserPolicyManager(context.request.user).has_global_permission(context.model, BloomerpPermission.ADD):
+    if not UserPolicyManager(context.request.user).has_global_permission(
+        context.model, BloomerpPermission.ADD
+    ):
         return False
     try:
         reverse(get_create_view_url(context.model))
@@ -378,17 +549,18 @@ def can_create_dataview_object(context: DataviewActionContext) -> bool:
 
 
 def get_default_dataview_actions(
-    skip: list[str] | None = None,
-    include: list[str] | None = None,
-) -> list[DataviewHTMLAction]:
-    """Return standard toolbar actions in order, limited by include and then skip.
+    model: type[Model],
+    skip: Sequence[str] | None = None,
+    include: Sequence[str] | None = None,
+) -> list[DataviewActionDefinition]:
+    """Return a model's standard toolbar actions, limited by include and then skip.
 
     An omitted include selects all defaults; an empty include selects none.
     Skip takes precedence when an action appears in both lists.
     """
     template_root = "components/objects/dataview_actions"
-    
-    actions = [
+
+    actions: list[DataviewActionDefinition] = [
         DataviewHTMLAction(
             id="filter",
             template_name=f"{template_root}/filter.html",
@@ -427,7 +599,19 @@ def get_default_dataview_actions(
         if (include is None or action.id in include)
         and (not skip or action.id not in skip)
     ]
-    
+
+
+def get_dataview_actions(model: type[Model]) -> list[DataviewActionDefinition]:
+    """Resolve the model's configured toolbar list or call its action factory."""
+    config = get_model_config(model)
+    view_settings = config.model_view_settings if config else None
+    configured = (
+        view_settings.dataview_actions
+        if view_settings
+        else get_default_dataview_actions
+    )
+    return configured(model) if callable(configured) else configured
+
 
 class DetailViewSettings(BaseModel):
     """Settings regarding detail views for a model.
@@ -435,6 +619,7 @@ class DetailViewSettings(BaseModel):
     An empty ``tab_configurations`` list retains router-derived defaults. Each
     configured layout becomes a named preference, with the first one selected.
     """
+
     skip_views: Optional[list[str]] = Field(
         default=None,
         description="Optional list of view names to skip when generating the detail view router.",
@@ -468,18 +653,21 @@ class DetailViewSettings(BaseModel):
         """Return the configured default object layout, if one exists."""
         return next((layout for layout in self.layouts if layout.is_default), None)
 
+
 class ModelViewSettings(BaseModel):
     """Optional settings for a model's collection views."""
 
     skip_views: Optional[list[str]] = None
 
-    default_dataviews: list[SerializeAsAny[BaseDataview]] = Field(
-        default_factory=list
-    )
+    default_dataviews: list[SerializeAsAny[BaseDataview]] = Field(default_factory=list)
 
-    dataview_actions: list[
-        DataviewAction | DataviewHTMLAction | DataviewModalAction
-    ] = Field(default_factory=get_default_dataview_actions)
+    dataview_actions: (
+        list[DataviewActionDefinition]
+        | Callable[[type[Model]], list[DataviewActionDefinition]]
+    ) = Field(
+        default=get_default_dataview_actions,
+        description="Toolbar actions or a callable receiving the model. Defaults to the standard toolbar.",
+    )
 
     @model_validator(mode="after")
     def validate_default_dataviews(self):
@@ -500,19 +688,49 @@ class ModelViewSettings(BaseModel):
             )
         return self
 
+
 class SearchSettings(BaseModel):
     """Optional settings for a model's search functionality."""
 
     allow_global_search: bool = True
 
     string_search_fields: list[str] | None = None
-    
-    include_search_routes:bool = True
+
+    include_search_routes: bool = True
+
+
+@dataclass(frozen=True, kw_only=True)
+class ActivityLogContext:
+    """Describe a candidate event and its changed model fields before serialization."""
+
+    action: "ActivityLogAction"
+    instance: Model
+    actor: AbstractBaseUser | None
+    changed_fields: frozenset[str]
+
+
+@dataclass(frozen=True, kw_only=True)
+class ActivityLogDecision:
+    """Choose whether to record an event and which field values to snapshot.
+
+    A recorded event includes the changed field names. Each snapshot field also
+    includes its full value, even if it did not change. Snapshot fields are
+    ignored when ``record`` is false.
+    """
+
+    record: bool
+    snapshot_fields: frozenset[str] = frozenset()
+
 
 class ActivityLogSettings(BaseModel):
     """Optional settings for a model's audit functionality."""
 
-    enabled : bool = True
+    enabled: bool = True
+    should_record: Callable[[ActivityLogContext], ActivityLogDecision] | None = Field(
+        default=None,
+        description="Callback for enabled logging that decides whether to record an event "
+        "and which field values to snapshot. Omit it to use standard activity logging.",
+    )
 
 
 class DefaultPolicy(BaseModel):
@@ -550,9 +768,6 @@ class PermissionSettings(BaseModel):
             raise ValueError("Default policy IDs must be unique within a model")
         return value
 
-# Resolve the HTML action callback after its shared context has been declared.
-ObjectHTMLAction.model_rebuild()
-
 
 class FieldSettings(BaseModel):
     """Declare application-field rendering managed by model metadata sync."""
@@ -560,19 +775,14 @@ class FieldSettings(BaseModel):
     field: str
     advanced_rendering: str | None = None
 
-# 
+
+#
 StringSearchSettings = SearchSettings
+
 
 class BloomerpModelConfig(BaseModel):
     """
-    Used to define certain bloomerp related meta data on a model. 
-
-    Settings are:
-        - module: the canonical module to which this model belongs.
-        - detail_view_settings: detail tabs and named object layouts.
-        - tiles: reusable tile configurations associated with this model.
-        - permission_settings: default stored policies created by sync_defaults.
-        - string_search_fields: optional field paths used by the shared string search service.
+    Used to define certain bloomerp related meta data on a model.
 
     Usage
     ```python
@@ -582,43 +792,48 @@ class BloomerpModelConfig(BaseModel):
         bloomerp_config = BloomerpModelConfig(
             ...
         )
-    ``` 
+    ```
     """
+
     module: str | type | None = None
+    icon: Optional[str] = Field(
+        default="fa fa-cube",
+        description="Optional fa icon that represents the model"
+    )
     
-    icon : Optional[str] = "fa fa-cube"
-    
-    description: Optional[str] = None
+    description: Optional[str] = Field(
+        default=None,
+        description="A description of the model",
+    )
     
     tiles: list[SerializeAsAny[BaseTileConfig]] = Field(
         default_factory=list,
-        description="Optional list of reusable tile configurations associated with this model."
+        description="Optional list of reusable tile configurations associated with this model.",
     )
-
     field_settings: list[FieldSettings] = Field(default_factory=list)
-
     is_internal: bool = False
-
     api_settings: Optional[ApiSettings] = None
-    
     permission_settings: PermissionSettings = Field(default_factory=PermissionSettings)
-    
-    create_redirect_url_func : Optional[Callable[[Model], str]] = None
-    
-    detail_view_settings : Optional[DetailViewSettings] = None
-    
-    model_view_settings : Optional[ModelViewSettings] = None 
-    
-    object_actions : Optional[list[ObjectAction | ObjectHTMLAction | ObjectModalAction]] = None
-
-    string_search_settings : SearchSettings = SearchSettings(
-        allow_global_search=True,
-        include_search_routes=True
+    create_redirect_url_func: Callable[[Model], str] | None = Field(
+        default=None,
+        description="Python callback that resolves the redirect URL after object creation.",
     )
-    
-    activity_log_settings : ActivityLogSettings = ActivityLogSettings(enabled=True)
-    
-    
+    detail_view_settings: Optional[DetailViewSettings] = None
+    model_view_settings: Optional[ModelViewSettings] = None
+    object_actions: (
+        list[ObjectActionDefinition]
+        | Callable[[type[Model]], list[ObjectActionDefinition]]
+    ) = Field(
+        default=get_default_object_actions,
+        description="Record actions or a callable receiving the model. Defaults to the standard actions.",
+    )
+
+    string_search_settings: SearchSettings = SearchSettings(
+        allow_global_search=True, include_search_routes=True
+    )
+
+    activity_log_settings: ActivityLogSettings = ActivityLogSettings(enabled=True)
+
     @field_validator("tiles")
     @classmethod
     def validate_tiles(
@@ -629,7 +844,7 @@ class BloomerpModelConfig(BaseModel):
             value,
             owner=cls.__name__,
         )
-    
+
     @field_validator("module", mode="before")
     @classmethod
     def normalize_module(cls, value: Any) -> str | None:
@@ -679,15 +894,18 @@ class BloomerpModelConfig(BaseModel):
         return self.api_settings.get_nesting_rules(action)
 
     def should_enable_api_auto_generation(self) -> bool:
-        bloomerp_config : BloomerpConfig = getattr(settings, "BLOOMERP_CONFIG")
+        bloomerp_config: BloomerpConfig = getattr(settings, "BLOOMERP_CONFIG")
 
         if self.api_settings is None:
             # In this case, use the global setting to determine whether to auto generate API endpoints
             return bloomerp_config.auto_generate_api_endpoints
-        
+
         return self.api_settings.enable_auto_generation
 
-def get_model_config(model_or_object:Type[Model]|Model) -> BloomerpModelConfig | None:
+
+def get_model_config(
+    model_or_object: Type[Model] | Model,
+) -> BloomerpModelConfig | None:
     """Returns the bloomerp model config for a model or object (if it exists)
 
     Args:
@@ -697,13 +915,14 @@ def get_model_config(model_or_object:Type[Model]|Model) -> BloomerpModelConfig |
         BloomerpModelConfig | None: the config object
     """
     # Get the model class from either a model class or an instance
-    model_class = model_or_object if inspect.isclass(model_or_object) else type(model_or_object)
-    
+    model_class = (
+        model_or_object if inspect.isclass(model_or_object) else type(model_or_object)
+    )
+
     # Check if the model has a bloomerp_config attribute
-    if hasattr(model_class, 'bloomerp_config'):
-        config = getattr(model_class, 'bloomerp_config')
+    if hasattr(model_class, "bloomerp_config"):
+        config = getattr(model_class, "bloomerp_config")
         if isinstance(config, BloomerpModelConfig):
             return config
-    
+
     return None
-    

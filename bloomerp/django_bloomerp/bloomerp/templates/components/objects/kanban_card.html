@@ -35,7 +35,7 @@
         {% if object_actions %}
             <div class="flex gap-2 flex-wrap">
                 {% for action in object_actions %}
-                    {% render_object_action action=action object=object request=request content_type_id=content_type_id %}
+                    {% render_object_action action=action object=object request=request content_type_id=content_type_id dataview=dataview_action_context %}
                 {% endfor %}
             </div>
         {% endif %}

@@ -9588,7 +9588,7 @@ msgstr "Limity uruchomień"
 # | msgid "Workflow"
 #: bloomerp.workflownode.sub_type models/automation/workflow.py:103 models/automation/workflow.py:105
 msgid "Run workflow"
-msgstr "Przepływ pracy"
+msgstr "Uruchom przepływ pracy"
 
 #: bloomerp.airun.status bloomerp.airunattempt.status bloomerp.aitoolcall.status
 #: bloomerp.fileextraction.status bloomerp.workflowrun.status models/automation/workflow_run.py:111

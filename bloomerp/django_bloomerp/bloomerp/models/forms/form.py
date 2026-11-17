@@ -10,6 +10,7 @@ from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models import BloomerpModel
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import (
+    get_default_object_actions,
     BloomerpModelConfig,
     DetailViewSettings,
     FieldLayout,
@@ -78,13 +79,16 @@ class Form(BloomerpModel, ContentLayoutModelMixin, models.Model):
                 "document_templates"
             ]
         ),
-        object_actions=[
+        object_actions=lambda model: [
+            *get_default_object_actions(model),
             ObjectHTMLAction(
+                id="form_links",
                 template_name="models/forms/links_btn.html"
             ),
             ObjectHTMLAction(
+                id="public_embed",
                 template_name="models/forms/public_embed_btn.html",
-                should_render_func=lambda request, obj: obj.public_embed_enabled,
+                should_render_func=lambda context: context.object.public_embed_enabled,
             ),
         ]
     )

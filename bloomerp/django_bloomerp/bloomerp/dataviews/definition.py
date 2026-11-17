@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
     from bloomerp.filters.definition import Filters
     from bloomerp.models.application_field import ApplicationField
-    from bloomerp.models.definition import ObjectAction
+    from bloomerp.models.definition import ObjectActionDefinition
     from bloomerp.models.users.user_list_view_preference import UserListViewPreference
     from bloomerp.services.user_services import DataViewFields
 
@@ -54,7 +54,7 @@ class DataviewState:
     count: int = 0
     filters: Filters | None = None
     operation_context_token: str | None = None
-    object_actions: list[ObjectAction] = field(default_factory=list)
+    object_actions: list[ObjectActionDefinition] = field(default_factory=list)
     context: dict[str, Any] = field(default_factory=dict)
 
     @property

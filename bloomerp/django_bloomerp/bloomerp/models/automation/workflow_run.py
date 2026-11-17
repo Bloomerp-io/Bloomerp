@@ -13,6 +13,7 @@ from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models.automation import workflow
 from bloomerp.models.automation.workflow_run_step import WorkflowRunStepStatus
 from bloomerp.models.definition import (
+    get_default_object_actions,
     ActivityLogSettings,
     BloomerpModelConfig,
     DetailViewSettings,
@@ -163,17 +164,16 @@ class WorkflowRun(
             )],
             skip_views=["files", "document_templates"],
         ),
-        object_actions=[
+        object_actions=lambda model: [
+            *get_default_object_actions(model),
             ObjectModalAction(
                 id="approve_step",
                 label=gettext_noop("Approve"),
-                endpoint=lambda obj: reverse(
+                endpoint=lambda context: reverse(
                     "components_automation_approve_workflow_continuation",
-                    kwargs={
-                        "workflow_run_id" : obj.id
-                    }
+                    kwargs={"workflow_run_id": context.object.pk},
                 ),
-                should_render_func=lambda req, obj: obj.status == WorkflowRunStatus.PAUSED,
+                should_render_func=lambda context: context.object.status == WorkflowRunStatus.PAUSED,
                 modal_title=gettext_noop("Approve workflow continuation")
             )
         ],

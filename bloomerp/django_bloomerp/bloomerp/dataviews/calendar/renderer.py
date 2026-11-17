@@ -224,12 +224,14 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
         if group_period:
             events = renderer._group_events(events, view_mode, unit_day, last_day).get(unit, [])
         page = events[offset:offset + CALENDAR_PAGE_SIZE]
-        config = get_model_config(state.model)
+        from bloomerp.components.objects.dataviews.dataview import build_dataview_action_context
+
         return render(request, "components/objects/dataview_calendar_events.html", {
             "content_type_id": state.content_type.id,
             "events": page,
             "fields": state.render_fields,
-            "object_actions": config.object_actions if config else [],
+            "object_actions": state.object_actions,
+            "dataview_action_context": build_dataview_action_context(request, state),
             "preference": state.preference,
             "calendar_unit": unit,
             "calendar_unit_offset": offset,

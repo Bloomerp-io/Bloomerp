@@ -1,17 +1,15 @@
+from typing import Any
+
 from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import gettext_lazy as _
 
-from bloomerp.models.definition import (
-    get_default_dataview_actions,
-    get_model_config,
-)
+from bloomerp.models.definition import get_dataview_actions
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.services.preference_services import PreferenceManager
-from bloomerp.widgets.code_editor_widget import CodeEditorWidget
 from bloomerp.widgets.filter_widget import FilterWidget
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 
@@ -62,7 +60,7 @@ class DataViewTileForm(forms.Form):
             )
         return initial_query_params
 
-    def __init__(self, *args, user: AbstractBloomerpUser, **kwargs) -> None:
+    def __init__(self, *args: Any, user: AbstractBloomerpUser, **kwargs: Any) -> None:
         """Build content-type and saved-preference choices available to the user."""
         super().__init__(*args, **kwargs)
         self.fields["content_type_id"].queryset = UserPolicyManager(
@@ -94,15 +92,9 @@ class DataViewTileForm(forms.Form):
                 pk=content_type_id
             )
             model = content_type.model_class()
-            model_config = get_model_config(model) if model is not None else None
-            if model_config and model_config.model_view_settings:
-                actions = model_config.model_view_settings.dataview_actions
-            else:
-                actions = get_default_dataview_actions()
-
             actions = [
                 action
-                for action in actions
+                for action in (get_dataview_actions(model) if model is not None else [])
                 if action.id not in EXCLUDED_DATAVIEW_TILE_ACTION_IDS
             ]
             self.fields["actions"].choices = [
@@ -117,5 +109,5 @@ class DataViewTileForm(forms.Form):
                 self.initial["actions"] = [action.id for action in actions]
 
             self.fields["initial_query_params"].widget = FilterWidget(
-                model=content_type.model_class()
+                model=model
             )

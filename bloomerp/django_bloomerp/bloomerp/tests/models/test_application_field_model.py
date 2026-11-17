@@ -10,7 +10,7 @@ from django.http import HttpRequest
 from django.test import RequestFactory, override_settings
 
 from bloomerp.models.application_field import ApplicationField
-from bloomerp.models.definition import BloomerpModelConfig, DataviewActionContext, FieldSettings, ObjectHTMLAction, ObjectModalAction
+from bloomerp.models.definition import BloomerpModelConfig, FieldSettings, ObjectActionContext, ObjectHTMLAction, ObjectModalAction
 from bloomerp.templatetags.bloomerp import render_object_action
 from bloomerp.tests.utils.users import create_admin
 from bloomerp.tests.base import (
@@ -113,16 +113,16 @@ class TestApplicationFieldModel(BloomerpModelTestCase):
             field.refresh_from_db()
             self.assertIsNone(field.advanced_rendering)
 
-    def object_html_context(self, context: DataviewActionContext) -> dict[str, str]:
-        """Use the object action's shared context to produce custom template data."""
-        self.assertEqual(context.selected_ids, [str(self.html_field.pk)])
-        self.assertEqual(list(context.queryset), [self.html_field])
+    def object_html_context(self, context: ObjectActionContext) -> dict[str, str]:
+        """Verify the detail action receives the record and its originating surface."""
+        self.assertEqual(context.object, self.html_field)
         self.assertEqual(context.model, ApplicationField)
-        self.assertIsNone(context.preference)
+        self.assertEqual(context.surface, "detail")
+        self.assertIsNone(context.dataview)
         return {"custom_text": "Configured object context"}
 
     @staticmethod
-    def object_modal_endpoint(obj: ApplicationField) -> str:
+    def object_modal_endpoint(context: ObjectActionContext) -> str:
         """Return a stable modal URL for an application-field action."""
         return "/review/"
 
@@ -143,9 +143,11 @@ class TestApplicationFieldModel(BloomerpModelTestCase):
         }]
         # 2. The nullable callback preserves old HTML behavior and can supply new data.
         with override_settings(TEMPLATES=templates):
-            plain = ObjectHTMLAction(template_name="action.html")
+            plain = ObjectHTMLAction(id="plain", template_name="action.html")
             self.assertEqual(render_object_action(plain, self.html_field, request), ": app_label")
-            action = ObjectHTMLAction(template_name="action.html", context_func=self.object_html_context)
+            action = ObjectHTMLAction(
+                id="custom", template_name="action.html", context_func=self.object_html_context,
+            )
             self.assertEqual(render_object_action(action, self.html_field, request), "Configured object context: app_label")
         # 3. The actual modal button receives the label as its default title.
         modal = ObjectModalAction(id="review", label="Review field", endpoint=self.object_modal_endpoint)

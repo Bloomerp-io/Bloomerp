@@ -154,7 +154,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         if action != "column":
             return super().handle_action(action, request, state)
 
-        from bloomerp.components.objects.dataviews.dataview import _get_actions
+        from bloomerp.components.objects.dataviews.dataview import build_dataview_action_context
 
         group_by_field = cls.get_group_by_field(
             state.fields,
@@ -202,7 +202,8 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                 "avatar_field": state.avatar_field,
                 "group": group,
                 "preference": state.preference,
-                "object_actions": _get_actions(state.model),
+                "object_actions": state.object_actions,
+                "dataview_action_context": build_dataview_action_context(request, state),
                 "kanban_append": True,
                 "kanban_card_order": card_order,
                 "kanban_page_querystring": cls.build_page_querystring(
@@ -299,7 +300,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         visible_object = state.queryset.filter(pk=obj.pk).first()
         card_html = ""
         if visible_object is not None:
-            from bloomerp.components.objects.dataviews.dataview import _get_actions
+            from bloomerp.components.objects.dataviews.dataview import build_dataview_action_context
             from bloomerp.field_types.utils.value_loading import prepare_field_values
 
             cls._prepare_card_colour(visible_object, group_by_field, state.options)
@@ -312,7 +313,8 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                     "fields": state.render_fields,
                     "avatar_field": state.avatar_field,
                     "preference": state.preference,
-                    "object_actions": _get_actions(state.model),
+                    "object_actions": state.object_actions,
+                    "dataview_action_context": build_dataview_action_context(request, state),
                     "row_index": request.POST.get("row_index", "0"),
                 },
                 request=request,

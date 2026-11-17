@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -15,15 +15,17 @@ from django_htmx.http import HttpResponseLocation
 
 from bloomerp.dataviews.calendar.config import CalendarDataView
 from bloomerp.models.definition import (
+    get_default_object_actions,
     BloomerpModelConfig,
     DataviewAction,
     DataviewActionContext,
+    DataviewActionDefinition,
     DataviewHTMLAction,
-    DataviewModalAction,
     DetailTab,
     DetailTabsConfiguration,
     DetailViewSettings,
     ModelViewSettings,
+    ObjectActionContext,
     ObjectModalAction,
     get_default_dataview_actions,
 )
@@ -77,9 +79,9 @@ def calendar_management_action_visible(
     return not back_to_inbox_visible(context) and original(context)
 
 
-def calendar_event_dataview_actions() -> list[DataviewAction | DataviewHTMLAction]:
+def calendar_event_dataview_actions(model: type[models.Model]) -> list[DataviewActionDefinition]:
     """Add Inbox overlays and navigation to the ordinary CalendarEvent toolbar."""
-    actions = [
+    actions: list[DataviewActionDefinition] = [
         DataviewHTMLAction(
             id="add_calendars",
             template_name="models/calendar_event/align_calendars.html",
@@ -87,7 +89,7 @@ def calendar_event_dataview_actions() -> list[DataviewAction | DataviewHTMLActio
         ),
     ]
 
-    for default_action in get_default_dataview_actions():
+    for default_action in get_default_dataview_actions(model):
         if default_action.id not in [
             "add",
         ]:
@@ -106,24 +108,26 @@ def calendar_event_dataview_actions() -> list[DataviewAction | DataviewHTMLActio
             method="GET",
             should_render_func=back_to_inbox_visible,
             icon="fa fa-inbox",
-            target="#main-content",
+            button_attrs={"hx-target": "#main-content"},
         ),
     )
     return actions
 
 
-def calendar_invitation_reply_url(event: models.Model) -> str:
+def calendar_invitation_reply_url(context: ObjectActionContext) -> str:
     """Resolve the dedicated attendance modal without using the event editor."""
-    return reverse("components_calendar_reply", kwargs={"event_id": event.pk})
+    return reverse("components_calendar_reply", kwargs={"event_id": context.object.pk})
 
 
-def calendar_invitation_reply_visible(request: HttpRequest, event: models.Model) -> bool:
+def calendar_invitation_reply_visible(context: ObjectActionContext) -> bool:
     """Offer replies only to an active invitation's non-host participant identity."""
+    event = context.object
+    user = context.request.user
     return bool(
         isinstance(event, CalendarEvent)
         and not event.cancelled
-        and event.get_participant(request.user) is not None
-        and not event.is_host(request.user)
+        and event.get_participant(user) is not None
+        and not event.is_host(user)
     )
 
 
@@ -154,9 +158,10 @@ class CalendarEvent(CalendarModel):
                     color_grouping_field="inboxes",
                 )
             ],
-            dataview_actions=calendar_event_dataview_actions(),
+            dataview_actions=calendar_event_dataview_actions,
         ),
-        object_actions=[
+        object_actions=lambda model: [
+            *get_default_object_actions(model),
             ObjectModalAction(
                 id="reply_invitation",
                 label="Reply to invitation",

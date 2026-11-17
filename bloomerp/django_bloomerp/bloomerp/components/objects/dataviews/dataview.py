@@ -1,16 +1,15 @@
-import json
 import uuid
+from typing import Any
 
 from django import forms
 from django.core import signing
 from django.core.exceptions import FieldDoesNotExist, ValidationError
-from django.db.models import Model, QuerySet
-from django.forms.utils import flatatt
-from django.http import HttpRequest, HttpResponse
-from django.middleware.csrf import get_token
-from django.shortcuts import render
+from django.db.models import Q, QuerySet
+from django.http import Http404, HttpRequest, HttpResponse
+from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils.safestring import mark_safe
 from pydantic import ValidationError as PydanticValidationError
 
 from bloomerp.dataviews.definition import (
@@ -23,20 +22,26 @@ from bloomerp.filters.manager import ModelFilterManager
 from bloomerp.filters.parser import parse_filters
 from bloomerp.models import ApplicationField
 from bloomerp.models.definition import (
-    DataviewAction,
     DataviewActionContext,
     DataviewHTMLAction,
-    DataviewModalAction,
-    ObjectAction,
+    ObjectHTMLAction,
     can_create_dataview_object,
-    get_default_dataview_actions,
-    get_model_config,
+    get_dataview_actions,
+    get_object_actions,
+    iter_object_actions,
 )
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
+from bloomerp.services.action_services import (
+    ACTION_DATAVIEW_PREFERENCE_PARAM,
+    DATAVIEW_OPERATION_CONTEXT_PARAM,
+    render_action,
+    with_dataview_context,
+)
 from bloomerp.services.object_services import string_search_on_queryset
+from bloomerp.services.object_contact_services import get_object_contact_access, object_contact_context
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.services.user_services import get_data_view_fields
 from bloomerp.utils.models import get_model_and_content_type_or_404
@@ -50,10 +55,10 @@ SHELL_RESERVED_QUERY_KEYS = {
     "page",
     "_component_id",
     "_permission_token",
-    "_dataview_operation_context",
+    DATAVIEW_OPERATION_CONTEXT_PARAM,
+    ACTION_DATAVIEW_PREFERENCE_PARAM,
 }
 
-DATAVIEW_OPERATION_CONTEXT_PARAM = "_dataview_operation_context"
 DATAVIEW_OPERATION_CONTEXT_SALT = "bloomerp.dataview.renderer-operation"
 DATAVIEW_OPERATION_CONTEXT_MAX_AGE = 60 * 60 * 24
 
@@ -102,6 +107,49 @@ def _valid_dataview_operation_context(
         "content_type_id": content_type_id,
         "preference_id": preference_id,
     }
+
+
+def resolve_dataview_preference(
+    request: HttpRequest,
+    content_type_id: int,
+    preference_id: int,
+) -> UserListViewPreference:
+    """Resolve an available preference or a preference from a signed embedding."""
+    available = (
+        PreferenceManager(request.user).get_available(
+            UserListViewPreference, {"content_type_id": content_type_id},
+        )
+        .filter(Q(pk=preference_id) | Q(source_object_id=preference_id))
+        .first()
+    )
+    if available is not None:
+        return available.effective_preference
+    if _valid_dataview_operation_context(
+        request, content_type_id=content_type_id, preference_id=preference_id,
+    ):
+        return get_object_or_404(
+            UserListViewPreference, pk=preference_id, content_type_id=content_type_id,
+        )
+    raise Http404("Dataview preference not found")
+
+
+def build_execution_dataview_state(
+    request: HttpRequest,
+    content_type_id: int,
+) -> DataviewState | HttpResponse:
+    """Rebuild the originating dataview and its permissions for an action request."""
+    preference = None
+    raw_id = request.GET.get(ACTION_DATAVIEW_PREFERENCE_PARAM)
+    if raw_id is not None:
+        try:
+            preference_id = int(raw_id)
+        except ValueError as error:
+            raise Http404("Invalid dataview preference") from error
+        preference = resolve_dataview_preference(request, content_type_id, preference_id)
+    state = _build_dataview_state(request, content_type_id, preference, calculate_count=False)
+    if isinstance(state, DataviewState):
+        state.operation_context_token = request.GET.get(DATAVIEW_OPERATION_CONTEXT_PARAM)
+    return state
 
 
 def _build_dataview_state(
@@ -202,9 +250,18 @@ def _build_dataview_state(
     )
 
     count = queryset.count() if calculate_count else 0
+    object_actions = get_object_actions(
+        Model, surface="dataview_item", group_all=definition.key == "calendar",
+    )
+    permission_fields = dataview_render_fields + ([avatar_field] if avatar_field else [])
+    if any(
+        isinstance(action, ObjectHTMLAction) and action.context_func is object_contact_context
+        for action in iter_object_actions(object_actions)
+    ):
+        permission_fields.extend(get_object_contact_access(request).fields_for(Model))
     queryset = manager.annotate_field_permissions(
         queryset,
-        dataview_render_fields + ([avatar_field] if avatar_field else []),
+        permission_fields,
         BloomerpPermission.VIEW,
     )
 
@@ -218,6 +275,7 @@ def _build_dataview_state(
         render_fields=dataview_render_fields,
         avatar_field=avatar_field,
         queryset=queryset,
+        object_actions=object_actions,
         query=query,
         context=renderer_context,
         count=count,
@@ -284,13 +342,6 @@ def _get_component_args(request:HttpRequest) -> dict[str, str]:
     return args
 
 
-def _get_actions(model:type[Model]) -> list[ObjectAction]:
-    config = get_model_config(model)
-    if config:
-        return config.object_actions
-    return []
-
-
 def _get_dataview_options_initial(preference: UserListViewPreference, view_type: str) -> dict:
     definition = DATAVIEW_REGISTRY.get(view_type)
     if definition is None:
@@ -351,21 +402,11 @@ def _render_dataview_body(
     if definition is None:
         return ""
 
-    state.object_actions = context.get("object_actions", [])
     state.context = context
     return definition.renderer_cls(state).render(pagination)
 
 
-def _get_configured_dataview_actions(
-    model: type[Model],
-) -> list[DataviewAction | DataviewHTMLAction | DataviewModalAction]:
-    config = get_model_config(model)
-    if config and config.model_view_settings:
-        return config.model_view_settings.dataview_actions
-    return get_default_dataview_actions()
-
-
-def _build_dataview_action_context(
+def build_dataview_action_context(
     request: HttpRequest,
     state: DataviewState,
 ) -> DataviewActionContext:
@@ -379,85 +420,53 @@ def _build_dataview_action_context(
     accessible_ids = {
         str(value) for value in state.queryset.filter(pk__in=normalized_ids).values_list("pk", flat=True)
     } if normalized_ids else set()
+    query = request.GET.copy()
+    query.pop(ACTION_DATAVIEW_PREFERENCE_PARAM, None)
+    query.pop(DATAVIEW_OPERATION_CONTEXT_PARAM, None)
     return DataviewActionContext(
         request=request,
         model=state.model,
         content_type=state.content_type,
         preference=state.preference,
         queryset=state.queryset,
-        querystring=request.GET.urlencode(),
-        filters=state.filters,
+        querystring=query.urlencode(),
+        filters=state.filters or [],
         selected_ids=list(dict.fromkeys(str(value) for value in normalized_ids if str(value) in accessible_ids)),
+        operation_context_token=state.operation_context_token,
     )
 
 
 def _render_dataview_actions(
-    request: HttpRequest,
-    state: DataviewState,
-    context: dict,
+    action_context: DataviewActionContext,
+    context: dict[str, Any],
     action_ids: list[str] | None = None,
 ) -> list[str]:
-    """Render permitted toolbar actions with safely escaped, configurable button attributes."""
-    from bloomerp.permissions.access_tokens import permission_token_url
-
-    action_context = _build_dataview_action_context(request, state)
+    """Render configured controls and groups in the toolbar's layout."""
     rendered_actions: list[str] = []
-    allowed_action_ids = set(action_ids) if action_ids is not None else None
+    allowed_ids = set(action_ids) if action_ids is not None else None
 
-    for action in _get_configured_dataview_actions(state.model):
-        if allowed_action_ids is not None and action.id not in allowed_action_ids:
-            continue
-
-        try:
-            should_render = action.should_render_func(action_context)
-        except Exception:
-            should_render = False
-        if not should_render:
-            continue
-
-        action_template_context = {
-            **context,
-            "action": action,
-            "action_context": action_context,
-            "model": state.model,
-        }
-        if isinstance(action, DataviewHTMLAction):
-            template_name = action.template_name
-            if action.context_func is not None:
-                action_template_context.update(action.context_func(action_context))
-        elif isinstance(action, DataviewModalAction):
-            template_name = "components/objects/dataview_actions/modal_action.html"
-            action_template_context["endpoint"] = permission_token_url(request, action.endpoint(action_context))
-        else:
-            template_name = "components/objects/dataview_actions/action.html"
-            execution_url = reverse(
-                "components_dataview_action",
-                kwargs={
-                    "content_type_id": state.content_type.pk,
-                    "action_id": action.id,
-                },
-            )
-            if action_context.querystring:
-                execution_url = f"{execution_url}?{action_context.querystring}"
-            action_template_context["execution_url"] = execution_url
-            action_template_context["button_attributes"] = flatatt({
-                "type": "button",
-                "class": f"btn btn-sm btn-{action.style} w-full justify-center sm:w-auto",
-                f"hx-{action.method.lower()}": execution_url,
-                "hx-vals": json.dumps({"csrfmiddlewaretoken": get_token(request)})
-                if action.method == "POST" else "{}",
-                "hx-swap": "innerHTML",
-                **(action.button_attrs or {}),
-                "hx-target": action.target or "#data-view-data-section",
-            })
-
-        rendered_actions.append(
-            render_to_string(
-                template_name,
-                action_template_context,
-                request=request,
-            )
+    def execution_url(action_id: str) -> str:
+        """Build a server-action URL scoped to this toolbar's dataview."""
+        url = reverse(
+            "components_dataview_action",
+            kwargs={"content_type_id": action_context.content_type.pk, "action_id": action_id},
         )
+        return with_dataview_context(url, action_context)
+
+    template_context = {**context, "model": action_context.model}
+    for action in get_dataview_actions(action_context.model):
+        if allowed_ids is not None and action.id not in allowed_ids:
+            continue
+        markup = render_action(action, action_context, template_context, execution_url)
+        if not markup:
+            continue
+        if not isinstance(action, DataviewHTMLAction):
+            markup = render_to_string(
+                "components/objects/dataview_actions/action.html",
+                {"action": action, "action_markup": mark_safe(markup)},
+                request=action_context.request,
+            )
+        rendered_actions.append(markup)
 
     return rendered_actions
     
@@ -553,7 +562,8 @@ def dataview(
         create_querystring.pop(key, None)
         export_querystring.pop(key, None)
     create_component_url = None
-    if can_create_dataview_object(_build_dataview_action_context(request, state)):
+    action_context = build_dataview_action_context(request, state)
+    if can_create_dataview_object(action_context):
         create_component_url = reverse(
             "components_create_object", kwargs={"content_type_id": state.content_type.pk}
         )
@@ -607,7 +617,7 @@ def dataview(
         'show_global_pagination': pagination.show_global_pagination,
         'component_id': component_id,
         'component_args' : {**_get_component_args(request), **(component_args or {})},
-        'object_actions' : _get_actions(state.queryset.model),
+        'object_actions' : state.object_actions,
         'view_types' : [vt for vt in DATAVIEW_REGISTRY.values() if vt.available_for_model(state.model)],
         'dataview_options_form': _get_dataview_options_form(
             state,
@@ -623,9 +633,9 @@ def dataview(
         'filters' : state.filters
     }
     context.update(state.context)
+    context["dataview_action_context"] = action_context
     context["rendered_dataview_actions"] = _render_dataview_actions(
-        request,
-        state,
+        action_context,
         context,
         actions,
     )

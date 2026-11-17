@@ -8,6 +8,7 @@ from uuid import UUID
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.db import connection, connections, transaction
 from django.http import HttpResponse
@@ -39,6 +40,12 @@ class TestStartConversationComponent(PhoneDirectoryFixtures, BloomerpComponentTe
     """Verify authenticated creation and revalidation at the selection boundary."""
 
     view_name = "components_im_start_conversation"
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        """Register the detail link used by the phone fixture's dataview rows."""
+        super().setUpClass()
+        cls._register_dynamic_model_routes([cls.PhoneContact])
 
     def select_shared_phone(self, scenario: RequestScenario) -> None:
         """Select a shared line with eligible staff and ineligible assigned accounts."""
@@ -104,6 +111,13 @@ class TestStartConversationComponent(PhoneDirectoryFixtures, BloomerpComponentTe
         fields = phone_fields_for_object(self.normal_user, self.contact)
         self.assertEqual(len(fields), 1)
         scenario.data = {"provider": "phone", "recipient_id": fields[0]["recipient_id"]}
+
+    def prepare_phone_contact_dataview(self, scenario: RequestScenario) -> None:
+        """Open the dataview for a phone-only model with an accessible carrier line."""
+        self.phone_setup()
+        scenario.view_kwargs = {
+            "content_type_id": ContentType.objects.get_for_model(self.PhoneContact).pk,
+        }
 
     def hidden_object_phone(self, scenario: RequestScenario) -> None:
         """Withhold phone fields and verify the detail action does not disclose them."""
@@ -282,6 +296,18 @@ class TestStartConversationComponent(PhoneDirectoryFixtures, BloomerpComponentTe
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Exercise creation, duplicate selection, denied access and request methods."""
         return [
+            RequestScenario(
+                name="Default Contact offers phone chat from the dataview menu",
+                view_name="components_dataview",
+                user=self.normal_user,
+                prepare=self.prepare_phone_contact_dataview,
+                expected=ExpectedResult(response_validators=[
+                    self.contains_text('aria-label="More actions"'),
+                    self.contains_text('hx-target="#im-conversation-host"'),
+                    self.contains_text('name="provider" value="phone"'),
+                    self.contains_text('name="recipient_id"'),
+                ]),
+            ),
             RequestScenario(
                 name="Detail contact action reuses the phone chat component",
                 method="POST", user=self.normal_user, prepare=self.select_object_phone,
