@@ -1,5 +1,6 @@
 """Exercise analytics filtering through the tile-rendering HTTP endpoint."""
 import json
+from collections.abc import Callable
 
 from bs4 import BeautifulSoup
 from django.contrib.contenttypes.models import ContentType
@@ -61,13 +62,16 @@ class TestRenderLayoutItemComponent(BloomerpComponentTestCase):
     def condition(self, value, path='first_name'):
         return FilterCondition(field_path=path, lookup_id='equals', value=value)
 
-    def rendered_names(self, expected):
-        def validate(response):
+    def rendered_names(self, expected: list[str]) -> Callable[[HttpResponse], bool]:
+        """Compare the table's values while ignoring row action menus."""
+        def validate(response: HttpResponse) -> bool:
+            """Require a rendered table with the expected visible field values."""
             soup = BeautifulSoup(response.content, 'html.parser')
             # Rendering errors are returned inside a 200 response: assert the
             # table exists, so an error cannot pass an empty-results tile_scenario.
             self.assertIsNotNone(soup.find('table'), response.content.decode())
-            self.assertCountEqual([text for cell in soup.select('tbody td') if (text := cell.get_text(strip=True))], expected)
+            cells = soup.select("tbody td:not(:has([data-dropdown-panel]))")
+            self.assertCountEqual([text for cell in cells if (text := cell.get_text(strip=True))], expected)
             return True
         return self._named_validator(f'rendered_first_names({expected!r})', validate)
 

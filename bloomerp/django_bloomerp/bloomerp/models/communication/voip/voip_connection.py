@@ -13,6 +13,7 @@ from .base import VoIPModel
 from django.utils.translation import gettext_noop
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models.definition import (
+    get_default_object_actions,
     BloomerpModelConfig,
     DataviewHTMLAction,
     get_default_dataview_actions,
@@ -47,13 +48,13 @@ class VoIPConnection(VoIPModel):
         api_settings=ApiSettings(enable_auto_generation=False),
         activity_log_settings=ActivityLogSettings(enabled=False),
         model_view_settings=ModelViewSettings(
-            dataview_actions=[
+            dataview_actions=lambda model: [
                 DataviewHTMLAction(
                     id="add",
                     template_name="models/voip_connection/add.html",
                     should_render_func=can_create_connection,
                 ),
-                *get_default_dataview_actions(skip=["add"]),
+                *get_default_dataview_actions(model, skip=["add"]),
             ],
             default_dataviews=[
                 TableDataView(
@@ -104,13 +105,14 @@ class VoIPConnection(VoIPModel):
             ],
             skip_views=["files", "document_templates"],
         ),
-        object_actions=[
+        object_actions=lambda model: [
+            *get_default_object_actions(model),
             ObjectAction(
                 id="synchronize_numbers",
                 label=gettext_noop("Synchronize phone numbers"),
                 icon="fa-solid fa-rotate",
-                execution_func=synchronize_numbers,
-                should_render_func=can_change_connection,
+                execution_func=lambda context: synchronize_numbers(context.request, context.object),
+                should_render_func=lambda context: can_change_connection(context.request, context.object),
             ),
         ],
     )

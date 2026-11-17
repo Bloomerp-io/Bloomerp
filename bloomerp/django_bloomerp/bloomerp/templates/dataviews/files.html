@@ -65,7 +65,7 @@
                         <td>{% if file.meta.size != None %}{{ file.meta.size|filesizeformat }}{% else %}—{% endif %}</td>
                         <td>{{ file.datetime_created }}</td>
                         <td>{% for action in file_actions %}
-                            {% render_object_action action=action object=file request=request content_type_id=file_content_type_id %}
+                            {% render_object_action action=action object=file request=request content_type_id=file_content_type_id dataview=dataview_action_context %}
                         {% endfor %}</td>
                     </tr>
                 {% endfor %}

@@ -243,8 +243,11 @@ equivalent object- and field-permission checks for a single-object update.
 
 ## Configured toolbar actions are different
 
-`ModelViewSettings.dataview_actions` controls the actions rendered around a
-model's dataview. A configured `DataviewAction` receives a
+`ModelViewSettings.dataview_actions` accepts an action list or a callable that
+receives the model class. By default, it calls `get_default_dataview_actions`
+with the model when resolving the toolbar. Use a callable to include those
+defaults alongside custom actions, or supply a list to replace the toolbar.
+A configured `DataviewAction` receives a
 `DataviewActionContext` and is executed through:
 
 ```text

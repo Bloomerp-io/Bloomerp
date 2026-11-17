@@ -2,27 +2,31 @@
 import json
 from types import SimpleNamespace
 from unittest.mock import patch
+from urllib.parse import parse_qsl, urlsplit
 
 from bs4 import BeautifulSoup
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.test import RequestFactory
 from django.urls import reverse
 
 from bloomerp.models.access_control.policy import Policy
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.communication.calendar import CalendarEvent
 from bloomerp.models.communication.inbox.inbox import Inbox
+from bloomerp.models.object_actions.create_object import create_object_action
 from bloomerp.models.project_management.initiative import Initiative
 from bloomerp.models.users.user_object_layout_preference import (
     UserObjectLayoutPreference,
 )
 from bloomerp.services.preference_services import PreferenceManager
-from bloomerp.utils.models import get_create_view_url
+from bloomerp.templatetags.bloomerp import render_object_action
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
     RequestScenario,
 )
+from bloomerp.utils.models import get_create_view_url
 
 
 class TestCreateObjectComponentViewComponent(BloomerpComponentTestCase):
@@ -88,6 +92,14 @@ class TestCreateObjectComponentViewComponent(BloomerpComponentTestCase):
             self.does_not_contain_text('#create-object-modal-body'),
         ]
         return [
+            RequestScenario(
+                name="Related create action prefills regular fields and inline rows",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                headers={"hx-request": "true", "hx-target": "bloomerp-general-use-modal-body"},
+                prepare=self.prepare_prefilled_create_action,
+                expected=ExpectedResult(response_validators=[self.related_create_initial]),
+            ),
             RequestScenario(
                 name="Custom create view receives calendar defaults inside the modal",
                 user=self.admin_user,
@@ -241,6 +253,44 @@ class TestCreateObjectComponentViewComponent(BloomerpComponentTestCase):
                 ]),
             ),
         ]
+
+    def prepare_prefilled_create_action(self, scenario: RequestScenario) -> None:
+        """Get the create request from a rendered action on an existing initiative."""
+        source = Initiative.objects.create(name="R&D + Ops")
+        action = create_object_action(
+            Initiative._meta.label,
+            initial=lambda context: {
+                "name": context.object.name,
+                "parent": context.object.pk,
+                "todos__0__title": "First + second",
+                "description": None,
+            },
+        )
+        request_factory = RequestFactory()
+        request = request_factory.get("/")
+        request.user = self.admin_user
+        markup = render_object_action(action, source, request)
+        button = BeautifulSoup(markup, "html.parser").select_one("button[hx-get]")
+        self.assertIsNotNone(button)
+        self.assertEqual(button["bloomerp-open-modal"], "bloomerp-general-use-modal")
+        url = urlsplit(button["hx-get"])
+        self.assertEqual(url.path, reverse(self.view_name, kwargs=scenario.view_kwargs))
+        scenario.query_params = dict(parse_qsl(url.query, keep_blank_values=True))
+        self.assertNotIn("description", scenario.query_params)
+
+        denied_request = request_factory.get("/")
+        denied_request.user = self.normal_user
+        self.assertEqual(render_object_action(action, source, denied_request), "")
+
+    def related_create_initial(self, response: HttpResponse) -> bool:
+        """Check that the create view interpreted the URL's field and inline defaults."""
+        initial = response.context["form"].initial
+        parent = Initiative.objects.get(name="R&D + Ops")
+        return (
+            initial.get("name") == parent.name
+            and initial.get("parent") == str(parent.pk)
+            and initial.get("todos") == [{"title": "First + second"}]
+        )
 
     @staticmethod
     def custom_create(request: HttpRequest) -> HttpResponse:

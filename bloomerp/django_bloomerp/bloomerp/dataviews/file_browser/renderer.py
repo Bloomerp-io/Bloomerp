@@ -211,6 +211,7 @@ class FileBrowserRenderer(BaseDataviewRenderer):
     def render(self, pagination: DataviewPagination | None = None, *, extra_context: dict[str, Any] | None = None) -> str:
         """Render navigation and node actions without exposing legacy folder mutations."""
         from bloomerp.files.access import FileAccessManager
+        from bloomerp.models.definition import get_object_actions
         from bloomerp.models.files.file_node import FileNode
         files, entries = self._visible_entries()
         mode = self.state.request.GET.get("folder_type", getattr(self.options, "folder_type", "virtual"))
@@ -228,7 +229,7 @@ class FileBrowserRenderer(BaseDataviewRenderer):
             "upload_url": reverse("api_assistant_file_upload"),
             "upload_model_label": target._meta.label if target is not None else "",
             "upload_object_id": str(target.pk) if target is not None else "",
-            "file_actions": FileNode.bloomerp_config.object_actions or [],
+            "file_actions": get_object_actions(FileNode, surface="dataview_item"),
             "file_content_type_id": ContentType.objects.get_for_model(FileNode).pk,
         })
         context.update(extra_context or {})

@@ -12,97 +12,100 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import connections, models, router, transaction
 from django.db.models import Model, QuerySet
-from django.http import HttpRequest
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import gettext_noop
 from pydantic import ValidationError as PydanticValidationError
 
-from bloomerp.components.files.items.preview import preview_file
 from bloomerp.dataviews.file_browser.config import FileBrowserDataview
 from bloomerp.files.definition import FileNodeMetaData
 from bloomerp.files.querysets import FileIntegrityQuerySet
 from bloomerp.models import BloomerpModel
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import (
+    get_default_object_actions,
     BloomerpModelConfig,
     ModelViewSettings,
-    ObjectAction,
+    ObjectActionContext,
     ObjectModalAction,
     StringSearchSettings,
     get_default_dataview_actions,
 )
 from bloomerp.models.files.file_reference import FileReference
+from bloomerp.models.object_actions.drawer import drawer_action
 from bloomerp.modules.file_management import FileManagement
 
 
-def _can_view_file_node(request: HttpRequest, file: FileNode) -> bool:
+def _can_view_file_node(context: ObjectActionContext) -> bool:
     """Show the preview action only for readable file nodes with content."""
     from bloomerp.files.access import FileAccessManager
 
-    return FileAccessManager(request.user).can_read_file_node(file)
+    return FileAccessManager(context.request.user).can_read_file_node(context.object)
 
 
-def _can_change_file_node(request: HttpRequest, file: FileNode) -> bool:
+def _can_change_file_node(context: ObjectActionContext) -> bool:
     """Show node-wide rename and move actions only when every usage permits changes."""
     from bloomerp.files.access import FileAccessManager
 
-    return file.kind == "FILE" and FileAccessManager(request.user).can_mutate_file_node(
+    file = context.object
+    return file.kind == "FILE" and FileAccessManager(context.request.user).can_mutate_file_node(
         file
     )
 
 
-def _can_delete_file_node(request: HttpRequest, file: FileNode) -> bool:
+def _can_delete_file_node(context: ObjectActionContext) -> bool:
     """Offer deletion only for unused files whose bytes the requester may remove."""
     from bloomerp.files.access import FileAccessManager
     from bloomerp.permissions.definition import BloomerpPermission
 
+    file = context.object
     return (
         file.kind == "FILE"
         and not file.references.exists()
         and not file.ai_artifacts.exists()
-        and FileAccessManager(request.user).can_mutate_file_node(
+        and FileAccessManager(context.request.user).can_mutate_file_node(
             file, BloomerpPermission.DELETE
         )
     )
 
 
-def _rename_url(file: FileNode) -> str:
+def _rename_url(context: ObjectActionContext) -> str:
     """Resolve the node rename modal."""
-    return reverse("components_files_rename", kwargs={"file_id": file.pk})
+    return reverse("components_files_rename", kwargs={"file_id": context.object.pk})
 
 
-def _move_url(file: FileNode) -> str:
+def _move_url(context: ObjectActionContext) -> str:
     """Resolve the node physical-placement modal."""
-    return reverse("components_files_move", kwargs={"file_id": file.pk})
+    return reverse("components_files_move", kwargs={"file_id": context.object.pk})
 
 
-def _delete_url(file: FileNode) -> str:
+def _delete_url(context: ObjectActionContext) -> str:
     """Resolve the unused node deletion modal."""
-    return reverse("components_files_delete", kwargs={"file_id": file.pk})
+    return reverse("components_files_delete", kwargs={"file_id": context.object.pk})
 
 
-def _email_url(file: FileNode) -> str:
+def _email_url(context: ObjectActionContext) -> str:
     """Open the shared email composer with this file preselected as an attachment."""
-    selection = {"manual": [{"kind": "file", "target_id": str(file.pk)}], "fields": {}}
+    selection = {"manual": [{"kind": "file", "target_id": str(context.object.pk)}], "fields": {}}
     return f"{reverse('components_new_email')}?{urlencode({'object_references': json.dumps(selection)})}"
 
 
-def _prepare_sign_url(file: FileNode) -> str:
+def _prepare_sign_url(context: ObjectActionContext) -> str:
     """Open the reusable signing wizard for this immutable PDF."""
-    return reverse("components_document_signing_wizard", kwargs={"file_id": file.pk})
+    return reverse("components_document_signing_wizard", kwargs={"file_id": context.object.pk})
 
 
-def _can_prepare_sign(request: HttpRequest, file: FileNode) -> bool:
+def _can_prepare_sign(context: ObjectActionContext) -> bool:
     """Offer the signing wizard for readable PDFs when request creation is allowed."""
     from bloomerp.document_signing.access import can_create_request
     from bloomerp.permissions.manager import UserPolicyManager
 
+    file = context.object
     return (
         file.kind == "FILE"
         and file.metadata.extension == "pdf"
-        and _can_view_file_node(request, file)
-        and can_create_request(UserPolicyManager(request.user))
+        and _can_view_file_node(context)
+        and can_create_request(UserPolicyManager(context.request.user))
     )
 
 
@@ -110,17 +113,18 @@ FILE_NODE_CONFIG = BloomerpModelConfig(
     module=FileManagement,
     model_view_settings=ModelViewSettings(
         default_dataviews=[FileBrowserDataview()],
-        dataview_actions=get_default_dataview_actions(skip=["add"]),
+        dataview_actions=lambda model: get_default_dataview_actions(model, skip=["add"]),
     ),
     string_search_settings=StringSearchSettings(string_search_fields=["name"]),
-    object_actions=[
-        ObjectAction(
+    object_actions=lambda model: [
+        *get_default_object_actions(model),
+        drawer_action(
             id="view_file",
             label=gettext_noop("View"),
             should_render_func=_can_view_file_node,
-            execution_func=preview_file,
-            target="#bloomerp-general-use-drawer-body",
-            button_attrs={"bloomerp-open-drawer": "bloomerp-general-use-drawer"},
+            endpoint=lambda context: reverse(
+                "components_preview_file", kwargs={"file_id": context.object.pk},
+            ),
         ),
         ObjectModalAction(
             id="email",

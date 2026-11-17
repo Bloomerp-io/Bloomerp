@@ -8,6 +8,7 @@ from django.http import HttpResponse
 from django.test import RequestFactory
 
 from bloomerp.filters.definition import FilterCondition
+from bloomerp.models.definition import get_object_actions
 from bloomerp.models.workspaces.sql_query import SqlQuery
 from bloomerp.permissions.definition import BloomerpPermission, RowPolicyRuleContent
 from bloomerp.permissions.manager import PolicyManager
@@ -29,7 +30,10 @@ class TestExecuteSqlQueryComponent(BloomerpComponentTestCase):
         """Create a saved read-only query and select its configured Apply action."""
         super().setUp()
         self.saved_query = SqlQuery.objects.create(name="Answer", query="SELECT 42 AS answer;")
-        self.action = SqlQuery.bloomerp_config.object_actions[0]
+        self.action = next(
+            action for action in get_object_actions(SqlQuery, surface="detail")
+            if action.id == "apply_query"
+        )
 
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Exercise modal loading, input validation, and row/field execution permissions."""

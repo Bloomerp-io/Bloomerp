@@ -6,8 +6,7 @@ from bs4 import BeautifulSoup
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db import connection
-from django.db.models import Model
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpResponse
 from django.test.utils import CaptureQueriesContext
 
 from bloomerp.models import (
@@ -17,7 +16,7 @@ from bloomerp.models import (
     RowPolicy,
     RowPolicyRule,
 )
-from bloomerp.models.definition import BloomerpModelConfig, ObjectAction
+from bloomerp.models.definition import BloomerpModelConfig, ObjectAction, ObjectActionContext
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
@@ -137,12 +136,12 @@ class TestKanbanCardMoves(BloomerpComponentTestCase):
         scenario.data = {"kanban_loaded_ids": f"{self.cards[0].pk},{self.cards[3].pk}"}
 
     @staticmethod
-    def empty_action(request: HttpRequest, object: Model) -> HttpResponse | None:
+    def empty_action(context: ObjectActionContext) -> HttpResponse | None:
         """Provide a harmless action callable for inspecting loaded card buttons."""
         return None
 
     @staticmethod
-    def hide_action(request: HttpRequest, object: Model) -> bool:
+    def hide_action(context: ObjectActionContext) -> bool:
         """Represent an action that is unavailable for the current card."""
         return False
 

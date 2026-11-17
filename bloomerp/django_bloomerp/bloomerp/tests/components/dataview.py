@@ -5,7 +5,7 @@ from html import unescape
 
 from bs4 import BeautifulSoup
 from django.db import models
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpResponse
 from django.test import RequestFactory
 from django.urls import reverse
 from django.utils import timezone
@@ -18,10 +18,13 @@ from bloomerp.models import Policy, FieldPolicy, RowPolicy, RowPolicyRule
 from bloomerp.models.definition import (
     BloomerpModelConfig,
     DataviewAction,
+    DataviewActionContext,
     DataviewHTMLAction,
     DataviewModalAction,
     ModelViewSettings,
+    ObjectActionContext,
     ObjectModalAction,
+    get_default_dataview_actions,
     get_model_config,
 )
 from bloomerp.permissions.definition import BloomerpPermission
@@ -36,20 +39,23 @@ from bloomerp.components.objects.dataviews.dataview import (
 from bloomerp.tests.utils.dynamic_models import create_test_models
 
 
-def _execute_test_dataview_action(context) -> HttpResponse:
+def _execute_test_dataview_action(context: DataviewActionContext) -> HttpResponse:
+    """Report the view context received by an executable toolbar action."""
     return HttpResponse(
         f"Executed {context.model.__name__}:{context.querystring}:{context.queryset.count()}"
     )
 
 
-def _test_dataview_modal_endpoint(context) -> str:
+def _test_dataview_modal_endpoint(context: DataviewActionContext) -> str:
+    """Build a context-dependent endpoint for a test modal."""
     return reverse(
         "components_dataview",
         kwargs={"content_type_id": context.content_type.pk},
     )
 
 
-def _deny_test_dataview_action(context) -> bool:
+def _deny_test_dataview_action(context: DataviewActionContext) -> bool:
+    """Hide the configured toolbar action."""
     return False
 
 
@@ -72,16 +78,19 @@ class TestDataView(BaseBloomerpTestCaseWithModels):
         )
         self.addCleanup(delattr, self.CustomerModel, "bloomerp_config")
 
-    def test_model_view_settings_have_independent_default_dataview_actions(self):
+    def test_model_view_settings_have_independent_default_dataview_actions(self) -> None:
         """
         Use case: Create model-view settings without an explicit toolbar override.
-        Expected result: Each instance receives the current six actions in a new list.
+        Expected result: Resolving the default factory returns a new list for the model.
         """
         first_settings = ModelViewSettings()
         second_settings = ModelViewSettings()
+        self.assertIs(first_settings.dataview_actions, get_default_dataview_actions)
+        first = first_settings.dataview_actions(self.CustomerModel)
+        second = second_settings.dataview_actions(self.CustomerModel)
 
         self.assertEqual(
-            [action.id for action in first_settings.dataview_actions],
+            [action.id for action in first],
             [
                 "filter",
                 "add",
@@ -91,10 +100,7 @@ class TestDataView(BaseBloomerpTestCaseWithModels):
                 "select-preference",
             ],
         )
-        self.assertIsNot(
-            first_settings.dataview_actions,
-            second_settings.dataview_actions,
-        )
+        self.assertIsNot(first, second)
 
     def test_default_dataview_actions_preserve_toolbar_and_shortcuts(self):
         """
@@ -161,7 +167,7 @@ class TestDataView(BaseBloomerpTestCaseWithModels):
             html=False,
         )
 
-    def test_dataview_actions_can_replace_default_toolbar(self):
+    def test_dataview_actions_can_replace_default_toolbar(self) -> None:
         """
         Use case: Configure HTML, immediate, and modal actions for a model Dataview.
         Expected result: Only the override renders and each action keeps its shortcut.
@@ -211,17 +217,16 @@ class TestDataView(BaseBloomerpTestCaseWithModels):
         self.assertNotContains(response, 'data-data-view-button="filter"', html=False)
         self.assertContains(response, 'data-data-view-button="custom-export"', html=False)
         self.assertContains(response, 'data-shortcut="mod+7"', html=False)
-        self.assertContains(
-            response,
-            f'hx-post="{execute_url}?first_name=xyz"',
-            html=False,
-        )
+        soup = BeautifulSoup(response.content, "html.parser")
+        button = soup.select_one('[data-data-view-button="run-test"] button[hx-post]')
+        self.assertIsNotNone(button)
+        self.assertTrue(button["hx-post"].startswith(f"{execute_url}?first_name=xyz&_action_preference="))
         self.assertContains(response, 'data-shortcut="mod+8"', html=False)
         self.assertContains(response, f'hx-get="{modal_url}"', html=False)
         self.assertContains(response, 'data-shortcut="mod+9"', html=False)
         self.assertContains(response, 'bloomerp-set-modal-title-to="Test modal"', html=False)
 
-        execute_response = self.client.post(f"{execute_url}?first_name=xyz")
+        execute_response = self.client.post(button["hx-post"])
         self.assertEqual(execute_response.status_code, 200)
         self.assertEqual(
             execute_response.content.decode("utf-8"),
@@ -1309,12 +1314,12 @@ def _calendar_record_label(instance: models.Model) -> str:
     return str(instance.name)
 
 
-def _calendar_object_action_url(obj: models.Model) -> str:
+def _calendar_object_action_url(context: ObjectActionContext) -> str:
     """Return an object-specific modal endpoint without invoking a transport."""
-    return f"/calendar-actions/{obj.pk}/"
+    return f"/calendar-actions/{context.object.pk}/"
 
 
-def _deny_calendar_object_action(request: HttpRequest, obj: models.Model) -> bool:
+def _deny_calendar_object_action(context: ObjectActionContext) -> bool:
     """Keep a denied action out of every calendar representation."""
     return False
 
@@ -1421,7 +1426,7 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
                 for obj in (timed, all_day):
                     event = soup.select_one(f'[data-calendar-event][data-object-id="{obj.pk}"]')
                     self.assertIsNotNone(event)
-                    self.assertIsNotNone(event.select_one(f'[hx-get="{_calendar_object_action_url(obj)}"]'))
+                    self.assertIsNotNone(event.select_one(f'[hx-get="/calendar-actions/{obj.pk}/"]'))
                 self.assertFalse(soup.select("button button"))
         unit_url = reverse("components_dataview_renderer_operation", kwargs={
             "content_type_id": content_type.pk, "preference_id": preference.pk, "action": "unit",
@@ -1430,8 +1435,8 @@ class TestCalendarDataView(BaseBloomerpTestCaseWithModels):
             "calendar_view_mode": "list", "calendar_unit": today.isoformat(), "calendar_unit_offset": 0,
         })
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, _calendar_object_action_url(timed))
-        self.assertContains(response, _calendar_object_action_url(all_day))
+        self.assertContains(response, f"/calendar-actions/{timed.pk}/")
+        self.assertContains(response, f"/calendar-actions/{all_day.pk}/")
         self.assertNotContains(response, "Denied calendar action")
 
     def test_mixed_calendar_pages_exclusive_date_only_ranges(self) -> None:

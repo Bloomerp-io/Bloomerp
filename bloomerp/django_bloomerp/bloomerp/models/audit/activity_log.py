@@ -92,6 +92,7 @@ class ActivityLog(models.Model):
 
     @property
     def summary_string(self) -> str:
+        """Describe the recorded action and its changed fields for the activity feed."""
         action = ActivityLogAction(self.action)
         actor = self.actor or _("System")
         
@@ -102,6 +103,7 @@ class ActivityLog(models.Model):
                 if isinstance(self.payload, list):
                     fields: list[str] = []
                     first_to_value: Any = None
+                    first_has_to_value = False
                     for change in self.payload:
                         if not isinstance(change, dict):
                             continue
@@ -109,12 +111,18 @@ class ActivityLog(models.Model):
                         if field_name:
                             fields.append("'" + str(field_name) + "'")
                             if len(fields) == 1:
+                                first_has_to_value = "to" in change
                                 first_to_value = change.get("to")
 
                     if not fields:
                         return _("%(actor)s changed the object") % {"actor": actor}
 
                     if len(fields) == 1:
+                        if not first_has_to_value:
+                            return _("%(actor)s changed the field %(field)s") % {
+                                "actor": actor,
+                                "field": fields[0],
+                            }
                         return _("%(actor)s changed the field %(field)s to %(value)s") % {
                             "actor": actor,
                             "field": fields[0],

@@ -1,0 +1,16 @@
+{% if submenu %}
+    <c-ui.dropdown.submenu :text="group_name" :icon="group_icon">
+        {% for item in items %}{{ item }}{% endfor %}
+    </c-ui.dropdown.submenu>
+{% else %}
+    <c-ui.dropdown.body
+        :trigger_text="group_label"
+        :trigger_icon_class="group_icon"
+        :trigger_aria_label="group_name"
+        trigger_button_class="btn-secondary"
+        :fixed="True"
+        size="sm"
+    >
+        {% for item in items %}{{ item }}{% endfor %}
+    </c-ui.dropdown.body>
+{% endif %}

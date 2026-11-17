@@ -1,12 +1,8 @@
-{% load i18n bloomerp %}
+{% load bloomerp %}
 {% if object_actions %}
 <div class="ml-auto shrink-0" data-calendar-object-actions data-no-row-click>
-    <c-ui.dropdown.body trigger_icon_class="fa fa-ellipsis" trigger_aria_label="{% translate 'Event actions' %}" size="sm" fixed=True>
-        <div class="flex flex-wrap gap-1 p-1">
-            {% for action in object_actions %}
-                {% render_object_action action=action object=event.object request=request content_type_id=content_type_id %}
-            {% endfor %}
-        </div>
-    </c-ui.dropdown.body>
+    {% for action in object_actions %}
+        {% render_object_action action=action object=event.object request=request content_type_id=content_type_id dataview=dataview_action_context %}
+    {% endfor %}
 </div>
 {% endif %}

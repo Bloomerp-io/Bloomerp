@@ -29,7 +29,7 @@ class VoIPNumber(VoIPModel):
         activity_log_settings=ActivityLogSettings(enabled=False),
         model_view_settings=ModelViewSettings(
             skip_views=["add"],
-            dataview_actions=get_default_dataview_actions(skip=["add"]),
+            dataview_actions=lambda model: get_default_dataview_actions(model, skip=["add"]),
             default_dataviews=[
                 TableDataView(
                     name=gettext_noop("Phone numbers"),

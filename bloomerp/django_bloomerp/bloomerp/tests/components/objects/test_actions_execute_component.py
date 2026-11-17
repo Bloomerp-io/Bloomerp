@@ -1,12 +1,19 @@
+from bs4 import BeautifulSoup
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.db.models import Model
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpResponse, StreamingHttpResponse
 from django.test import RequestFactory
+from django.urls import reverse
 
 from bloomerp.components.files.items.preview import preview_file
 from bloomerp.models import FileNode
-from bloomerp.models.definition import ObjectAction
+from bloomerp.models.definition import (
+    ObjectAction,
+    ObjectActionContext,
+    ObjectActionGrouping,
+    ObjectModalAction,
+    get_object_actions,
+)
 from bloomerp.templatetags.bloomerp import render_object_action
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
@@ -29,7 +36,7 @@ class TestActionsExecuteComponent(
     view_name = "components_objects_actions"
 
     def get_test_scenarios(self) -> list[RequestScenario]:
-        """Verify file previews target the drawer and retain server-side authorization."""
+        """Verify configured execution and direct file previews retain authorization."""
         file = FileNode.objects.create(
             content=SimpleUploadedFile("preview.png", b"image"), kind="FILE"
         )
@@ -52,7 +59,7 @@ class TestActionsExecuteComponent(
                 user=self.normal_user,
                 prepare=self.prepare_denied_action,
                 expected=ExpectedResult(
-                    status_code=403, response_validators=[self.verify_not_queued]
+                    status_code=404, response_validators=[self.verify_not_queued]
                 ),
             ),
             RequestScenario(
@@ -64,28 +71,21 @@ class TestActionsExecuteComponent(
                 ),
             ),
             RequestScenario(
-                name="View action renders preview into shared drawer",
-                method="POST",
+                name="View action loads the preview endpoint",
+                view_name="components_preview_file",
                 user=self.admin_user,
-                view_kwargs=kwargs,
-                expected=ExpectedResult(
-                    response_validators=[
-                        self.contains_text("<img"),
-                        self.header_equals(
-                            "HX-Retarget", "#bloomerp-general-use-drawer-body"
-                        ),
-                    ]
-                ),
+                view_kwargs={"file_id": file.pk},
+                expected=ExpectedResult(response_validators=[self.contains_text("<img")]),
             ),
             RequestScenario(
                 name="View action denies a user without file access",
-                method="POST",
+                view_name="components_preview_file",
                 user=self.normal_user,
-                view_kwargs=kwargs,
+                view_kwargs={"file_id": file.pk},
                 expected=ExpectedResult(status_code=403),
             ),
             RequestScenario(
-                name="GET executes an explicitly configured GET object action",
+                name="GET executes an explicitly configured action inside a group",
                 user=self.admin_user,
                 view_kwargs=kwargs,
                 prepare=self.prepare_get_action,
@@ -104,16 +104,25 @@ class TestActionsExecuteComponent(
         ]
 
     def prepare_get_action(self, scenario: RequestScenario) -> None:
-        """Configure the read-only file preview action to accept GET for one scenario."""
+        """Install an executable GET action under a nested dropdown."""
         actions = [
-            action.model_copy(update={"method": "GET"})
-            if isinstance(action, ObjectAction) and action.id == "view_file" else action
-            for action in FileNode.bloomerp_config.object_actions
+            ObjectActionGrouping(id="more", actions=[
+                ObjectActionGrouping(id="previews", actions=[
+                    ObjectAction(
+                        id="view_file", label="View", method="GET", execution_func=self.preview_action,
+                    ),
+                ]),
+            ]),
         ]
         self.enterContext(patch.object(FileNode.bloomerp_config, "object_actions", actions))
 
     @staticmethod
-    def empty_action(request: HttpRequest, object: Model) -> HttpResponse | None:
+    def preview_action(context: ObjectActionContext) -> HttpResponse | StreamingHttpResponse:
+        """Use the preview view as a contextual callback for the dispatch scenario."""
+        return preview_file(context.request, context.object)
+
+    @staticmethod
+    def empty_action(context: ObjectActionContext) -> HttpResponse | None:
         """Supply a harmless callable for inspecting action button rendering."""
         return None
 
@@ -136,8 +145,8 @@ class TestActionsExecuteComponent(
             render_object_action(action, object, request),
         )
         # 2. Custom attributes are escaped and the explicit target is rendered.
-        action.target = "#drawer-body"
         action.button_attrs = {
+            "hx-target": "#drawer-body",
             "bloomerp-open-drawer": "drawer",
             "title": 'A "quoted" title',
         }
@@ -151,9 +160,42 @@ class TestActionsExecuteComponent(
         self.assertNotIn('hx-post="', markup)
         self.assertNotIn("csrfmiddlewaretoken", markup)
         # 3. The file action uses the preview component directly.
-        self.assertIs(
-            FileNode.bloomerp_config.object_actions[0].execution_func, preview_file
+        preview = next(
+            action for action in get_object_actions(FileNode, surface="detail")
+            if action.id == "view_file"
         )
+        file = FileNode.objects.create(
+            content=SimpleUploadedFile("preview.png", b"image"), kind="FILE",
+        )
+        markup = render_object_action(preview, file, request)
+        url = reverse("components_preview_file", kwargs={"file_id": file.pk})
+        self.assertIn(f'hx-get="{url}"', markup)
+        self.assertIn('hx-target="#bloomerp-general-use-drawer-body"', markup)
+
+    def test_modal_and_icon_only_buttons_render_in_dropdown(self) -> None:
+        """Render a secondary group trigger and honor button attributes inside the menu."""
+        request = RequestFactory().get("/")
+        request.user = self.admin_user
+        obj = self.create_customer("Grouped", "Action", 30)
+        action = ObjectModalAction(
+            id="review", icon="fa fa-eye", endpoint="/review/",
+            modal_title="Review", modal_size="xl",
+            button_attrs={"aria-label": "Review record", "hx-target": "#custom-modal-body"},
+        )
+        html = render_object_action(
+            ObjectActionGrouping(id="more", actions=[action]), obj, request,
+        )
+        self.assertIsInstance(action, ObjectAction)
+        trigger = BeautifulSoup(html, "html.parser").select_one('button[aria-label="More actions"]')
+        self.assertIsNotNone(trigger)
+        self.assertIn("btn-secondary", trigger.get("class", []))
+        self.assertIn('aria-label="Review record"', html)
+        self.assertIn('role="menuitem"', html)
+        self.assertIn('hx-get="/review/"', html)
+        self.assertIn('hx-target="#custom-modal-body"', html)
+        self.assertIn('bloomerp-open-modal="bloomerp-general-use-modal"', html)
+        self.assertIn('bloomerp-set-modal-title-to="Review"', html)
+        self.assertIn('bloomerp-set-modal-size-to="xl"', html)
 
     def prepare_voip_action(self, scenario: RequestScenario) -> None:
         """Use the real generic action endpoint with a deterministic async dispatcher."""

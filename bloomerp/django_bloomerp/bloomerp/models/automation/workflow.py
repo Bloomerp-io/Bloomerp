@@ -7,6 +7,7 @@ from django.utils.translation import gettext_noop
 
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models.definition import (
+    get_default_object_actions,
     BloomerpModelConfig,
     DetailTab,
     DetailTabsConfiguration,
@@ -97,12 +98,14 @@ class Workflow(
                 )
             ]
         ),
-        object_actions=[
+        object_actions=lambda model: [
+            *get_default_object_actions(model),
             ObjectModalAction(
                 id="run_workflow",
                 label=gettext_noop("Run workflow"),
-                endpoint=lambda obj: reverse("components_automation_run_workflow", kwargs={"workflow_id" : obj.id}),
-                modal_title=gettext_noop("Run workflow")
+                endpoint=lambda context: reverse(
+                    "components_automation_run_workflow", kwargs={"workflow_id": context.object.pk}
+                ),
             ),
             
         ],

@@ -29,7 +29,10 @@ def get_transient_attribute(instance: Model) -> Optional[str]:
     return None
 
 def clear_transient_attribute(instance: Model) -> None:
-    if hasattr(instance, TRANSIENT_ATTRIBUTE_NAME):
+    """Discard the pending activity entry and its instance marker."""
+    event_id = get_transient_attribute(instance)
+    if event_id is not None:
+        _data.pop(event_id, None)
         delattr(instance, TRANSIENT_ATTRIBUTE_NAME)
 
 def capture_before_state(instance: Model, event_id: str) -> None:
@@ -74,15 +77,24 @@ def compute_field_changes(instance: Model, event_id: str) -> list[dict[str, Any]
 
 
 @receiver(pre_save)
-def before_save_of_object(sender, instance: Model, **kwargs):
-    manager = ActivityLogManager(instance, current_request())
+def before_save_of_object(
+    sender: type[Model],
+    instance: Model,
+    using: str,
+    update_fields: frozenset[str] | None,
+    **kwargs: Any,
+) -> None:
+    """Stamp the user and prepare an activity entry when the policy permits it."""
+    clear_transient_attribute(instance)
+    manager = ActivityLogManager(instance, current_request(), using=using)
     manager.set_user_stamp()
     
     if not ActivityLogManager.should_record_change(instance._meta.model):
         return
 
     try:
-        manager.set_changes()
+        if not manager.set_changes(update_fields):
+            return
         event_id = set_transient_attribute(instance)
 
         if event_id is not None:
@@ -97,7 +109,10 @@ def before_save_of_object(sender, instance: Model, **kwargs):
     
 
 @receiver(post_save)
-def after_save_of_object(sender, instance: Model, created: bool, **kwargs):
+def after_save_of_object(
+    sender: type[Model], instance: Model, created: bool, **kwargs: Any
+) -> None:
+    """Write the prepared activity after a successful save."""
     id = get_transient_attribute(instance)
     if not id: 
         return
@@ -105,10 +120,6 @@ def after_save_of_object(sender, instance: Model, created: bool, **kwargs):
     try:
         manager = _data[id]
         manager.persist()
-        
-        del _data[id]
-        clear_transient_attribute(instance)
-        
     except Exception:
         logger.exception(
             "Failed to persist activity log for save of %s.%s pk=%s",
@@ -116,16 +127,23 @@ def after_save_of_object(sender, instance: Model, created: bool, **kwargs):
             instance.__class__.__name__,
             instance.pk,
         )
+    finally:
+        clear_transient_attribute(instance)
 
 
 @receiver(pre_delete)
-def before_delete_of_object(sender, instance: Model, **kwargs):
+def before_delete_of_object(
+    sender: type[Model], instance: Model, using: str, **kwargs: Any
+) -> None:
+    """Prepare deletion activity when the policy permits it."""
+    clear_transient_attribute(instance)
     if not ActivityLogManager.should_record_change(instance._meta.model):
         return
 
     try:
-        manager = ActivityLogManager(instance, current_request())
-        manager.set_delete()
+        manager = ActivityLogManager(instance, current_request(), using=using)
+        if not manager.set_delete():
+            return
         event_id = set_transient_attribute(instance)
 
         if event_id is not None:
@@ -140,7 +158,8 @@ def before_delete_of_object(sender, instance: Model, **kwargs):
 
 
 @receiver(post_delete)
-def after_delete_of_object(sender, instance: Model, **kwargs):
+def after_delete_of_object(sender: type[Model], instance: Model, **kwargs: Any) -> None:
+    """Write the prepared activity after a successful deletion."""
     id = get_transient_attribute(instance)
     if not id:
         return
@@ -149,9 +168,6 @@ def after_delete_of_object(sender, instance: Model, **kwargs):
         manager = _data[id]
         manager.persist()
 
-        del _data[id]
-        clear_transient_attribute(instance)
-
     except Exception:
         logger.exception(
             "Failed to persist activity log for delete of %s.%s pk=%s",
@@ -159,6 +175,8 @@ def after_delete_of_object(sender, instance: Model, **kwargs):
             instance.__class__.__name__,
             instance.pk,
         )
+    finally:
+        clear_transient_attribute(instance)
     
 
 

@@ -3,6 +3,7 @@
 
 from unittest.mock import patch
 
+from django.contrib.contenttypes.models import ContentType
 from django.http import HttpResponse
 from django.test import RequestFactory
 from django.urls import reverse
@@ -11,6 +12,7 @@ from bloomerp.models.communication.calendar import CalendarEvent
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.models.communication.inbox.inbox import Inbox
 from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
+from bloomerp.models.definition import ObjectActionContext, get_object_actions
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
@@ -91,22 +93,29 @@ class TestReplyCalendarInvitationComponentViewComponent(InboxCalendarFixtures, B
 
     def test_reply_action_uses_the_modal_and_only_shows_for_active_invitees(self) -> None:
         """Resolve the reply component and hide its action for hosts, strangers, and cancelled invitations."""
-        action = next(action for action in CalendarEvent.bloomerp_config.object_actions if action.id == "reply_invitation")
-        self.assertEqual(action.endpoint(self.timed), reverse("components_calendar_reply", kwargs={"event_id": self.timed.pk}))
+        action = next(
+            action for action in get_object_actions(CalendarEvent, surface="detail")
+            if action.id == "reply_invitation"
+        )
         request = RequestFactory().get("/")
+        context = ObjectActionContext(
+            request=request, object=self.timed, model=CalendarEvent, surface="detail",
+            content_type=ContentType.objects.get_for_model(CalendarEvent),
+        )
+        self.assertEqual(action.endpoint(context), reverse("components_calendar_reply", kwargs={"event_id": self.timed.pk}))
         request.user = self.outsider
-        self.assertTrue(action.should_render_func(request, self.timed))
+        self.assertTrue(action.should_render_func(context))
         request.user = self.owner
-        self.assertFalse(action.should_render_func(request, self.timed))
+        self.assertFalse(action.should_render_func(context))
         request.user = self.normal_user
-        self.assertFalse(action.should_render_func(request, self.timed))
+        self.assertFalse(action.should_render_func(context))
         request.user = self.outsider
         self.timed.cancelled = True
-        self.assertFalse(action.should_render_func(request, self.timed))
+        self.assertFalse(action.should_render_func(context))
         self.timed.cancelled = False
         self.attendance.invitation_cancelled = True
         self.attendance.save()
-        self.assertFalse(action.should_render_func(request, self.timed))
+        self.assertFalse(action.should_render_func(context))
 
 
     def attendance_form(self, response: HttpResponse) -> bool:

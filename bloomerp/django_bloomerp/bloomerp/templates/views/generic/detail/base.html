@@ -125,48 +125,14 @@
 				</div>
 				<div class="flex flex-col xl:min-h-0 xl:flex-1">
 					<div class="flex flex-wrap justify-center gap-2">
-						<button 
-							class="btn btn-secondary btn-sm"
-							data-detail-sidebar-view="activity"
-							hx-get="{% url 'components_activity_log' %}?content_type_id={{ content_type_id }}&object_id={{ object.id }}"
-							hx-target="#object-sidesection"
-							hx-animation	
-							>
-							<i class="fa fa-history"></i>
-							{% blocktrans %}Activity{% endblocktrans %}
-						</button>
-						<button 
-							class="btn btn-secondary btn-sm"
-							data-detail-sidebar-view="comments"
-							hx-get="{% url 'components_comments' content_type_id=content_type_id object_id=object.id %}"
-							hx-target="#object-sidesection"
-							hx-animation	
-							>
-							<i class="fa fa-comments"></i>
-							{% blocktrans %}Comments{% endblocktrans %}
-						</button>
-						{% if model_key != 'todo' and model_key != 'initiative' %}
-						<button 
-							class="btn btn-secondary btn-sm"
-							hx-get="{% url 'components_create_todo_for_object' content_type_id=content_type_id object_id=object.id %}?content_type_id={{ content_type_id }}&object_id={{ object.id }}"
-							hx-target="#detail-todo-modal-body"
-							hx-animation
-							hx-trigger="click"
-							hx-push-url="false"
-							bloomerp-open-modal="detail-todo-modal"	
-							>
-							<i class="fa fa-list-check"></i>
-							{% blocktrans %}Create Todo{% endblocktrans %}
-						</button>
-						{% endif %}
-                        {% include "components/objects/details/contact_actions.html" %}
 						{% for action in object_actions %}
 							{% render_object_action action=action object=object request=request content_type_id=content_type_id %}
 						{% endfor %}
 					</div>
+					{% if detail_sidebar_url %}
 					<div
 						data-detail-sidebar-loader
-						hx-get="{% if detail_sidebar_view == 'comments' %}{% url 'components_comments' content_type_id=content_type_id object_id=object.id %}{% if highlight_comment_id %}?highlight={{ highlight_comment_id|urlencode }}{% endif %}{% else %}{% url 'components_activity_log' %}?content_type_id={{ content_type_id }}&object_id={{ object.id }}{% endif %}"
+						hx-get="{{ detail_sidebar_url }}"
 						hx-target="#object-sidesection" 
 						hx-trigger="load"
 						hx-swap="innerHTML"
@@ -179,22 +145,10 @@
 							</div>
 						</div>
 					</div>
+					{% endif %}
 				</div>
 			</div>
 		</aside>
 	</c-ui.resizable_div>
 	<!--End Side section-->
 </div>
-
-<c-ui.modal 
-	id="detail-todo-modal"
-	title="Create todo"
-></c-ui.modal>
-
-{% if object_email_fields %}
-<c-ui.modal id="detail-email-modal" title="{% translate 'Email' %}" size="xl"></c-ui.modal>
-{% endif %}
-
-{% if object_calendar_fields %}
-<c-ui.modal id="detail-calendar-modal" title="{% translate 'Calendar invite' %}" size="xl"></c-ui.modal>
-{% endif %}

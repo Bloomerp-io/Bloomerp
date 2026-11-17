@@ -4,6 +4,8 @@ from datetime import timedelta
 from django.utils import timezone
 from unittest import skip
 
+from bs4 import BeautifulSoup
+from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model, QuerySet
 from django.http import HttpResponse
@@ -21,6 +23,8 @@ from bloomerp.models.communication.object_label import ObjectLabel
 from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.models.filters.filter import SavedFilter
 from bloomerp.models.project_management.initiative import Initiative
+from bloomerp.models.project_management.todo import Todo
+from bloomerp.models.users.user import User
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.permissions.definition import (
     AccessRule,
@@ -168,6 +172,68 @@ class TestDataviewComponent(BloomerpComponentTestCase):
             "first_name", '<strong class="custom-name">{{ value }}</strong>',
         )(scenario)
 
+    def prepare_contact_rows(self, scenario: RequestScenario) -> None:
+        """Show three users while granting only one row's email field."""
+        rows = {
+            "contact-visible": "visible-contact@example.com",
+            "contact-private": "private-contact@example.com",
+            "contact-empty": "",
+        }
+        for username, email in rows.items():
+            User.objects.create(username=username, email=email)
+        policy = PolicyManager.create_policy(
+            User,
+            field_permissions={"username": ["view"]},
+            row_permissions=[RowPolicyRuleContent(
+                permissions=["view"], connector="OR",
+                conditions=[
+                    FilterCondition(field_path="username", lookup_id="equals", value=username)
+                    for username in rows
+                ],
+            )],
+        )
+        email_policy = PolicyManager.create_policy(
+            User,
+            field_permissions={"email": ["view"]},
+            row_permissions=[RowPolicyRuleContent(
+                permissions=["view"],
+                conditions=[
+                    FilterCondition(field_path="username", lookup_id="equals", value="contact-visible"),
+                ],
+            )],
+        )
+        PolicyManager.assign(policy, self.normal_user)
+        PolicyManager.assign(email_policy, self.normal_user)
+        content_type = ContentType.objects.get_for_model(User)
+        scenario.view_kwargs = {"content_type_id": content_type.pk}
+        preference = PreferenceManager(self.normal_user).get_or_create_selected(
+            UserListViewPreference, {"content_type_id": content_type.pk},
+        )
+        username_field = ApplicationField.get_for_model(User).get(field="username")
+        preference.view_type = "table"
+        preference.set_visible_field_ids("table", [username_field.pk])
+        preference.save(update_fields=["display_fields", "view_type"])
+
+    def renders_only_one_contact_menu(self, response: HttpResponse) -> bool:
+        """Hide the dropdown on rows with empty or unreadable contact details."""
+        return response.content.count(b'aria-label="More actions"') == 1
+
+    def prepare_contact_with_todo_permission(self, scenario: RequestScenario) -> None:
+        """Grant Todo creation while retaining the fixture's row-specific email permissions."""
+        self.prepare_contact_rows(scenario)
+        self.normal_user.user_permissions.add(Permission.objects.get(
+            content_type=ContentType.objects.get_for_model(Todo), codename="add_todo",
+        ))
+
+    def groups_create_todo_and_contact(self, response: HttpResponse) -> bool:
+        """Require Create Todo and the contact composer to share one row dropdown."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        return any(
+            menu.select_one('button[role="menuitem"][bloomerp-open-modal="detail-todo-modal"]')
+            and menu.select_one('button[hx-get*="email_field=email"]')
+            for menu in soup.select("[data-dropdown-panel]")
+        )
+
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Exercise rendering, filtering, and permission-aware field choices."""
         for i in range(10):
@@ -214,6 +280,27 @@ class TestDataviewComponent(BloomerpComponentTestCase):
 
 
         request_scenarios += [
+            RequestScenario(
+                name="Default Contact uses row-specific access even when the field is outside the table columns",
+                user=self.normal_user,
+                prepare=self.prepare_contact_rows,
+                expected=ExpectedResult(response_validators=[
+                    self.contains_text("contact-private"),
+                    self.contains_text("contact-empty"),
+                    self.contains_text("visible-contact@example.com"),
+                    self.does_not_contain_text("private-contact@example.com"),
+                    self.contains_text('hx-target="#bloomerp-general-use-modal-body"'),
+                    self.does_not_contain_text("data-detail-sidebar-view"),
+                    self.does_not_contain_text('bloomerp-open-modal="detail-todo-modal"'),
+                    self.renders_only_one_contact_menu,
+                ]),
+            ),
+            RequestScenario(
+                name="Default actions put Create Todo and Contact in the same dataview menu",
+                user=self.normal_user,
+                prepare=self.prepare_contact_with_todo_permission,
+                expected=ExpectedResult(response_validators=self.groups_create_todo_and_contact),
+            ),
             RequestScenario(
                 name="RENDERING: Application field overrides ordinary numeric rendering",
                 user=self.admin_user,

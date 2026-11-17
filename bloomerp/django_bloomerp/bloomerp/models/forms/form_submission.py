@@ -1,11 +1,12 @@
 from django.db import models
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpResponse
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import gettext_noop
 
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models import BloomerpModel
 from bloomerp.models.definition import (
+    get_default_object_actions,
     BloomerpModelConfig,
     DetailViewSettings,
     FieldLayout,
@@ -13,12 +14,26 @@ from bloomerp.models.definition import (
     LayoutRow,
     ModelViewSettings,
     ObjectAction,
+    ObjectActionContext,
 )
+from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.utils.requests import render_message
 
 
-def execute_persist(request:HttpRequest, obj:"FormSubmission") -> HttpResponse:
+def _can_persist(context: ObjectActionContext) -> bool:
+    """Offer persistence to users allowed to change the pending submission."""
+    from bloomerp.permissions.manager import UserPolicyManager
+
+    return not context.object.persisted and UserPolicyManager(
+        context.request.user,
+    ).has_access_to_object(context.object, BloomerpPermission.CHANGE)
+
+
+def execute_persist(context: ObjectActionContext) -> HttpResponse:
+    """Persist a reviewed form submission and report the result."""
     from bloomerp.services.form_services import FormManager
+
+    request, obj = context.request, context.object
     if obj.persisted:
         return render_message(
             request,
@@ -68,12 +83,13 @@ class FormSubmission(BloomerpModel):
                 ]
             )],
         ),
-        object_actions=[
+        object_actions=lambda model: [
+            *get_default_object_actions(model),
             ObjectAction(
                 id="persist",
                 label=gettext_noop("Persist"),
                 execution_func=execute_persist,
-                should_render_func=lambda req, obj: obj.persisted == False
+                should_render_func=_can_persist,
             )
         ]
     )
