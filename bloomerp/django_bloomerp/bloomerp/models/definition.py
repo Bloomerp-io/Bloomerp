@@ -489,12 +489,17 @@ DataviewActionGrouping.model_rebuild()
 
 def iter_object_actions(
     actions: Sequence[ObjectActionDefinition],
+    *,
+    include_group: Callable[[ObjectActionGrouping], bool] | None = None,
 ) -> Iterator[ObjectActionDefinition]:
-    """Yield actions and their group members in display order."""
+    """Yield actions in display order, skipping groups excluded by the predicate."""
     for action in actions:
+        is_group = isinstance(action, ObjectActionGrouping)
+        if is_group and include_group is not None and not include_group(action):
+            continue
         yield action
-        if isinstance(action, ObjectActionGrouping):
-            yield from iter_object_actions(action.actions)
+        if is_group:
+            yield from iter_object_actions(action.actions, include_group=include_group)
 
 
 def get_object_actions(

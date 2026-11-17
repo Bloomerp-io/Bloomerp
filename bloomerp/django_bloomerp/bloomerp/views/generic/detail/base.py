@@ -10,6 +10,7 @@ from bloomerp.models.definition import (
     ObjectAction,
     ObjectActionContext,
     ObjectActionDefinition,
+    ObjectActionGrouping,
     get_object_actions,
     iter_object_actions,
 )
@@ -146,8 +147,14 @@ class BaseBloomerpDetailView(BaseBloomerpView, BloomerpModelContextMixin, Detail
             request=self.request, model=self.model, content_type=content_type,
             object=self.object, surface="detail",
         )
+
+        def group_is_visible(group: ObjectActionGrouping) -> bool:
+            """Check group visibility in the same detail context as its actions."""
+            return action_is_visible(group, action_context)
+
         sidebar_actions = {
-            action.id: action for action in iter_object_actions(actions)
+            action.id: action
+            for action in iter_object_actions(actions, include_group=group_is_visible)
             if isinstance(action, ObjectAction) and action.id in {"activity", "comments"}
             and action.endpoint and action_is_visible(action, action_context)
         }

@@ -26,7 +26,13 @@ from bloomerp.models.audit.activity_log import (
     ActivityLogAction,
     ActivityLogSource,
 )
-from bloomerp.models.definition import BloomerpModelConfig
+from bloomerp.models.definition import (
+    BloomerpModelConfig,
+    ObjectActionContext,
+    ObjectActionGrouping,
+)
+from bloomerp.models.object_actions.activity import activity_action
+from bloomerp.models.object_actions.comments import comments_action
 from bloomerp.models.project_management import Initiative, Todo
 from bloomerp.models.users.user import DetailSidebarViewPreference, User
 from bloomerp.models.users.user_object_layout_preference import (
@@ -201,6 +207,19 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
                 view_kwargs=customer_kwargs,
                 prepare=self.reset_sidebar_preference,
                 expected=ExpectedResult(response_validators=self.activity_sidebar_is_selected),
+            ),
+            ModelRequestScenario(
+                name="Comment deep link falls back to a visible grouped action",
+                model=self.CustomerModel,
+                user=self.admin_user,
+                view_kwargs=customer_kwargs,
+                query_params={"sidebar": "comments", "comment": "17"},
+                prepare=self.group_sidebar_actions,
+                expected=ExpectedResult(response_validators=[
+                    self.activity_sidebar_is_selected,
+                    self.does_not_contain_text('data-detail-sidebar-view="comments"'),
+                    self.does_not_contain_text('data-force-open="true"'),
+                ]),
             ),
             ModelRequestScenario(
                 name="Object defaults can disable sidebar controls and the loader",
@@ -534,6 +553,28 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
             str(self.fields_by_name["first_name"].pk) in item_ids
             and str(self.deleted_field_id) not in item_ids
         )
+
+    def group_sidebar_actions(self, _scenario: ModelRequestScenario) -> None:
+        """Put Comments below a hidden ancestor and Activity in a visible group."""
+        config = BloomerpModelConfig(object_actions=[
+            ObjectActionGrouping(
+                id="activity-group",
+                actions=[activity_action()],
+            ),
+            ObjectActionGrouping(
+                id="hidden-group",
+                should_render_func=self.hide_sidebar_group,
+                actions=[ObjectActionGrouping(id="comments-group", actions=[comments_action()])],
+            ),
+        ])
+        self.enterContext(patch.object(
+            self.CustomerModel, "bloomerp_config", config, create=True,
+        ))
+
+    @staticmethod
+    def hide_sidebar_group(_context: ObjectActionContext) -> bool:
+        """Make the fixture's enclosing sidebar group unavailable."""
+        return False
 
     def disable_default_actions(self, scenario: ModelRequestScenario) -> None:
         """Disable built-ins on the fixture model for this request."""
