@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-02 10:55+0000\n"
+"POT-Creation-Date: 2026-11-17 12:54+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: de\n"
@@ -591,37 +591,37 @@ msgid "Action does not exist."
 msgstr "Die Aktion ist nicht vorhanden."
 
 # | msgid "Activity logging is not enabled for this model."
-#: form_behaviors/execution.py:333
+#: form_behaviors/execution.py:335
 msgid "Action is not applicable to this listener."
 msgstr "Die Aktion ist auf diesen Listener nicht anwendbar."
 
 # | msgid "Activity logging is not enabled for this model."
-#: form_behaviors/execution.py:351
+#: form_behaviors/execution.py:353
 msgid "Action is not applicable to this target."
 msgstr "Die Aktion ist auf dieses Ziel nicht anwendbar."
 
-#: form_behaviors/execution.py:377
+#: form_behaviors/execution.py:379
 msgid "Action must return a BehaviorResult."
 msgstr "Die Aktion muss ein BehaviorResult zurückgeben."
 
 # | msgid "Editor occurrences require a field."
-#: form_behaviors/execution.py:342
+#: form_behaviors/execution.py:344
 msgid "Action requires a target field."
 msgstr "Für die Aktion ist ein Zielfeld erforderlich."
 
-#: form_behaviors/execution.py:382
+#: form_behaviors/execution.py:384
 msgid "Action result collections must be tuples."
 msgstr "Sammlungen von Aktionsergebnissen müssen Tupel sein."
 
-#: form_behaviors/execution.py:425
+#: form_behaviors/execution.py:427
 msgid "Action returned an invalid message."
 msgstr "Die Aktion hat eine ungültige Nachricht zurückgegeben."
 
-#: form_behaviors/execution.py:416
+#: form_behaviors/execution.py:418
 msgid "Action returned an invalid state target."
 msgstr "Die Aktion hat ein ungültiges Statusziel zurückgegeben."
 
-#: form_behaviors/execution.py:391
+#: form_behaviors/execution.py:393
 msgid "Action returned an undeclared value target."
 msgstr "Die Aktion hat ein nicht deklariertes Wertziel zurückgegeben."
 
@@ -1417,6 +1417,12 @@ msgid "Back to editor"
 msgstr "Zurück zum Editor"
 
 # | msgid "Back to chat"
+#: templates/components/pages/panel.html:15
+#, fuzzy
+msgid "Back to page"
+msgstr "Zurück zum Chat"
+
+# | msgid "Back to chat"
 #: templates/components/communication/messaging_panel.html:12
 msgid "Back to search"
 msgstr "Zurück zur Suche"
@@ -1627,7 +1633,7 @@ msgid "Business line"
 msgstr "Geschäftsanschluss"
 
 #: bloomerp.imconversation.voip_number bloomerp.phonecall.number
-#: communication/builtins/instant_messaging/builtins/phone.py:342
+#: communication/builtins/instant_messaging/builtins/phone.py:370
 #: communication/builtins/voip/actions.py:168
 #: models/communication/instant_messaging/im_conversation.py:28
 #: models/communication/voip/phone_call.py:28
@@ -1718,6 +1724,14 @@ msgstr "Kalenderereignisse"
 msgid "Calendar inboxes"
 msgstr "Kalender-Postfächer"
 
+# | msgid "Calendar"
+# | msgid "Calendar inboxes"
+#: templates/components/objects/details/contact_actions.html:39
+#: templates/views/generic/detail/base.html:199
+#, fuzzy
+msgid "Calendar invite"
+msgstr "Kalender-Postfächer"
+
 # | msgid "Calendar Uid"
 #: dataviews/calendar/config.py:92
 msgid "Calendar period"
@@ -1784,7 +1798,8 @@ msgstr "Kamera aus"
 # | msgid "Canceled"
 #: templates/components/document_signing/prepare_sign.html:33
 #: templates/components/document_signing/send_signature_request.html:67
-#: templates/cotton/features/agent/body.html:85 templates/widgets/drawn_signature.html:19
+#: templates/components/pages/editor.html:50 templates/cotton/features/agent/body.html:85
+#: templates/widgets/drawn_signature.html:19
 msgid "Cancel"
 msgstr "Abbrechen"
 
@@ -2192,9 +2207,14 @@ msgid "Clone row"
 msgstr "Zeile klonen"
 
 # | msgid "Closes At"
-#: templates/views/base.html:79
+#: templates/views/base.html:80
 msgid "Close"
 msgstr "Schließen"
+
+#: templates/components/pages/panel.html:6
+#, fuzzy
+msgid "Close Pages scratchpad"
+msgstr "Seiten-Notizbereich schließen"
 
 #: templates/cotton/features/agent/body.html:45
 msgid "Close assistant"
@@ -2256,7 +2276,7 @@ msgstr "Sammeln"
 msgid "Collection columns must be used inside an aggregation."
 msgstr "Sammlungsspalten müssen innerhalb einer Aggregation verwendet werden."
 
-#: form_behaviors/execution.py:216
+#: form_behaviors/execution.py:218
 msgid "Collections require at most 1000 row objects."
 msgstr "Sammlungen dürfen höchstens 1000 Zeilenobjekte enthalten."
 
@@ -2326,17 +2346,18 @@ msgstr "Kommentar-Detail-Weiterleitung"
 #: bloomerp.immessage.comments bloomerp.immessageattachment.comments
 #: bloomerp.immessagereaction.comments bloomerp.imthreadreadposition.comments
 #: bloomerp.inboxfolder.comments bloomerp.inboxitem.comments bloomerp.initiative.comments
-#: bloomerp.mcpconnection.comments bloomerp.mcpintegration.comments bloomerp.phonecall.comments
-#: bloomerp.phonecallevent.comments bloomerp.savedfilter.comments bloomerp.signatureartifact.comments
-#: bloomerp.signatureevent.comments bloomerp.signaturelayout.comments
-#: bloomerp.signaturelayoutfield.comments bloomerp.signaturelayoutrole.comments
-#: bloomerp.signaturepreparation.comments bloomerp.signaturepreparationfield.comments
-#: bloomerp.signaturepreparationrole.comments bloomerp.signaturerecipient.comments
-#: bloomerp.signaturerequest.comments bloomerp.signaturerequestfield.comments
-#: bloomerp.sqlquery.comments bloomerp.tile.comments bloomerp.todo.comments
-#: bloomerp.user.detail_sidebar_view_preference bloomerp.userinboxpreference.comments
-#: bloomerp.voipconnection.comments bloomerp.voipnumber.comments models/communication/comment.py:20
-#: models/users/user.py:92 templates/views/generic/detail/base.html:146
+#: bloomerp.mcpconnection.comments bloomerp.mcpintegration.comments bloomerp.page.comments
+#: bloomerp.phonecall.comments bloomerp.phonecallevent.comments bloomerp.savedfilter.comments
+#: bloomerp.signatureartifact.comments bloomerp.signatureevent.comments
+#: bloomerp.signaturelayout.comments bloomerp.signaturelayoutfield.comments
+#: bloomerp.signaturelayoutrole.comments bloomerp.signaturepreparation.comments
+#: bloomerp.signaturepreparationfield.comments bloomerp.signaturepreparationrole.comments
+#: bloomerp.signaturerecipient.comments bloomerp.signaturerequest.comments
+#: bloomerp.signaturerequestfield.comments bloomerp.sqlquery.comments bloomerp.tile.comments
+#: bloomerp.todo.comments bloomerp.user.detail_sidebar_view_preference
+#: bloomerp.userinboxpreference.comments bloomerp.voipconnection.comments bloomerp.voipnumber.comments
+#: models/communication/comment.py:20 models/users/user.py:92
+#: templates/views/generic/detail/base.html:146
 msgid "Comments"
 msgstr "Kommentare"
 
@@ -2410,11 +2431,11 @@ msgstr "Das Bedingungsfeld ist in diesem Layout nicht vorhanden."
 
 # | msgid "No workflow graph was available for this execution."
 # | msgid "Sending is unavailable for this conversation."
-#: form_behaviors/execution.py:261
+#: form_behaviors/execution.py:263
 msgid "Condition field is unavailable in this draft."
 msgstr "Das Bedingungsfeld ist in diesem Entwurf nicht verfügbar."
 
-#: form_behaviors/execution.py:265
+#: form_behaviors/execution.py:267
 msgid "Condition lookup cannot evaluate draft values."
 msgstr "Die Bedingungsabfrage kann Entwurfswerte nicht auswerten."
 
@@ -2663,9 +2684,15 @@ msgstr "Beigetreten am"
 msgid "Consumed Message Sequence"
 msgstr "Verbrauchte Nachrichtenfolge"
 
+# | msgid "Content"
+#: templates/components/objects/details/contact_actions.html:3
+#, fuzzy
+msgid "Contact"
+msgstr "Inhalt"
+
 #: bloomerp.calendarevent.content bloomerp.comment.content bloomerp.filenode.content
-#: bloomerp.todo.content models/communication/calendar/calendar_event.py:212
-#: models/communication/comment.py:42 models/project_management/todo.py:392
+#: bloomerp.page.content bloomerp.todo.content models/communication/calendar/calendar_event.py:212
+#: models/communication/comment.py:42 models/files/page.py:117 models/project_management/todo.py:392
 msgid "Content"
 msgstr "Inhalt"
 
@@ -2830,6 +2857,13 @@ msgstr "Aktionen zum Kopieren verknüpfter Zeilen erfordern ein Quellfeld."
 #: models/document_templates/document_template.py:139 models/forms/form.py:54
 msgid "Core Details"
 msgstr "Details"
+
+# | msgid "Could not load attachments. Please try again."
+# | msgid "Could not load messages. Please try again."
+#: templates/components/pages/editor.html:48
+#, fuzzy
+msgid "Could not delete this page. Please try again."
+msgstr "Nachrichten konnten nicht geladen werden. Bitte versuchen Sie es erneut."
 
 #: templates/cotton/features/agent/body.html:116
 msgid "Could not load attachments. Please try again."
@@ -3063,15 +3097,16 @@ msgstr "Erstellen"
 #: bloomerp.immessageattachment.created_by bloomerp.immessagereaction.created_by
 #: bloomerp.imthreadreadposition.created_by bloomerp.inboxfolder.created_by
 #: bloomerp.inboxitem.created_by bloomerp.initiative.created_by bloomerp.label.created_by
-#: bloomerp.mcpconnection.created_by bloomerp.mcpintegration.created_by bloomerp.phonecall.created_by
-#: bloomerp.phonecallevent.created_by bloomerp.policy.created_by bloomerp.savedfilter.created_by
-#: bloomerp.signatureartifact.created_by bloomerp.signatureevent.created_by
-#: bloomerp.signaturelayout.created_by bloomerp.signaturelayoutfield.created_by
-#: bloomerp.signaturelayoutrole.created_by bloomerp.signaturepreparation.created_by
-#: bloomerp.signaturepreparationfield.created_by bloomerp.signaturepreparationrole.created_by
-#: bloomerp.signaturerecipient.created_by bloomerp.signaturerequest.created_by
-#: bloomerp.signaturerequestfield.created_by bloomerp.sqlquery.created_by bloomerp.tile.created_by
-#: bloomerp.todo.created_by bloomerp.userinboxpreference.created_by bloomerp.voipconnection.created_by
+#: bloomerp.mcpconnection.created_by bloomerp.mcpintegration.created_by bloomerp.page.created_by
+#: bloomerp.phonecall.created_by bloomerp.phonecallevent.created_by bloomerp.policy.created_by
+#: bloomerp.savedfilter.created_by bloomerp.signatureartifact.created_by
+#: bloomerp.signatureevent.created_by bloomerp.signaturelayout.created_by
+#: bloomerp.signaturelayoutfield.created_by bloomerp.signaturelayoutrole.created_by
+#: bloomerp.signaturepreparation.created_by bloomerp.signaturepreparationfield.created_by
+#: bloomerp.signaturepreparationrole.created_by bloomerp.signaturerecipient.created_by
+#: bloomerp.signaturerequest.created_by bloomerp.signaturerequestfield.created_by
+#: bloomerp.sqlquery.created_by bloomerp.tile.created_by bloomerp.todo.created_by
+#: bloomerp.userinboxpreference.created_by bloomerp.voipconnection.created_by
 #: bloomerp.voipnumber.created_by bloomerp.workflow.created_by bloomerp.workflownode.created_by
 #: models/mixins/user_stamp_model_mixin.py:20
 msgid "Created By"
@@ -3232,12 +3267,13 @@ msgstr "Datums-/Zeitfeld"
 #: bloomerp.immessagereaction.datetime_created bloomerp.imthreadreadposition.datetime_created
 #: bloomerp.inboxfolder.datetime_created bloomerp.inboxitem.datetime_created
 #: bloomerp.initiative.datetime_created bloomerp.mcpconnection.datetime_created
-#: bloomerp.mcpintegration.datetime_created bloomerp.phonecall.datetime_created
-#: bloomerp.phonecallevent.datetime_created bloomerp.policy.datetime_created
-#: bloomerp.savedfilter.datetime_created bloomerp.signatureartifact.datetime_created
-#: bloomerp.signatureevent.datetime_created bloomerp.signaturelayout.datetime_created
-#: bloomerp.signaturelayoutfield.datetime_created bloomerp.signaturelayoutrole.datetime_created
-#: bloomerp.signaturepreparation.datetime_created bloomerp.signaturepreparationfield.datetime_created
+#: bloomerp.mcpintegration.datetime_created bloomerp.page.datetime_created
+#: bloomerp.phonecall.datetime_created bloomerp.phonecallevent.datetime_created
+#: bloomerp.policy.datetime_created bloomerp.savedfilter.datetime_created
+#: bloomerp.signatureartifact.datetime_created bloomerp.signatureevent.datetime_created
+#: bloomerp.signaturelayout.datetime_created bloomerp.signaturelayoutfield.datetime_created
+#: bloomerp.signaturelayoutrole.datetime_created bloomerp.signaturepreparation.datetime_created
+#: bloomerp.signaturepreparationfield.datetime_created
 #: bloomerp.signaturepreparationrole.datetime_created bloomerp.signaturerecipient.datetime_created
 #: bloomerp.signaturerequest.datetime_created bloomerp.signaturerequestfield.datetime_created
 #: bloomerp.sqlquery.datetime_created bloomerp.tile.datetime_created bloomerp.todo.datetime_created
@@ -3279,12 +3315,13 @@ msgstr "Empfangsdatum/-uhrzeit"
 #: bloomerp.immessagereaction.datetime_updated bloomerp.imthreadreadposition.datetime_updated
 #: bloomerp.inboxfolder.datetime_updated bloomerp.inboxitem.datetime_updated
 #: bloomerp.initiative.datetime_updated bloomerp.mcpconnection.datetime_updated
-#: bloomerp.mcpintegration.datetime_updated bloomerp.phonecall.datetime_updated
-#: bloomerp.phonecallevent.datetime_updated bloomerp.policy.datetime_updated
-#: bloomerp.savedfilter.datetime_updated bloomerp.signatureartifact.datetime_updated
-#: bloomerp.signatureevent.datetime_updated bloomerp.signaturelayout.datetime_updated
-#: bloomerp.signaturelayoutfield.datetime_updated bloomerp.signaturelayoutrole.datetime_updated
-#: bloomerp.signaturepreparation.datetime_updated bloomerp.signaturepreparationfield.datetime_updated
+#: bloomerp.mcpintegration.datetime_updated bloomerp.page.datetime_updated
+#: bloomerp.phonecall.datetime_updated bloomerp.phonecallevent.datetime_updated
+#: bloomerp.policy.datetime_updated bloomerp.savedfilter.datetime_updated
+#: bloomerp.signatureartifact.datetime_updated bloomerp.signatureevent.datetime_updated
+#: bloomerp.signaturelayout.datetime_updated bloomerp.signaturelayoutfield.datetime_updated
+#: bloomerp.signaturelayoutrole.datetime_updated bloomerp.signaturepreparation.datetime_updated
+#: bloomerp.signaturepreparationfield.datetime_updated
 #: bloomerp.signaturepreparationrole.datetime_updated bloomerp.signaturerecipient.datetime_updated
 #: bloomerp.signaturerequest.datetime_updated bloomerp.signaturerequestfield.datetime_updated
 #: bloomerp.sqlquery.datetime_updated bloomerp.tile.datetime_updated bloomerp.todo.datetime_updated
@@ -3456,7 +3493,9 @@ msgstr "Legen Sie fest, was dieses Formular tun soll, wenn sich der Feldwert än
 
 #: bloomerp.activitylog.action components/files/actions/delete_file.py:36
 #: models/audit/activity_log.py:28 models/files/file_node.py:149
-#: templates/views/generic/detail/delete.html:61 templates/views/workflows/builder.html:54
+#: templates/components/pages/editor.html:10 templates/components/pages/editor.html:11
+#: templates/components/pages/editor.html:51 templates/views/generic/detail/delete.html:61
+#: templates/views/workflows/builder.html:54
 msgid "Delete"
 msgstr "Löschen"
 
@@ -3486,6 +3525,11 @@ msgstr "Datei löschen"
 #: templates/components/preferences/select.html:41
 msgid "Delete preference"
 msgstr "Einstellung löschen"
+
+#: templates/components/pages/editor.html:47
+#, fuzzy
+msgid "Delete this page? This cannot be undone."
+msgstr "Diese Seite löschen? Dies kann nicht rückgängig gemacht werden."
 
 #: templates/components/forms/initial_data_row.html:46
 msgid "Delete value"
@@ -3595,7 +3639,7 @@ msgctxt "bloomerp:route:name"
 msgid "Details"
 msgstr "Details"
 
-#: communication/builtins/instant_messaging/builtins/phone.py:366
+#: communication/builtins/instant_messaging/builtins/phone.py:394
 msgid "Dial"
 msgstr "Anrufen"
 
@@ -4015,7 +4059,9 @@ msgstr "Aufwand"
 #: bloomerp.signaturerecipient.email bloomerp.signaturerequestfield.field_type
 #: models/communication/calendar/calendar_booking_submission.py:66
 #: models/document_signing/definition.py:128 models/document_signing/signature_recipient.py:39
-#: models/files/file_node.py:127 models/users/user.py:176 templates/views/generic/detail/base.html:163
+#: models/files/file_node.py:127 models/users/user.py:176
+#: templates/components/objects/details/contact_actions.html:6
+#: templates/views/generic/detail/base.html:195
 msgid "Email"
 msgstr "E-Mail"
 
@@ -4312,7 +4358,7 @@ msgid "Enter an ISO calendar date."
 msgstr "Geben Sie ein ISO-Kalenderdatum ein."
 
 # | msgid "Enter an international phone number."
-#: communication/builtins/instant_messaging/builtins/phone.py:202
+#: communication/builtins/instant_messaging/builtins/phone.py:230
 #: communication/builtins/voip/actions.py:158
 msgid "Enter an international phone number including the country code."
 msgstr "Geben Sie eine internationale Telefonnummer einschließlich der Landesvorwahl ein."
@@ -4634,7 +4680,7 @@ msgstr "Feld '%(field)s' erfordert einen Skalarwert."
 
 # | msgid "No workflow graph was available for this execution."
 # | msgid "Sending is unavailable for this conversation."
-#: form_behaviors/execution.py:280
+#: form_behaviors/execution.py:282
 #, python-format
 msgid "Field '%(field_name)s' is unavailable in this draft."
 msgstr "Feld '%(field_name)s' ist in diesem Entwurf nicht verfügbar."
@@ -4843,9 +4889,9 @@ msgstr "Dateiname"
 #: bloomerp.imidentitysource.files bloomerp.immessage.files bloomerp.immessageattachment.files
 #: bloomerp.immessagereaction.files bloomerp.imthreadreadposition.files bloomerp.inboxfolder.files
 #: bloomerp.inboxitem.files bloomerp.initiative.files bloomerp.mcpconnection.files
-#: bloomerp.mcpintegration.files bloomerp.phonecall.files bloomerp.phonecallevent.files
-#: bloomerp.savedfilter.files bloomerp.signatureartifact.files bloomerp.signatureevent.files
-#: bloomerp.signaturelayout.files bloomerp.signaturelayoutfield.files
+#: bloomerp.mcpintegration.files bloomerp.page.files bloomerp.phonecall.files
+#: bloomerp.phonecallevent.files bloomerp.savedfilter.files bloomerp.signatureartifact.files
+#: bloomerp.signatureevent.files bloomerp.signaturelayout.files bloomerp.signaturelayoutfield.files
 #: bloomerp.signaturelayoutrole.files bloomerp.signaturepreparation.files
 #: bloomerp.signaturepreparationfield.files bloomerp.signaturepreparationrole.files
 #: bloomerp.signaturerecipient.files bloomerp.signaturerequest.files
@@ -5105,8 +5151,9 @@ msgid "Generate"
 msgstr "Generieren"
 
 #: bloomerp.workflownode.sub_type
+#, fuzzy
 msgid "Generate PDF"
-msgstr "PDF generieren"
+msgstr "PDF erstellen"
 
 msgctxt "bloomerp:route:name"
 msgid "Generate PDF"
@@ -5235,7 +5282,8 @@ msgid "Group settings"
 msgstr "Gruppeneinstellungen"
 
 #: bloomerp.aiagentaccess.groups bloomerp.policy.groups models/access_control/policy.py:134
-#: models/agents/ai_agent_access.py:107
+#: models/agents/ai_agent_access.py:107 services/page_services.py:49
+#: templates/components/pages/editor.html:26
 msgid "Groups"
 msgstr "Gruppen"
 
@@ -5374,19 +5422,20 @@ msgstr "Ich stimme zu, dieses Dokument elektronisch zu unterschreiben."
 #: bloomerp.inboxfolder.id bloomerp.inboxitem.id bloomerp.initiative.id bloomerp.label.id
 #: bloomerp.mcpconnection.id bloomerp.mcpintegration.id bloomerp.mention.id
 #: bloomerp.oauthaccesstoken.id bloomerp.oauthauthorizationcode.id bloomerp.objectlabel.id
-#: bloomerp.phonecall.id bloomerp.phonecallevent.id bloomerp.policy.id bloomerp.rowpolicy.id
-#: bloomerp.rowpolicyrule.id bloomerp.rowpolicyrulepermission.id bloomerp.savedfilter.id
-#: bloomerp.sidebar.id bloomerp.sidebaritem.id bloomerp.signatureartifact.id bloomerp.signatureevent.id
-#: bloomerp.signaturelayout.id bloomerp.signaturelayoutfield.id bloomerp.signaturelayoutrole.id
-#: bloomerp.signaturepreparation.id bloomerp.signaturepreparationfield.id
-#: bloomerp.signaturepreparationrole.id bloomerp.signaturerecipient.id bloomerp.signaturerequest.id
-#: bloomerp.signaturerequestfield.id bloomerp.sqlquery.id bloomerp.tag.id bloomerp.tile.id
-#: bloomerp.todo.id bloomerp.user.id bloomerp.userdetailviewtabitem.id
-#: bloomerp.userdetailviewtabspreference.id bloomerp.userinboxpreference.id
-#: bloomerp.userlistviewpreference.id bloomerp.userobjectlayoutpreference.id bloomerp.voipconnection.id
-#: bloomerp.voipnumber.id bloomerp.workflow.id bloomerp.workflowedge.id bloomerp.workflownode.id
-#: bloomerp.workflowrun.id bloomerp.workflowrunstep.id bloomerp.workspace.id
-#: models/mixins/uuid_model_mixin.py:8 models/users/user_detail_view_tabs_preference.py:518
+#: bloomerp.page.id bloomerp.phonecall.id bloomerp.phonecallevent.id bloomerp.policy.id
+#: bloomerp.rowpolicy.id bloomerp.rowpolicyrule.id bloomerp.rowpolicyrulepermission.id
+#: bloomerp.savedfilter.id bloomerp.sidebar.id bloomerp.sidebaritem.id bloomerp.signatureartifact.id
+#: bloomerp.signatureevent.id bloomerp.signaturelayout.id bloomerp.signaturelayoutfield.id
+#: bloomerp.signaturelayoutrole.id bloomerp.signaturepreparation.id
+#: bloomerp.signaturepreparationfield.id bloomerp.signaturepreparationrole.id
+#: bloomerp.signaturerecipient.id bloomerp.signaturerequest.id bloomerp.signaturerequestfield.id
+#: bloomerp.sqlquery.id bloomerp.tag.id bloomerp.tile.id bloomerp.todo.id bloomerp.user.id
+#: bloomerp.userdetailviewtabitem.id bloomerp.userdetailviewtabspreference.id
+#: bloomerp.userinboxpreference.id bloomerp.userlistviewpreference.id
+#: bloomerp.userobjectlayoutpreference.id bloomerp.voipconnection.id bloomerp.voipnumber.id
+#: bloomerp.workflow.id bloomerp.workflowedge.id bloomerp.workflownode.id bloomerp.workflowrun.id
+#: bloomerp.workflowrunstep.id bloomerp.workspace.id models/mixins/uuid_model_mixin.py:8
+#: models/users/user_detail_view_tabs_preference.py:518
 msgid "ID"
 msgstr "ID"
 
@@ -5769,7 +5818,7 @@ msgid "Invalid calendar selection."
 msgstr "Ungültige Kalenderauswahl."
 
 # | msgid "Invalid file extraction manifest."
-#: form_behaviors/execution.py:226
+#: form_behaviors/execution.py:228
 msgid "Invalid collection row columns."
 msgstr "Ungültige Spalten in der Sammlungszeile."
 
@@ -5844,7 +5893,7 @@ msgstr "Ungültiger Layoutkontext."
 msgid "Invalid mailbox mapping: %(error)s"
 msgstr "Ungültige Postfachzuordnung: %(error)s"
 
-#: form_behaviors/execution.py:235
+#: form_behaviors/execution.py:237
 msgid "Invalid or duplicate related row identity."
 msgstr "Ungültige oder doppelte Identität der verknüpften Zeile."
 
@@ -6343,7 +6392,7 @@ msgstr "Liste Ihrer Arbeitsbereiche"
 msgid "List view preference"
 msgstr "Präferenz für Listenansicht"
 
-#: form_behaviors/execution.py:302
+#: form_behaviors/execution.py:304
 msgid "Listener field value is missing from the draft."
 msgstr "Der Wert des Listener-Felds fehlt im Entwurf."
 
@@ -7005,7 +7054,7 @@ msgstr "Die Startseite für das Modul {module}."
 msgid "Needs Reply"
 msgstr "Antwort erforderlich"
 
-#: form_behaviors/execution.py:250
+#: form_behaviors/execution.py:252
 msgid "Nested collections are not supported."
 msgstr "Verschachtelte Sammlungen werden nicht unterstützt."
 
@@ -7041,6 +7090,20 @@ msgstr "Neue Gruppe"
 #: components/ui/sidebar.py:89
 msgid "New link"
 msgstr "Neuer Link"
+
+# | msgid "Current language"
+# | msgid "Current page"
+#: templates/components/pages/navigation.html:5 templates/components/pages/panel.html:11
+#, fuzzy
+msgid "New page"
+msgstr "Aktuelle Sprache"
+
+# | msgid "The field used for the pie slice labels."
+# | msgid "The read marker must belong to this thread."
+#: serializers/page.py:46
+#, fuzzy
+msgid "New pages must belong to you."
+msgstr "Die Lesemarkierung muss zu diesem Thread gehören."
 
 #: templates/cotton/features/workspaces/tiles/pivot_table.html:23
 #: views/agents/create_mcp_integration.py:209
@@ -7242,6 +7305,13 @@ msgstr "Noch keine Nachrichten."
 #: templates/views/communication/create_voip_number.html:61
 msgid "No numbers were found. Try another search."
 msgstr "Es wurden keine Nummern gefunden. Versuchen Sie eine andere Suche."
+
+# | msgid "ai messages"
+# | msgid "No messages yet."
+#: templates/components/pages/navigation.html:17
+#, fuzzy
+msgid "No pages yet"
+msgstr "Noch keine Nachrichten."
 
 #: templates/components/preferences/select.html:48
 msgid "No preferences available yet."
@@ -7494,7 +7564,7 @@ msgstr "Objektkennung"
 #: bloomerp.imthreadreadposition.object_labels bloomerp.inboxfolder.object_labels
 #: bloomerp.inboxitem.object_labels bloomerp.initiative.object_labels
 #: bloomerp.mcpconnection.object_labels bloomerp.mcpintegration.object_labels
-#: bloomerp.phonecall.object_labels bloomerp.phonecallevent.object_labels
+#: bloomerp.page.object_labels bloomerp.phonecall.object_labels bloomerp.phonecallevent.object_labels
 #: bloomerp.savedfilter.object_labels bloomerp.signatureartifact.object_labels
 #: bloomerp.signatureevent.object_labels bloomerp.signaturelayout.object_labels
 #: bloomerp.signaturelayoutfield.object_labels bloomerp.signaturelayoutrole.object_labels
@@ -7605,6 +7675,11 @@ msgstr "In E-Mail-Vorlagen können nur Modellfelder verwendet werden."
 msgid "Only simple electronic signing is implemented."
 msgstr "Es ist nur die einfache elektronische Signatur implementiert."
 
+#: serializers/page.py:54
+#, fuzzy
+msgid "Only the owner can change page sharing."
+msgstr "Nur der Eigentümer kann die Freigabe der Seite ändern."
+
 #: form_behaviors/builtins/fetch.py:357 form_behaviors/shared/write_policy.py:19
 msgid "Only when empty"
 msgstr "Nur wenn leer"
@@ -7618,6 +7693,11 @@ msgstr "Nur wenn die Sammlung keine aktiven Zeilen enthält"
 msgid "Open"
 msgstr "Offen"
 
+#: templates/components/pages/panel.html:6
+#, fuzzy
+msgid "Open Pages scratchpad"
+msgstr "Seiten-Notizbereich öffnen"
+
 #: templates/widgets/url_widget.html:6
 msgid "Open URL in a new tab"
 msgstr "URL in einem neuen Tab öffnen"
@@ -7625,6 +7705,13 @@ msgstr "URL in einem neuen Tab öffnen"
 # | msgid "End call"
 #: templates/components/communication/calling/controls.html:32
 msgid "Open call"
+msgstr "Anruf öffnen"
+
+# | msgid "End call"
+# | msgid "Open call"
+#: templates/components/objects/details/contact_actions.html:20
+#, fuzzy
+msgid "Open chat"
 msgstr "Anruf öffnen"
 
 #: templates/cotton/ui/floating_panel.html:31
@@ -7874,8 +7961,8 @@ msgid "Overview of profile"
 msgstr "Profilübersicht"
 
 #: bloomerp.aiconversation.owner bloomerp.imconversationparticipant.role bloomerp.initiative.owner
-#: models/communication/instant_messaging/im_conversation_participant.py:35
-#: models/project_management/initiative.py:194
+#: bloomerp.page.owner models/communication/instant_messaging/im_conversation_participant.py:35
+#: models/files/page.py:122 models/project_management/initiative.py:194
 msgid "Owner"
 msgstr "Eigentümer"
 
@@ -7884,7 +7971,7 @@ msgid "PDF preview updates after generation."
 msgstr "Die PDF-Vorschau wird nach der Generierung aktualisiert."
 
 # | msgid "Page Size"
-#: templates/components/document_signing/prepare_sign.html:81
+#: bloomerp.page models/files/page.py:92 templates/components/document_signing/prepare_sign.html:81
 #, fuzzy
 msgid "Page"
 msgstr "Seitengröße"
@@ -7907,6 +7994,17 @@ msgstr "Seitenausrichtung"
 msgid "Page Size"
 msgstr "Seitengröße"
 
+# | msgid "Back to editor"
+#: templates/views/pages.html:18
+#, fuzzy
+msgid "Page editor"
+msgstr "Zurück zum Editor"
+
+#: templates/components/pages/panel.html:10
+#, fuzzy
+msgid "Page history"
+msgstr "Seitenverlauf"
+
 # | msgid "Phone Number Field"
 # | msgid "Phone number"
 #: bloomerp.signaturelayoutfield.page_number bloomerp.signaturepreparationfield.page_number
@@ -7915,10 +8013,46 @@ msgstr "Seitengröße"
 msgid "Page number"
 msgstr "Telefonnummer"
 
+# | msgid "A folder's system identity cannot be changed after creation."
+# | msgid "A node's kind cannot be changed."
+#: serializers/page.py:48
+#, fuzzy
+msgid "Page ownership cannot be changed."
+msgstr "Die Art eines Knotens kann nicht geändert werden."
+
 # | msgid "Page Size"
 #: dataviews/card/config.py:23 dataviews/table/config.py:37
 msgid "Page size"
 msgstr "Seitengröße"
+
+# | msgid "Page Size"
+#: templates/components/pages/editor.html:41
+#, fuzzy
+msgid "Page title"
+msgstr "Seitengröße"
+
+#, fuzzy
+msgctxt "bloomerp:route:name"
+msgid "PageConsumer"
+msgstr "PageConsumer"
+
+# | msgid "Page Size"
+#: bloomerp.page models/files/page.py:93 templates/components/pages/panel.html:5
+#: templates/components/pages/panel.html:8
+#, fuzzy
+msgid "Pages"
+msgstr "Seitengröße"
+
+#, fuzzy
+msgctxt "bloomerp:route:name"
+msgid "Pages"
+msgstr "Seiten"
+
+# | msgid "Page Orientation"
+#: templates/components/pages/navigation.html:3
+#, fuzzy
+msgid "Pages navigation"
+msgstr "Seitenausrichtung"
 
 #: bloomerp.workflownode.parameters models/automation/workflow_node.py:82
 msgid "Parameters"
@@ -7997,6 +8131,11 @@ msgstr "Versand ausstehend"
 msgid "People"
 msgstr "Personen"
 
+#: templates/components/pages/editor.html:20
+#, fuzzy
+msgid "People you share with can edit this page."
+msgstr "Personen, mit denen Sie diese Seite teilen, können sie bearbeiten."
+
 #: bloomerp.rowpolicyrulepermission.permission models/access_control/row_policy_rule.py:221
 msgid "Permission"
 msgstr "Berechtigung"
@@ -8042,7 +8181,7 @@ msgstr ""
 
 #: bloomerp.signaturelayoutfield.field_type bloomerp.signaturepreparationfield.field_type
 #: bloomerp.signaturerequestfield.field_type
-#: communication/builtins/instant_messaging/builtins/phone.py:327
+#: communication/builtins/instant_messaging/builtins/phone.py:355
 #: models/document_signing/definition.py:135
 msgid "Phone"
 msgstr "Telefon"
@@ -8099,7 +8238,7 @@ msgid "Phone numbers synchronized."
 msgstr "Telefonnummern synchronisiert."
 
 # | msgid "Add at least one recipient."
-#: communication/builtins/instant_messaging/builtins/phone.py:336
+#: communication/builtins/instant_messaging/builtins/phone.py:364
 msgid "Phone recipients"
 msgstr "Telefonempfänger"
 
@@ -8149,18 +8288,19 @@ msgstr "Pivot-Tabelle"
 #: bloomerp.inbox.pk bloomerp.inboxfolder.pk bloomerp.inboxitem.pk bloomerp.initiative.pk
 #: bloomerp.label.pk bloomerp.mcpconnection.pk bloomerp.mcpintegration.pk bloomerp.mention.pk
 #: bloomerp.oauthaccesstoken.pk bloomerp.oauthauthorizationcode.pk bloomerp.objectlabel.pk
-#: bloomerp.phonecall.pk bloomerp.phonecallevent.pk bloomerp.policy.pk bloomerp.rowpolicy.pk
-#: bloomerp.rowpolicyrule.pk bloomerp.rowpolicyrulepermission.pk bloomerp.savedfilter.pk
-#: bloomerp.sidebar.pk bloomerp.sidebaritem.pk bloomerp.signatureartifact.pk bloomerp.signatureevent.pk
-#: bloomerp.signaturelayout.pk bloomerp.signaturelayoutfield.pk bloomerp.signaturelayoutrole.pk
-#: bloomerp.signaturepreparation.pk bloomerp.signaturepreparationfield.pk
-#: bloomerp.signaturepreparationrole.pk bloomerp.signaturerecipient.pk bloomerp.signaturerequest.pk
-#: bloomerp.signaturerequestfield.pk bloomerp.sqlquery.pk bloomerp.tag.pk bloomerp.tile.pk
-#: bloomerp.todo.pk bloomerp.user.pk bloomerp.userdetailviewtabitem.pk
-#: bloomerp.userdetailviewtabspreference.pk bloomerp.userinboxpreference.pk
-#: bloomerp.userlistviewpreference.pk bloomerp.userobjectlayoutpreference.pk bloomerp.voipconnection.pk
-#: bloomerp.voipnumber.pk bloomerp.workflow.pk bloomerp.workflowedge.pk bloomerp.workflownode.pk
-#: bloomerp.workflowrun.pk bloomerp.workflowrunstep.pk bloomerp.workspace.pk
+#: bloomerp.page.pk bloomerp.phonecall.pk bloomerp.phonecallevent.pk bloomerp.policy.pk
+#: bloomerp.rowpolicy.pk bloomerp.rowpolicyrule.pk bloomerp.rowpolicyrulepermission.pk
+#: bloomerp.savedfilter.pk bloomerp.sidebar.pk bloomerp.sidebaritem.pk bloomerp.signatureartifact.pk
+#: bloomerp.signatureevent.pk bloomerp.signaturelayout.pk bloomerp.signaturelayoutfield.pk
+#: bloomerp.signaturelayoutrole.pk bloomerp.signaturepreparation.pk
+#: bloomerp.signaturepreparationfield.pk bloomerp.signaturepreparationrole.pk
+#: bloomerp.signaturerecipient.pk bloomerp.signaturerequest.pk bloomerp.signaturerequestfield.pk
+#: bloomerp.sqlquery.pk bloomerp.tag.pk bloomerp.tile.pk bloomerp.todo.pk bloomerp.user.pk
+#: bloomerp.userdetailviewtabitem.pk bloomerp.userdetailviewtabspreference.pk
+#: bloomerp.userinboxpreference.pk bloomerp.userlistviewpreference.pk
+#: bloomerp.userobjectlayoutpreference.pk bloomerp.voipconnection.pk bloomerp.voipnumber.pk
+#: bloomerp.workflow.pk bloomerp.workflowedge.pk bloomerp.workflownode.pk bloomerp.workflowrun.pk
+#: bloomerp.workflowrunstep.pk bloomerp.workspace.pk
 msgid "Pk"
 msgstr "PK"
 
@@ -8363,6 +8503,11 @@ msgstr ""
 "Formular kann Standardwerte für Felder enthalten, die im Formular vorhanden und für den Benutzer "
 "ausgeblendet sind."
 
+#: templates/components/pages/editor.html:2
+#, fuzzy
+msgid "Press / for commands or @ for mentions"
+msgstr "Drücken Sie / für Befehle oder @ für Erwähnungen"
+
 #: templates/components/communication/emails/email_editor.html:182
 #: templates/components/document_templates/generate_document_template.html:105
 msgid "Preview"
@@ -8398,6 +8543,11 @@ msgstr "Vorherige Revision"
 #: bloomerp.todo.priority models/project_management/todo.py:374
 msgid "Priority"
 msgstr "Priorität"
+
+#: services/page_services.py:36
+#, fuzzy
+msgid "Private"
+msgstr "Privat"
 
 # | msgid "Processing..."
 #: bloomerp.conferencewebhookreceipt.status
@@ -8728,6 +8878,12 @@ msgstr "Empfangen am"
 msgid "Recenter"
 msgstr "Neu zentrieren"
 
+# | msgid "Recipient"
+#: services/page_services.py:34
+#, fuzzy
+msgid "Recents"
+msgstr "Empfänger"
+
 #: bloomerp.signatureartifact.recipient bloomerp.signatureevent.recipient
 #: bloomerp.signaturerequestfield.recipient
 #: communication/builtins/instant_messaging/builtins/slack.py:105
@@ -8875,7 +9031,7 @@ msgid "Related objects that would be deleted:"
 msgstr "Zugehörige Objekte, die gelöscht würden:"
 
 # | msgid "Attachments do not belong to this object and field."
-#: form_behaviors/execution.py:239
+#: form_behaviors/execution.py:241
 msgid "Related row does not belong to this object."
 msgstr "Die verknüpfte Zeile gehört nicht zu diesem Objekt."
 
@@ -9836,7 +9992,7 @@ msgid "Select an AI provider to continue."
 msgstr "Wählen Sie einen KI-Anbieter aus, um fortzufahren."
 
 # | msgid "Select an email before replying."
-#: communication/builtins/instant_messaging/builtins/phone.py:79
+#: communication/builtins/instant_messaging/builtins/phone.py:82
 msgid "Select an available phone recipient."
 msgstr "Wählen Sie einen verfügbaren Telefonempfänger aus."
 
@@ -10201,9 +10357,22 @@ msgstr "Einstellungen"
 msgid "Several lines of text."
 msgstr "Mehrere Textzeilen."
 
+# | msgid "Shared with"
+# | msgid "Shared"
+#: templates/components/pages/editor.html:16 templates/components/pages/editor.html:29
+#, fuzzy
+msgid "Share"
+msgstr "Geteilt"
+
 #: bloomerp.conferencesession.share_token
 msgid "Share Token"
 msgstr "Freigabetoken"
+
+# | msgid "Share workspace"
+#: templates/components/pages/editor.html:19
+#, fuzzy
+msgid "Share page"
+msgstr "Arbeitsbereich teilen"
 
 # | msgid "Preference"
 # | msgid "Base Preference"
@@ -10220,7 +10389,7 @@ msgstr "Bildschirm teilen"
 
 # | msgid "Shared with"
 #: bloomerp.imauthorization.kind bloomerp.mcpintegration.connection_mode models/agents/mcp_server.py:33
-#: models/communication/instant_messaging/im_authorization.py:35
+#: models/communication/instant_messaging/im_authorization.py:35 services/page_services.py:35
 msgid "Shared"
 msgstr "Geteilt"
 
@@ -10268,6 +10437,16 @@ msgstr "Gemeinsamer Schlüssel (optional)"
 #: workspaces/analytics_tile/model.py:765
 msgid "Shared key updated"
 msgstr "Gemeinsamer Schlüssel aktualisiert"
+
+#: bloomerp.page.shared_with_groups models/files/page.py:134
+msgid "Shared with groups"
+msgstr "Mit Gruppen geteilt"
+
+# | msgid "Shared With Users"
+#: bloomerp.page.shared_with_users models/files/page.py:128
+#, fuzzy
+msgid "Shared with users"
+msgstr "Mit Benutzern geteilt"
 
 #: templates/cotton/features/agent/body.html:159
 msgid "Shift + Enter for a new line"
@@ -10888,6 +11067,14 @@ msgstr "Beginnen Sie mit der Eingabe, um zu suchen."
 #: templates/components/communication/instant_messaging/conversation.html:17
 msgid "Start video call"
 msgstr "Videoanruf starten"
+
+# | msgid "Start Date"
+# | msgid "Start Deadline"
+# | msgid "Start meeting"
+#: templates/views/pages.html:2
+#, fuzzy
+msgid "Start writing…"
+msgstr "Besprechung starten"
 
 # | msgid "Start Date"
 #: bloomerp.airunattempt.started_at bloomerp.aitoolcall.started_at bloomerp.fileextraction.started_at
@@ -11711,7 +11898,7 @@ msgstr "Der übergeordnete Ordner muss bereits vorhanden sein."
 msgid "The participant SID is immutable once assigned."
 msgstr "Die Teilnehmer-SID kann nach der Zuweisung nicht mehr geändert werden."
 
-#: communication/builtins/instant_messaging/builtins/phone.py:69
+#: communication/builtins/instant_messaging/builtins/phone.py:72
 msgid "The phone number has changed. Select the recipient again."
 msgstr "Die Telefonnummer hat sich geändert. Wählen Sie den Empfänger erneut aus."
 
@@ -12052,6 +12239,20 @@ msgstr "Dieses Objekt kann nicht gelöscht werden, da geschützte verknüpfte Ob
 msgid "This output port has reached its connection limit."
 msgstr "Dieser Ausgabeport hat seine Verbindungsbegrenzung erreicht."
 
+#: serializers/page.py:19
+#, fuzzy
+msgid "This page changed elsewhere. Reload before continuing to edit."
+msgstr ""
+"Diese Seite wurde an anderer Stelle geändert. Laden Sie sie neu, bevor Sie die Bearbeitung "
+"fortsetzen."
+
+# | msgid "Object no longer available"
+# | msgid "This selection is no longer available."
+#: serializers/page.py:81
+#, fuzzy
+msgid "This page is no longer available to you."
+msgstr "Diese Auswahl ist nicht mehr verfügbar."
+
 #: templates/components/objects/bulk_actions.html:66
 #, python-format
 msgid "This permanently deletes the objects in the %(selection_label)s."
@@ -12215,12 +12416,12 @@ msgstr "Zeitpunkt"
 
 #: bloomerp.aiconversation.title bloomerp.applicationfield.title bloomerp.calendarbooking.title
 #: bloomerp.calendarevent.title bloomerp.conferenceroom.title bloomerp.inboxitem.title
-#: bloomerp.signaturepreparation.title bloomerp.signaturerequest.title bloomerp.todo.title
-#: models/communication/calendar/calendar_booking.py:93
+#: bloomerp.page.title bloomerp.signaturepreparation.title bloomerp.signaturerequest.title
+#: bloomerp.todo.title models/communication/calendar/calendar_booking.py:93
 #: models/communication/calendar/calendar_event.py:211
 #: models/communication/conferencing/conference_room.py:12 models/communication/inbox/inbox_item.py:95
 #: models/document_signing/signature_preparation.py:17 models/document_signing/signature_request.py:196
-#: models/project_management/todo.py:387
+#: models/files/page.py:115 models/project_management/todo.py:387
 msgid "Title"
 msgstr "Titel"
 
@@ -12527,13 +12728,13 @@ msgstr "Unbekannte Konfigurationsfelder für die Aktion."
 
 # | msgid "Conversation History"
 # | msgid "Conversation actions"
-#: form_behaviors/execution.py:327
+#: form_behaviors/execution.py:329
 #, python-format
 msgid "Unknown action: %(action)s."
 msgstr "Unbekannte Aktion: %(action)s."
 
 # | msgid "Unknown carrier provider."
-#: form_behaviors/execution.py:295
+#: form_behaviors/execution.py:297
 msgid "Unknown behavior event."
 msgstr "Unbekanntes Verhaltensereignis."
 
@@ -12591,6 +12792,12 @@ msgstr "Nicht unterstützte Dateierweiterung."
 #: form_behaviors/execution.py:122
 msgid "Unsupported layout owner."
 msgstr "Nicht unterstützter Layout-Eigentümer."
+
+# | msgid "Untitled tile"
+#: models/files/page.py:254 templates/components/pages/editor.html:41
+#, fuzzy
+msgid "Untitled"
+msgstr "Kachel ohne Titel"
 
 #: components/workspaces/tiles/preview.py:202
 msgid "Untitled tile"
@@ -12653,15 +12860,16 @@ msgstr "Diese Kachel aktualisieren"
 #: bloomerp.immessageattachment.updated_by bloomerp.immessagereaction.updated_by
 #: bloomerp.imthreadreadposition.updated_by bloomerp.inboxfolder.updated_by
 #: bloomerp.inboxitem.updated_by bloomerp.initiative.updated_by bloomerp.label.updated_by
-#: bloomerp.mcpconnection.updated_by bloomerp.mcpintegration.updated_by bloomerp.phonecall.updated_by
-#: bloomerp.phonecallevent.updated_by bloomerp.policy.updated_by bloomerp.savedfilter.updated_by
-#: bloomerp.signatureartifact.updated_by bloomerp.signatureevent.updated_by
-#: bloomerp.signaturelayout.updated_by bloomerp.signaturelayoutfield.updated_by
-#: bloomerp.signaturelayoutrole.updated_by bloomerp.signaturepreparation.updated_by
-#: bloomerp.signaturepreparationfield.updated_by bloomerp.signaturepreparationrole.updated_by
-#: bloomerp.signaturerecipient.updated_by bloomerp.signaturerequest.updated_by
-#: bloomerp.signaturerequestfield.updated_by bloomerp.sqlquery.updated_by bloomerp.tile.updated_by
-#: bloomerp.todo.updated_by bloomerp.userinboxpreference.updated_by bloomerp.voipconnection.updated_by
+#: bloomerp.mcpconnection.updated_by bloomerp.mcpintegration.updated_by bloomerp.page.updated_by
+#: bloomerp.phonecall.updated_by bloomerp.phonecallevent.updated_by bloomerp.policy.updated_by
+#: bloomerp.savedfilter.updated_by bloomerp.signatureartifact.updated_by
+#: bloomerp.signatureevent.updated_by bloomerp.signaturelayout.updated_by
+#: bloomerp.signaturelayoutfield.updated_by bloomerp.signaturelayoutrole.updated_by
+#: bloomerp.signaturepreparation.updated_by bloomerp.signaturepreparationfield.updated_by
+#: bloomerp.signaturepreparationrole.updated_by bloomerp.signaturerecipient.updated_by
+#: bloomerp.signaturerequest.updated_by bloomerp.signaturerequestfield.updated_by
+#: bloomerp.sqlquery.updated_by bloomerp.tile.updated_by bloomerp.todo.updated_by
+#: bloomerp.userinboxpreference.updated_by bloomerp.voipconnection.updated_by
 #: bloomerp.voipnumber.updated_by bloomerp.workflow.updated_by bloomerp.workflownode.updated_by
 #: models/mixins/user_stamp_model_mixin.py:27
 msgid "Updated By"
@@ -12928,7 +13136,7 @@ msgstr "Benutzername"
 
 #: bloomerp.aiagentaccess.users bloomerp.policy.users bloomerp.user models/access_control/policy.py:126
 #: models/agents/ai_agent_access.py:100 models/project_management/todo.py:126 models/users/user.py:25
-#: models/users/user.py:186
+#: models/users/user.py:186 services/page_services.py:44 templates/components/pages/editor.html:22
 msgid "Users"
 msgstr "Benutzer"
 
@@ -14339,12 +14547,6 @@ msgstr "Beziehung von {related_model_plural} zu {model}"
 # | msgid "Field options updated"
 #~ msgid "Send invitation / update"
 #~ msgstr "Einladung / Aktualisierung senden"
-
-#~ msgid "Share workspace"
-#~ msgstr "Arbeitsbereich teilen"
-
-#~ msgid "Shared with groups"
-#~ msgstr "Mit Gruppen geteilt"
 
 #~ msgid "Signifies to which folder a file generated from the template needs to be saved upon creation."
 #~ msgstr ""

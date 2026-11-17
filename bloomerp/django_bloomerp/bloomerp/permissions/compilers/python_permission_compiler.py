@@ -1,12 +1,12 @@
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 
 from bloomerp.permissions.compilers.base import BasePermissionCompiler
-from bloomerp.permissions.definition import PermissionMatch
-
+from bloomerp.permissions.definition import BloomerpPermission, PermissionMatch
 
 MISSING = object()
 
@@ -40,21 +40,17 @@ class PythonPermissionCompiler(BasePermissionCompiler[CompiledPythonAccess]):
         return value
 
     @staticmethod
-    def _resolve_value(
-        candidate: models.Model,
-        field_path: str,
-    ):
+    def _resolve_value(candidate: models.Model, field_path: str) -> Any:
+        """Resolve scalar candidates and persisted multi-valued relationship paths."""
         parts = [part for part in str(field_path or "").split("__") if part]
         if not parts:
             return MISSING
-        first, *remaining = parts
-        try:
-            value = getattr(candidate, first)
-        except (AttributeError, ObjectDoesNotExist):
-            return MISSING
-        for part in remaining:
+        value: Any = candidate
+        for index, part in enumerate(parts):
             if value is None:
                 return None
+            if isinstance(value, (models.Manager, models.QuerySet)):
+                return value.all().values_list("__".join(parts[index:]), flat=True)
             try:
                 value = value.get(part, MISSING) if isinstance(value, dict) else getattr(value, part)
             except (AttributeError, ObjectDoesNotExist):
@@ -63,12 +59,14 @@ class PythonPermissionCompiler(BasePermissionCompiler[CompiledPythonAccess]):
 
     def compile(
         self,
-        permissions,
+        permissions: str | BloomerpPermission | Iterable[str | BloomerpPermission] | None,
         match: PermissionMatch = PermissionMatch.ANY,
     ) -> CompiledPythonAccess:
+        """Compile requested grants into an evaluator for scalar and related fields."""
         rules = self.normalize_access_rules(self.rules)
         requested = self.normalize_permissions(permissions)
         from django.core.exceptions import ValidationError
+
         from bloomerp.filters.compiler import resolve_condition
 
         predicates = []
@@ -86,6 +84,7 @@ class PythonPermissionCompiler(BasePermissionCompiler[CompiledPythonAccess]):
                 predicates.append((predicate.connector, resolved))
 
         def evaluator(candidate: models.Model) -> bool:
+            """Match a candidate against any compiled row grant, failing closed."""
             if not isinstance(candidate, self.model):
                 return False
             for connector, conditions in predicates:
@@ -95,10 +94,19 @@ class PythonPermissionCompiler(BasePermissionCompiler[CompiledPythonAccess]):
                     if actual is MISSING:
                         break
                     try:
-                        result = lookup.get_python_evaluator()(
-                            self._normalize_comparison_value(actual),
-                            self._normalize_comparison_value(expected),
-                        )
+                        if isinstance(actual, (models.Manager, models.QuerySet)) and lookup.id in {"equals", "equals_user"}:
+                            # A relational equality matches any related row, as its
+                            # Django JOIN counterpart does; JSON lists remain scalar.
+                            values = actual.all()
+                            result = any(
+                                self._normalize_comparison_value(value) == self._normalize_comparison_value(expected)
+                                for value in values
+                            )
+                        else:
+                            result = lookup.get_python_evaluator()(
+                                self._normalize_comparison_value(actual),
+                                self._normalize_comparison_value(expected),
+                            )
                     except (TypeError, ValueError, AttributeError):
                         break
                     results.append(bool(result))

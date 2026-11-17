@@ -1,3 +1,5 @@
+import { registerBlockBehavior } from './utils/blockBehavior';
+import { registerImagePaste } from './utils/imagePaste';
 import { bindReferencePreviews } from "@/utils/referencePreviews";
 import type { ContextMenuSubmenu } from "@/utils/contextMenu";
 import { ReferencePicker } from "./utils/referencePicker";
@@ -25,6 +27,7 @@ import {
     PASTE_COMMAND,
     $getNearestNodeFromDOMNode,
     $getSelection,
+    $setSelection,
     $insertNodes,
     $isInlineElementOrDecoratorNode,
     $isRangeSelection,
@@ -269,6 +272,8 @@ export class BloomerpTextEditor extends BaseWidget {
             registerHtmlBehavior(this.editor),
             registerMermaidBehavior(this.editor, this.element),
             registerImageBehavior(this.editor, this.element),
+            registerImagePaste(this.editor, this.element),
+            registerBlockBehavior(this.editor, this.element),
             this.editor.registerCommand(CLICK_COMMAND, this.handleChecklistClick.bind(this), COMMAND_PRIORITY_LOW),
             this.editor.registerCommand(KEY_SPACE_COMMAND, this.handleChecklistSpace.bind(this), COMMAND_PRIORITY_LOW),
             /** Refresh action state and notify the form only when saved HTML changes. */
@@ -489,12 +494,15 @@ export class BloomerpTextEditor extends BaseWidget {
         this.toolbarRevealButton = revealButton;
     }
 
+    /** Synchronize formatting visibility, keyboard access, and the shared preference. */
     private setToolbarHidden(hidden: boolean, persist: boolean): void {
         this.toolbarHidden = hidden;
         this.element.dataset.toolbarHidden = hidden ? 'true' : 'false';
 
         if (this.actionsToolbar) {
             this.actionsToolbar.dataset.toolbarHidden = hidden ? 'true' : 'false';
+            this.actionsToolbar.inert = hidden;
+            this.actionsToolbar.setAttribute('aria-hidden', String(hidden));
         }
 
         if (this.toolbarToggleButton) {
@@ -531,9 +539,12 @@ export class BloomerpTextEditor extends BaseWidget {
         }
 
         const html = typeof value === 'string' ? value : '';
+        const focused = editor.getRootElement()?.contains(document.activeElement) ?? false;
         this.suppressNextChange = !emitChange;
 
-        editor.update(() => {
+        /** Replace content without letting an inactive editor reclaim the browser selection. */
+        editor.update((): void => {
+            if (!focused) $setSelection(null);
             const root = $getRoot();
             root.clear();
 
@@ -557,7 +568,7 @@ export class BloomerpTextEditor extends BaseWidget {
             } else {
                 root.append($createParagraphNode());
             }
-        }, { discrete: true });
+        }, { discrete: true, tag: focused ? undefined : 'collaboration' });
         if (this.hiddenInput) {
             this.hiddenInput.value = this.getValue();
         }

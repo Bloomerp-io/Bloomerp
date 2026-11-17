@@ -1,0 +1,36 @@
+{% load i18n %}
+{% translate "Start writing…" as editor_placeholder %}
+{% url 'pages_model' as pages_url %}
+
+<style>
+    .pages-sidebar > [data-resizable-div-handle] { display: none; }
+
+    @media (min-width: 1280px) {
+        #main-content:has(> .pages-layout) { display: flex; flex-direction: column; }
+        #main-content:has(> .pages-layout) > #htmx-addendum { flex-shrink: 0; }
+        .pages-layout { flex: 1; min-height: 0; }
+        .pages-sidebar { width: 18rem; }
+        .pages-sidebar > [data-resizable-div-handle] { display: block; }
+    }
+</style>
+
+<div class="pages-layout flex flex-col xl:flex-row" data-resizable-div-container bloomerp-component="bloomerp:pages-workspace" data-pages-url="{% url 'pages_model' %}">
+    <section class="min-w-0 flex-1 xl:overflow-y-auto" aria-label="{% translate 'Page editor' %}">
+        <div class="pb-4">
+            {% include "components/pages/editor.html" %}
+        </div>
+    </section>
+
+    <c-ui.resizable_div
+        id="pages-sidebar"
+        start_width="288px"
+        min_width="220"
+        min_remaining_width="400"
+        storage="local"
+        class="pages-sidebar w-full shrink-0 border-t border-gray-200 bg-base xl:border-0 xl:border-l dark:border-zinc-700"
+    >
+        <aside data-pages-navigation data-navigation-url="{% url 'components_pages_navigation' %}" class="p-4 xl:h-full xl:overflow-y-auto" data-resizable-div-panel>
+            {% include "components/pages/navigation.html" %}
+        </aside>
+    </c-ui.resizable_div>
+</div>
