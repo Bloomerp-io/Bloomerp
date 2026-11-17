@@ -1,0 +1,4 @@
+{% load i18n %}
+<div bloomerp-component="choice-widget" class="relative" data-empty-label="{% translate 'No results' %}" data-remove-label="{% translate 'Remove' %}" data-required-label="{% translate 'Please select a choice.' %}">
+    {% include "django/forms/widgets/select.html" %}
+</div>
