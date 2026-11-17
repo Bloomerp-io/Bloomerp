@@ -7,12 +7,11 @@ from rest_framework.authentication import BasicAuthentication, SessionAuthentica
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from bloomerp.filters.backend import ModelFilterBackend
 
 from bloomerp.api.authentication_classes import BloomerpApiKeyAuthentication
+from bloomerp.filters.backend import ModelFilterBackend
 from bloomerp.models.definition import BloomerpModelConfig
 from bloomerp.utils.api import ApiAccessResolver, apply_queryset_nesting
-
 
 AUTHENTICATION_CLASSES = (
     BloomerpApiKeyAuthentication,
@@ -112,12 +111,16 @@ class BloomerpModelViewSet(viewsets.ModelViewSet):
                 f"Permission denied for fields{suffix}: {', '.join(denied)}"
             )
 
-    def _build_candidate(self, validated_data: Mapping, instance=None) -> Model:
+    def _build_candidate(self, validated_data: Mapping, instance: Model | None = None) -> Model:
+        """Build a row candidate without assigning many-to-many managers in __init__."""
         values = {}
         if instance is not None:
             for field in self.model._meta.fields:
                 values[field.name] = getattr(instance, field.name)
-        values.update(validated_data)
+        values.update({
+            name: value for name, value in validated_data.items()
+            if not self.model._meta.get_field(name).many_to_many
+        })
 
         candidate = self.model(**values)
         user = getattr(self.request, "user", None)

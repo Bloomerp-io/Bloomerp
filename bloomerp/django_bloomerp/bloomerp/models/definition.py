@@ -227,6 +227,7 @@ class ApiSettings(BaseModel):
     """
 
     enable_auto_generation: bool = False
+    serializer_class: str | None = None
     access: ApiAccessSettings = Field(default_factory=ApiAccessSettings)
     nesting: list[ApiNesting] = Field(default_factory=list)
 

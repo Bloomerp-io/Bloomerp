@@ -1,12 +1,9 @@
 import {
     $createTabNode,
-    $createParagraphNode,
     $getSelection,
     $isRangeSelection,
     COMMAND_PRIORITY_CRITICAL,
     COMMAND_PRIORITY_LOW,
-    KEY_BACKSPACE_COMMAND,
-    KEY_DELETE_COMMAND,
     KEY_DOWN_COMMAND,
     KEY_ENTER_COMMAND,
     KEY_SPACE_COMMAND,
@@ -14,9 +11,8 @@ import {
     type CommandListenerPriority,
     type LexicalNode,
     type LexicalCommand,
-    type LexicalEditor,
 } from "lexical";
-import { $createListItemNode, $createListNode, $isListItemNode, $isListNode, type ListItemNode, type ListType } from "@lexical/list";
+import { $isListItemNode, type ListItemNode, type ListType } from "@lexical/list";
 import { getContextMenu } from "@/utils/contextMenu";
 import { launchContextMenu } from "./utils/editorContextMenu";
 import { getCurrentWord, removeTextFromCurrentSelection } from "./utils/wordSelector";
@@ -31,17 +27,20 @@ export type Command = {
     priority?: CommandListenerPriority;
 }
 
+/** Register scoped keyboard actions without replacing Lexical's native list editing. */
 export function registerCommands(textEditor: BloomerpTextEditor): Array<() => void> {
     const editor = textEditor.editor;
-    if (!editor) {
-        return [];
+    if (!editor) return [];
+    /** Bind each command to its owning editor instance. */
+    function register(command: Command): () => void {
+        /** Execute the configured action in the current editor transaction. */
+        function handle(event: KeyboardEvent): boolean { return command.handler.call(textEditor, event); }
+        return editor.registerCommand(command.command, handle, command.priority ?? COMMAND_PRIORITY_LOW);
     }
-
-    return Object.values(COMMANDS).map(({ command, handler, priority = COMMAND_PRIORITY_LOW }) => (
-        editor.registerCommand(command, (event) => handler.call(textEditor, event), priority)
-    ));
+    return Object.values(COMMANDS).map(register);
 }
 
+/** Locate the list item containing the caret without assuming a flat text child. */
 function getSelectedListItem(node: LexicalNode): ListItemNode | null {
     let currentNode: LexicalNode | null = node;
 
@@ -82,7 +81,7 @@ function handleTab(this: BloomerpTextEditor, event?: KeyboardEvent): boolean {
 
         const listItem = getSelectedListItem(selection.anchor.getNode());
         if (listItem) {
-            indentListItem(listItem);
+            listItem.setIndent(Math.max(0, listItem.getIndent() + (event?.shiftKey ? -1 : 1)));
             return;
         }
 
@@ -121,116 +120,17 @@ function handleCodeBlockEnter(this: BloomerpTextEditor, event?: KeyboardEvent): 
     return true;
 }
 
-/** Nest an item under its preceding sibling when its list supports indentation. */
-function indentListItem(listItem: ListItemNode): boolean {
-    const list = listItem.getParent();
-    const previousSibling = listItem.getPreviousSibling();
-
-    if (!$isListNode(list) || !["bullet", "number", "check"].includes(list.getListType()) || !$isListItemNode(previousSibling)) {
-        return false;
-    }
-
-    const listType = list.getListType();
-    const previousNestedList = previousSibling
-        .getChildren()
-        .find((child) => $isListNode(child) && child.getListType() === listType);
-    const nestedList = $isListNode(previousNestedList)
-        ? previousNestedList
-        : $createListNode(listType);
-
-    if (!previousNestedList) {
-        previousSibling.append(nestedList);
-    }
-
-    nestedList.append(listItem);
-    nestedList.getChildren().forEach((child, index) => {
-        if ($isListItemNode(child)) {
-            child.setValue(index + 1);
-        }
-    });
-    listItem.selectStart();
-
-    return true;
-}
-
-function removeEmptyNestedListItem(listItem: ListItemNode): boolean {
-    const list = listItem.getParent();
-    const parentListItem = list?.getParent();
-
-    if (!$isListNode(list) || !$isListItemNode(parentListItem) || listItem.getTextContent().trim() !== '') {
-        return false;
-    }
-
-    listItem.remove();
-
-    if (list.getChildrenSize() === 0) {
-        list.remove();
-    }
-
-    parentListItem.selectEnd();
-
-    return true;
-}
-
-function isEmptyCurrentListItem(listItem: ListItemNode): boolean {
-    return listItem.getTextContent().trim() === '';
-}
-
-/** Leave an empty list item, or reduce its indent, when Enter is pressed. */
-function exitEmptyListItem(listItem: ListItemNode): boolean {
-    const list = listItem.getParent();
-
-    if (!$isListNode(list) || !["bullet", "number", "check"].includes(list.getListType()) || !isEmptyCurrentListItem(listItem)) {
-        return false;
-    }
-
-    const currentIndent = listItem.getIndent();
-
-    if (currentIndent > 0) {
-        listItem.setIndent(currentIndent - 1);
-        listItem.selectStart();
-        return true;
-    }
-
-    const paragraph = $createParagraphNode();
-    list.insertAfter(paragraph);
-    listItem.remove();
-
-    if (list.getChildrenSize() === 0) {
-        list.remove();
-    }
-
-    paragraph.select();
-
-    return true;
-}
-
-/** Add the next item in the current list, leaving checklist items unchecked. */
-function insertListItemAfter(listItem: ListItemNode): boolean {
-    const list = listItem.getParent();
-
-    if (!$isListNode(list) || !["bullet", "number", "check"].includes(list.getListType())) {
-        return false;
-    }
-
-    const nextListItem = $createListItemNode(list.getListType() === "check" ? false : undefined);
-    listItem.insertAfter(nextListItem);
-    nextListItem.selectStart();
-
-    return true;
-}
-
-function handleListItemEnter(listItem: ListItemNode): boolean {
-    if (isEmptyCurrentListItem(listItem)) {
-        return exitEmptyListItem(listItem);
-    }
-
-    return insertListItemAfter(listItem);
-}
-
 /** Reuse the registered list conversion for Markdown-style keyboard triggers. */
 function enterListMode(host: BloomerpTextEditor, trigger: string, listType: ListType): boolean {
-    if (!host.editor || getCurrentWord(host.editor) !== trigger) return false;
+    if (!host.editor) return false;
+    const selection = $getSelection();
+    if (!$isRangeSelection(selection) || !selection.isCollapsed()) return false;
+    const anchor = selection.anchor.getNode();
+    const block = anchor.getTopLevelElementOrThrow();
+    // Only a complete paragraph prefix is a Markdown trigger, never a word
+    // in the middle of a paragraph, list, heading, or source code block.
+    if (block.getType() !== 'paragraph' || block.getTextContent() !== trigger
+        || selection.anchor.offset !== trigger.length || getCurrentWord(host.editor) !== trigger) return false;
     removeTextFromCurrentSelection(trigger);
     return host.actionRegistry.execute(listType === "number" ? "ordered_list" : "unordered_list", "shortcut");
 }
@@ -298,95 +198,5 @@ export let COMMANDS: Record<string, Command> = {
         command: KEY_ENTER_COMMAND,
         priority: COMMAND_PRIORITY_CRITICAL,
         handler: handleCodeBlockEnter,
-    },
-    removeEmptyNestedListItemBackward: {
-        command: KEY_BACKSPACE_COMMAND,
-        handler: function (event) {
-            let handled = false;
-
-            this.editor?.update(() => {
-                const selection = $getSelection();
-
-                if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
-                    return;
-                }
-
-                const listItem = getSelectedListItem(selection.anchor.getNode());
-
-                if (listItem && removeEmptyNestedListItem(listItem)) {
-                    event?.preventDefault();
-                    handled = true;
-                }
-            });
-
-            return handled;
-        },
-    },
-    removeEmptyNestedListItemForward: {
-        command: KEY_DELETE_COMMAND,
-        handler: function (event) {
-            let handled = false;
-
-            this.editor?.update(() => {
-                const selection = $getSelection();
-
-                if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
-                    return;
-                }
-
-                const listItem = getSelectedListItem(selection.anchor.getNode());
-
-                if (listItem && removeEmptyNestedListItem(listItem)) {
-                    event?.preventDefault();
-                    handled = true;
-                }
-            });
-
-            return handled;
-        },
-    },
-    exitEmptyListItem: {
-        command: KEY_ENTER_COMMAND,
-        priority: COMMAND_PRIORITY_CRITICAL,
-        handler: function (event) {
-            let shouldHandle = false;
-            const editor = this.editor;
-            if (!editor) {
-                return false;
-            }
-
-            editor.getEditorState().read(() => {
-                const selection = $getSelection();
-
-                if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
-                    return;
-                }
-
-                const listItem = getSelectedListItem(selection.anchor.getNode());
-                shouldHandle = Boolean(listItem);
-            });
-
-            if (!shouldHandle) {
-                return false;
-            }
-
-            event?.preventDefault();
-            event?.stopPropagation();
-
-            editor.update(() => {
-                const selection = $getSelection();
-
-                if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
-                    return;
-                }
-
-                const listItem = getSelectedListItem(selection.anchor.getNode());
-                if (listItem) {
-                    handleListItemEnter(listItem);
-                }
-            });
-
-            return true;
-        },
     },
 }

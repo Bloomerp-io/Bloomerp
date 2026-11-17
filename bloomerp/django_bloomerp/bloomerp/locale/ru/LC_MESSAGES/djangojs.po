@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-02 10:55+0000\n"
+"POT-Creation-Date: 2026-11-17 12:54+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ru\n"
@@ -21,12 +21,14 @@ msgstr ""
 "Generated-By: Babel 2.16.0\n"
 
 #: static_src/ts/components/document_signing/SignDocument.ts:89
+#, fuzzy
 msgid "A PDF page could not be displayed. Reopen the signing window."
-msgstr ""
+msgstr "Не удалось отобразить страницу PDF. Откройте окно подписания заново."
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:242
+#, fuzzy
 msgid "A PDF page could not be rendered."
-msgstr ""
+msgstr "Не удалось отрисовать страницу PDF."
 
 #: static_src/ts/components/filters/SavedFilters.ts:193
 msgid "A filter name is required."
@@ -53,16 +55,23 @@ msgid "Actions"
 msgstr "Действия"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:595
+#, fuzzy
 msgid "Add a role first."
-msgstr ""
+msgstr "Сначала добавьте роль."
+
+#: static_src/ts/components/pages/PageEditor.ts:260
+#, fuzzy
+msgid "Add a title or content before sharing this page."
+msgstr "Добавьте заголовок или содержимое, прежде чем поделиться этой страницей."
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:269
 msgid "Add action"
 msgstr "Добавить действие"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:827
+#, fuzzy
 msgid "Add at least one role."
-msgstr ""
+msgstr "Добавьте хотя бы одну роль."
 
 #: static_src/ts/components/filters/FilterContainer.ts:122
 msgid "Add condition"
@@ -82,21 +91,30 @@ msgid "Add row below"
 msgstr "Добавить строку ниже"
 
 #: static_src/ts/components/text_editor/formattingActions.ts:22
+#, fuzzy
 msgid "Align center"
-msgstr ""
+msgstr "Выровнять по центру"
 
 #: static_src/ts/components/text_editor/formattingActions.ts:22
+#, fuzzy
 msgid "Align left"
-msgstr ""
+msgstr "Выровнять по левому краю"
 
 #: static_src/ts/components/text_editor/formattingActions.ts:23
+#, fuzzy
 msgid "Align right"
-msgstr ""
+msgstr "Выровнять по правому краю"
 
 #: static_src/ts/components/text_editor/actionMenu.ts:74
-#: static_src/ts/components/text_editor/actionToolbar.ts:69
+#: static_src/ts/components/text_editor/actionToolbar.ts:61
+#, fuzzy
 msgid "Alignment"
-msgstr ""
+msgstr "Выравнивание"
+
+#: static_src/ts/components/pages/PageEditor.ts:147
+#, fuzzy
+msgid "All changes saved"
+msgstr "Все изменения сохранены"
 
 #: static_src/ts/components/PermissionsTable.ts:440
 msgid "All objects"
@@ -107,13 +125,14 @@ msgstr "Все объекты"
 msgid "All rows"
 msgstr "Все строки"
 
-#: static_src/ts/components/communication/Calling.ts:378
+#: static_src/ts/components/communication/Calling.ts:379
 msgid "Allow pop-ups to open the call tab. Your call controls are available here."
 msgstr "Разрешите всплывающим окнам открывать вкладку вызова. Элементы управления вызовом доступны здесь."
 
-#: static_src/ts/components/communication/Calling.ts:735
+#: static_src/ts/components/communication/Calling.ts:738
+#, fuzzy
 msgid "Answered on another tab or device"
-msgstr ""
+msgstr "Ответили в другой вкладке или на другом устройстве"
 
 #: static_src/ts/components/filters/FilterContainer.ts:69
 #: static_src/ts/components/text_editor/utils/colorPicker.ts:32
@@ -122,16 +141,18 @@ msgid "Apply"
 msgstr "Применить"
 
 #: static_src/ts/components/document_signing/SendSignatureRequest.ts:116
+#, fuzzy
 msgid "Assigning recipients…"
-msgstr ""
+msgstr "Назначение получателей…"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:299
 msgid "Attachment"
 msgstr "Вложение"
 
-#: static_src/ts/components/communication/Calling.ts:282
+#: static_src/ts/components/communication/Calling.ts:283
+#, fuzzy
 msgid "Audio call"
-msgstr ""
+msgstr "Аудиозвонок"
 
 #: static_src/ts/components/inbox/CalendarAvailability.ts:64
 msgid "Availability could not be loaded."
@@ -142,17 +163,20 @@ msgstr "Не удалось загрузить данные о доступно�
 msgid "Availability unavailable"
 msgstr "Данные о доступности недоступны"
 
-#: static_src/ts/components/communication/Calling.ts:251
+#: static_src/ts/components/communication/Calling.ts:252
+#, fuzzy
 msgid "Available"
-msgstr ""
+msgstr "Доступен"
 
-#: static_src/ts/components/communication/Calling.ts:248
+#: static_src/ts/components/communication/Calling.ts:249
+#, fuzzy
 msgid "Available in another tab"
-msgstr ""
+msgstr "Доступен в другой вкладке"
 
-#: static_src/ts/components/communication/Calling.ts:251
+#: static_src/ts/components/communication/Calling.ts:252
+#, fuzzy
 msgid "Available — enable ringtone sound"
-msgstr ""
+msgstr "Доступен — включите звук звонка"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:395
 #: static_src/ts/utils/contextMenu.ts:164
@@ -188,8 +212,9 @@ msgid "Blue"
 msgstr "Синий"
 
 #: static_src/ts/components/text_editor/formattingActions.ts:17
+#, fuzzy
 msgid "Bold"
-msgstr ""
+msgstr "Полужирный"
 
 #: static_src/ts/components/text_editor/formattingActions.ts:20
 msgid "Bullet List"
@@ -204,48 +229,53 @@ msgstr "Занят"
 msgid "Calendar selections could not be saved. Please try again."
 msgstr "Не удалось сохранить выбор календарей. Повторите попытку."
 
-#: static_src/ts/components/communication/Calling.ts:281
+#: static_src/ts/components/communication/Calling.ts:282
+#, fuzzy
 msgid "Call"
-msgstr ""
+msgstr "Вызов"
 
-#: static_src/ts/components/communication/Calling.ts:423
+#: static_src/ts/components/communication/Calling.ts:424
+#, fuzzy
 msgid "Call declined"
-msgstr ""
+msgstr "Вызов отклонён"
 
-#: static_src/ts/components/communication/Calling.ts:746
+#: static_src/ts/components/communication/Calling.ts:749
 msgid "Call disconnected"
 msgstr "Вызов прерван"
 
-#: static_src/ts/components/communication/Calling.ts:439
-#: static_src/ts/components/communication/Calling.ts:735
+#: static_src/ts/components/communication/Calling.ts:440
+#: static_src/ts/components/communication/Calling.ts:738
 msgid "Call ended"
 msgstr "Звонок завершён"
 
-#: static_src/ts/components/communication/Calling.ts:219
+#: static_src/ts/components/communication/Calling.ts:220
+#, fuzzy
 msgid "Call handled in another tab"
-msgstr ""
+msgstr "Вызов принят в другой вкладке"
 
-#: static_src/ts/components/communication/Calling.ts:256
-#: static_src/ts/components/communication/Calling.ts:754
+#: static_src/ts/components/communication/Calling.ts:257
+#: static_src/ts/components/communication/Calling.ts:757
 msgid "Call in progress"
 msgstr "Звонок идёт"
 
-#: static_src/ts/components/communication/Calling.ts:478
+#: static_src/ts/components/communication/Calling.ts:479
 msgid "Call not connected"
 msgstr "Не удалось установить соединение"
 
-#: static_src/ts/components/communication/Calling.ts:765
+#: static_src/ts/components/communication/Calling.ts:768
 msgid "Calling failed. Check your connection and access, then try again."
 msgstr "Не удалось выполнить вызов. Проверьте подключение и доступ, затем повторите попытку."
 
-#: static_src/ts/components/communication/Calling.ts:480
+#: static_src/ts/components/communication/Calling.ts:481
 msgid "Calling is unavailable."
 msgstr "Вызовы недоступны."
 
-#: static_src/ts/components/communication/Calling.ts:258
+#: static_src/ts/components/communication/Calling.ts:259
+#, fuzzy
 msgid "Calls"
-msgstr ""
+msgstr "Вызовы"
 
+#: static_src/ts/components/text_editor/linkToolbar.ts:43
 #: static_src/ts/components/text_editor/utils/colorPicker.ts:25
 #: static_src/ts/components/text_editor/utils/linkPicker.ts:48
 #: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:281
@@ -257,28 +287,33 @@ msgid "Checklist"
 msgstr "Чек-лист"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:441
+#, fuzzy
 msgid "Choose document template"
-msgstr ""
+msgstr "Выберите шаблон документа"
 
 #: static_src/ts/components/inbox/EmailRecipients.ts:137
+#, fuzzy
 msgid "Choose one email address for this role."
-msgstr ""
+msgstr "Выберите один адрес электронной почты для этой роли."
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:442
+#, fuzzy
 msgid "Choose revision"
-msgstr ""
+msgstr "Выберите редакцию"
 
 #: static_src/ts/components/filters/FilterContainer.ts:74
 msgid "Clear"
 msgstr "Очистить"
 
 #: static_src/ts/components/text_editor/formattingActions.ts:18
+#, fuzzy
 msgid "Clear formatting"
-msgstr ""
+msgstr "Очистить форматирование"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:599
+#, fuzzy
 msgid "Click a page to place the selected field"
-msgstr ""
+msgstr "Щёлкните страницу, чтобы разместить выбранное поле"
 
 #: static_src/ts/utils/modals.ts:44
 msgid "Close"
@@ -293,9 +328,15 @@ msgstr "Блок кода"
 msgid "Collapse group"
 msgstr "Свернуть группу"
 
+#: static_src/ts/components/text_editor/utils/blockBehavior.ts:235
+#, fuzzy
+msgid "Collapse section"
+msgstr "Свернуть раздел"
+
 #: static_src/ts/components/text_editor/utils/colorPicker.ts:14
+#, fuzzy
 msgid "Color"
-msgstr ""
+msgstr "Цвет"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:207
 msgid "Complete every action and wait for its configuration to load."
@@ -314,18 +355,20 @@ msgstr "Группа условий"
 msgid "Conditions"
 msgstr "Условия"
 
-#: static_src/ts/components/communication/Calling.ts:250
-#: static_src/ts/components/communication/Calling.ts:727
+#: static_src/ts/components/communication/Calling.ts:251
+#: static_src/ts/components/communication/Calling.ts:728
+#, fuzzy
 msgid "Connecting…"
-msgstr ""
+msgstr "Подключение…"
 
 #: static_src/ts/components/communication/MeetingLobby.ts:44
 msgid "Connection interrupted. Retrying…"
 msgstr "Соединение прервано. Повторная попытка…"
 
 #: static_src/ts/utils/clipboard.ts:9
+#, fuzzy
 msgid "Copied to clipboard."
-msgstr ""
+msgstr "Скопировано в буфер обмена."
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:151
 msgid "Could not load action configuration."
@@ -339,6 +382,16 @@ msgstr "Не удалось загрузить параметры фильтра
 msgid "Could not load results. Try searching again."
 msgstr "Не удалось загрузить результаты. Попробуйте выполнить поиск ещё раз."
 
+#: static_src/ts/components/pages/PagesPanel.ts:89
+#, fuzzy
+msgid "Could not load your pages."
+msgstr "Не удалось загрузить ваши страницы."
+
+#: static_src/ts/components/text_editor/utils/imagePaste.ts:30
+#, fuzzy
+msgid "Could not paste the image. Please try again."
+msgstr "Не удалось вставить изображение. Повторите попытку."
+
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:189
 msgid "Could not read configuration."
 msgstr "Не удалось прочитать настройки."
@@ -351,25 +404,36 @@ msgstr "Не удалось восстановить исходные фильт
 msgid "Could not restore the initial filters. Clear them to start again."
 msgstr "Не удалось восстановить исходные фильтры. Очистите их, чтобы начать заново."
 
+#: static_src/ts/components/pages/PageEditor.ts:136 static_src/ts/components/pages/PageEditor.ts:156
+#, fuzzy
+msgid "Could not save. Your changes are still here; edit again to retry."
+msgstr ""
+"Не удалось сохранить. Ваши изменения остались здесь; отредактируйте ещё раз, чтобы повторить "
+"попытку."
+
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:148
 msgid "Create label"
 msgstr "Создать метку"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:442
+#, fuzzy
 msgid "Current draft"
-msgstr ""
+msgstr "Текущий черновик"
 
 #: static_src/ts/components/text_editor/formattingActions.ts:125
+#, fuzzy
 msgid "Custom color…"
-msgstr ""
+msgstr "Другой цвет…"
 
 #: static_src/ts/components/text_editor/utils/colorPicker.ts:9
+#, fuzzy
 msgid "Custom text color"
-msgstr ""
+msgstr "Другой цвет текста"
 
 #: static_src/ts/components/text_editor/formattingActions.ts:23
+#, fuzzy
 msgid "Decrease indent"
-msgstr ""
+msgstr "Уменьшить отступ"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:448
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:81
@@ -379,24 +443,33 @@ msgid "Default"
 msgstr "По умолчанию"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:568
+#, fuzzy
 msgid "Default layout saved"
-msgstr ""
+msgstr "Макет по умолчанию сохранён"
+
+#: static_src/ts/components/pages/PageEditor.ts:278
+#, fuzzy
+msgid "Delete page"
+msgstr "Удалить страницу"
 
 #: static_src/ts/components/SelectPreference.ts:73
 msgid "Delete {preference}"
 msgstr "Удалить {preference}"
 
 #: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:269
+#, fuzzy
 msgid "Diagram preview"
-msgstr ""
+msgstr "Предпросмотр диаграммы"
 
 #: static_src/ts/components/DocumentTemplateBuilder.ts:679
+#, fuzzy
 msgid "Document preview"
-msgstr ""
+msgstr "Предпросмотр документа"
 
 #: static_src/ts/components/text_editor/nodes/MermaidNode.ts:108
+#, fuzzy
 msgid "Double-click to edit diagram"
-msgstr ""
+msgstr "Дважды щёлкните, чтобы изменить диаграмму"
 
 #: static_src/ts/components/inbox/EmailEditor.ts:168
 msgid "Draft attachments cannot exceed 20 MB in total."
@@ -410,9 +483,15 @@ msgstr "Черновик сохранён."
 msgid "Drag row"
 msgstr "Перетащить строку"
 
+#: static_src/ts/components/text_editor/utils/blockBehavior.ts:79
+#, fuzzy
+msgid "Drag to move; Alt + arrow keys to reorder"
+msgstr "Перетащите, чтобы переместить; используйте Alt + клавиши со стрелками, чтобы изменить порядок"
+
 #: static_src/ts/components/document_signing/SignaturePad.ts:160
+#, fuzzy
 msgid "Draw signature"
-msgstr ""
+msgstr "Нарисовать подпись"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:322
 msgid "Each behavior needs at least one action."
@@ -423,24 +502,32 @@ msgid "Edit"
 msgstr "Изменить"
 
 #: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:223
+#, fuzzy
 msgid "Edit Mermaid diagram"
-msgstr ""
+msgstr "Изменить диаграмму Mermaid"
+
+#: static_src/ts/components/text_editor/linkToolbar.ts:28
+#, fuzzy
+msgid "Edit link"
+msgstr "Изменить ссылку"
 
 #: static_src/ts/components/inbox/EmailEditor.ts:326
 msgid "Email operation failed. Your edits are still here; please try again."
 msgstr "Не удалось выполнить операцию с письмом. Ваши изменения сохранены; попробуйте ещё раз."
 
-#: static_src/ts/components/communication/Calling.ts:521
+#: static_src/ts/components/communication/Calling.ts:522
+#, fuzzy
 msgid "Enable sound to hear the call."
-msgstr ""
+msgstr "Включите звук, чтобы слышать собеседника."
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:245
 msgid "Enabled"
 msgstr "Включено"
 
 #: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:315
+#, fuzzy
 msgid "Enter Mermaid source to create a diagram."
-msgstr ""
+msgstr "Введите исходный код Mermaid, чтобы создать диаграмму."
 
 #: static_src/ts/components/filters/ConditionEditor.ts:94
 msgid "Enter a single field key."
@@ -450,6 +537,7 @@ msgstr "Введите ключ одного поля."
 msgid "Enter a valid email address or remove the invalid recipient."
 msgstr "Укажите действительный адрес электронной почты или удалите недействительного получателя."
 
+#: static_src/ts/components/text_editor/linkToolbar.ts:146
 #: static_src/ts/components/text_editor/utils/linkPicker.ts:67
 msgid "Enter a valid http, https, mailto, or tel URL."
 msgstr "Введите корректный URL с протоколом http, https, mailto или tel."
@@ -457,6 +545,11 @@ msgstr "Введите корректный URL с протоколом http, ht
 #: static_src/ts/components/filters/FilterContainer.ts:155
 msgid "Expand group"
 msgstr "Развернуть группу"
+
+#: static_src/ts/components/text_editor/utils/blockBehavior.ts:235
+#, fuzzy
+msgid "Expand section"
+msgstr "Развернуть раздел"
 
 #: static_src/ts/components/filters/ConditionEditor.ts:64
 msgid "Field"
@@ -492,12 +585,14 @@ msgid "Filter scope is missing."
 msgstr "Не указана область действия фильтра."
 
 #: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:323
+#, fuzzy
 msgid "Fix the source to preview this diagram."
-msgstr ""
+msgstr "Исправьте исходный код, чтобы просмотреть диаграмму."
 
 #: static_src/ts/components/text_editor/formattingActions.ts:22
+#, fuzzy
 msgid "Font size"
-msgstr ""
+msgstr "Размер шрифта"
 
 #: static_src/ts/components/behaviors/FormBehaviorRuntime.ts:202
 msgid "Form behaviors changed each other repeatedly. Check for a cycle in the configured behaviors."
@@ -510,12 +605,14 @@ msgid "Form fields"
 msgstr "Поля формы"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:831
+#, fuzzy
 msgid "Give every signer role a name."
-msgstr ""
+msgstr "Укажите имя для каждой роли подписанта."
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:842
+#, fuzzy
 msgid "Give this signature request a title."
-msgstr ""
+msgstr "Укажите название запроса на подпись."
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
 msgid "Gray"
@@ -546,63 +643,71 @@ msgstr "Заголовок 3"
 msgid "Hide behavior"
 msgstr "Скрыть поведение"
 
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:452
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:462
 msgid "Hide formatting toolbar"
 msgstr "Скрыть панель форматирования"
 
 #: static_src/ts/components/text_editor/formattingActions.ts:18
+#, fuzzy
 msgid "Highlight"
-msgstr ""
+msgstr "Выделение"
 
 #: static_src/ts/components/text_editor/actions.ts:116
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:151
 msgid "Image"
 msgstr "Изображение"
 
-#: static_src/ts/components/communication/Calling.ts:256
-#: static_src/ts/components/communication/Calling.ts:317
+#: static_src/ts/components/communication/Calling.ts:257
+#: static_src/ts/components/communication/Calling.ts:318
 msgid "Incoming call"
 msgstr "Входящий вызов"
 
-#: static_src/ts/components/communication/Calling.ts:256
+#: static_src/ts/components/communication/Calling.ts:257
+#, fuzzy
 msgid "Incoming call — enable ringtone sound"
-msgstr ""
+msgstr "Входящий вызов — включите звук звонка"
 
-#: static_src/ts/components/communication/Calling.ts:634
+#: static_src/ts/components/communication/Calling.ts:635
 msgid "Incoming calling is unavailable."
 msgstr "Входящие вызовы недоступны."
 
-#: static_src/ts/components/communication/Calling.ts:696
+#: static_src/ts/components/communication/Calling.ts:697
 msgid "Incoming calling is unavailable. Check your connection and access."
 msgstr "Входящие вызовы недоступны. Проверьте подключение и доступ."
 
-#: static_src/ts/components/communication/Calling.ts:186
+#: static_src/ts/components/communication/Calling.ts:187
+#, fuzzy
 msgid "Incoming calls disabled"
-msgstr ""
+msgstr "Входящие вызовы отключены"
 
 #: static_src/ts/components/text_editor/formattingActions.ts:23
+#, fuzzy
 msgid "Increase indent"
-msgstr ""
+msgstr "Увеличить отступ"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:248
 msgid "Initial load and change"
 msgstr "При первоначальной загрузке и изменении"
 
 #: static_src/ts/components/text_editor/formattingActions.ts:18
+#, fuzzy
 msgid "Inline code"
-msgstr ""
+msgstr "Встроенный код"
 
 #: static_src/ts/components/text_editor/actionMenu.ts:76
+#, fuzzy
 msgid "Insert"
-msgstr ""
+msgstr "Вставить"
 
 #: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:223
+#, fuzzy
 msgid "Insert Mermaid diagram"
-msgstr ""
+msgstr "Вставить диаграмму Mermaid"
 
 #: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:285
+#, fuzzy
 msgid "Insert diagram"
-msgstr ""
+msgstr "Вставить диаграмму"
 
 #: static_src/ts/components/text_editor/utils/linkPicker.ts:24
 #: static_src/ts/components/text_editor/utils/linkPicker.ts:55
@@ -613,7 +718,7 @@ msgstr "Вставить ссылку"
 msgid "Invalid behavior configuration: expected version 1 with a behaviors list."
 msgstr "Недопустимая конфигурация поведения: ожидалась версия 1 со списком поведений."
 
-#: static_src/ts/components/communication/Calling.ts:761
+#: static_src/ts/components/communication/Calling.ts:764
 msgid "Invalid call endpoint."
 msgstr "Недопустимая конечная точка вызова."
 
@@ -622,26 +727,28 @@ msgid "Invalid row policy"
 msgstr "Недопустимая политика строк"
 
 #: static_src/ts/components/text_editor/formattingActions.ts:17
+#, fuzzy
 msgid "Italic"
-msgstr ""
+msgstr "Курсив"
 
-#: static_src/ts/components/communication/Calling.ts:489
+#: static_src/ts/components/communication/Calling.ts:490
 msgid "Joining call…"
 msgstr "Подключение к вызову…"
 
 #: static_src/ts/components/text_editor/formattingActions.ts:23
+#, fuzzy
 msgid "Justify"
-msgstr ""
+msgstr "По ширине"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:455
 msgid "Label could not be created"
 msgstr "Не удалось создать метку"
 
-#: static_src/ts/components/communication/Calling.ts:392
+#: static_src/ts/components/communication/Calling.ts:393
 msgid "Leave or dismiss the current call first."
 msgstr "Сначала завершите текущий вызов или закройте его уведомление."
 
-#: static_src/ts/components/communication/Calling.ts:411
+#: static_src/ts/components/communication/Calling.ts:412
 msgid "Leave the current call first."
 msgstr "Сначала завершите текущий вызов."
 
@@ -649,6 +756,7 @@ msgstr "Сначала завершите текущий вызов."
 msgid "Link"
 msgstr "Ссылка"
 
+#: static_src/ts/components/text_editor/linkToolbar.ts:33
 #: static_src/ts/components/text_editor/utils/linkPicker.ts:40
 msgid "Link URL"
 msgstr "URL ссылки"
@@ -658,13 +766,15 @@ msgid "Link name"
 msgstr "Название ссылки"
 
 #: static_src/ts/components/text_editor/actionMenu.ts:73
-#: static_src/ts/components/text_editor/actionToolbar.ts:68
+#: static_src/ts/components/text_editor/actionToolbar.ts:60
+#, fuzzy
 msgid "Lists"
-msgstr ""
+msgstr "Списки"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:535
+#, fuzzy
 msgid "Loaded revision"
-msgstr ""
+msgstr "Загруженная версия"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:138
 msgid "Loading configuration…"
@@ -689,7 +799,7 @@ msgstr "Поиск"
 msgid "Match conditions"
 msgstr "Условия соответствия"
 
-#: static_src/ts/components/communication/Calling.ts:469
+#: static_src/ts/components/communication/Calling.ts:470
 msgid "Meeting link copied"
 msgstr "Ссылка на встречу скопирована"
 
@@ -705,28 +815,34 @@ msgid "Mention suggestions"
 msgstr "Варианты упоминаний"
 
 #: static_src/ts/components/text_editor/tableActions.ts:115
+#, fuzzy
 msgid "Merge cells"
-msgstr ""
+msgstr "Объединить ячейки"
 
 #: static_src/ts/components/text_editor/utils/tableControls.ts:350
+#, fuzzy
 msgid "Merged cells must be separated before changing rows or columns"
-msgstr ""
+msgstr "Перед изменением строк или столбцов необходимо разделить объединённые ячейки"
 
 #: static_src/ts/components/text_editor/actions.ts:85 static_src/ts/utils/mermaidDisplay.ts:22
+#, fuzzy
 msgid "Mermaid diagram"
-msgstr ""
+msgstr "Диаграмма Mermaid"
 
 #: static_src/ts/components/text_editor/nodes/MermaidNode.ts:107
+#, fuzzy
 msgid "Mermaid diagram. Press Enter to edit."
-msgstr ""
+msgstr "Диаграмма Mermaid. Нажмите Enter, чтобы изменить."
 
 #: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:242
+#, fuzzy
 msgid "Mermaid source"
-msgstr ""
+msgstr "Исходный код Mermaid"
 
-#: static_src/ts/components/communication/Calling.ts:331
+#: static_src/ts/components/communication/Calling.ts:332
+#, fuzzy
 msgid "Missed call"
-msgstr ""
+msgstr "Пропущенный вызов"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:98
 msgid "Move action down"
@@ -744,18 +860,26 @@ msgstr "Переместить поведение вниз"
 msgid "Move behavior up"
 msgstr "Переместить поведение вверх"
 
-#: static_src/ts/components/communication/Calling.ts:266
+#: static_src/ts/components/text_editor/utils/blockBehavior.ts:78
+#, fuzzy
+msgid "Move block"
+msgstr "Переместить блок"
+
+#: static_src/ts/components/communication/Calling.ts:267
+#, fuzzy
 msgid "Mute ringtone"
-msgstr ""
+msgstr "Отключить звонок"
 
-#: static_src/ts/components/communication/Calling.ts:63
+#: static_src/ts/components/communication/Calling.ts:64
+#, fuzzy
 msgid "No active call"
-msgstr ""
+msgstr "Нет активного звонка"
 
-#: static_src/ts/components/communication/Calling.ts:306
-#: static_src/ts/components/communication/Calling.ts:727
+#: static_src/ts/components/communication/Calling.ts:307
+#: static_src/ts/components/communication/Calling.ts:728
+#, fuzzy
 msgid "No answer"
-msgstr ""
+msgstr "Нет ответа"
 
 #: static_src/ts/components/data_view_components/KanbanBoard.ts:453
 msgid "No items"
@@ -793,8 +917,9 @@ msgid "No saved filters yet."
 msgstr "Сохранённых фильтров пока нет."
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:441
+#, fuzzy
 msgid "No saved revisions"
-msgstr ""
+msgstr "Нет сохранённых версий"
 
 #: static_src/ts/components/inbox/CalendarAvailability.ts:119
 msgid "No visible conflicts"
@@ -817,13 +942,15 @@ msgstr "Объект"
 msgid "Objects"
 msgstr "Объекты"
 
-#: static_src/ts/components/communication/Calling.ts:245
+#: static_src/ts/components/communication/Calling.ts:246
+#, fuzzy
 msgid "Offline"
-msgstr ""
+msgstr "Не в сети"
 
-#: static_src/ts/components/communication/Calling.ts:249
+#: static_src/ts/components/communication/Calling.ts:250
+#, fuzzy
 msgid "Offline — reconnecting"
-msgstr ""
+msgstr "Не в сети — повторное подключение"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:248
 msgid "On change"
@@ -833,39 +960,60 @@ msgstr "При изменении"
 msgid "On initial load"
 msgstr "При первоначальной загрузке"
 
+#: static_src/ts/components/text_editor/utils/blockBehavior.ts:85
+#: static_src/ts/components/text_editor/utils/blockBehavior.ts:86
+#, fuzzy
+msgid "On this page"
+msgstr "На этой странице"
+
+#: static_src/ts/components/text_editor/linkToolbar.ts:36
+#, fuzzy
+msgid "Open in new tab"
+msgstr "Открыть в новой вкладке"
+
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:429
 #: static_src/ts/components/text_editor/formattingActions.ts:123
 msgid "Orange"
 msgstr "Оранжевый"
 
 #: static_src/ts/components/document_signing/PdfViewer.ts:105
+#, fuzzy
 msgid "Page"
-msgstr ""
+msgstr "Страница"
 
 #: static_src/ts/components/text_editor/DocumentTemplateTextEditor.ts:24
 #: static_src/ts/components/text_editor/nodes/PageBreakNode.ts:64
+#, fuzzy
 msgid "Page break"
-msgstr ""
+msgstr "Разрыв страницы"
+
+#: static_src/ts/components/text_editor/utils/blockBehavior.ts:87
+#, fuzzy
+msgid "Page headings"
+msgstr "Заголовки страницы"
 
 #: static_src/ts/components/text_editor/formattingActions.ts:19
+#, fuzzy
 msgid "Paragraph"
-msgstr ""
+msgstr "Абзац"
 
 #: static_src/ts/components/PermissionsTable.ts:388
 msgid "Permission required"
 msgstr "Требуется разрешение"
 
-#: static_src/ts/components/communication/Calling.ts:282
+#: static_src/ts/components/communication/Calling.ts:283
+#, fuzzy
 msgid "Phone call"
-msgstr ""
+msgstr "Телефонный звонок"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:432
 msgid "Pink"
 msgstr "Розовый"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:230
+#, fuzzy
 msgid "Place a field on page"
-msgstr ""
+msgstr "Разместите поле на странице"
 
 #: static_src/ts/components/filters/widget.ts:36
 msgid "Please check the filter value."
@@ -879,9 +1027,15 @@ msgstr "Выберите хотя бы одно разрешение для по
 msgid "Preference"
 msgstr "Предпочтение"
 
+#: static_src/ts/components/text_editor/utils/blockBehavior.ts:350
+#, fuzzy
+msgid "Press / for commands or @ for mentions"
+msgstr "Нажмите / для команд или @ для упоминаний"
+
 #: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:264
+#, fuzzy
 msgid "Preview"
-msgstr ""
+msgstr "Предпросмотр"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:431
 #: static_src/ts/components/text_editor/formattingActions.ts:124
@@ -889,24 +1043,28 @@ msgid "Purple"
 msgstr "Фиолетовый"
 
 #: static_src/ts/components/text_editor/formattingActions.ts:20
+#, fuzzy
 msgid "Quote"
-msgstr ""
+msgstr "Цитата"
 
 #: static_src/ts/components/document_signing/SignDocument.ts:166
+#, fuzzy
 msgid "Ready to retry"
-msgstr ""
+msgstr "Готово к повторной попытке"
 
 #: static_src/ts/components/document_signing/SendSignatureRequest.ts:122
+#, fuzzy
 msgid "Recipients assigned."
-msgstr ""
+msgstr "Получатели назначены."
 
-#: static_src/ts/components/communication/Calling.ts:754
+#: static_src/ts/components/communication/Calling.ts:757
 msgid "Reconnecting…"
 msgstr "Повторное подключение…"
 
 #: static_src/ts/components/document_signing/SignDocument.ts:143
+#, fuzzy
 msgid "Recording your signature…"
-msgstr ""
+msgstr "Запись вашей подписи…"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:428
 #: static_src/ts/components/text_editor/formattingActions.ts:122
@@ -914,12 +1072,14 @@ msgid "Red"
 msgstr "Красный"
 
 #: static_src/ts/components/text_editor/actions.ts:96
+#, fuzzy
 msgid "Redo"
-msgstr ""
+msgstr "Повторить"
 
 #: static_src/ts/components/document_signing/SignaturePad.ts:160
+#, fuzzy
 msgid "Redraw signature"
-msgstr ""
+msgstr "Нарисовать подпись заново"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:314
 #: static_src/ts/components/filters/RenderedFilter.ts:94
@@ -943,17 +1103,24 @@ msgstr "Удалить условие"
 msgid "Remove group"
 msgstr "Удалить группу"
 
+#: static_src/ts/components/text_editor/linkToolbar.ts:44
+#, fuzzy
+msgid "Remove link"
+msgstr "Удалить ссылку"
+
 #: static_src/ts/components/text_editor/nodes/PageBreakNode.ts:68
+#, fuzzy
 msgid "Remove page break"
-msgstr ""
+msgstr "Удалить разрыв страницы"
 
 #: static_src/ts/components/inbox/EmailRecipients.ts:119
 msgid "Remove recipient"
 msgstr "Удалить получателя"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:309
+#, fuzzy
 msgid "Remove role and its fields"
-msgstr ""
+msgstr "Удалить роль и связанные с ней поля"
 
 #: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:366
 msgid "Remove row"
@@ -965,12 +1132,14 @@ msgstr "Удалить {label}"
 
 #: static_src/ts/components/text_editor/nodes/MermaidNode.ts:50
 #: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:313
+#, fuzzy
 msgid "Rendering diagram…"
-msgstr ""
+msgstr "Создание диаграммы…"
 
 #: static_src/ts/components/text_editor/utils/tableColumnResizing.ts:161
+#, fuzzy
 msgid "Resize column"
-msgstr ""
+msgstr "Изменить ширину столбца"
 
 #: static_src/ts/components/ResizableDiv.ts:372
 msgid "Resize panel"
@@ -981,25 +1150,30 @@ msgid "Retry"
 msgstr "Повторить"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:535
+#, fuzzy
 msgid "Review the field positions before signing."
-msgstr ""
+msgstr "Проверьте расположение полей перед подписанием."
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:448
 #: static_src/ts/components/document_signing/PrepareSign.ts:568
+#, fuzzy
 msgid "Revision"
-msgstr ""
+msgstr "Редакция"
 
-#: static_src/ts/components/communication/Calling.ts:754
+#: static_src/ts/components/communication/Calling.ts:757
+#, fuzzy
 msgid "Ringing…"
-msgstr ""
+msgstr "Вызов…"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:267
+#, fuzzy
 msgid "Role"
-msgstr ""
+msgstr "Роль"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:324
+#, fuzzy
 msgid "Role name"
-msgstr ""
+msgstr "Название роли"
 
 #: static_src/ts/components/layouts/BaseSectionedLayoutContainer.ts:363
 msgid "Row title"
@@ -1010,6 +1184,7 @@ msgid "Run behavior"
 msgstr "Запустить поведение"
 
 #: static_src/ts/components/inbox/CalendarEventEditor.ts:46
+#: static_src/ts/components/text_editor/linkToolbar.ts:42
 msgid "Save"
 msgstr "Сохранить"
 
@@ -1026,6 +1201,11 @@ msgstr "Сохранённые фильтры"
 #: static_src/ts/components/inbox/EmailEditor.ts:103
 msgid "Saving draft…"
 msgstr "Сохранение черновика…"
+
+#: static_src/ts/components/pages/PageEditor.ts:131
+#, fuzzy
+msgid "Saving…"
+msgstr "Сохранение…"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:402
 msgid "Search colors"
@@ -1073,8 +1253,9 @@ msgstr "Выбрать"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:533
 #: static_src/ts/components/document_signing/PrepareSign.ts:599
+#, fuzzy
 msgid "Select a field to get started"
-msgstr ""
+msgstr "Выберите поле, чтобы начать"
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:78
 msgid "Select action"
@@ -1100,29 +1281,33 @@ msgstr "Выбрать оператор"
 msgid "Select target field"
 msgstr "Выберите целевое поле"
 
-#: static_src/ts/components/text_editor/actionToolbar.ts:52
+#: static_src/ts/components/text_editor/actionToolbar.ts:44
+#, fuzzy
 msgid "Selection formatting"
-msgstr ""
+msgstr "Форматирование выделенного текста"
 
 #: static_src/ts/components/inbox/CalendarEventEditor.ts:46
 msgid "Send"
 msgstr "Отправить"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:897
+#, fuzzy
 msgid "Send signature request"
-msgstr ""
+msgstr "Отправить запрос на подпись"
 
 #: static_src/ts/components/document_signing/SendSignatureRequest.ts:134
+#, fuzzy
 msgid "Sending could not be confirmed. Retry with the same recipients and message."
-msgstr ""
+msgstr "Не удалось подтвердить отправку. Повторите попытку с теми же получателями и сообщением."
 
 #: static_src/ts/components/inbox/EmailEditor.ts:290
 msgid "Sending email…"
 msgstr "Отправка электронного письма…"
 
 #: static_src/ts/components/document_signing/SendSignatureRequest.ts:116
+#, fuzzy
 msgid "Sending signature requests…"
-msgstr ""
+msgstr "Отправка запросов на подпись…"
 
 #: static_src/ts/components/filters/RenderedFilter.ts:96
 msgid "Set default"
@@ -1131,6 +1316,11 @@ msgstr "Установить по умолчанию"
 #: static_src/ts/components/SelectPreference.ts:36
 msgid "Share {preference}"
 msgstr "Поделиться: {preference}"
+
+#: static_src/ts/components/pages/PageEditor.ts:266
+#, fuzzy
+msgid "Sharing updated"
+msgstr "Настройки общего доступа обновлены"
 
 #: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:670
 msgid "Show All Fields"
@@ -1145,52 +1335,65 @@ msgstr "Показывать только обязательные"
 msgid "Show behavior"
 msgstr "Показать поведение"
 
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:475
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:476
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:485
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:486
 msgid "Show formatting toolbar"
 msgstr "Показать панель форматирования"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:897
+#, fuzzy
 msgid "Sign document"
-msgstr ""
+msgstr "Подписать документ"
 
 #: static_src/ts/components/document_signing/SendSignatureRequest.ts:123
+#, fuzzy
 msgid "Signature invitations accepted for email delivery."
-msgstr ""
+msgstr "Приглашения на подпись приняты для отправки по электронной почте."
 
 #: static_src/ts/components/document_signing/SignDocument.ts:166
+#, fuzzy
 msgid "Signature recorded"
-msgstr ""
+msgstr "Подпись сохранена"
 
 #: static_src/ts/components/document_signing/SendSignatureRequest.ts:124
+#, fuzzy
 msgid "Signature request created without email."
-msgstr ""
+msgstr "Запрос на подпись создан без отправки по электронной почте."
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:291
 #: static_src/ts/components/document_signing/PrepareSign.ts:302
 #: static_src/ts/components/document_signing/PrepareSign.ts:630
+#, fuzzy
 msgid "Signing order"
-msgstr ""
+msgstr "Порядок подписания"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:213
+#, fuzzy
 msgid "Some fields could not be loaded. Check your draft permissions."
-msgstr ""
+msgstr "Не удалось загрузить некоторые поля. Проверьте разрешения для черновика."
 
 #: static_src/ts/components/text_editor/tableActions.ts:121
+#, fuzzy
 msgid "Split cell"
-msgstr ""
+msgstr "Разделить ячейку"
 
 #: static_src/ts/components/inbox/CalendarAvailability.ts:112
 msgid "Start event at"
 msgstr "Начать событие в"
 
-#: static_src/ts/components/communication/Calling.ts:399
+#: static_src/ts/components/pages/PageEditor.ts:122
+#, fuzzy
+msgid "Start typing to create a page"
+msgstr "Начните вводить текст, чтобы создать страницу"
+
+#: static_src/ts/components/communication/Calling.ts:400
 msgid "Starting call…"
 msgstr "Начало вызова…"
 
 #: static_src/ts/components/text_editor/formattingActions.ts:17
+#, fuzzy
 msgid "Strikethrough"
-msgstr ""
+msgstr "Зачёркивание"
 
 #: static_src/ts/components/inbox/EmailRecipients.ts:65
 msgid "Suggested email addresses"
@@ -1215,30 +1418,36 @@ msgid "Template"
 msgstr "Шаблон"
 
 #: static_src/ts/components/text_editor/formattingActions.ts:21
+#, fuzzy
 msgid "Text color"
-msgstr ""
+msgstr "Цвет текста"
 
 #: static_src/ts/components/text_editor/actionMenu.ts:72
-#: static_src/ts/components/text_editor/actionToolbar.ts:52
+#: static_src/ts/components/text_editor/actionToolbar.ts:44
+#, fuzzy
 msgid "Text formatting"
-msgstr ""
+msgstr "Форматирование текста"
 
 #: static_src/ts/components/text_editor/actionMenu.ts:71
-#: static_src/ts/components/text_editor/actionToolbar.ts:68
+#: static_src/ts/components/text_editor/actionToolbar.ts:60
+#, fuzzy
 msgid "Text style"
-msgstr ""
+msgstr "Стиль текста"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:572
+#, fuzzy
 msgid "The default layout could not be saved."
-msgstr ""
+msgstr "Не удалось сохранить макет по умолчанию."
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:166
+#, fuzzy
 msgid "The document could not be loaded."
-msgstr ""
+msgstr "Не удалось загрузить документ."
 
 #: static_src/ts/components/document_signing/SignDocument.ts:70
+#, fuzzy
 msgid "The document could not be loaded. Close this window and try again."
-msgstr ""
+msgstr "Не удалось загрузить документ. Закройте это окно и попробуйте ещё раз."
 
 #: static_src/ts/components/PermissionsTable.ts:339
 msgid "The filter editor is not ready."
@@ -1249,26 +1458,33 @@ msgid "The host did not admit you."
 msgstr "Организатор не допустил вас."
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:491
+#, fuzzy
 msgid "The layout revision could not be loaded."
-msgstr ""
+msgstr "Не удалось загрузить версию макета."
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:876
+#, fuzzy
 msgid "The preparation could not be saved. Please try again."
-msgstr ""
+msgstr "Не удалось сохранить подготовку. Повторите попытку."
 
 #: static_src/ts/components/document_signing/SigningWizard.ts:61
+#, fuzzy
 msgid "The preparation could not be saved. Try again."
-msgstr ""
+msgstr "Не удалось сохранить подготовку. Попробуйте ещё раз."
 
 #: static_src/ts/components/document_signing/SendSignatureRequest.ts:125
+#, fuzzy
 msgid ""
 "The request was created, but some emails could not be confirmed. Check Sent Items before sending "
 "again."
 msgstr ""
+"Запрос создан, но подтвердить некоторые адреса электронной почты не удалось. Проверьте папку "
+"«Отправленные», прежде чем отправлять запрос повторно."
 
 #: static_src/ts/components/document_signing/SigningWizard.ts:104
+#, fuzzy
 msgid "The request was saved. Reload the page to continue."
-msgstr ""
+msgstr "Запрос сохранён. Перезагрузите страницу, чтобы продолжить."
 
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:378
 msgid "The saved behavior configuration cannot be edited in this format."
@@ -1283,48 +1499,68 @@ msgid "The saved filter lookup could not be restored."
 msgstr "Не удалось восстановить оператор сохранённого фильтра."
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:916
+#, fuzzy
 msgid "The signing form could not be loaded. Please try again."
-msgstr ""
+msgstr "Не удалось загрузить форму для подписания. Повторите попытку."
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:920
+#, fuzzy
 msgid "The signing form could not be opened."
-msgstr ""
+msgstr "Не удалось открыть форму для подписания."
 
 #: static_src/ts/components/document_signing/StartSelfSigning.ts:57
+#, fuzzy
 msgid "The signing session could not be opened. Try again."
-msgstr ""
+msgstr "Не удалось открыть сеанс подписания. Попробуйте ещё раз."
 
 #: static_src/ts/utils/clipboard.ts:12
+#, fuzzy
 msgid "The value could not be copied to the clipboard."
-msgstr ""
+msgstr "Не удалось скопировать значение в буфер обмена."
 
-#: static_src/ts/components/communication/Calling.ts:491
+#: static_src/ts/components/communication/Calling.ts:492
 msgid "This call has ended."
 msgstr "Этот вызов завершен."
 
 #: static_src/ts/components/text_editor/nodes/MermaidNode.ts:59
+#, fuzzy
 msgid "This diagram could not be rendered. Double-click to edit its source."
-msgstr ""
+msgstr "Не удалось отобразить эту диаграмму. Дважды щёлкните, чтобы изменить её исходный код."
 
 #: static_src/ts/components/filters/FilterContainer.ts:183
 msgid "This editor accepts one condition group per rule."
 msgstr "Этот редактор поддерживает только одну группу условий для каждого правила."
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:515
+#, fuzzy
 msgid "This layout contains fields that do not fit this PDF. Your current fields have been kept."
-msgstr ""
+msgstr "В этом макете есть поля, которые не помещаются в этот PDF-файл. Текущие поля сохранены."
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:482
+#, fuzzy
 msgid "This layout revision is no longer available."
-msgstr ""
+msgstr "Эта версия макета больше недоступна."
 
 #: static_src/ts/components/communication/MeetingLobby.ts:52
 msgid "This meeting is no longer available."
 msgstr "Эта встреча больше недоступна."
 
-#: static_src/ts/components/document_signing/SigningWizard.ts:119
-msgid "This step could not be loaded. Go back and try again."
+#: static_src/ts/components/pages/PageEditor.ts:245
+#, fuzzy
+msgid "This page changed elsewhere. Your unsaved text is still here. Reload to continue."
 msgstr ""
+"Эта страница была изменена в другом месте. Несохранённый текст всё ещё здесь. Перезагрузите "
+"страницу, чтобы продолжить."
+
+#: static_src/ts/components/pages/PageEditor.ts:207
+#, fuzzy
+msgid "This page is no longer available to you."
+msgstr "Эта страница вам больше недоступна."
+
+#: static_src/ts/components/document_signing/SigningWizard.ts:119
+#, fuzzy
+msgid "This step could not be loaded. Go back and try again."
+msgstr "Не удалось загрузить этот шаг. Вернитесь назад и попробуйте ещё раз."
 
 #: static_src/ts/components/inbox/CalendarAvailability.ts:87
 msgid "Time"
@@ -1360,8 +1596,9 @@ msgid "Unable to refresh field settings. Please try again."
 msgstr "Не удалось обновить настройки полей. Повторите попытку."
 
 #: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:324
+#, fuzzy
 msgid "Unable to render this diagram."
-msgstr ""
+msgstr "Не удалось отобразить эту диаграмму."
 
 #: static_src/ts/components/communication/MeetingLobby.ts:26
 #: static_src/ts/components/communication/MeetingLobby.ts:29
@@ -1385,41 +1622,63 @@ msgid "Unavailable field: {field}"
 msgstr "Недоступное поле: {field}"
 
 #: static_src/ts/components/text_editor/formattingActions.ts:17
+#, fuzzy
 msgid "Underline"
-msgstr ""
+msgstr "Подчёркивание"
 
 #: static_src/ts/components/text_editor/actions.ts:91
+#, fuzzy
 msgid "Undo"
-msgstr ""
+msgstr "Отменить"
 
-#: static_src/ts/components/communication/Calling.ts:266
+#: static_src/ts/components/communication/Calling.ts:267
+#, fuzzy
 msgid "Unmute ringtone"
-msgstr ""
+msgstr "Включить звук звонка"
+
+#: static_src/ts/components/pages/PageEditor.ts:79 static_src/ts/components/pages/PageEditor.ts:147
+#, fuzzy
+msgid "Unsaved changes"
+msgstr "Несохранённые изменения"
+
+#: static_src/ts/components/text_editor/utils/blockBehavior.ts:362
+#, fuzzy
+msgid "Untitled"
+msgstr "Без названия"
+
+#: static_src/ts/components/pages/PageEditor.ts:236
+#, fuzzy
+msgid "Updated from another editor"
+msgstr "Обновлено в другом редакторе"
 
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:169
 msgid "Upload image"
 msgstr "Загрузить изображение"
 
 #: static_src/ts/components/inbox/EmailEditor.ts:281
+#, fuzzy
 msgid "Uploading attachment…"
-msgstr ""
+msgstr "Загрузка вложения…"
 
 #: static_src/ts/components/inbox/EmailRecipients.ts:114
 #: static_src/ts/components/inbox/EmailRecipients.ts:342
 msgid "User"
 msgstr "Пользователь"
 
-#: static_src/ts/components/communication/Calling.ts:282
+#: static_src/ts/components/communication/Calling.ts:283
+#, fuzzy
 msgid "Video call"
-msgstr ""
+msgstr "Видеозвонок"
 
 #: static_src/ts/components/document_signing/SigningWizard.ts:46
+#, fuzzy
 msgid "Wait for the document to finish loading."
-msgstr ""
+msgstr "Дождитесь завершения загрузки документа."
 
-#: static_src/ts/components/communication/Calling.ts:754
+#: static_src/ts/components/communication/Calling.ts:757
+#, fuzzy
 msgid "Waiting for participants…"
-msgstr ""
+msgstr "Ожидание участников…"
 
 #: static_src/ts/components/communication/MeetingLobby.ts:52
 msgid "Waiting for the host to admit you…"
@@ -1430,8 +1689,9 @@ msgid "Yellow"
 msgstr "Жёлтый"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:162
+#, fuzzy
 msgid "You can prepare fields here, but you do not have permission to save signing preparations."
-msgstr ""
+msgstr "Здесь можно подготовить поля, но у вас нет разрешения сохранять подготовку к подписанию."
 
 #: static_src/ts/components/data_view_components/KanbanBoard.ts:402
 msgid "You do not have permission to move this card."
@@ -1441,29 +1701,34 @@ msgstr "У вас нет разрешения на перемещение это
 msgid "You have been admitted. You can now join."
 msgstr "Вас допустили. Теперь вы можете присоединиться."
 
-#: static_src/ts/components/communication/Calling.ts:569
+#: static_src/ts/components/communication/Calling.ts:570
 msgid "You left the call"
 msgstr "Вы покинули вызов"
 
 #: static_src/ts/components/document_signing/SignDocument.ts:160
+#, fuzzy
 msgid "Your signature could not be recorded. Your entries are preserved; try again."
-msgstr ""
+msgstr "Не удалось сохранить вашу подпись. Введённые данные сохранены; попробуйте ещё раз."
 
 #: static_src/ts/components/document_signing/SignDocument.ts:159
+#, fuzzy
 msgid "Your signature was saved. Retry to open the confirmation."
-msgstr ""
+msgstr "Ваша подпись сохранена. Повторите попытку, чтобы открыть подтверждение."
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:327
+#, fuzzy
 msgid "e.g. Director"
-msgstr ""
+msgstr "например, директор"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:371
+#, fuzzy
 msgid "fields placed"
-msgstr ""
+msgstr "поля размещены"
 
 #: static_src/ts/components/document_signing/PrepareSign.ts:371
+#, fuzzy
 msgid "roles"
-msgstr ""
+msgstr "роли"
 
 #~ msgid "Calling failed. Check microphone permission, connection settings and line access."
 #~ msgstr ""

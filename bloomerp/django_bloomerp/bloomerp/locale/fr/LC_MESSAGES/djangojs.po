@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-11-02 10:55+0000\n"
+"POT-Creation-Date: 2026-11-17 12:54+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: fr\n"
@@ -55,6 +55,11 @@ msgstr "Actions"
 msgid "Add a role first."
 msgstr "Ajoutez d’abord un rôle."
 
+#: static_src/ts/components/pages/PageEditor.ts:260
+#, fuzzy
+msgid "Add a title or content before sharing this page."
+msgstr "Ajoutez un titre ou du contenu avant de partager cette page."
+
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:269
 msgid "Add action"
 msgstr "Ajouter une action"
@@ -93,9 +98,14 @@ msgid "Align right"
 msgstr "Aligner à droite"
 
 #: static_src/ts/components/text_editor/actionMenu.ts:74
-#: static_src/ts/components/text_editor/actionToolbar.ts:69
+#: static_src/ts/components/text_editor/actionToolbar.ts:61
 msgid "Alignment"
 msgstr "Alignement"
+
+#: static_src/ts/components/pages/PageEditor.ts:147
+#, fuzzy
+msgid "All changes saved"
+msgstr "Toutes les modifications sont enregistrées"
 
 #: static_src/ts/components/PermissionsTable.ts:440
 msgid "All objects"
@@ -106,13 +116,13 @@ msgstr "Tous les objets"
 msgid "All rows"
 msgstr "Toutes les lignes"
 
-#: static_src/ts/components/communication/Calling.ts:378
+#: static_src/ts/components/communication/Calling.ts:379
 msgid "Allow pop-ups to open the call tab. Your call controls are available here."
 msgstr ""
 "Autorisez les fenêtres pop-up à ouvrir l’onglet d’appel. Les commandes de l’appel sont "
 "disponibles ici."
 
-#: static_src/ts/components/communication/Calling.ts:735
+#: static_src/ts/components/communication/Calling.ts:738
 msgid "Answered on another tab or device"
 msgstr "Réponse donnée dans un autre onglet ou sur un autre appareil"
 
@@ -130,7 +140,7 @@ msgstr "Attribution des destinataires…"
 msgid "Attachment"
 msgstr "Pièce jointe"
 
-#: static_src/ts/components/communication/Calling.ts:282
+#: static_src/ts/components/communication/Calling.ts:283
 msgid "Audio call"
 msgstr "Appel audio"
 
@@ -143,15 +153,15 @@ msgstr "Impossible de charger les disponibilités."
 msgid "Availability unavailable"
 msgstr "Disponibilité indisponible"
 
-#: static_src/ts/components/communication/Calling.ts:251
+#: static_src/ts/components/communication/Calling.ts:252
 msgid "Available"
 msgstr "Disponible"
 
-#: static_src/ts/components/communication/Calling.ts:248
+#: static_src/ts/components/communication/Calling.ts:249
 msgid "Available in another tab"
 msgstr "Disponible dans un autre onglet"
 
-#: static_src/ts/components/communication/Calling.ts:251
+#: static_src/ts/components/communication/Calling.ts:252
 msgid "Available — enable ringtone sound"
 msgstr "Disponible — activer le son de la sonnerie"
 
@@ -205,48 +215,49 @@ msgstr "Occupé"
 msgid "Calendar selections could not be saved. Please try again."
 msgstr "Impossible d’enregistrer les sélections de calendrier. Veuillez réessayer."
 
-#: static_src/ts/components/communication/Calling.ts:281
+#: static_src/ts/components/communication/Calling.ts:282
 msgid "Call"
 msgstr "Appeler"
 
-#: static_src/ts/components/communication/Calling.ts:423
+#: static_src/ts/components/communication/Calling.ts:424
 msgid "Call declined"
 msgstr "Appel refusé"
 
-#: static_src/ts/components/communication/Calling.ts:746
+#: static_src/ts/components/communication/Calling.ts:749
 msgid "Call disconnected"
 msgstr "Appel interrompu"
 
-#: static_src/ts/components/communication/Calling.ts:439
-#: static_src/ts/components/communication/Calling.ts:735
+#: static_src/ts/components/communication/Calling.ts:440
+#: static_src/ts/components/communication/Calling.ts:738
 msgid "Call ended"
 msgstr "Appel terminé"
 
-#: static_src/ts/components/communication/Calling.ts:219
+#: static_src/ts/components/communication/Calling.ts:220
 msgid "Call handled in another tab"
 msgstr "Appel pris en charge dans un autre onglet"
 
-#: static_src/ts/components/communication/Calling.ts:256
-#: static_src/ts/components/communication/Calling.ts:754
+#: static_src/ts/components/communication/Calling.ts:257
+#: static_src/ts/components/communication/Calling.ts:757
 msgid "Call in progress"
 msgstr "Appel en cours"
 
-#: static_src/ts/components/communication/Calling.ts:478
+#: static_src/ts/components/communication/Calling.ts:479
 msgid "Call not connected"
 msgstr "Appel non connecté"
 
-#: static_src/ts/components/communication/Calling.ts:765
+#: static_src/ts/components/communication/Calling.ts:768
 msgid "Calling failed. Check your connection and access, then try again."
 msgstr "Échec de l’appel. Vérifiez votre connexion et vos accès, puis réessayez."
 
-#: static_src/ts/components/communication/Calling.ts:480
+#: static_src/ts/components/communication/Calling.ts:481
 msgid "Calling is unavailable."
 msgstr "Les appels sont indisponibles."
 
-#: static_src/ts/components/communication/Calling.ts:258
+#: static_src/ts/components/communication/Calling.ts:259
 msgid "Calls"
 msgstr "Appels"
 
+#: static_src/ts/components/text_editor/linkToolbar.ts:43
 #: static_src/ts/components/text_editor/utils/colorPicker.ts:25
 #: static_src/ts/components/text_editor/utils/linkPicker.ts:48
 #: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:281
@@ -294,6 +305,11 @@ msgstr "Bloc de code"
 msgid "Collapse group"
 msgstr "Réduire le groupe"
 
+#: static_src/ts/components/text_editor/utils/blockBehavior.ts:235
+#, fuzzy
+msgid "Collapse section"
+msgstr "Réduire la section"
+
 #: static_src/ts/components/text_editor/utils/colorPicker.ts:14
 msgid "Color"
 msgstr "Couleur"
@@ -315,8 +331,8 @@ msgstr "Groupe de conditions"
 msgid "Conditions"
 msgstr "Conditions"
 
-#: static_src/ts/components/communication/Calling.ts:250
-#: static_src/ts/components/communication/Calling.ts:727
+#: static_src/ts/components/communication/Calling.ts:251
+#: static_src/ts/components/communication/Calling.ts:728
 msgid "Connecting…"
 msgstr "Connexion…"
 
@@ -340,6 +356,16 @@ msgstr "Impossible de charger les options de filtre. Veuillez réessayer."
 msgid "Could not load results. Try searching again."
 msgstr "Impossible de charger les résultats. Essayez de lancer une nouvelle recherche."
 
+#: static_src/ts/components/pages/PagesPanel.ts:89
+#, fuzzy
+msgid "Could not load your pages."
+msgstr "Impossible de charger vos pages."
+
+#: static_src/ts/components/text_editor/utils/imagePaste.ts:30
+#, fuzzy
+msgid "Could not paste the image. Please try again."
+msgstr "Impossible de coller l’image. Veuillez réessayer."
+
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:189
 msgid "Could not read configuration."
 msgstr "Impossible de lire la configuration."
@@ -351,6 +377,11 @@ msgstr "Impossible de restaurer les filtres initiaux."
 #: static_src/ts/components/filters/FilterContainer.ts:175
 msgid "Could not restore the initial filters. Clear them to start again."
 msgstr "Impossible de restaurer les filtres initiaux. Effacez-les pour recommencer."
+
+#: static_src/ts/components/pages/PageEditor.ts:136 static_src/ts/components/pages/PageEditor.ts:156
+#, fuzzy
+msgid "Could not save. Your changes are still here; edit again to retry."
+msgstr "Impossible d’enregistrer. Vos modifications sont toujours là ; modifiez à nouveau pour réessayer."
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:148
 msgid "Create label"
@@ -383,6 +414,11 @@ msgstr "Par défaut"
 msgid "Default layout saved"
 msgstr "Disposition par défaut enregistrée"
 
+#: static_src/ts/components/pages/PageEditor.ts:278
+#, fuzzy
+msgid "Delete page"
+msgstr "Supprimer la page"
+
 #: static_src/ts/components/SelectPreference.ts:73
 msgid "Delete {preference}"
 msgstr "Supprimer {preference}"
@@ -411,6 +447,11 @@ msgstr "Brouillon enregistré."
 msgid "Drag row"
 msgstr "Faire glisser la ligne"
 
+#: static_src/ts/components/text_editor/utils/blockBehavior.ts:79
+#, fuzzy
+msgid "Drag to move; Alt + arrow keys to reorder"
+msgstr "Faites glisser pour déplacer ; utilisez Alt + les touches fléchées pour réorganiser"
+
 #: static_src/ts/components/document_signing/SignaturePad.ts:160
 msgid "Draw signature"
 msgstr "Dessiner la signature"
@@ -427,11 +468,16 @@ msgstr "Modifier"
 msgid "Edit Mermaid diagram"
 msgstr "Modifier le diagramme Mermaid"
 
+#: static_src/ts/components/text_editor/linkToolbar.ts:28
+#, fuzzy
+msgid "Edit link"
+msgstr "Modifier le lien"
+
 #: static_src/ts/components/inbox/EmailEditor.ts:326
 msgid "Email operation failed. Your edits are still here; please try again."
 msgstr "Échec de l’opération sur l’e-mail. Vos modifications sont toujours là ; veuillez réessayer."
 
-#: static_src/ts/components/communication/Calling.ts:521
+#: static_src/ts/components/communication/Calling.ts:522
 msgid "Enable sound to hear the call."
 msgstr "Activez le son pour entendre l’appel."
 
@@ -451,6 +497,7 @@ msgstr "Saisissez une seule clé de champ."
 msgid "Enter a valid email address or remove the invalid recipient."
 msgstr "Saisissez une adresse e-mail valide ou supprimez le destinataire invalide."
 
+#: static_src/ts/components/text_editor/linkToolbar.ts:146
 #: static_src/ts/components/text_editor/utils/linkPicker.ts:67
 msgid "Enter a valid http, https, mailto, or tel URL."
 msgstr "Saisissez une URL http, https, mailto ou tel valide."
@@ -458,6 +505,11 @@ msgstr "Saisissez une URL http, https, mailto ou tel valide."
 #: static_src/ts/components/filters/FilterContainer.ts:155
 msgid "Expand group"
 msgstr "Développer le groupe"
+
+#: static_src/ts/components/text_editor/utils/blockBehavior.ts:235
+#, fuzzy
+msgid "Expand section"
+msgstr "Développer la section"
 
 #: static_src/ts/components/filters/ConditionEditor.ts:64
 msgid "Field"
@@ -547,7 +599,7 @@ msgstr "Titre 3"
 msgid "Hide behavior"
 msgstr "Masquer le comportement"
 
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:452
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:462
 msgid "Hide formatting toolbar"
 msgstr "Masquer la barre de mise en forme"
 
@@ -560,24 +612,24 @@ msgstr "Surligner"
 msgid "Image"
 msgstr "Image"
 
-#: static_src/ts/components/communication/Calling.ts:256
-#: static_src/ts/components/communication/Calling.ts:317
+#: static_src/ts/components/communication/Calling.ts:257
+#: static_src/ts/components/communication/Calling.ts:318
 msgid "Incoming call"
 msgstr "Appel entrant"
 
-#: static_src/ts/components/communication/Calling.ts:256
+#: static_src/ts/components/communication/Calling.ts:257
 msgid "Incoming call — enable ringtone sound"
 msgstr "Appel entrant — activez la sonnerie"
 
-#: static_src/ts/components/communication/Calling.ts:634
+#: static_src/ts/components/communication/Calling.ts:635
 msgid "Incoming calling is unavailable."
 msgstr "Les appels entrants sont indisponibles."
 
-#: static_src/ts/components/communication/Calling.ts:696
+#: static_src/ts/components/communication/Calling.ts:697
 msgid "Incoming calling is unavailable. Check your connection and access."
 msgstr "Les appels entrants sont indisponibles. Vérifiez votre connexion et vos accès."
 
-#: static_src/ts/components/communication/Calling.ts:186
+#: static_src/ts/components/communication/Calling.ts:187
 msgid "Incoming calls disabled"
 msgstr "Appels entrants désactivés"
 
@@ -616,7 +668,7 @@ msgstr ""
 "Configuration du comportement invalide : la version 1 et une liste de comportements étaient "
 "attendues."
 
-#: static_src/ts/components/communication/Calling.ts:761
+#: static_src/ts/components/communication/Calling.ts:764
 msgid "Invalid call endpoint."
 msgstr "Point de terminaison d’appel non valide."
 
@@ -628,7 +680,7 @@ msgstr "Stratégie de lignes invalide"
 msgid "Italic"
 msgstr "Italique"
 
-#: static_src/ts/components/communication/Calling.ts:489
+#: static_src/ts/components/communication/Calling.ts:490
 msgid "Joining call…"
 msgstr "Connexion à l’appel…"
 
@@ -640,11 +692,11 @@ msgstr "Justifier"
 msgid "Label could not be created"
 msgstr "Impossible de créer l’étiquette"
 
-#: static_src/ts/components/communication/Calling.ts:392
+#: static_src/ts/components/communication/Calling.ts:393
 msgid "Leave or dismiss the current call first."
 msgstr "Quittez l’appel en cours ou fermez-le d’abord."
 
-#: static_src/ts/components/communication/Calling.ts:411
+#: static_src/ts/components/communication/Calling.ts:412
 msgid "Leave the current call first."
 msgstr "Quittez d’abord l’appel en cours."
 
@@ -652,6 +704,7 @@ msgstr "Quittez d’abord l’appel en cours."
 msgid "Link"
 msgstr "Lien"
 
+#: static_src/ts/components/text_editor/linkToolbar.ts:33
 #: static_src/ts/components/text_editor/utils/linkPicker.ts:40
 msgid "Link URL"
 msgstr "URL du lien"
@@ -661,7 +714,7 @@ msgid "Link name"
 msgstr "Nom du lien"
 
 #: static_src/ts/components/text_editor/actionMenu.ts:73
-#: static_src/ts/components/text_editor/actionToolbar.ts:68
+#: static_src/ts/components/text_editor/actionToolbar.ts:60
 msgid "Lists"
 msgstr "Listes"
 
@@ -692,7 +745,7 @@ msgstr "Recherche"
 msgid "Match conditions"
 msgstr "Conditions de correspondance"
 
-#: static_src/ts/components/communication/Calling.ts:469
+#: static_src/ts/components/communication/Calling.ts:470
 msgid "Meeting link copied"
 msgstr "Lien de la réunion copié"
 
@@ -727,7 +780,7 @@ msgstr "Diagramme Mermaid. Appuyez sur Entrée pour le modifier."
 msgid "Mermaid source"
 msgstr "Code Mermaid"
 
-#: static_src/ts/components/communication/Calling.ts:331
+#: static_src/ts/components/communication/Calling.ts:332
 msgid "Missed call"
 msgstr "Appel manqué"
 
@@ -747,16 +800,21 @@ msgstr "Déplacer le comportement vers le bas"
 msgid "Move behavior up"
 msgstr "Déplacer le comportement vers le haut"
 
-#: static_src/ts/components/communication/Calling.ts:266
+#: static_src/ts/components/text_editor/utils/blockBehavior.ts:78
+#, fuzzy
+msgid "Move block"
+msgstr "Déplacer le bloc"
+
+#: static_src/ts/components/communication/Calling.ts:267
 msgid "Mute ringtone"
 msgstr "Couper la sonnerie"
 
-#: static_src/ts/components/communication/Calling.ts:63
+#: static_src/ts/components/communication/Calling.ts:64
 msgid "No active call"
 msgstr "Aucun appel en cours"
 
-#: static_src/ts/components/communication/Calling.ts:306
-#: static_src/ts/components/communication/Calling.ts:727
+#: static_src/ts/components/communication/Calling.ts:307
+#: static_src/ts/components/communication/Calling.ts:728
 msgid "No answer"
 msgstr "Pas de réponse"
 
@@ -820,11 +878,11 @@ msgstr "Objet"
 msgid "Objects"
 msgstr "Objets"
 
-#: static_src/ts/components/communication/Calling.ts:245
+#: static_src/ts/components/communication/Calling.ts:246
 msgid "Offline"
 msgstr "Hors ligne"
 
-#: static_src/ts/components/communication/Calling.ts:249
+#: static_src/ts/components/communication/Calling.ts:250
 msgid "Offline — reconnecting"
 msgstr "Hors ligne — reconnexion en cours"
 
@@ -835,6 +893,17 @@ msgstr "Lors d’une modification"
 #: static_src/ts/components/inputs/BehaviorBuilder.ts:248
 msgid "On initial load"
 msgstr "Au chargement initial"
+
+#: static_src/ts/components/text_editor/utils/blockBehavior.ts:85
+#: static_src/ts/components/text_editor/utils/blockBehavior.ts:86
+#, fuzzy
+msgid "On this page"
+msgstr "Sur cette page"
+
+#: static_src/ts/components/text_editor/linkToolbar.ts:36
+#, fuzzy
+msgid "Open in new tab"
+msgstr "Ouvrir dans un nouvel onglet"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:429
 #: static_src/ts/components/text_editor/formattingActions.ts:123
@@ -850,6 +919,11 @@ msgstr "Page"
 msgid "Page break"
 msgstr "Saut de page"
 
+#: static_src/ts/components/text_editor/utils/blockBehavior.ts:87
+#, fuzzy
+msgid "Page headings"
+msgstr "Titres de la page"
+
 #: static_src/ts/components/text_editor/formattingActions.ts:19
 msgid "Paragraph"
 msgstr "Paragraphe"
@@ -858,7 +932,7 @@ msgstr "Paragraphe"
 msgid "Permission required"
 msgstr "Autorisation requise"
 
-#: static_src/ts/components/communication/Calling.ts:282
+#: static_src/ts/components/communication/Calling.ts:283
 msgid "Phone call"
 msgstr "Appel téléphonique"
 
@@ -882,6 +956,11 @@ msgstr "Veuillez sélectionner au moins une autorisation pour la règle de ligne
 msgid "Preference"
 msgstr "Préférence"
 
+#: static_src/ts/components/text_editor/utils/blockBehavior.ts:350
+#, fuzzy
+msgid "Press / for commands or @ for mentions"
+msgstr "Appuyez sur / pour afficher les commandes ou sur @ pour les mentions"
+
 #: static_src/ts/components/text_editor/utils/mermaidBehavior.ts:264
 msgid "Preview"
 msgstr "Aperçu"
@@ -903,7 +982,7 @@ msgstr "Prêt à réessayer"
 msgid "Recipients assigned."
 msgstr "Destinataires attribués."
 
-#: static_src/ts/components/communication/Calling.ts:754
+#: static_src/ts/components/communication/Calling.ts:757
 msgid "Reconnecting…"
 msgstr "Reconnexion…"
 
@@ -945,6 +1024,11 @@ msgstr "Supprimer la condition"
 #: static_src/ts/components/filters/FilterContainer.ts:122
 msgid "Remove group"
 msgstr "Supprimer le groupe"
+
+#: static_src/ts/components/text_editor/linkToolbar.ts:44
+#, fuzzy
+msgid "Remove link"
+msgstr "Supprimer le lien"
 
 #: static_src/ts/components/text_editor/nodes/PageBreakNode.ts:68
 msgid "Remove page break"
@@ -992,7 +1076,7 @@ msgstr "Vérifiez la position des champs avant de signer."
 msgid "Revision"
 msgstr "Révision"
 
-#: static_src/ts/components/communication/Calling.ts:754
+#: static_src/ts/components/communication/Calling.ts:757
 msgid "Ringing…"
 msgstr "Sonnerie…"
 
@@ -1013,6 +1097,7 @@ msgid "Run behavior"
 msgstr "Exécuter le comportement"
 
 #: static_src/ts/components/inbox/CalendarEventEditor.ts:46
+#: static_src/ts/components/text_editor/linkToolbar.ts:42
 msgid "Save"
 msgstr "Enregistrer"
 
@@ -1029,6 +1114,11 @@ msgstr "Filtres enregistrés"
 #: static_src/ts/components/inbox/EmailEditor.ts:103
 msgid "Saving draft…"
 msgstr "Enregistrement du brouillon…"
+
+#: static_src/ts/components/pages/PageEditor.ts:131
+#, fuzzy
+msgid "Saving…"
+msgstr "Enregistrement…"
 
 #: static_src/ts/components/detail_view_components/ReferenceAttachments.ts:402
 msgid "Search colors"
@@ -1103,7 +1193,7 @@ msgstr "Sélectionner un opérateur de recherche"
 msgid "Select target field"
 msgstr "Sélectionner le champ cible"
 
-#: static_src/ts/components/text_editor/actionToolbar.ts:52
+#: static_src/ts/components/text_editor/actionToolbar.ts:44
 msgid "Selection formatting"
 msgstr "Mise en forme de la sélection"
 
@@ -1135,6 +1225,11 @@ msgstr "Définir par défaut"
 msgid "Share {preference}"
 msgstr "Partager {preference}"
 
+#: static_src/ts/components/pages/PageEditor.ts:266
+#, fuzzy
+msgid "Sharing updated"
+msgstr "Partage mis à jour"
+
 #: static_src/ts/components/detail_view_components/ObjectCRUDViewContainer.ts:670
 msgid "Show All Fields"
 msgstr "Afficher tous les champs"
@@ -1148,8 +1243,8 @@ msgstr "Afficher uniquement les champs obligatoires"
 msgid "Show behavior"
 msgstr "Afficher le comportement"
 
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:475
-#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:476
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:485
+#: static_src/ts/components/text_editor/BloomerpTextEditor.ts:486
 msgid "Show formatting toolbar"
 msgstr "Afficher la barre de mise en forme"
 
@@ -1187,7 +1282,12 @@ msgstr "Scinder la cellule"
 msgid "Start event at"
 msgstr "Démarrer l’événement à"
 
-#: static_src/ts/components/communication/Calling.ts:399
+#: static_src/ts/components/pages/PageEditor.ts:122
+#, fuzzy
+msgid "Start typing to create a page"
+msgstr "Commencez à écrire pour créer une page"
+
+#: static_src/ts/components/communication/Calling.ts:400
 msgid "Starting call…"
 msgstr "Démarrage de l’appel…"
 
@@ -1222,12 +1322,12 @@ msgid "Text color"
 msgstr "Couleur du texte"
 
 #: static_src/ts/components/text_editor/actionMenu.ts:72
-#: static_src/ts/components/text_editor/actionToolbar.ts:52
+#: static_src/ts/components/text_editor/actionToolbar.ts:44
 msgid "Text formatting"
 msgstr "Mise en forme du texte"
 
 #: static_src/ts/components/text_editor/actionMenu.ts:71
-#: static_src/ts/components/text_editor/actionToolbar.ts:68
+#: static_src/ts/components/text_editor/actionToolbar.ts:60
 msgid "Text style"
 msgstr "Style de texte"
 
@@ -1303,7 +1403,7 @@ msgstr "La session de signature n’a pas pu être ouverte. Réessayez."
 msgid "The value could not be copied to the clipboard."
 msgstr "La valeur n’a pas pu être copiée dans le presse-papiers."
 
-#: static_src/ts/components/communication/Calling.ts:491
+#: static_src/ts/components/communication/Calling.ts:492
 msgid "This call has ended."
 msgstr "Cet appel est terminé."
 
@@ -1328,6 +1428,18 @@ msgstr "Cette révision de la mise en page n’est plus disponible."
 #: static_src/ts/components/communication/MeetingLobby.ts:52
 msgid "This meeting is no longer available."
 msgstr "Cette réunion n’est plus disponible."
+
+#: static_src/ts/components/pages/PageEditor.ts:245
+#, fuzzy
+msgid "This page changed elsewhere. Your unsaved text is still here. Reload to continue."
+msgstr ""
+"Cette page a été modifiée ailleurs. Votre texte non enregistré est toujours là. Rechargez la page"
+" pour continuer."
+
+#: static_src/ts/components/pages/PageEditor.ts:207
+#, fuzzy
+msgid "This page is no longer available to you."
+msgstr "Vous n’avez plus accès à cette page."
 
 #: static_src/ts/components/document_signing/SigningWizard.ts:119
 msgid "This step could not be loaded. Go back and try again."
@@ -1399,9 +1511,24 @@ msgstr "Souligner"
 msgid "Undo"
 msgstr "Annuler"
 
-#: static_src/ts/components/communication/Calling.ts:266
+#: static_src/ts/components/communication/Calling.ts:267
 msgid "Unmute ringtone"
 msgstr "Rétablir la sonnerie"
+
+#: static_src/ts/components/pages/PageEditor.ts:79 static_src/ts/components/pages/PageEditor.ts:147
+#, fuzzy
+msgid "Unsaved changes"
+msgstr "Modifications non enregistrées"
+
+#: static_src/ts/components/text_editor/utils/blockBehavior.ts:362
+#, fuzzy
+msgid "Untitled"
+msgstr "Sans titre"
+
+#: static_src/ts/components/pages/PageEditor.ts:236
+#, fuzzy
+msgid "Updated from another editor"
+msgstr "Mis à jour depuis un autre éditeur"
 
 #: static_src/ts/components/text_editor/utils/referencePicker.ts:169
 msgid "Upload image"
@@ -1416,7 +1543,7 @@ msgstr "Envoi de la pièce jointe…"
 msgid "User"
 msgstr "Utilisateur"
 
-#: static_src/ts/components/communication/Calling.ts:282
+#: static_src/ts/components/communication/Calling.ts:283
 msgid "Video call"
 msgstr "Appel vidéo"
 
@@ -1424,7 +1551,7 @@ msgstr "Appel vidéo"
 msgid "Wait for the document to finish loading."
 msgstr "Attendez que le document ait fini de charger."
 
-#: static_src/ts/components/communication/Calling.ts:754
+#: static_src/ts/components/communication/Calling.ts:757
 msgid "Waiting for participants…"
 msgstr "En attente des participants…"
 
@@ -1450,7 +1577,7 @@ msgstr "Vous n’avez pas l’autorisation de déplacer cette carte."
 msgid "You have been admitted. You can now join."
 msgstr "Vous avez été admis. Vous pouvez maintenant rejoindre la réunion."
 
-#: static_src/ts/components/communication/Calling.ts:569
+#: static_src/ts/components/communication/Calling.ts:570
 msgid "You left the call"
 msgstr "Vous avez quitté l’appel"
 

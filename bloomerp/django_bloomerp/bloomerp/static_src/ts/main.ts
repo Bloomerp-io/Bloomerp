@@ -1,3 +1,6 @@
+import PagesWorkspace from './components/pages/PagesWorkspace';
+import PageEditor from './components/pages/PageEditor';
+import PagesPanel from './components/pages/PagesPanel';
 import CalendarAvailability from "./components/inbox/CalendarAvailability";
 import InboxCalendarOverlay from "./components/inbox/InboxCalendarOverlay";
 import CalendarEventEditor from "./components/inbox/CalendarEventEditor";
@@ -108,6 +111,9 @@ initBrowserAgent();
 setupLanguageSwitch();
 
 // Register components here
+registerComponent('bloomerp:pages-workspace', PagesWorkspace);
+registerComponent('bloomerp:page-editor', PageEditor);
+registerComponent('bloomerp:pages-panel', PagesPanel);
 registerComponent('bloomerp:prepare-sign', PrepareSign);
 registerComponent('bloomerp:signing-wizard', SigningWizard);
 registerComponent('bloomerp:send-signature-request', SendSignatureRequest);

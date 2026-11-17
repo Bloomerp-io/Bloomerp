@@ -91,7 +91,7 @@ EDITOR_CSS = CSSSanitizer(
 )
 
 
-def sanitize_html(content: str) -> str:
+def sanitize_html(content: str, *, allow_images: bool = False) -> str:
     """Preserve editor presentation and reference metadata while removing active content."""
     soup = BeautifulSoup(content, "html.parser")
     for node in soup.select("script, style, iframe, object, svg, math"):
@@ -104,10 +104,11 @@ def sanitize_html(content: str) -> str:
             del node["class"]
     return bleach.clean(
         str(soup),
-        tags=TAGS,
+        tags=[*TAGS, *(["img"] if allow_images else [])],
         attributes={
             "*": ["class", "style", "dir"],
             "a": ["href", "title"],
+            "img": ["src", "alt", "width", "height", *REFERENCE_ATTRIBUTES] if allow_images else [],
             "span": REFERENCE_ATTRIBUTES,
             "pre": ["data-text-editor-code-block", "data-text-editor-mermaid"],
             "ul": ["__lexicallisttype"],

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-02 10:55+0000\n"
+"POT-Creation-Date: 2026-11-17 12:54+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: ru\n"
@@ -201,8 +201,9 @@ msgid "A collection row is required."
 msgstr "Необходимо указать строку коллекции."
 
 #: models/document_signing/definition.py:143
+#, fuzzy
 msgid "A company or organization name."
-msgstr ""
+msgstr "Название компании или организации."
 
 #: models/files/file_extraction.py:323
 msgid "A completed extraction needs a manifest."
@@ -230,8 +231,9 @@ msgid "A detailed description of the initiative"
 msgstr "Название инициативы"
 
 #: models/document_signing/signature_request.py:371
+#, fuzzy
 msgid "A draft has not been dispatched."
-msgstr ""
+msgstr "Черновик ещё не отправлен."
 
 # | msgid "A folder's system identity cannot be changed after creation."
 # | msgid "A node's kind cannot be changed."
@@ -297,8 +299,9 @@ msgid "A related source value is unavailable."
 msgstr "Связанное исходное значение недоступно."
 
 #: workspaces/analytics_tile/pivot_table.py:89
+#, fuzzy
 msgid "A selected pivot field is no longer returned by the query."
-msgstr ""
+msgstr "Выбранное поле сводной таблицы больше не возвращается запросом."
 
 #: forms/communication/calendar_event.py:304
 msgid "A selected user has no selected calendar."
@@ -311,8 +314,9 @@ msgid "A signing request needs recipients."
 msgstr "Добавьте хотя бы одного получателя."
 
 #: models/document_signing/definition.py:149
+#, fuzzy
 msgid "A single line of text."
-msgstr ""
+msgstr "Одна строка текста."
 
 # | msgid "Select provider"
 # | msgid "Select a phone number"
@@ -322,8 +326,9 @@ msgid "A telephone number."
 msgstr "Выберите номер телефона"
 
 #: models/document_templates/document_template.py:117
+#, fuzzy
 msgid "A text based template that can be re-used to generate PDF's, Emails, ..."
-msgstr ""
+msgstr "Текстовый шаблон, который можно повторно использовать для создания PDF-файлов, писем и т. д."
 
 # | msgid "A name and scope identifier are required."
 # | msgid "A call request identifier is required."
@@ -344,8 +349,9 @@ msgid "A valid listener field is required."
 msgstr "Необходимо указать допустимое поле-слушатель."
 
 #: models/document_signing/signature_recipient.py:135
+#, fuzzy
 msgid "A viewed request cannot become unseen."
-msgstr ""
+msgstr "Просмотренный запрос нельзя снова сделать непросмотренным."
 
 #: bloomerp.documenttemplate.page_size models/document_templates/document_template.py:33
 msgid "A3"
@@ -368,10 +374,10 @@ msgstr "Доступ к ИИ-агенту"
 msgid "AI Agents"
 msgstr "ИИ-агенты"
 
-#: route:bloomai_module_ai_chat
+#, fuzzy
 msgctxt "bloomerp:route:name"
 msgid "AI Chat"
-msgstr ""
+msgstr "Чат с ИИ"
 
 # | msgid "Provider"
 #: bloomerp.aiagent.provider models/agents/ai_agent.py:191
@@ -465,8 +471,9 @@ msgid "Accepted"
 msgstr "Принято"
 
 #: bloomerp.signaturerecipient.consent_text models/document_signing/signature_recipient.py:54
+#, fuzzy
 msgid "Accepted consent text"
-msgstr ""
+msgstr "Принятый текст согласия"
 
 # | msgid "Access Token"
 #: models/communication/voip/voip_number.py:77 models/users/user.py:55
@@ -562,8 +569,9 @@ msgid "Account details need attention"
 msgstr "Требуется проверить данные учетной записи"
 
 #: views/communication/disconnect_email_account.py:32
+#, fuzzy
 msgid "Account disconnected. Reconnect to resume receiving email."
-msgstr ""
+msgstr "Подключение к аккаунту отключено. Подключитесь снова, чтобы получать электронную почту."
 
 # | msgid "Tool Identifier"
 #: bloomerp.voipconnection.external_account_id models/communication/voip/voip_connection.py:123
@@ -589,37 +597,37 @@ msgid "Action does not exist."
 msgstr "Действие не существует."
 
 # | msgid "Activity logging is not enabled for this model."
-#: form_behaviors/execution.py:333
+#: form_behaviors/execution.py:335
 msgid "Action is not applicable to this listener."
 msgstr "Это действие неприменимо к данному слушателю."
 
 # | msgid "Activity logging is not enabled for this model."
-#: form_behaviors/execution.py:351
+#: form_behaviors/execution.py:353
 msgid "Action is not applicable to this target."
 msgstr "Это действие неприменимо к данной цели."
 
-#: form_behaviors/execution.py:377
+#: form_behaviors/execution.py:379
 msgid "Action must return a BehaviorResult."
 msgstr "Действие должно возвращать BehaviorResult."
 
 # | msgid "Editor occurrences require a field."
-#: form_behaviors/execution.py:342
+#: form_behaviors/execution.py:344
 msgid "Action requires a target field."
 msgstr "Для действия необходимо целевое поле."
 
-#: form_behaviors/execution.py:382
+#: form_behaviors/execution.py:384
 msgid "Action result collections must be tuples."
 msgstr "Коллекции результатов действия должны быть кортежами."
 
-#: form_behaviors/execution.py:425
+#: form_behaviors/execution.py:427
 msgid "Action returned an invalid message."
 msgstr "Действие вернуло недопустимое сообщение."
 
-#: form_behaviors/execution.py:416
+#: form_behaviors/execution.py:418
 msgid "Action returned an invalid state target."
 msgstr "Действие вернуло недопустимую цель состояния."
 
-#: form_behaviors/execution.py:391
+#: form_behaviors/execution.py:393
 msgid "Action returned an undeclared value target."
 msgstr "Действие вернуло цель значения, не объявленную в описании."
 
@@ -729,8 +737,9 @@ msgid "Add behavior"
 msgstr "Добавить поведение"
 
 #: models/document_signing/signature_request_field.py:105
+#, fuzzy
 msgid "Add fields while the request is a draft."
-msgstr ""
+msgstr "Добавляйте поля, пока запрос находится в черновиках."
 
 #: templates/cotton/features/agent/body.html:136
 msgid "Add files or modules"
@@ -764,8 +773,9 @@ msgid "Add no more than 100 guests."
 msgstr "Добавьте не более 100 гостей."
 
 #: models/document_signing/signature_recipient.py:163
+#, fuzzy
 msgid "Add recipients while the request is a draft."
-msgstr ""
+msgstr "Добавляйте получателей, пока запрос находится в черновиках."
 
 # | msgid "Add row"
 #: templates/components/document_signing/prepare_sign.html:57
@@ -847,7 +857,6 @@ msgstr "Ключ агента"
 msgid "Agent Version"
 msgstr "Версия агента"
 
-#: route:agent_browser_connection
 msgctxt "bloomerp:route:name"
 msgid "Agent browser connection"
 msgstr "Подключение браузера агента"
@@ -992,18 +1001,23 @@ msgid "An aggregation must reference a collection column."
 msgstr "Агрегирование должно ссылаться на столбец коллекции."
 
 #: components/communication/emails/new_email.py:159
+#, fuzzy
 msgid "An attachment is unavailable or you no longer have access."
-msgstr ""
+msgstr "Вложение недоступно или у вас больше нет к нему доступа."
 
 #: services/email_attachment_services.py:106
+#, fuzzy
 msgid "An attachment or inline image could not be read. Remove it or select it again."
-msgstr ""
+msgstr "Не удалось прочитать вложение или встроенное изображение. Удалите его или выберите снова."
 
 #: services/email_attachment_services.py:83
+#, fuzzy
 msgid ""
 "An attachment or inline image is unavailable or you no longer have access. Remove it or select it"
 " again."
 msgstr ""
+"Вложение или встроенное изображение недоступно, либо у вас больше нет к нему доступа. Удалите его"
+" или выберите снова."
 
 # | msgid "email address"
 #: models/document_signing/definition.py:130
@@ -1017,24 +1031,27 @@ msgid "An emoji is required."
 msgstr "Требуется эмодзи."
 
 #: models/document_signing/signature_request_field.py:110
+#, fuzzy
 msgid "An empty field has no completion time."
-msgstr ""
+msgstr "Для пустого поля не указано время завершения."
 
 #: form_behaviors/builtins/calculate.py:334
 msgid "An expression may reference only one collection."
 msgstr "Выражение может ссылаться только на одну коллекцию."
 
 #: models/document_signing/definition.py:163
+#, fuzzy
 msgid "An independent checkbox."
-msgstr ""
+msgstr "Отдельный флажок."
 
 #: models/project_management/initiative.py:275
 msgid "An initiative cannot be its own parent or a descendant."
 msgstr "Инициатива не может быть собственным родителем или потомком."
 
 #: services/email_attachment_services.py:61
+#, fuzzy
 msgid "An inline image is not available. Upload it again or remove it before sending."
-msgstr ""
+msgstr "Встроенное изображение недоступно. Загрузите его снова или удалите перед отправкой."
 
 #: components/ui/sidebar.py:317
 msgid "An item is required."
@@ -1161,8 +1178,9 @@ msgid "Ask anything about your workspace…"
 msgstr "Спросите о чём угодно в рабочем пространстве…"
 
 #: models/document_signing/definition.py:116
+#, fuzzy
 msgid "Ask for the signer's initials."
-msgstr ""
+msgstr "Запросить инициалы подписанта."
 
 #: templates/views/communication/conferencing/meeting.html:24
 msgid "Ask to join"
@@ -1179,8 +1197,9 @@ msgid "Assign an outbound voice profile to the TeXML application."
 msgstr "Назначьте приложению TeXML профиль исходящих голосовых вызовов."
 
 #: templates/components/document_signing/prepare_sign.html:54
+#, fuzzy
 msgid "Assign fields to roles. Choose the people when sending or signing."
-msgstr ""
+msgstr "Назначьте поля ролям. Выберите людей при отправке или подписании."
 
 # | msgid "Add at least one recipient."
 # | msgid "Phone recipients"
@@ -1191,10 +1210,10 @@ msgstr ""
 msgid "Assign recipients"
 msgstr "Получатели звонка"
 
-#: route:signature_requests_detail_assign
+#, fuzzy
 msgctxt "bloomerp:route:name"
 msgid "Assign recipients"
-msgstr ""
+msgstr "Назначить получателей"
 
 #: bloomerp.imconversation.assigned_team
 msgid "Assigned Team"
@@ -1267,8 +1286,9 @@ msgid "Audio"
 msgstr "Аудио"
 
 #: bloomerp.signatureartifact.kind models/document_signing/signature_artifact.py:19
+#, fuzzy
 msgid "Audit report"
-msgstr ""
+msgstr "Отчёт аудита"
 
 # | msgid "Oauth Scopes"
 # | msgid "OAuth Scopes"
@@ -1288,8 +1308,9 @@ msgid "Authentication"
 msgstr "Тип аутентификации"
 
 #: bloomerp.mcpintegration.authentication_type
+#, fuzzy
 msgid "Authentication Type"
-msgstr ""
+msgstr "Тип аутентификации"
 
 #: views/agents/create_mcp_integration.py:87
 msgid "Authentication configuration"
@@ -1310,8 +1331,11 @@ msgid "Authorization setup expired. Connect the account again."
 msgstr "Срок действия авторизации истёк. Подключитесь повторно перед сохранением."
 
 #: communication/builtins/emails/authorization.py:210
+#, fuzzy
 msgid "Authorization was cancelled or denied. Connect again to grant mailbox access."
 msgstr ""
+"Авторизация отменена или отклонена. Подключитесь снова, чтобы предоставить доступ к почтовому "
+"ящику."
 
 #: bloomerp.applicationfield.field_type
 msgid "Auto Field"
@@ -1349,7 +1373,6 @@ msgstr "Часы доступности"
 msgid "Availability timezone"
 msgstr "Часовой пояс доступности"
 
-#: route:bloomerp_home_view
 msgctxt "bloomerp:route:description"
 msgid "Available Modules"
 msgstr "Доступные модули"
@@ -1408,6 +1431,12 @@ msgstr "Вернуться к беседе"
 #: templates/views/workflows/builder.html:42
 msgid "Back to editor"
 msgstr "Назад в редактор"
+
+# | msgid "Back to chat"
+#: templates/components/pages/panel.html:15
+#, fuzzy
+msgid "Back to page"
+msgstr "Назад к чату"
 
 # | msgid "Back to chat"
 #: templates/components/communication/messaging_panel.html:12
@@ -1494,8 +1523,9 @@ msgstr "HTML-тело"
 
 #: models/communication/calendar/calendar_booking.py:51
 #: models/communication/calendar/calendar_booking_submission.py:47
+#, fuzzy
 msgid "Booking"
-msgstr ""
+msgstr "Бронирование"
 
 # | msgid "form submission"
 #: bloomerp.calendarevent.calendar_booking_submission
@@ -1574,7 +1604,6 @@ msgstr "Бюджеты"
 msgid "Build tile"
 msgstr "Создать плитку"
 
-#: route:workflows_detail_builder
 msgctxt "bloomerp:route:name"
 msgid "Builder"
 msgstr "Конструктор"
@@ -1601,7 +1630,6 @@ msgstr "Массовый"
 msgid "Bulk Actions"
 msgstr "Массовые действия"
 
-#: route:log_entries_bulk_upload
 msgctxt "bloomerp:route:name"
 msgid "Bulk Upload {model}"
 msgstr "Массовая загрузка {model}"
@@ -1611,7 +1639,6 @@ msgstr "Массовая загрузка {model}"
 msgid "Bulk actions"
 msgstr "Массовые действия"
 
-#: route:log_entries_bulk_upload
 msgctxt "bloomerp:route:description"
 msgid "Bulk upload objects from {model}"
 msgstr "Массовая загрузка объектов из {model}"
@@ -1621,7 +1648,7 @@ msgid "Business line"
 msgstr "Бизнес-линия"
 
 #: bloomerp.imconversation.voip_number bloomerp.phonecall.number
-#: communication/builtins/instant_messaging/builtins/phone.py:342
+#: communication/builtins/instant_messaging/builtins/phone.py:370
 #: communication/builtins/voip/actions.py:168
 #: models/communication/instant_messaging/im_conversation.py:28
 #: models/communication/voip/phone_call.py:28
@@ -1712,6 +1739,14 @@ msgstr "События календаря"
 msgid "Calendar inboxes"
 msgstr "Входящие календаря"
 
+# | msgid "Calendar"
+# | msgid "Calendar inboxes"
+#: templates/components/objects/details/contact_actions.html:39
+#: templates/views/generic/detail/base.html:199
+#, fuzzy
+msgid "Calendar invite"
+msgstr "Входящие календаря"
+
 # | msgid "Calendar Uid"
 #: dataviews/calendar/config.py:92
 msgid "Calendar period"
@@ -1778,7 +1813,8 @@ msgstr "Камера выключена"
 # | msgid "Canceled"
 #: templates/components/document_signing/prepare_sign.html:33
 #: templates/components/document_signing/send_signature_request.html:67
-#: templates/cotton/features/agent/body.html:85 templates/widgets/drawn_signature.html:19
+#: templates/components/pages/editor.html:50 templates/cotton/features/agent/body.html:85
+#: templates/widgets/drawn_signature.html:19
 msgid "Cancel"
 msgstr "Отмена"
 
@@ -1792,10 +1828,10 @@ msgstr "Время запроса отмены"
 msgid "Cancel event"
 msgstr "Отменить встречу"
 
-#: route:calendar_events_detail_cancel
+#, fuzzy
 msgctxt "bloomerp:route:name"
 msgid "Cancel event"
-msgstr ""
+msgstr "Отменить событие"
 
 # | msgid "Cancel Requested At"
 #: templates/components/communication/instant_messaging/conversation.html:24
@@ -1803,8 +1839,9 @@ msgid "Cancel quoted reply"
 msgstr "Отменить ответ с цитатой"
 
 #: templates/views/communication/calendar/delete.html:4
+#, fuzzy
 msgid "Cancel this event before deleting it so invited guests receive a cancellation."
-msgstr ""
+msgstr "Отмените это событие перед удалением, чтобы приглашённые гости получили уведомление об отмене."
 
 #: bloomerp.initiative.status bloomerp.phonecall.status models/communication/voip/phone_call.py:68
 #: models/project_management/initiative.py:34
@@ -1871,13 +1908,14 @@ msgid "Chart type"
 msgstr "Тип диаграммы"
 
 #: templates/components/communication/messaging_panel.html:11
+#, fuzzy
 msgid "Chat"
-msgstr ""
+msgstr "Чат"
 
-#: route:communication_module_chat
+#, fuzzy
 msgctxt "bloomerp:route:name"
 msgid "Chat"
-msgstr ""
+msgstr "Чат"
 
 #: templates/views/auth/oauth_authorize.html:44
 msgid "ChatGPT can only access records and perform actions your account is permitted to use."
@@ -1898,12 +1936,14 @@ msgid "Checkbox"
 msgstr "Контрольная точка"
 
 #: models/document_signing/signature_request_field.py:115
+#, fuzzy
 msgid "Checkbox values must be booleans."
-msgstr ""
+msgstr "Значения флажков должны быть логическими."
 
 #: bloomerp.airun.checkpoint
+#, fuzzy
 msgid "Checkpoint"
-msgstr ""
+msgstr "Контрольная точка"
 
 #: bloomerp.airun.checkpoint_runtime
 msgid "Checkpoint Runtime"
@@ -2008,12 +2048,14 @@ msgid "Choose an email account to send email."
 msgstr "Выберите учетную запись отправителя, связанную с этим почтовым ящиком календаря."
 
 #: forms/document_signing/send_signature_request.py:195
+#, fuzzy
 msgid "Choose an expiry in the future."
-msgstr ""
+msgstr "Выберите срок действия в будущем."
 
 #: models/document_signing/signature_recipient.py:155
+#, fuzzy
 msgid "Choose an internal user or an email address."
-msgstr ""
+msgstr "Выберите внутреннего пользователя или укажите адрес электронной почты."
 
 # | msgid "Content Type"
 #: views/access_control/create_policy.py:395
@@ -2043,8 +2085,9 @@ msgid "Choose lane"
 msgstr "Выберите колонку"
 
 #: models/document_signing/definition.py:171
+#, fuzzy
 msgid "Choose one of several options."
-msgstr ""
+msgstr "Выберите один из нескольких вариантов."
 
 # | msgid "Choose the provider for this AI agent."
 #: forms/document_signing/send_signature_request.py:145
@@ -2074,8 +2117,9 @@ msgid "Choose signing action"
 msgstr "Выберите реакцию"
 
 #: views/document_signing/create.py:331
+#, fuzzy
 msgid "Choose the PDF you want to prepare for signing."
-msgstr ""
+msgstr "Выберите PDF-файл, который хотите подготовить к подписанию."
 
 # | msgid "Select the type of tile you want to create"
 #: views/access_control/create_policy.py:396
@@ -2184,9 +2228,14 @@ msgid "Clone row"
 msgstr "Клонировать строку"
 
 # | msgid "Closes At"
-#: templates/views/base.html:79
+#: templates/views/base.html:80
 msgid "Close"
 msgstr "Закрыть"
+
+#: templates/components/pages/panel.html:6
+#, fuzzy
+msgid "Close Pages scratchpad"
+msgstr "Закрыть черновик Pages"
 
 #: templates/cotton/features/agent/body.html:45
 msgid "Close assistant"
@@ -2245,7 +2294,7 @@ msgstr "Сбор данных"
 msgid "Collection columns must be used inside an aggregation."
 msgstr "Столбцы коллекции можно использовать только в агрегатной функции."
 
-#: form_behaviors/execution.py:216
+#: form_behaviors/execution.py:218
 msgid "Collections require at most 1000 row objects."
 msgstr "Коллекции должны содержать не более 1000 объектов строк."
 
@@ -2291,7 +2340,6 @@ msgstr "Порядок значений текстовой оси X через �
 msgid "Comment"
 msgstr "Комментарии"
 
-#: route:comment_detail_redirect
 msgctxt "bloomerp:route:name"
 msgid "Comment detail redirect"
 msgstr "Перенаправление к подробностям комментария"
@@ -2316,17 +2364,18 @@ msgstr "Перенаправление к подробностям коммен�
 #: bloomerp.immessage.comments bloomerp.immessageattachment.comments
 #: bloomerp.immessagereaction.comments bloomerp.imthreadreadposition.comments
 #: bloomerp.inboxfolder.comments bloomerp.inboxitem.comments bloomerp.initiative.comments
-#: bloomerp.mcpconnection.comments bloomerp.mcpintegration.comments bloomerp.phonecall.comments
-#: bloomerp.phonecallevent.comments bloomerp.savedfilter.comments bloomerp.signatureartifact.comments
-#: bloomerp.signatureevent.comments bloomerp.signaturelayout.comments
-#: bloomerp.signaturelayoutfield.comments bloomerp.signaturelayoutrole.comments
-#: bloomerp.signaturepreparation.comments bloomerp.signaturepreparationfield.comments
-#: bloomerp.signaturepreparationrole.comments bloomerp.signaturerecipient.comments
-#: bloomerp.signaturerequest.comments bloomerp.signaturerequestfield.comments
-#: bloomerp.sqlquery.comments bloomerp.tile.comments bloomerp.todo.comments
-#: bloomerp.user.detail_sidebar_view_preference bloomerp.userinboxpreference.comments
-#: bloomerp.voipconnection.comments bloomerp.voipnumber.comments models/communication/comment.py:20
-#: models/users/user.py:92 templates/views/generic/detail/base.html:146
+#: bloomerp.mcpconnection.comments bloomerp.mcpintegration.comments bloomerp.page.comments
+#: bloomerp.phonecall.comments bloomerp.phonecallevent.comments bloomerp.savedfilter.comments
+#: bloomerp.signatureartifact.comments bloomerp.signatureevent.comments
+#: bloomerp.signaturelayout.comments bloomerp.signaturelayoutfield.comments
+#: bloomerp.signaturelayoutrole.comments bloomerp.signaturepreparation.comments
+#: bloomerp.signaturepreparationfield.comments bloomerp.signaturepreparationrole.comments
+#: bloomerp.signaturerecipient.comments bloomerp.signaturerequest.comments
+#: bloomerp.signaturerequestfield.comments bloomerp.sqlquery.comments bloomerp.tile.comments
+#: bloomerp.todo.comments bloomerp.user.detail_sidebar_view_preference
+#: bloomerp.userinboxpreference.comments bloomerp.voipconnection.comments bloomerp.voipnumber.comments
+#: models/communication/comment.py:20 models/users/user.py:92
+#: templates/views/generic/detail/base.html:146
 msgid "Comments"
 msgstr "Комментарии"
 
@@ -2336,12 +2385,14 @@ msgstr "Коммуникации"
 
 #: bloomerp.signaturelayoutfield.field_type bloomerp.signaturepreparationfield.field_type
 #: bloomerp.signaturerequestfield.field_type models/document_signing/definition.py:141
+#, fuzzy
 msgid "Company"
-msgstr ""
+msgstr "Компания"
 
 #: models/document_signing/signature_recipient.py:186
+#, fuzzy
 msgid "Complete every required field before signing."
-msgstr ""
+msgstr "Заполните все обязательные поля перед подписанием."
 
 #: views/agents/create_ai_agent.py:262
 msgid "Complete the agent details first."
@@ -2353,12 +2404,14 @@ msgid "Complete the connection configuration."
 msgstr "Завершите настройку подключения."
 
 #: templates/views/document_signing/wizard/action.html:5 views/mixins/signing_wizard_mixin.py:231
+#, fuzzy
 msgid "Complete without sending"
-msgstr ""
+msgstr "Завершить без отправки"
 
 #: templates/components/document_signing/sign_document.html:45
+#, fuzzy
 msgid "Complete your fields, then confirm your signature."
-msgstr ""
+msgstr "Заполните свои поля, затем подтвердите подпись."
 
 #: bloomerp.aimessage.status bloomerp.airun.status bloomerp.airunattempt.status
 #: bloomerp.aitoolcall.status bloomerp.initiative.status bloomerp.phonecall.status
@@ -2381,8 +2434,9 @@ msgid "Completed at"
 msgstr "Дата завершения"
 
 #: bloomerp.initiative.completion_percentage
+#, fuzzy
 msgid "Completion Percentage"
-msgstr ""
+msgstr "Процент выполнения"
 
 # | msgid "Completion Percentage"
 #: bloomerp.signatureartifact.kind models/document_signing/signature_artifact.py:18
@@ -2400,11 +2454,11 @@ msgstr "Поле условия отсутствует в этом макете.
 
 # | msgid "No workflow graph was available for this execution."
 # | msgid "Sending is unavailable for this conversation."
-#: form_behaviors/execution.py:261
+#: form_behaviors/execution.py:263
 msgid "Condition field is unavailable in this draft."
 msgstr "Поле условия недоступно в этом черновике."
 
-#: form_behaviors/execution.py:265
+#: form_behaviors/execution.py:267
 msgid "Condition lookup cannot evaluate draft values."
 msgstr "Поиск условия не может оценивать значения черновика."
 
@@ -2521,10 +2575,13 @@ msgid "Configure connection"
 msgstr "Настроить подключение"
 
 #: templates/models/email_account/provider_instructions/outlook.html:6
+#, fuzzy
 msgid ""
 "Configure delegated User.Read, Mail.ReadWrite and Mail.Send permissions. Your organization may "
 "require administrator consent."
 msgstr ""
+"Настройте делегированные разрешения User.Read, Mail.ReadWrite и Mail.Send. Для этого вашей "
+"организации может потребоваться согласие администратора."
 
 #: views/communication/create_email_account.py:346
 msgid "Configure each discovered mailbox exactly once."
@@ -2565,8 +2622,9 @@ msgid "Connect Microsoft account"
 msgstr "Настроить учётную запись"
 
 #: communication/builtins/emails/email_providers.py:25
+#, fuzzy
 msgid "Connect a mailbox with delegated Microsoft Graph authorization."
-msgstr ""
+msgstr "Подключите почтовый ящик с помощью делегированной авторизации Microsoft Graph."
 
 # | msgid "Give the policy a name and description before saving."
 # | msgid "Authenticate the shared account before saving."
@@ -2625,8 +2683,9 @@ msgid "Connections"
 msgstr "Подключения"
 
 #: models/document_signing/signature_recipient.py:180
+#, fuzzy
 msgid "Consent must follow dispatch."
-msgstr ""
+msgstr "Согласие должно быть дано после отправки."
 
 # | msgid "Content Object"
 #: bloomerp.signatureartifact.kind models/document_signing/signature_artifact.py:20
@@ -2635,8 +2694,9 @@ msgid "Consent record"
 msgstr "Объект содержимого"
 
 #: bloomerp.signatureevent.event_type models/document_signing/signature_event.py:22
+#, fuzzy
 msgid "Consented"
-msgstr ""
+msgstr "Дано согласие"
 
 # | msgid "Joined At"
 # | msgid "Joined at"
@@ -2649,9 +2709,15 @@ msgstr "Время присоединения"
 msgid "Consumed Message Sequence"
 msgstr "Последовательность обработанных сообщений"
 
+# | msgid "Content"
+#: templates/components/objects/details/contact_actions.html:3
+#, fuzzy
+msgid "Contact"
+msgstr "Содержимое"
+
 #: bloomerp.calendarevent.content bloomerp.comment.content bloomerp.filenode.content
-#: bloomerp.todo.content models/communication/calendar/calendar_event.py:212
-#: models/communication/comment.py:42 models/project_management/todo.py:392
+#: bloomerp.page.content bloomerp.todo.content models/communication/calendar/calendar_event.py:212
+#: models/communication/comment.py:42 models/files/page.py:117 models/project_management/todo.py:392
 msgid "Content"
 msgstr "Содержимое"
 
@@ -2660,8 +2726,9 @@ msgid "Content Blocks"
 msgstr "Блоки содержимого"
 
 #: bloomerp.comment.content_object bloomerp.filereference.content_object bloomerp.todo.content_object
+#, fuzzy
 msgid "Content Object"
-msgstr ""
+msgstr "Объект содержимого"
 
 #: bloomerp.todo.content_safe
 msgid "Content Safe"
@@ -2707,8 +2774,9 @@ msgid "Continue"
 msgstr "Продолжить"
 
 #: templates/components/document_signing/start_self_signing.html:15
+#, fuzzy
 msgid "Continue to signing"
-msgstr ""
+msgstr "Перейти к подписанию"
 
 #: templates/views/auth/login.html:55
 #, python-format
@@ -2815,6 +2883,13 @@ msgstr "Действия копирования связанных строк т
 msgid "Core Details"
 msgstr "Подробности"
 
+# | msgid "Could not load attachments. Please try again."
+# | msgid "Could not load messages. Please try again."
+#: templates/components/pages/editor.html:48
+#, fuzzy
+msgid "Could not delete this page. Please try again."
+msgstr "Не удалось загрузить сообщения. Повторите попытку."
+
 #: templates/cotton/features/agent/body.html:116
 msgid "Could not load attachments. Please try again."
 msgstr "Не удалось загрузить вложения. Повторите попытку."
@@ -2857,7 +2932,6 @@ msgstr "Создать"
 msgid "Create AI agent"
 msgstr "Создать ИИ-агента"
 
-#: route:api_keys_add
 msgctxt "bloomerp:route:name"
 msgid "Create API Key"
 msgstr "Создать API-ключ"
@@ -2871,12 +2945,10 @@ msgstr "Создать раздел «Входящие»"
 msgid "Create Object"
 msgstr "Создать объект"
 
-#: route:access_control_policies_add
 msgctxt "bloomerp:route:name"
 msgid "Create Policy"
 msgstr "Создать политику"
 
-#: route:create_tile
 msgctxt "bloomerp:route:name"
 msgid "Create Tile"
 msgstr "Создать плитку"
@@ -2885,7 +2957,6 @@ msgstr "Создать плитку"
 msgid "Create Todo"
 msgstr "Создать задачу"
 
-#: route:log_entries_detail_create_user_for_object
 msgctxt "bloomerp:route:name"
 msgid "Create User for Object"
 msgstr "Создать пользователя для объекта"
@@ -2896,27 +2967,23 @@ msgstr "Создать пользователя для объекта"
 msgid "Create a VoIP connection"
 msgstr "Создать VoIP-подключение"
 
-#: route:voip_connections_add
 msgctxt "bloomerp:route:description"
 msgid "Create a VoIP connection"
 msgstr "Создать VoIP-подключение"
 
-#: route:email_accounts_add
+#, fuzzy
 msgctxt "bloomerp:route:description"
 msgid "Create a new email account"
-msgstr ""
+msgstr "Создать новую учетную запись электронной почты"
 
-#: route:users_add
 msgctxt "bloomerp:route:description"
 msgid "Create a new object from User"
 msgstr "Создать новый объект из пользователя"
 
-#: route:workspaces_add
 msgctxt "bloomerp:route:description"
 msgid "Create a new object from {model}"
 msgstr "Создать новый объект из {model}"
 
-#: route:create_tile
 msgctxt "bloomerp:route:description"
 msgid "Create a new tile for the workspace"
 msgstr "Создать новую плитку для рабочего пространства"
@@ -2927,26 +2994,23 @@ msgstr "Создать новую плитку для рабочего прос�
 msgid "Create a phone number from a connection"
 msgstr "Создать номер телефона из подключения"
 
-#: route:signature_requests_add
+#, fuzzy
 msgctxt "bloomerp:route:description"
 msgid "Create a signature request"
-msgstr ""
+msgstr "Создать запрос на подпись"
 
 #: views/communication/create_email_account.py:455
 msgid "Create account"
 msgstr "Создать учетную запись"
 
-#: route:ai_agents_add
 msgctxt "bloomerp:route:description"
 msgid "Create an AI agent"
 msgstr "Создать ИИ-агента"
 
-#: route:mcp_integrations_add
 msgctxt "bloomerp:route:description"
 msgid "Create an MCP integration"
 msgstr "Создать интеграцию MCP"
 
-#: route:access_control_policies_add
 msgctxt "bloomerp:route:description"
 msgid "Create an access control policy"
 msgstr "Создать политику контроля доступа"
@@ -2955,7 +3019,6 @@ msgstr "Создать политику контроля доступа"
 msgid "Create an inbox or select one that has been shared with you."
 msgstr "Создайте входящие или выберите папку, к которой вам предоставили доступ."
 
-#: route:im_connections_add
 msgctxt "bloomerp:route:description"
 msgid "Create an instant messaging connection"
 msgstr "Создать подключение для обмена мгновенными сообщениями"
@@ -2983,10 +3046,10 @@ msgstr "Создать свой вариант"
 msgid "Create default"
 msgstr "Создать по умолчанию"
 
-#: route:calendar_events_add
+#, fuzzy
 msgctxt "bloomerp:route:name"
 msgid "Create event"
-msgstr ""
+msgstr "Создать событие"
 
 # | msgid "Create Todo"
 #: templates/components/communication/instant_messaging/create_group.html:11
@@ -3003,7 +3066,6 @@ msgstr "Создать метку"
 msgid "Create new"
 msgstr "Создать новый"
 
-#: route:voip_connections_detail_create_voip_number
 msgctxt "bloomerp:route:name"
 msgid "Create phone number"
 msgstr "Создать номер телефона"
@@ -3019,19 +3081,18 @@ msgid "Create selected number"
 msgstr "Создать выбранный номер"
 
 #: models/document_signing/signature_request.py:369
+#, fuzzy
 msgid "Create signing requests as drafts."
-msgstr ""
+msgstr "Создавайте запросы на подпись в виде черновиков."
 
 #: templates/cotton/features/workspaces/container.html:67
 msgid "Create tile"
 msgstr "Создать плитку"
 
-#: route:users_add
 msgctxt "bloomerp:route:name"
 msgid "Create user"
 msgstr "Создать пользователя"
 
-#: route:ai_agents_add
 msgctxt "bloomerp:route:name"
 msgid "Create {model}"
 msgstr "Создать {model}"
@@ -3065,15 +3126,16 @@ msgstr "Создать"
 #: bloomerp.immessageattachment.created_by bloomerp.immessagereaction.created_by
 #: bloomerp.imthreadreadposition.created_by bloomerp.inboxfolder.created_by
 #: bloomerp.inboxitem.created_by bloomerp.initiative.created_by bloomerp.label.created_by
-#: bloomerp.mcpconnection.created_by bloomerp.mcpintegration.created_by bloomerp.phonecall.created_by
-#: bloomerp.phonecallevent.created_by bloomerp.policy.created_by bloomerp.savedfilter.created_by
-#: bloomerp.signatureartifact.created_by bloomerp.signatureevent.created_by
-#: bloomerp.signaturelayout.created_by bloomerp.signaturelayoutfield.created_by
-#: bloomerp.signaturelayoutrole.created_by bloomerp.signaturepreparation.created_by
-#: bloomerp.signaturepreparationfield.created_by bloomerp.signaturepreparationrole.created_by
-#: bloomerp.signaturerecipient.created_by bloomerp.signaturerequest.created_by
-#: bloomerp.signaturerequestfield.created_by bloomerp.sqlquery.created_by bloomerp.tile.created_by
-#: bloomerp.todo.created_by bloomerp.userinboxpreference.created_by bloomerp.voipconnection.created_by
+#: bloomerp.mcpconnection.created_by bloomerp.mcpintegration.created_by bloomerp.page.created_by
+#: bloomerp.phonecall.created_by bloomerp.phonecallevent.created_by bloomerp.policy.created_by
+#: bloomerp.savedfilter.created_by bloomerp.signatureartifact.created_by
+#: bloomerp.signatureevent.created_by bloomerp.signaturelayout.created_by
+#: bloomerp.signaturelayoutfield.created_by bloomerp.signaturelayoutrole.created_by
+#: bloomerp.signaturepreparation.created_by bloomerp.signaturepreparationfield.created_by
+#: bloomerp.signaturepreparationrole.created_by bloomerp.signaturerecipient.created_by
+#: bloomerp.signaturerequest.created_by bloomerp.signaturerequestfield.created_by
+#: bloomerp.sqlquery.created_by bloomerp.tile.created_by bloomerp.todo.created_by
+#: bloomerp.userinboxpreference.created_by bloomerp.voipconnection.created_by
 #: bloomerp.voipnumber.created_by bloomerp.workflow.created_by bloomerp.workflownode.created_by
 #: models/mixins/user_stamp_model_mixin.py:20
 msgid "Created By"
@@ -3159,8 +3221,9 @@ msgid "Dark"
 msgstr "Темная"
 
 #: field_types/builtins/text.py:133
+#, fuzzy
 msgid "Dash"
-msgstr ""
+msgstr "Тире"
 
 #: bloomerp.formsubmission.data models/forms/form_submission.py:91
 msgid "Data"
@@ -3180,8 +3243,9 @@ msgstr "Представление данных обновлено"
 
 #: bloomerp.signaturelayoutfield.field_type bloomerp.signaturepreparationfield.field_type
 #: bloomerp.signaturerequestfield.field_type models/document_signing/definition.py:184
+#, fuzzy
 msgid "Date"
-msgstr ""
+msgstr "Дата"
 
 #: bloomerp.todo.datetime_completed models/project_management/todo.py:399
 msgid "Date Completed"
@@ -3234,12 +3298,13 @@ msgstr "Поле даты и времени"
 #: bloomerp.immessagereaction.datetime_created bloomerp.imthreadreadposition.datetime_created
 #: bloomerp.inboxfolder.datetime_created bloomerp.inboxitem.datetime_created
 #: bloomerp.initiative.datetime_created bloomerp.mcpconnection.datetime_created
-#: bloomerp.mcpintegration.datetime_created bloomerp.phonecall.datetime_created
-#: bloomerp.phonecallevent.datetime_created bloomerp.policy.datetime_created
-#: bloomerp.savedfilter.datetime_created bloomerp.signatureartifact.datetime_created
-#: bloomerp.signatureevent.datetime_created bloomerp.signaturelayout.datetime_created
-#: bloomerp.signaturelayoutfield.datetime_created bloomerp.signaturelayoutrole.datetime_created
-#: bloomerp.signaturepreparation.datetime_created bloomerp.signaturepreparationfield.datetime_created
+#: bloomerp.mcpintegration.datetime_created bloomerp.page.datetime_created
+#: bloomerp.phonecall.datetime_created bloomerp.phonecallevent.datetime_created
+#: bloomerp.policy.datetime_created bloomerp.savedfilter.datetime_created
+#: bloomerp.signatureartifact.datetime_created bloomerp.signatureevent.datetime_created
+#: bloomerp.signaturelayout.datetime_created bloomerp.signaturelayoutfield.datetime_created
+#: bloomerp.signaturelayoutrole.datetime_created bloomerp.signaturepreparation.datetime_created
+#: bloomerp.signaturepreparationfield.datetime_created
 #: bloomerp.signaturepreparationrole.datetime_created bloomerp.signaturerecipient.datetime_created
 #: bloomerp.signaturerequest.datetime_created bloomerp.signaturerequestfield.datetime_created
 #: bloomerp.sqlquery.datetime_created bloomerp.tile.datetime_created bloomerp.todo.datetime_created
@@ -3281,12 +3346,13 @@ msgstr "Дата и время получения"
 #: bloomerp.immessagereaction.datetime_updated bloomerp.imthreadreadposition.datetime_updated
 #: bloomerp.inboxfolder.datetime_updated bloomerp.inboxitem.datetime_updated
 #: bloomerp.initiative.datetime_updated bloomerp.mcpconnection.datetime_updated
-#: bloomerp.mcpintegration.datetime_updated bloomerp.phonecall.datetime_updated
-#: bloomerp.phonecallevent.datetime_updated bloomerp.policy.datetime_updated
-#: bloomerp.savedfilter.datetime_updated bloomerp.signatureartifact.datetime_updated
-#: bloomerp.signatureevent.datetime_updated bloomerp.signaturelayout.datetime_updated
-#: bloomerp.signaturelayoutfield.datetime_updated bloomerp.signaturelayoutrole.datetime_updated
-#: bloomerp.signaturepreparation.datetime_updated bloomerp.signaturepreparationfield.datetime_updated
+#: bloomerp.mcpintegration.datetime_updated bloomerp.page.datetime_updated
+#: bloomerp.phonecall.datetime_updated bloomerp.phonecallevent.datetime_updated
+#: bloomerp.policy.datetime_updated bloomerp.savedfilter.datetime_updated
+#: bloomerp.signatureartifact.datetime_updated bloomerp.signatureevent.datetime_updated
+#: bloomerp.signaturelayout.datetime_updated bloomerp.signaturelayoutfield.datetime_updated
+#: bloomerp.signaturelayoutrole.datetime_updated bloomerp.signaturepreparation.datetime_updated
+#: bloomerp.signaturepreparationfield.datetime_updated
 #: bloomerp.signaturepreparationrole.datetime_updated bloomerp.signaturerecipient.datetime_updated
 #: bloomerp.signaturerequest.datetime_updated bloomerp.signaturerequestfield.datetime_updated
 #: bloomerp.sqlquery.datetime_updated bloomerp.tile.datetime_updated bloomerp.todo.datetime_updated
@@ -3366,8 +3432,9 @@ msgid "Declined at"
 msgstr "Отклонено"
 
 #: models/document_signing/signature_recipient.py:182
+#, fuzzy
 msgid "Declining must follow dispatch."
-msgstr ""
+msgstr "Отказ возможен только после отправки."
 
 #: bloomerp.aiagent.provider
 msgid "DeepSeek"
@@ -3413,8 +3480,9 @@ msgstr "Ключ политики по умолчанию"
 
 #: bloomerp.documenttemplate.default_signature_layout
 #: models/document_templates/document_template.py:164
+#, fuzzy
 msgid "Default signature layout"
-msgstr ""
+msgstr "Макет подписи по умолчанию"
 
 # | msgid "Default Filters"
 #: bloomerp.signaturelayoutrole.default_signing_order
@@ -3423,10 +3491,10 @@ msgstr ""
 msgid "Default signing order"
 msgstr "Фильтры по умолчанию"
 
-#: route:api_document_signing_default_layout
+#, fuzzy
 msgctxt "bloomerp:route:name"
 msgid "DefaultSigningLayoutApiView"
-msgstr ""
+msgstr "Представление API макета подписи по умолчанию"
 
 # | msgid "Numeric fields support all aggregations; booleans support sum and count; other fields use
 # count."
@@ -3459,14 +3527,16 @@ msgstr "Определите, что должна делать эта форма
 
 #: bloomerp.activitylog.action components/files/actions/delete_file.py:36
 #: models/audit/activity_log.py:28 models/files/file_node.py:149
-#: templates/views/generic/detail/delete.html:61 templates/views/workflows/builder.html:54
+#: templates/components/pages/editor.html:10 templates/components/pages/editor.html:11
+#: templates/components/pages/editor.html:51 templates/views/generic/detail/delete.html:61
+#: templates/views/workflows/builder.html:54
 msgid "Delete"
 msgstr "Удаление"
 
-#: route:log_entries_detail_delete
+#, fuzzy
 msgctxt "bloomerp:route:name"
 msgid "Delete"
-msgstr ""
+msgstr "Удалить"
 
 #: templates/components/objects/bulk_actions.html:63 templates/components/objects/bulk_actions.html:80
 #, python-format
@@ -3477,7 +3547,6 @@ msgstr "Удалить объект(ы): %(delete_count)s"
 msgid "Delete Object"
 msgstr "Удалить объект"
 
-#: route:log_entries_detail_delete
 msgctxt "bloomerp:route:description"
 msgid "Delete an object from {model}"
 msgstr "Удалить объект из {model}"
@@ -3491,6 +3560,11 @@ msgstr "Удалить файл"
 #: templates/components/preferences/select.html:41
 msgid "Delete preference"
 msgstr "Удалить настройку"
+
+#: templates/components/pages/editor.html:47
+#, fuzzy
+msgid "Delete this page? This cannot be undone."
+msgstr "Удалить эту страницу? Это действие нельзя отменить."
 
 #: templates/components/forms/initial_data_row.html:46
 msgid "Delete value"
@@ -3509,8 +3583,9 @@ msgid "Delivery could not be confirmed. Do not resend until its status is known.
 msgstr "Не удалось подтвердить доставку. Не отправляйте повторно, пока статус не будет известен."
 
 #: templates/components/document_signing/send_signature_request.html:35
+#, fuzzy
 msgid "Delivery options"
-msgstr ""
+msgstr "Параметры доставки"
 
 #: templates/views/auth/oauth_authorize.html:53
 msgid "Deny"
@@ -3592,16 +3667,14 @@ msgstr "Предпочтительный вид боковой панели по
 msgid "Details"
 msgstr "Подробности"
 
-#: route:log_entries_detail_overview
 msgctxt "bloomerp:route:name"
 msgid "Details"
 msgstr "Подробности"
 
-#: communication/builtins/instant_messaging/builtins/phone.py:366
+#: communication/builtins/instant_messaging/builtins/phone.py:394
 msgid "Dial"
 msgstr "Позвонить"
 
-#: route:log_entries_detail_document_templates
 msgctxt "bloomerp:route:description"
 msgid "Different document templates"
 msgstr "Разные шаблоны документов"
@@ -3629,14 +3702,17 @@ msgstr "Отключено"
 msgid "Disconnect account"
 msgstr "подключение к обмену мгновенными сообщениями"
 
-#: route:email_accounts_detail_disconnect_email_account
+#, fuzzy
 msgctxt "bloomerp:route:name"
 msgid "Disconnect email account"
-msgstr ""
+msgstr "Отключить учетную запись электронной почты"
 
 #: templates/models/email_account/provider_instructions/outlook.html:8
+#, fuzzy
 msgid "Disconnect removes local mailbox tokens. Revoke consent separately in Microsoft if needed."
 msgstr ""
+"Отключение удаляет локальные токены почтового ящика. При необходимости отдельно отзовите согласие"
+" в Microsoft."
 
 #: templates/cotton/features/agent/body.html:27
 msgid "Disconnected — waiting for connection"
@@ -3835,7 +3911,6 @@ msgstr "стили шаблонов документов"
 msgid "Document templates"
 msgstr "Шаблоны документов"
 
-#: route:log_entries_detail_document_templates
 msgctxt "bloomerp:route:name"
 msgid "Document templates"
 msgstr "Шаблоны документов"
@@ -3852,10 +3927,10 @@ msgstr "Скачать"
 msgid "Download PDF"
 msgstr "Скачать SDK"
 
-#: route:misc_module_download_sdk
+#, fuzzy
 msgctxt "bloomerp:route:name"
 msgid "Download SDK"
-msgstr ""
+msgstr "Скачать SDK"
 
 # | msgid "Download"
 #: templates/components/files/preview.html:20
@@ -3882,28 +3957,33 @@ msgid "Draft"
 msgstr "Черновик"
 
 #: templates/components/document_signing/prepare_sign.html:61
+#, fuzzy
 msgid "Drag a field onto the PDF, or select one and click a page."
-msgstr ""
+msgstr "Перетащите поле на PDF-файл или выберите его и щёлкните страницу."
 
 #: templates/cotton/features/dataviews/gant.html:68
 msgid "Drag a record onto the timeline to schedule it."
 msgstr "Перетащите запись на временную шкалу, чтобы запланировать ее."
 
 #: templates/components/document_signing/prepare_sign.html:73
+#, fuzzy
 msgid "Drag to move. Use the corner handle to resize."
-msgstr ""
+msgstr "Перетащите, чтобы переместить. Используйте угловой маркер, чтобы изменить размер."
 
 #: templates/widgets/drawn_signature.html:7
+#, fuzzy
 msgid "Draw signature"
-msgstr ""
+msgstr "Нарисовать подпись"
 
 #: templates/widgets/drawn_signature.html:13
+#, fuzzy
 msgid "Draw using your mouse, finger or pen."
-msgstr ""
+msgstr "Нарисуйте подпись мышью, пальцем или стилусом."
 
 #: templates/widgets/drawn_signature.html:10
+#, fuzzy
 msgid "Draw your signature"
-msgstr ""
+msgstr "Нарисуйте свою подпись"
 
 # | msgid "Please provide a SQL query before continuing."
 #: templates/widgets/drawn_signature.html:15
@@ -3912,8 +3992,9 @@ msgid "Draw your signature before continuing."
 msgstr "Укажите SQL-запрос перед продолжением."
 
 #: models/document_signing/definition.py:28
+#, fuzzy
 msgid "Draw your signature using a mouse, touch or pen."
-msgstr ""
+msgstr "Нарисуйте свою подпись мышью, касанием или стилусом."
 
 #: bloomerp.userlistviewpreference.view_mode models/users/user_list_view_preference.py:76
 msgid "Drawer"
@@ -3958,8 +4039,9 @@ msgid "Each mapping key must be unique."
 msgstr "Каждый ключ сопоставления должен быть уникальным."
 
 #: models/document_signing/signature_request.py:395
+#, fuzzy
 msgid "Each recipient needs at least one field."
-msgstr ""
+msgstr "Для каждого получателя необходимо хотя бы одно поле."
 
 #: views/agents/create_mcp_integration.py:331
 msgid "Each user links their own account later."
@@ -3970,15 +4052,15 @@ msgid "Earlier"
 msgstr "Ранее"
 
 #: models/document_signing/signature_recipient.py:194
+#, fuzzy
 msgid "Earlier recipients must sign first."
-msgstr ""
+msgstr "Сначала должны подписать предыдущие получатели."
 
 #: templates/components/workspaces/tiles/builders/link_items.html:32
 #: templates/cotton/features/layout/container.html:117
 msgid "Edit"
 msgstr "Изменить"
 
-#: route:document_templates_detail_builder
 msgctxt "bloomerp:route:description"
 msgid "Edit a document template with the builder"
 msgstr "Редактировать шаблон документа с помощью конструктора"
@@ -4022,7 +4104,9 @@ msgstr "Трудозатраты"
 #: bloomerp.signaturerecipient.email bloomerp.signaturerequestfield.field_type
 #: models/communication/calendar/calendar_booking_submission.py:66
 #: models/document_signing/definition.py:128 models/document_signing/signature_recipient.py:39
-#: models/files/file_node.py:127 models/users/user.py:176 templates/views/generic/detail/base.html:163
+#: models/files/file_node.py:127 models/users/user.py:176
+#: templates/components/objects/details/contact_actions.html:6
+#: templates/views/generic/detail/base.html:195
 msgid "Email"
 msgstr "Электронная почта"
 
@@ -4053,8 +4137,9 @@ msgid "Email Field"
 msgstr "Поле электронной почты"
 
 #: components/communication/emails/new_email.py:128
+#, fuzzy
 msgid "Email accepted for sending."
-msgstr ""
+msgstr "Письмо принято к отправке."
 
 # | msgid "Email account '%(account)s' created successfully."
 #: views/communication/create_email_account.py:568
@@ -4070,12 +4155,16 @@ msgstr "Учетные записи электронной почты"
 
 #: services/email_attachment_services.py:91 services/email_attachment_services.py:101
 #: services/email_attachment_services.py:150
+#, fuzzy
 msgid "Email attachments cannot exceed 20 MB in total."
-msgstr ""
+msgstr "Общий размер вложений письма не должен превышать 20 МБ."
 
 #: communication/builtins/emails/authorization.py:52
+#, fuzzy
 msgid "Email authorization requires HTTPS and an explicit instance host in ALLOWED_HOSTS."
 msgstr ""
+"Для авторизации электронной почты требуется HTTPS и явно указанный хост экземпляра в "
+"ALLOWED_HOSTS."
 
 # | msgid "Mailbox connection failed"
 #: communication/builtins/emails/authorization.py:275 views/communication/create_email_account.py:310
@@ -4103,8 +4192,9 @@ msgid "Email invitations"
 msgstr "Приглашения по электронной почте"
 
 #: templates/components/document_signing/send_signature_request.html:42
+#, fuzzy
 msgid "Email is required for external recipients."
-msgstr ""
+msgstr "Для внешних получателей необходимо указать адрес электронной почты."
 
 # | msgid "Email Field"
 #: templates/components/communication/emails/email_editor.html:156
@@ -4264,8 +4354,9 @@ msgid "Enter a JSON object."
 msgstr "Введите время."
 
 #: models/document_signing/definition.py:199
+#, fuzzy
 msgid "Enter a lowercase SHA-256 digest."
-msgstr ""
+msgstr "Введите дайджест SHA-256 в нижнем регистре."
 
 #: communication/builtins/conferencing/sharing.py:143
 msgid "Enter a name of up to 255 characters."
@@ -4313,11 +4404,12 @@ msgid "Enter agent settings and provider credentials."
 msgstr "Укажите настройки агента и учетные данные провайдера."
 
 #: models/document_signing/signature_request_field.py:137
+#, fuzzy
 msgid "Enter an ISO calendar date."
-msgstr ""
+msgstr "Введите календарную дату в формате ISO."
 
 # | msgid "Enter an international phone number."
-#: communication/builtins/instant_messaging/builtins/phone.py:202
+#: communication/builtins/instant_messaging/builtins/phone.py:230
 #: communication/builtins/voip/actions.py:158
 msgid "Enter an international phone number including the country code."
 msgstr "Введите международный номер телефона с кодом страны."
@@ -4354,10 +4446,13 @@ msgid "Enter to send"
 msgstr "Нажмите Enter, чтобы отправить"
 
 #: templates/models/email_account/provider_instructions/outlook.html:3
+#, fuzzy
 msgid ""
 "Enter your Microsoft Entra application's client ID, client secret value and directory tenant ID, "
 "then sign in to authorize this mailbox."
 msgstr ""
+"Введите идентификатор клиента, значение секрета клиента и идентификатор клиента каталога "
+"приложения Microsoft Entra, затем войдите в систему, чтобы авторизовать этот почтовый ящик."
 
 # | msgid "Initial data"
 #: dataviews/pivot_table/config.py:139
@@ -4525,8 +4620,9 @@ msgid "Expires at"
 msgstr "Истекает"
 
 #: models/document_signing/signature_request.py:387
+#, fuzzy
 msgid "Expiry must follow dispatch."
-msgstr ""
+msgstr "Срок действия должен истекать после отправки."
 
 #: templates/cotton/features/agent/body.html:91
 msgid "Explore your data, find your way, or get a hand with the page you’re on."
@@ -4634,7 +4730,7 @@ msgstr "Для поля «%(field)s» требуется скалярное зн
 
 # | msgid "No workflow graph was available for this execution."
 # | msgid "Sending is unavailable for this conversation."
-#: form_behaviors/execution.py:280
+#: form_behaviors/execution.py:282
 #, python-format
 msgid "Field '%(field_name)s' is unavailable in this draft."
 msgstr "Поле «%(field_name)s» недоступно в этом черновике."
@@ -4812,8 +4908,9 @@ msgid "File moved successfully."
 msgstr "Файл успешно перемещён."
 
 #: models/files/file_node.py:347
+#, fuzzy
 msgid "File references must use the same database."
-msgstr ""
+msgstr "Ссылки на файлы должны использовать ту же базу данных."
 
 # | msgid "Email sent successfully."
 #: components/files/actions/rename_file.py:39
@@ -4843,9 +4940,9 @@ msgstr "Имя файла"
 #: bloomerp.imidentitysource.files bloomerp.immessage.files bloomerp.immessageattachment.files
 #: bloomerp.immessagereaction.files bloomerp.imthreadreadposition.files bloomerp.inboxfolder.files
 #: bloomerp.inboxitem.files bloomerp.initiative.files bloomerp.mcpconnection.files
-#: bloomerp.mcpintegration.files bloomerp.phonecall.files bloomerp.phonecallevent.files
-#: bloomerp.savedfilter.files bloomerp.signatureartifact.files bloomerp.signatureevent.files
-#: bloomerp.signaturelayout.files bloomerp.signaturelayoutfield.files
+#: bloomerp.mcpintegration.files bloomerp.page.files bloomerp.phonecall.files
+#: bloomerp.phonecallevent.files bloomerp.savedfilter.files bloomerp.signatureartifact.files
+#: bloomerp.signatureevent.files bloomerp.signaturelayout.files bloomerp.signaturelayoutfield.files
 #: bloomerp.signaturelayoutrole.files bloomerp.signaturepreparation.files
 #: bloomerp.signaturepreparationfield.files bloomerp.signaturepreparationrole.files
 #: bloomerp.signaturerecipient.files bloomerp.signaturerequest.files
@@ -4856,12 +4953,10 @@ msgstr "Имя файла"
 msgid "Files"
 msgstr "Файлы"
 
-#: route:log_entries_detail_files
 msgctxt "bloomerp:route:name"
 msgid "Files"
 msgstr "Файлы"
 
-#: route:log_entries_detail_files
 msgctxt "bloomerp:route:description"
 msgid "Files for object for {model} model"
 msgstr "Файлы объекта для модели {model}"
@@ -4871,8 +4966,9 @@ msgid "Fill blank integer cells in a collection with sequential values."
 msgstr "Заполнить пустые целочисленные ячейки в коллекции последовательными значениями."
 
 #: templates/views/document_signing/wizard/action.html:4
+#, fuzzy
 msgid "Fill in and sign your own assigned fields."
-msgstr ""
+msgstr "Заполните и подпишите назначенные вам поля."
 
 # | msgid "Joined At"
 # | msgid "Joined at"
@@ -5001,7 +5097,6 @@ msgstr "Забыли пароль?"
 msgid "Form"
 msgstr "Форма"
 
-#: route:forms_detail_form_builder
 msgctxt "bloomerp:route:name"
 msgid "Form Builder"
 msgstr "Конструктор форм"
@@ -5106,10 +5201,10 @@ msgid "Generate"
 msgstr "Сгенерировать"
 
 #: bloomerp.workflownode.sub_type
+#, fuzzy
 msgid "Generate PDF"
-msgstr ""
+msgstr "Создать PDF"
 
-#: route:document_templates_detail_generate_pdf
 msgctxt "bloomerp:route:name"
 msgid "Generate PDF"
 msgstr "Создание PDF"
@@ -5141,14 +5236,15 @@ msgstr "Сгенерировать токен"
 msgid "Generate five or seven dated rows from the source ISO week."
 msgstr "Создать пять или семь датированных строк на основе исходной недели ISO."
 
-#: route:document_templates_detail_generate_pdf
+#, fuzzy
 msgctxt "bloomerp:route:description"
 msgid "Generate pdf from document template"
-msgstr ""
+msgstr "Создать PDF из шаблона документа"
 
 #: templates/components/document_templates/generate_document_template.html:136
+#, fuzzy
 msgid "Generate the document to preview the PDF here."
-msgstr ""
+msgstr "Создайте документ, чтобы просмотреть здесь PDF-файл."
 
 # | msgid "Generate PDF"
 #: templates/components/document_templates/generate_document_template.html:126
@@ -5238,7 +5334,8 @@ msgid "Group settings"
 msgstr "Настройки группы"
 
 #: bloomerp.aiagentaccess.groups bloomerp.policy.groups models/access_control/policy.py:134
-#: models/agents/ai_agent_access.py:107
+#: models/agents/ai_agent_access.py:107 services/page_services.py:49
+#: templates/components/pages/editor.html:26
 msgid "Groups"
 msgstr "Группы"
 
@@ -5266,8 +5363,9 @@ msgid "Has Started"
 msgstr "Запущено"
 
 #: bloomerp.signaturerequestfield.has_value
+#, fuzzy
 msgid "Has Value"
-msgstr ""
+msgstr "Имеет значение"
 
 #: bloomerp.apikey.key_hash
 msgid "Hashed API key secret. The raw token is only shown when it is created."
@@ -5353,8 +5451,9 @@ msgid "Human in the Loop"
 msgstr "Человек в цикле"
 
 #: forms/document_signing/sign_document.py:19
+#, fuzzy
 msgid "I agree to sign this document electronically."
-msgstr ""
+msgstr "Я согласен подписать этот документ в электронном виде."
 
 #: bloomerp.activitylog.id bloomerp.aiagent.id bloomerp.aiagentaccess.id bloomerp.aiapproval.id
 #: bloomerp.aiartifact.id bloomerp.aiconversation.id bloomerp.aiconversationmemory.id
@@ -5375,19 +5474,20 @@ msgstr ""
 #: bloomerp.inboxfolder.id bloomerp.inboxitem.id bloomerp.initiative.id bloomerp.label.id
 #: bloomerp.mcpconnection.id bloomerp.mcpintegration.id bloomerp.mention.id
 #: bloomerp.oauthaccesstoken.id bloomerp.oauthauthorizationcode.id bloomerp.objectlabel.id
-#: bloomerp.phonecall.id bloomerp.phonecallevent.id bloomerp.policy.id bloomerp.rowpolicy.id
-#: bloomerp.rowpolicyrule.id bloomerp.rowpolicyrulepermission.id bloomerp.savedfilter.id
-#: bloomerp.sidebar.id bloomerp.sidebaritem.id bloomerp.signatureartifact.id bloomerp.signatureevent.id
-#: bloomerp.signaturelayout.id bloomerp.signaturelayoutfield.id bloomerp.signaturelayoutrole.id
-#: bloomerp.signaturepreparation.id bloomerp.signaturepreparationfield.id
-#: bloomerp.signaturepreparationrole.id bloomerp.signaturerecipient.id bloomerp.signaturerequest.id
-#: bloomerp.signaturerequestfield.id bloomerp.sqlquery.id bloomerp.tag.id bloomerp.tile.id
-#: bloomerp.todo.id bloomerp.user.id bloomerp.userdetailviewtabitem.id
-#: bloomerp.userdetailviewtabspreference.id bloomerp.userinboxpreference.id
-#: bloomerp.userlistviewpreference.id bloomerp.userobjectlayoutpreference.id bloomerp.voipconnection.id
-#: bloomerp.voipnumber.id bloomerp.workflow.id bloomerp.workflowedge.id bloomerp.workflownode.id
-#: bloomerp.workflowrun.id bloomerp.workflowrunstep.id bloomerp.workspace.id
-#: models/mixins/uuid_model_mixin.py:8 models/users/user_detail_view_tabs_preference.py:518
+#: bloomerp.page.id bloomerp.phonecall.id bloomerp.phonecallevent.id bloomerp.policy.id
+#: bloomerp.rowpolicy.id bloomerp.rowpolicyrule.id bloomerp.rowpolicyrulepermission.id
+#: bloomerp.savedfilter.id bloomerp.sidebar.id bloomerp.sidebaritem.id bloomerp.signatureartifact.id
+#: bloomerp.signatureevent.id bloomerp.signaturelayout.id bloomerp.signaturelayoutfield.id
+#: bloomerp.signaturelayoutrole.id bloomerp.signaturepreparation.id
+#: bloomerp.signaturepreparationfield.id bloomerp.signaturepreparationrole.id
+#: bloomerp.signaturerecipient.id bloomerp.signaturerequest.id bloomerp.signaturerequestfield.id
+#: bloomerp.sqlquery.id bloomerp.tag.id bloomerp.tile.id bloomerp.todo.id bloomerp.user.id
+#: bloomerp.userdetailviewtabitem.id bloomerp.userdetailviewtabspreference.id
+#: bloomerp.userinboxpreference.id bloomerp.userlistviewpreference.id
+#: bloomerp.userobjectlayoutpreference.id bloomerp.voipconnection.id bloomerp.voipnumber.id
+#: bloomerp.workflow.id bloomerp.workflowedge.id bloomerp.workflownode.id bloomerp.workflowrun.id
+#: bloomerp.workflowrunstep.id bloomerp.workspace.id models/mixins/uuid_model_mixin.py:8
+#: models/users/user_detail_view_tabs_preference.py:518
 msgid "ID"
 msgstr "ID"
 
@@ -5410,7 +5510,6 @@ msgstr "Порт IMAP"
 msgid "IMAP Security"
 msgstr "Безопасность IMAP"
 
-#: route:imconversationconsumer
 msgctxt "bloomerp:route:name"
 msgid "IMConversationConsumer"
 msgstr "IMConversationConsumer"
@@ -5535,7 +5634,6 @@ msgstr "Входящее"
 msgid "Inbox"
 msgstr "Входящие"
 
-#: route:inbox
 msgctxt "bloomerp:route:name"
 msgid "Inbox"
 msgstr "Входящие"
@@ -5556,7 +5654,6 @@ msgstr "Элемент входящих"
 msgid "Inbox Items"
 msgstr "Элементы входящих"
 
-#: route:inbox_calendar
 msgctxt "bloomerp:route:name"
 msgid "Inbox calendar"
 msgstr "Календарь входящих"
@@ -5693,12 +5790,16 @@ msgid "Initiatives"
 msgstr "Инициативы"
 
 #: bloomerp.airunattempt.execution_mode
+#, fuzzy
 msgid "Inline"
-msgstr ""
+msgstr "Встроенный"
 
 #: services/email_attachment_services.py:144
+#, fuzzy
 msgid "Inline email images must be valid PNG, JPEG, GIF or WebP files. Upload it again or remove it."
 msgstr ""
+"Встроенные изображения в письме должны быть файлами PNG, JPEG, GIF или WebP. Загрузите файл ещё "
+"раз или удалите его."
 
 #: templates/components/forms/initial_data_value.html:82
 msgid "Input value"
@@ -5773,7 +5874,7 @@ msgid "Invalid calendar selection."
 msgstr "Недопустимый выбор календаря."
 
 # | msgid "Invalid file extraction manifest."
-#: form_behaviors/execution.py:226
+#: form_behaviors/execution.py:228
 msgid "Invalid collection row columns."
 msgstr "Недопустимые столбцы строки коллекции."
 
@@ -5848,7 +5949,7 @@ msgstr "Недопустимый контекст макета."
 msgid "Invalid mailbox mapping: %(error)s"
 msgstr "Недопустимое сопоставление почтового ящика: %(error)s"
 
-#: form_behaviors/execution.py:235
+#: form_behaviors/execution.py:237
 msgid "Invalid or duplicate related row identity."
 msgstr "Недопустимый или повторяющийся идентификатор связанной строки."
 
@@ -6024,7 +6125,6 @@ msgstr "Присоединиться к звонку"
 msgid "Join meeting"
 msgstr "Присоединиться к встрече"
 
-#: route:conference_sessions_meeting
 msgctxt "bloomerp:route:name"
 msgid "Join meeting"
 msgstr "Присоединиться к встрече"
@@ -6231,8 +6331,9 @@ msgid "Leave call"
 msgstr "Покинуть звонок"
 
 #: forms/document_signing/send_signature_request.py:82
+#, fuzzy
 msgid "Leave empty for no expiry."
-msgstr ""
+msgstr "Оставьте поле пустым, если срок действия не ограничен."
 
 #: templates/components/communication/instant_messaging/group_members.html:36
 msgid "Leave group"
@@ -6332,17 +6433,14 @@ msgstr "Список объектов"
 msgid "List count condition"
 msgstr "Условие количества элементов в списке"
 
-#: route:files_module_files
 msgctxt "bloomerp:route:description"
 msgid "List of all files across the application."
 msgstr "Список всех файлов в приложении."
 
-#: route:log_entries_model
 msgctxt "bloomerp:route:description"
 msgid "List of records for {model} model"
 msgstr "Список записей модели {model}"
 
-#: route:my_workspaces
 msgctxt "bloomerp:route:description"
 msgid "List of your workspaces"
 msgstr "Список ваших рабочих пространств"
@@ -6351,7 +6449,7 @@ msgstr "Список ваших рабочих пространств"
 msgid "List view preference"
 msgstr "Настройка отображения списка"
 
-#: form_behaviors/execution.py:302
+#: form_behaviors/execution.py:304
 msgid "Listener field value is missing from the draft."
 msgstr "В черновике отсутствует значение поля-слушателя."
 
@@ -6502,12 +6600,10 @@ msgstr "Интеграция MCP"
 msgid "MCP Integrations"
 msgstr "Интеграции MCP"
 
-#: route:mcp_integrations_oauth_callback
 msgctxt "bloomerp:route:name"
 msgid "MCP OAuth callback"
 msgstr "Обратный вызов OAuth MCP"
 
-#: route:mcp_integrations_oauth_client_metadata
 msgctxt "bloomerp:route:name"
 msgid "MCP OAuth client metadata"
 msgstr "Метаданные клиента OAuth MCP"
@@ -6529,10 +6625,13 @@ msgid "MCP integrations"
 msgstr "Интеграции MCP"
 
 #: communication/builtins/emails/authorization.py:262
+#, fuzzy
 msgid ""
 "Mailbox authorization failed. Check the application, tenant, consent and mailbox address, then "
 "reconnect."
 msgstr ""
+"Не удалось авторизовать почтовый ящик. Проверьте приложение, клиента, согласие и адрес почтового "
+"ящика, затем подключитесь снова."
 
 #: templates/views/emails/create_email_account/map_mailboxes.html:3
 msgid ""
@@ -6784,8 +6883,9 @@ msgid "Microphone"
 msgstr "Микрофон"
 
 #: bloomerp.emailaccount.provider
+#, fuzzy
 msgid "Microsoft 365 / Outlook"
-msgstr ""
+msgstr "Microsoft 365 / Outlook"
 
 # | msgid "Call controls"
 #: templates/components/communication/calling/controls.html:10
@@ -6843,15 +6943,15 @@ msgid "Model identifier accepted by the provider, separate from the display name
 msgstr "Идентификатор модели, используемый провайдером; отличается от отображаемого имени."
 
 #: templates/cotton/features/agent/body.html:32
+#, fuzzy
 msgid "Model service busy. Retrying shortly…"
-msgstr ""
+msgstr "Служба модели занята. Повторная попытка через несколько секунд…"
 
 # | msgid "Module Id"
 #: bloomerp.workspace.module_id models/workspaces/workspace.py:51
 msgid "Module ID"
 msgstr "Идентификатор модуля"
 
-#: route:bloomerp_home_view
 msgctxt "bloomerp:route:name"
 msgid "Modules"
 msgstr "Модули"
@@ -6913,8 +7013,9 @@ msgstr "Переместить вверх"
 
 #: bloomerp.signaturelayoutfield.field_type bloomerp.signaturepreparationfield.field_type
 #: bloomerp.signaturerequestfield.field_type models/document_signing/definition.py:153
+#, fuzzy
 msgid "Multiline text"
-msgstr ""
+msgstr "Многострочный текст"
 
 # | msgid "Mute / unmute"
 #: templates/components/communication/calling/controls.html:16
@@ -6935,7 +7036,6 @@ msgstr "Мои рабочие пространства"
 msgid "My calendars"
 msgstr "Мои календари"
 
-#: route:my_workspaces
 msgctxt "bloomerp:route:name"
 msgid "My workspaces"
 msgstr "Мои рабочие пространства"
@@ -7016,7 +7116,7 @@ msgstr "Домашняя страница модуля {module}."
 msgid "Needs Reply"
 msgstr "Требуется ответ"
 
-#: form_behaviors/execution.py:250
+#: form_behaviors/execution.py:252
 msgid "Nested collections are not supported."
 msgstr "Вложенные коллекции не поддерживаются."
 
@@ -7052,6 +7152,19 @@ msgstr "Новая группа"
 #: components/ui/sidebar.py:89
 msgid "New link"
 msgstr "Новая ссылка"
+
+# | msgid "Current language"
+# | msgid "Current page"
+#: templates/components/pages/navigation.html:5 templates/components/pages/panel.html:11
+#, fuzzy
+msgid "New page"
+msgstr "Текущий язык"
+
+# | msgid "The read marker must belong to this thread."
+#: serializers/page.py:46
+#, fuzzy
+msgid "New pages must belong to you."
+msgstr "Метка прочтения должна относиться к этой ветке."
 
 #: templates/cotton/features/workspaces/tiles/pivot_table.html:23
 #: views/agents/create_mcp_integration.py:209
@@ -7253,6 +7366,13 @@ msgstr "Пока нет сообщений."
 msgid "No numbers were found. Try another search."
 msgstr "Номера не найдены. Попробуйте другой запрос."
 
+# | msgid "ai messages"
+# | msgid "No messages yet."
+#: templates/components/pages/navigation.html:17
+#, fuzzy
+msgid "No pages yet"
+msgstr "Пока нет сообщений."
+
 #: templates/components/preferences/select.html:48
 msgid "No preferences available yet."
 msgstr "Пока нет доступных настроек."
@@ -7265,8 +7385,9 @@ msgid "No preview yet"
 msgstr "Пока нет действий"
 
 #: templates/views/document_signing/view_status.html:48
+#, fuzzy
 msgid "No recipients to display."
-msgstr ""
+msgstr "Нет получателей для отображения."
 
 #: templates/cotton/features/dataviews/card.html:60
 #: templates/cotton/features/dataviews/pivot_table.html:95
@@ -7359,7 +7480,6 @@ msgstr "Уведомление"
 msgid "Notifications"
 msgstr "Уведомления"
 
-#: route:notificationsconsumer
 msgctxt "bloomerp:route:name"
 msgid "NotificationsConsumer"
 msgstr "NotificationsConsumer"
@@ -7377,8 +7497,9 @@ msgid "Number Of Messages"
 msgstr "Количество сообщений"
 
 #: bloomerp.signaturerequest.number_of_parties
+#, fuzzy
 msgid "Number Of Parties"
-msgstr ""
+msgstr "Количество участников"
 
 #: bloomerp.workflowrun.number_of_steps
 msgid "Number Of Steps"
@@ -7503,7 +7624,7 @@ msgstr "Идентификатор объекта"
 #: bloomerp.imthreadreadposition.object_labels bloomerp.inboxfolder.object_labels
 #: bloomerp.inboxitem.object_labels bloomerp.initiative.object_labels
 #: bloomerp.mcpconnection.object_labels bloomerp.mcpintegration.object_labels
-#: bloomerp.phonecall.object_labels bloomerp.phonecallevent.object_labels
+#: bloomerp.page.object_labels bloomerp.phonecall.object_labels bloomerp.phonecallevent.object_labels
 #: bloomerp.savedfilter.object_labels bloomerp.signatureartifact.object_labels
 #: bloomerp.signatureevent.object_labels bloomerp.signaturelayout.object_labels
 #: bloomerp.signaturelayoutfield.object_labels bloomerp.signaturelayoutrole.object_labels
@@ -7611,8 +7732,14 @@ msgid "Only model fields can be used in email templates."
 msgstr "В шаблонах электронных писем можно использовать только поля модели."
 
 #: models/document_signing/signature_request.py:363
+#, fuzzy
 msgid "Only simple electronic signing is implemented."
-msgstr ""
+msgstr "Реализовано только простое электронное подписание."
+
+#: serializers/page.py:54
+#, fuzzy
+msgid "Only the owner can change page sharing."
+msgstr "Только владелец может изменять настройки общего доступа к странице."
 
 #: form_behaviors/builtins/fetch.py:357 form_behaviors/shared/write_policy.py:19
 msgid "Only when empty"
@@ -7627,6 +7754,11 @@ msgstr "Только если в коллекции нет активных ст
 msgid "Open"
 msgstr "Открыт"
 
+#: templates/components/pages/panel.html:6
+#, fuzzy
+msgid "Open Pages scratchpad"
+msgstr "Открыть черновик Pages"
+
 #: templates/widgets/url_widget.html:6
 msgid "Open URL in a new tab"
 msgstr "Открыть URL в новой вкладке"
@@ -7636,9 +7768,17 @@ msgstr "Открыть URL в новой вкладке"
 msgid "Open call"
 msgstr "Открыть звонок"
 
+# | msgid "End call"
+# | msgid "Open call"
+#: templates/components/objects/details/contact_actions.html:20
+#, fuzzy
+msgid "Open chat"
+msgstr "Открыть звонок"
+
 #: templates/cotton/ui/floating_panel.html:31
+#, fuzzy
 msgid "Open fullscreen"
-msgstr ""
+msgstr "Открыть в полноэкранном режиме"
 
 # | msgid "Parent"
 # | msgid "Parent Message"
@@ -7682,10 +7822,14 @@ msgid "Operator Str"
 msgstr "Строка оператора"
 
 #: bloomerp.applicationfield.advanced_rendering models/application_field.py:157
+#, fuzzy
 msgid ""
 "Optional HTML/Django template. Use {{ value }} for the field value. For example: <span class"
 "=\"text-red-600\">{{ value }}</span>. Leave empty to use the normal field rendering."
 msgstr ""
+"Необязательный HTML-шаблон/Django-шаблон. Используйте {{ value }} для значения поля. Например: "
+"<span class=\"text-red-600\">{{ value }}</span>. Оставьте пустым, чтобы использовать стандартное "
+"отображение поля."
 
 #: bloomerp.inboxitem.raw_meta_data
 msgid "Optional JSON field to store additional metadata related to the inbox item."
@@ -7741,8 +7885,11 @@ msgstr "Необязательная ссылка на идентификато�
 
 #: bloomerp.documenttemplate.default_signature_layout
 #: models/document_templates/document_template.py:165
+#, fuzzy
 msgid "Optional reusable placements for PDFs generated from this template."
 msgstr ""
+"Необязательные повторно используемые места для размещения элементов в PDF-файлах, созданных на "
+"основе этого шаблона."
 
 #: dataviews/gant/config.py:88
 msgid "Optional self-referencing field whose related record follows this record."
@@ -7811,12 +7958,14 @@ msgstr "Контекст исходного браузера"
 
 #: bloomerp.signaturepreparation.original_file bloomerp.signaturerequest.original_file
 #: models/document_signing/signature_preparation.py:23 models/document_signing/signature_request.py:251
+#, fuzzy
 msgid "Original PDF"
-msgstr ""
+msgstr "Исходный PDF"
 
 #: bloomerp.signaturerequest.original_sha256 models/document_signing/signature_request.py:254
+#, fuzzy
 msgid "Original SHA-256"
-msgstr ""
+msgstr "Исходный SHA-256"
 
 #: bloomerp.signatureartifact.kind dataviews/file_browser/renderer.py:112
 #: models/document_signing/signature_artifact.py:21
@@ -7872,36 +8021,35 @@ msgstr ""
 msgid "Overview"
 msgstr "Обзор"
 
-#: route:log_entries_detail_overview
 msgctxt "bloomerp:route:description"
 msgid "Overview of object from {model} model"
 msgstr "Обзор объекта из модели {model}"
 
-#: route:users_my_profile_overview
 msgctxt "bloomerp:route:description"
 msgid "Overview of profile"
 msgstr "Обзор профиля"
 
 #: bloomerp.aiconversation.owner bloomerp.imconversationparticipant.role bloomerp.initiative.owner
-#: models/communication/instant_messaging/im_conversation_participant.py:35
-#: models/project_management/initiative.py:194
+#: bloomerp.page.owner models/communication/instant_messaging/im_conversation_participant.py:35
+#: models/files/page.py:122 models/project_management/initiative.py:194
 msgid "Owner"
 msgstr "Владелец"
 
 #: templates/components/document_templates/generate_document_template.html:39
+#, fuzzy
 msgid "PDF preview updates after generation."
-msgstr ""
+msgstr "Предварительный просмотр PDF обновится после создания."
 
 # | msgid "Page Size"
-#: templates/components/document_signing/prepare_sign.html:81
+#: bloomerp.page models/files/page.py:92 templates/components/document_signing/prepare_sign.html:81
 #, fuzzy
 msgid "Page"
 msgstr "Размер страницы"
 
 #: templates/cotton/features/workspaces/tiles/pivot_table.html:20
-#, python-format
+#, fuzzy, python-format
 msgid "Page %(current_page)s of %(total_pages)s"
-msgstr ""
+msgstr "Страница %(current_page)s из %(total_pages)s"
 
 #: bloomerp.documenttemplate.page_margin models/document_templates/document_template.py:225
 msgid "Page Margin"
@@ -7916,6 +8064,17 @@ msgstr "Ориентация страницы"
 msgid "Page Size"
 msgstr "Размер страницы"
 
+# | msgid "Back to editor"
+#: templates/views/pages.html:18
+#, fuzzy
+msgid "Page editor"
+msgstr "Назад в редактор"
+
+#: templates/components/pages/panel.html:10
+#, fuzzy
+msgid "Page history"
+msgstr "История страницы"
+
 # | msgid "Phone Number Field"
 # | msgid "Phone number"
 #: bloomerp.signaturelayoutfield.page_number bloomerp.signaturepreparationfield.page_number
@@ -7924,10 +8083,46 @@ msgstr "Размер страницы"
 msgid "Page number"
 msgstr "Номер телефона"
 
+# | msgid "A folder's system identity cannot be changed after creation."
+# | msgid "A node's kind cannot be changed."
+#: serializers/page.py:48
+#, fuzzy
+msgid "Page ownership cannot be changed."
+msgstr "Нельзя изменить тип узла."
+
 # | msgid "Page Size"
 #: dataviews/card/config.py:23 dataviews/table/config.py:37
 msgid "Page size"
 msgstr "Размер страницы"
+
+# | msgid "Page Size"
+#: templates/components/pages/editor.html:41
+#, fuzzy
+msgid "Page title"
+msgstr "Размер страницы"
+
+#, fuzzy
+msgctxt "bloomerp:route:name"
+msgid "PageConsumer"
+msgstr "Потребитель страницы"
+
+# | msgid "Page Size"
+#: bloomerp.page models/files/page.py:93 templates/components/pages/panel.html:5
+#: templates/components/pages/panel.html:8
+#, fuzzy
+msgid "Pages"
+msgstr "Размер страницы"
+
+#, fuzzy
+msgctxt "bloomerp:route:name"
+msgid "Pages"
+msgstr "Страницы"
+
+# | msgid "Page Orientation"
+#: templates/components/pages/navigation.html:3
+#, fuzzy
+msgid "Pages navigation"
+msgstr "Ориентация страницы"
 
 #: bloomerp.workflownode.parameters models/automation/workflow_node.py:82
 msgid "Parameters"
@@ -7998,13 +8193,19 @@ msgid "Pending"
 msgstr "Ожидает"
 
 #: bloomerp.emaildraft.pending_send
+#, fuzzy
 msgid "Pending Send"
-msgstr ""
+msgstr "Ожидает отправки"
 
 #: templates/mixins/bloomerp_layout_form_mixin.html:65
 #: tests/views/generic/model/test_bloomerp_list_view.py:107
 msgid "People"
 msgstr "Люди"
+
+#: templates/components/pages/editor.html:20
+#, fuzzy
+msgid "People you share with can edit this page."
+msgstr "Пользователи, которым вы предоставили доступ, могут редактировать эту страницу."
 
 #: bloomerp.rowpolicyrulepermission.permission models/access_control/row_policy_rule.py:221
 msgid "Permission"
@@ -8051,7 +8252,7 @@ msgstr ""
 
 #: bloomerp.signaturelayoutfield.field_type bloomerp.signaturepreparationfield.field_type
 #: bloomerp.signaturerequestfield.field_type
-#: communication/builtins/instant_messaging/builtins/phone.py:327
+#: communication/builtins/instant_messaging/builtins/phone.py:355
 #: models/document_signing/definition.py:135
 msgid "Phone"
 msgstr "Телефон"
@@ -8108,7 +8309,7 @@ msgid "Phone numbers synchronized."
 msgstr "Синхронизация номеров телефонов завершена."
 
 # | msgid "Add at least one recipient."
-#: communication/builtins/instant_messaging/builtins/phone.py:336
+#: communication/builtins/instant_messaging/builtins/phone.py:364
 msgid "Phone recipients"
 msgstr "Получатели звонка"
 
@@ -8158,24 +8359,26 @@ msgstr "Сводная таблица"
 #: bloomerp.inbox.pk bloomerp.inboxfolder.pk bloomerp.inboxitem.pk bloomerp.initiative.pk
 #: bloomerp.label.pk bloomerp.mcpconnection.pk bloomerp.mcpintegration.pk bloomerp.mention.pk
 #: bloomerp.oauthaccesstoken.pk bloomerp.oauthauthorizationcode.pk bloomerp.objectlabel.pk
-#: bloomerp.phonecall.pk bloomerp.phonecallevent.pk bloomerp.policy.pk bloomerp.rowpolicy.pk
-#: bloomerp.rowpolicyrule.pk bloomerp.rowpolicyrulepermission.pk bloomerp.savedfilter.pk
-#: bloomerp.sidebar.pk bloomerp.sidebaritem.pk bloomerp.signatureartifact.pk bloomerp.signatureevent.pk
-#: bloomerp.signaturelayout.pk bloomerp.signaturelayoutfield.pk bloomerp.signaturelayoutrole.pk
-#: bloomerp.signaturepreparation.pk bloomerp.signaturepreparationfield.pk
-#: bloomerp.signaturepreparationrole.pk bloomerp.signaturerecipient.pk bloomerp.signaturerequest.pk
-#: bloomerp.signaturerequestfield.pk bloomerp.sqlquery.pk bloomerp.tag.pk bloomerp.tile.pk
-#: bloomerp.todo.pk bloomerp.user.pk bloomerp.userdetailviewtabitem.pk
-#: bloomerp.userdetailviewtabspreference.pk bloomerp.userinboxpreference.pk
-#: bloomerp.userlistviewpreference.pk bloomerp.userobjectlayoutpreference.pk bloomerp.voipconnection.pk
-#: bloomerp.voipnumber.pk bloomerp.workflow.pk bloomerp.workflowedge.pk bloomerp.workflownode.pk
-#: bloomerp.workflowrun.pk bloomerp.workflowrunstep.pk bloomerp.workspace.pk
+#: bloomerp.page.pk bloomerp.phonecall.pk bloomerp.phonecallevent.pk bloomerp.policy.pk
+#: bloomerp.rowpolicy.pk bloomerp.rowpolicyrule.pk bloomerp.rowpolicyrulepermission.pk
+#: bloomerp.savedfilter.pk bloomerp.sidebar.pk bloomerp.sidebaritem.pk bloomerp.signatureartifact.pk
+#: bloomerp.signatureevent.pk bloomerp.signaturelayout.pk bloomerp.signaturelayoutfield.pk
+#: bloomerp.signaturelayoutrole.pk bloomerp.signaturepreparation.pk
+#: bloomerp.signaturepreparationfield.pk bloomerp.signaturepreparationrole.pk
+#: bloomerp.signaturerecipient.pk bloomerp.signaturerequest.pk bloomerp.signaturerequestfield.pk
+#: bloomerp.sqlquery.pk bloomerp.tag.pk bloomerp.tile.pk bloomerp.todo.pk bloomerp.user.pk
+#: bloomerp.userdetailviewtabitem.pk bloomerp.userdetailviewtabspreference.pk
+#: bloomerp.userinboxpreference.pk bloomerp.userlistviewpreference.pk
+#: bloomerp.userobjectlayoutpreference.pk bloomerp.voipconnection.pk bloomerp.voipnumber.pk
+#: bloomerp.workflow.pk bloomerp.workflowedge.pk bloomerp.workflownode.pk bloomerp.workflowrun.pk
+#: bloomerp.workflowrunstep.pk bloomerp.workspace.pk
 msgid "Pk"
 msgstr "Первичный ключ"
 
 #: models/document_signing/definition.py:109
+#, fuzzy
 msgid "Place the signer's signature."
-msgstr ""
+msgstr "Разместите подпись подписанта."
 
 #: workspaces/links_tile/model.py:129 workspaces/links_tile/model.py:206
 msgid "Please add a URL to the link"
@@ -8338,16 +8541,19 @@ msgid "Prefix"
 msgstr "Префикс"
 
 #: bloomerp.signaturepreparationfield.preparation bloomerp.signaturepreparationrole.preparation
+#, fuzzy
 msgid "Preparation"
-msgstr ""
+msgstr "Подготовка"
 
 #: views/mixins/signing_wizard_mixin.py:214
+#, fuzzy
 msgid "Prepare document"
-msgstr ""
+msgstr "Подготовить документ"
 
 #: templates/components/document_signing/prepare_sign.html:3
+#, fuzzy
 msgid "Prepare document for signing"
-msgstr ""
+msgstr "Подготовить документ к подписанию"
 
 #: templates/views/workflows/builder.html:38
 msgid "Preparing run…"
@@ -8370,6 +8576,11 @@ msgid ""
 msgstr ""
 "Задайте значения по умолчанию, выбрав поле и указав значение. Форма может иметь значения по "
 "умолчанию для полей, существующих в форме, а также для полей, скрытых от пользователя."
+
+#: templates/components/pages/editor.html:2
+#, fuzzy
+msgid "Press / for commands or @ for mentions"
+msgstr "Нажмите / для команд или @ для упоминаний"
 
 #: templates/components/communication/emails/email_editor.html:182
 #: templates/components/document_templates/generate_document_template.html:105
@@ -8394,8 +8605,9 @@ msgid "Previous"
 msgstr "Предварительный просмотр"
 
 #: bloomerp.aiartifact.previous_revision
+#, fuzzy
 msgid "Previous Revision"
-msgstr ""
+msgstr "Предыдущая версия"
 
 # | msgid "Previous Revision"
 #: templates/components/document_signing/prepare_sign.html:80
@@ -8406,6 +8618,11 @@ msgstr "Предыдущая версия"
 #: bloomerp.todo.priority models/project_management/todo.py:374
 msgid "Priority"
 msgstr "Приоритет"
+
+#: services/page_services.py:36
+#, fuzzy
+msgid "Private"
+msgstr "Личное"
 
 # | msgid "Processing..."
 #: bloomerp.conferencewebhookreceipt.status
@@ -8433,7 +8650,6 @@ msgstr "Обработка..."
 msgid "Profile"
 msgstr "Профиль"
 
-#: route:users_my_profile_overview
 msgctxt "bloomerp:route:name"
 msgid "Profile"
 msgstr "Профиль"
@@ -8653,14 +8869,15 @@ msgstr "Квартал"
 msgid "Query"
 msgstr "Запрос"
 
-#: route:sql_queries_query
+#, fuzzy
 msgctxt "bloomerp:route:name"
 msgid "Query"
-msgstr ""
+msgstr "Запрос"
 
 #: workspaces/analytics_tile/model.py:379
+#, fuzzy
 msgid "Query columns aggregated into pivot values."
-msgstr ""
+msgstr "Столбцы запроса, объединённые в сводные значения."
 
 # | msgid "Fields used to build nested column headers."
 #: workspaces/analytics_tile/model.py:375
@@ -8678,10 +8895,10 @@ msgstr "Поля, используемые для создания иерарх�
 msgid "Query required"
 msgstr "Требуется запрос"
 
-#: route:sql_queries_query
+#, fuzzy
 msgctxt "bloomerp:route:description"
 msgid "Query your data using SQL"
-msgstr ""
+msgstr "Запрашивайте данные с помощью SQL"
 
 #: bloomerp.airun.status bloomerp.fileextraction.status bloomerp.phonecall.status
 #: bloomerp.workflowrun.status models/automation/workflow_run.py:110
@@ -8696,8 +8913,9 @@ msgstr "Цитата"
 
 #: bloomerp.signaturelayoutfield.field_type bloomerp.signaturepreparationfield.field_type
 #: bloomerp.signaturerequestfield.field_type models/document_signing/definition.py:169
+#, fuzzy
 msgid "Radio buttons"
-msgstr ""
+msgstr "Переключатели"
 
 #: bloomerp.inboxitem.raw_meta_data models/communication/inbox/inbox_item.py:109
 msgid "Raw Meta Data"
@@ -8741,6 +8959,12 @@ msgstr "Получено"
 msgid "Recenter"
 msgstr "Центрировать"
 
+# | msgid "Recipient"
+#: services/page_services.py:34
+#, fuzzy
+msgid "Recents"
+msgstr "Получатель"
+
 #: bloomerp.signatureartifact.recipient bloomerp.signatureevent.recipient
 #: bloomerp.signaturerequestfield.recipient
 #: communication/builtins/instant_messaging/builtins/slack.py:105
@@ -8751,9 +8975,9 @@ msgid "Recipient"
 msgstr "Получатель"
 
 #: forms/document_signing/send_signature_request.py:115
-#, python-format
+#, fuzzy, python-format
 msgid "Recipient for %(role)s"
-msgstr ""
+msgstr "Получатель для %(role)s"
 
 #: bloomerp.imconversation.phone_address models/communication/instant_messaging/im_conversation.py:35
 msgid "Recipient phone number"
@@ -8765,25 +8989,22 @@ msgstr "Номер телефона получателя"
 msgid "Recipients"
 msgstr "Получатель"
 
-#: route:ai_agents_detail_reconfigure
 msgctxt "bloomerp:route:name"
 msgid "Reconfigure"
 msgstr "Перенастроить"
 
-#: route:ai_agents_detail_reconfigure
 msgctxt "bloomerp:route:description"
 msgid "Reconfigure an AI agent"
 msgstr "Перенастроить ИИ-агента"
 
-#: route:voip_connections_detail_reconfigure_voip_connection
 msgctxt "bloomerp:route:name"
 msgid "Reconfigure connection"
 msgstr "Перенастроить подключение"
 
-#: route:email_accounts_detail_reconfigure_email_account
+#, fuzzy
 msgctxt "bloomerp:route:name"
 msgid "Reconfigure email account"
-msgstr ""
+msgstr "Перенастроить учетную запись электронной почты"
 
 #: views/agents/create_mcp_integration.py:347
 msgid "Reconnect after changing the authentication settings."
@@ -8831,12 +9052,16 @@ msgid "Refresh Token"
 msgstr "Токен обновления"
 
 #: templates/models/email_account/provider_instructions/outlook.html:5
+#, fuzzy
 msgid "Register the callback below as a Web redirect URI. This page must use HTTPS."
 msgstr ""
+"Зарегистрируйте указанный ниже адрес обратного вызова как URI перенаправления в веб-приложении. "
+"Эта страница должна использовать HTTPS."
 
 #: templates/views/emails/create_email_account/configure_account.html:15
+#, fuzzy
 msgid "Register this exact callback URL in your OAuth application:"
-msgstr ""
+msgstr "Зарегистрируйте этот точный URL обратного вызова в своем OAuth-приложении:"
 
 #: bloomerp.aiagent.provider models/agents/ai_agent.py:193
 msgid "Registered provider used to validate settings and construct the runtime."
@@ -8890,7 +9115,7 @@ msgid "Related objects that would be deleted:"
 msgstr "Связанные объекты, которые будут удалены:"
 
 # | msgid "Attachments do not belong to this object and field."
-#: form_behaviors/execution.py:239
+#: form_behaviors/execution.py:241
 msgid "Related row does not belong to this object."
 msgstr "Связанная строка не принадлежит этому объекту."
 
@@ -8962,8 +9187,9 @@ msgid "Replace fields and roles"
 msgstr "Заменять только несохранённые строки"
 
 #: templates/components/document_signing/prepare_sign.html:30
+#, fuzzy
 msgid "Replace the current fields and signer roles with this revision?"
-msgstr ""
+msgstr "Заменить текущие поля и роли подписантов этой редакцией?"
 
 #: form_behaviors/builtins/set_value.py:89
 msgid "Replace the target field value, including with an empty value."
@@ -8990,8 +9216,9 @@ msgid "Reply To"
 msgstr "Ответ на"
 
 #: components/communication/emails/reply_to_email.py:342
+#, fuzzy
 msgid "Reply accepted for sending."
-msgstr ""
+msgstr "Ответ принят к отправке."
 
 # | msgid "Email sent successfully."
 #: components/communication/emails/reply_to_email.py:342
@@ -9032,8 +9259,9 @@ msgid "Required"
 msgstr "Обязательно"
 
 #: bloomerp.aiapproval.required_approver
+#, fuzzy
 msgid "Required Approver"
-msgstr ""
+msgstr "Обязательный согласующий"
 
 #: bloomerp.todo.required_by models/project_management/todo.py:366
 msgid "Required By"
@@ -9072,22 +9300,18 @@ msgstr "Сбросить"
 msgid "Reset password"
 msgstr "Сбросить пароль"
 
-#: route:users_detail_reset_password
 msgctxt "bloomerp:route:name"
 msgid "Reset password"
 msgstr "Сбросить пароль"
 
-#: route:users_detail_reset_password
 msgctxt "bloomerp:route:description"
 msgid "Reset password for a user"
 msgstr "Сброс пароля пользователя"
 
-#: route:users_detail_admin_reset_password_for_user
 msgctxt "bloomerp:route:description"
 msgid "Reset password for a user by admin"
 msgstr "Сброс пароля пользователя администратором"
 
-#: route:users_detail_admin_reset_password_for_user
 msgctxt "bloomerp:route:name"
 msgid "Reset password for user (admin)"
 msgstr "Сбросить пароль пользователя (администратор)"
@@ -9149,12 +9373,14 @@ msgid "Resume After"
 msgstr "Продолжить после"
 
 #: models/document_signing/signature_recipient.py:173
+#, fuzzy
 msgid "Retain consent text and its time together."
-msgstr ""
+msgstr "Сохраняйте текст согласия и время его предоставления вместе."
 
 #: models/document_signing/signature_request.py:382
+#, fuzzy
 msgid "Retain the preparation and its revision together."
-msgstr ""
+msgstr "Сохраняйте подготовку документа и ее редакцию вместе."
 
 # | msgid "Header of the document template."
 #: models/document_templates/document_template_header.py:24
@@ -9162,12 +9388,10 @@ msgstr ""
 msgid "Reusable headers for document templates"
 msgstr "Заголовок шаблона документа."
 
-#: route:form_submissions_detail_review_submission
 msgctxt "bloomerp:route:name"
 msgid "Review Submission"
 msgstr "Проверка отправки"
 
-#: route:form_submissions_detail_review_submission
 msgctxt "bloomerp:route:description"
 msgid "Review a form submission"
 msgstr "Проверка отправки формы"
@@ -9179,8 +9403,9 @@ msgid "Review and approve"
 msgstr "Обязательный утверждающий"
 
 #: templates/document_signing/invitation_email.html:6
+#, fuzzy
 msgid "Review and sign document"
-msgstr ""
+msgstr "Просмотреть и подписать документ"
 
 # | msgctxt "bloomerp:route:name"
 # | msgid "Review Submission"
@@ -9396,8 +9621,9 @@ msgid "S"
 msgstr "S"
 
 #: bloomerp.signatureartifact.sha256 models/document_signing/signature_artifact.py:47
+#, fuzzy
 msgid "SHA-256"
-msgstr ""
+msgstr "SHA-256"
 
 #: templates/views/communication/create_voip_number.html:33
 msgid "SMS"
@@ -9559,8 +9785,9 @@ msgid "Save the file and referenced record first."
 msgstr "Указанная запись должна существовать."
 
 #: templates/views/document_signing/wizard/action.html:5
+#, fuzzy
 msgid "Save the prepared request and choose recipients later."
-msgstr ""
+msgstr "Сохраните подготовленный запрос и выберите получателей позже."
 
 # | msgid "saved filters"
 #: templates/components/document_templates/generate_document_template.html:56
@@ -9569,8 +9796,9 @@ msgid "Saved %(filename)s"
 msgstr "сохранённые фильтры"
 
 #: templates/components/document_templates/generate_document_template.html:95
+#, fuzzy
 msgid "Saved PDFs will appear here."
-msgstr ""
+msgstr "Здесь будут отображаться сохраненные PDF-файлы."
 
 #: workspaces/analytics_tile/model.py:149
 msgid "Scatter"
@@ -9853,7 +10081,7 @@ msgid "Select an AI provider to continue."
 msgstr "Выберите провайдера ИИ, чтобы продолжить."
 
 # | msgid "Select an email before replying."
-#: communication/builtins/instant_messaging/builtins/phone.py:79
+#: communication/builtins/instant_messaging/builtins/phone.py:82
 msgid "Select an available phone recipient."
 msgstr "Выберите доступного получателя звонка."
 
@@ -10036,8 +10264,9 @@ msgid "Send"
 msgstr "Отправить"
 
 #: bloomerp.workflownode.sub_type
+#, fuzzy
 msgid "Send Email"
-msgstr ""
+msgstr "Отправить электронное письмо"
 
 #: bloomerp.workflownode.sub_type
 msgid "Send User Message"
@@ -10050,8 +10279,9 @@ msgid "Send email"
 msgstr "Отправить письмо"
 
 #: templates/views/document_signing/wizard/action.html:3
+#, fuzzy
 msgid "Send for signing"
-msgstr ""
+msgstr "Отправить на подпись"
 
 # | msgid "Dependency from"
 #: forms/communication/calendar_event.py:107
@@ -10078,10 +10308,10 @@ msgstr "Отправить ответ"
 msgid "Send signature request"
 msgstr "Отправитель запроса на подпись."
 
-#: route:signature_requests_detail_send
+#, fuzzy
 msgctxt "bloomerp:route:name"
 msgid "Send signature request"
-msgstr ""
+msgstr "Отправить запрос на подпись"
 
 #: bloomerp.immessage.sender
 msgid "Sender"
@@ -10112,8 +10342,9 @@ msgid "Sent"
 msgstr "Отправлено"
 
 #: bloomerp.immessage.sent_at
+#, fuzzy
 msgid "Sent At"
-msgstr ""
+msgstr "Отправлено"
 
 # | msgid "Sent At"
 #: bloomerp.signaturerequest.sent_at models/document_signing/signature_request.py:267
@@ -10145,8 +10376,9 @@ msgid "Serialized output produced by this workflow node execution."
 msgstr "Сериализованный результат, созданный в ходе выполнения этого узла рабочего процесса."
 
 #: models/agents/mcp_server.py:67
+#, fuzzy
 msgid "Server"
-msgstr ""
+msgstr "Сервер"
 
 # | msgid "Configure account"
 # | msgid "Configuration"
@@ -10161,8 +10393,9 @@ msgid "Session"
 msgstr "Сеанс"
 
 #: bloomerp.emailauthorizationrequest.session_digest
+#, fuzzy
 msgid "Session Digest"
-msgstr ""
+msgstr "Дайджест сеанса"
 
 #: form_behaviors/builtins/set_relative_date.py:109
 msgid "Set a date relative to today in whole days, or a datetime relative to now in whole minutes."
@@ -10214,12 +10447,26 @@ msgid "Settings"
 msgstr "Настройки"
 
 #: models/document_signing/definition.py:155
+#, fuzzy
 msgid "Several lines of text."
-msgstr ""
+msgstr "Несколько строк текста."
+
+# | msgid "Shared with"
+# | msgid "Shared"
+#: templates/components/pages/editor.html:16 templates/components/pages/editor.html:29
+#, fuzzy
+msgid "Share"
+msgstr "Общий"
 
 #: bloomerp.conferencesession.share_token
 msgid "Share Token"
 msgstr "Токен доступа"
+
+# | msgid "Share workspace"
+#: templates/components/pages/editor.html:19
+#, fuzzy
+msgid "Share page"
+msgstr "Поделиться рабочей областью"
 
 # | msgid "Preference"
 # | msgid "Base Preference"
@@ -10236,7 +10483,7 @@ msgstr "Демонстрация экрана"
 
 # | msgid "Shared with"
 #: bloomerp.imauthorization.kind bloomerp.mcpintegration.connection_mode models/agents/mcp_server.py:33
-#: models/communication/instant_messaging/im_authorization.py:35
+#: models/communication/instant_messaging/im_authorization.py:35 services/page_services.py:35
 msgid "Shared"
 msgstr "Общий"
 
@@ -10284,6 +10531,16 @@ msgstr "Общий ключ (необязательно)"
 #: workspaces/analytics_tile/model.py:765
 msgid "Shared key updated"
 msgstr "Общий ключ обновлён"
+
+#: bloomerp.page.shared_with_groups models/files/page.py:134
+msgid "Shared with groups"
+msgstr "Доступ предоставлен группам"
+
+# | msgid "Shared With Users"
+#: bloomerp.page.shared_with_users models/files/page.py:128
+#, fuzzy
+msgid "Shared with users"
+msgstr "Доступ предоставлен пользователям"
 
 #: templates/cotton/features/agent/body.html:159
 msgid "Shift + Enter for a new line"
@@ -10378,10 +10635,10 @@ msgstr "Боковые панели"
 msgid "Sign"
 msgstr "Выйти"
 
-#: route:signature_requests_detail_sign
+#, fuzzy
 msgctxt "bloomerp:route:name"
 msgid "Sign"
-msgstr ""
+msgstr "Подписать"
 
 #: templates/cotton/app/sidebar/body.html:170
 msgid "Sign Out"
@@ -10406,14 +10663,16 @@ msgstr "Выйти"
 #: templates/components/document_signing/prepare_sign.html:46
 #: templates/components/document_signing/start_self_signing.html:4
 #: templates/views/document_signing/wizard/action.html:4
+#, fuzzy
 msgid "Sign myself"
-msgstr ""
+msgstr "Подписать самостоятельно"
 
 #: bloomerp.signaturelayoutfield.field_type bloomerp.signaturepreparationfield.field_type
 #: bloomerp.signaturerequestfield.field_type models/document_signing/definition.py:107
 #: widgets/drawn_signature.py:20
+#, fuzzy
 msgid "Signature"
-msgstr ""
+msgstr "Подпись"
 
 # | msgid "ai artifact"
 #: bloomerp.signatureartifact models/document_signing/signature_artifact.py:51
@@ -10428,8 +10687,9 @@ msgid "Signature artifacts"
 msgstr "артефакты ИИ"
 
 #: templates/widgets/drawn_signature.html:14
+#, fuzzy
 msgid "Signature drawing area"
-msgstr ""
+msgstr "Область для рисования подписи"
 
 # | msgctxt "bloomerp:route:name"
 # | msgid "Create event"
@@ -10472,20 +10732,24 @@ msgid "Signature layout role"
 msgstr "Неподдерживаемый владелец макета."
 
 #: bloomerp.signaturelayoutrole models/document_signing/signature_layout_role.py:30
+#, fuzzy
 msgid "Signature layout roles"
-msgstr ""
+msgstr "Роли в макете подписи"
 
 #: bloomerp.signaturelayout models/document_signing/signature_layout.py:40
+#, fuzzy
 msgid "Signature layouts"
-msgstr ""
+msgstr "Макеты подписи"
 
 #: bloomerp.signaturerequest.signature_level models/document_signing/signature_request.py:210
+#, fuzzy
 msgid "Signature level"
-msgstr ""
+msgstr "Уровень подписи"
 
 #: bloomerp.signaturepreparation models/document_signing/signature_preparation.py:35
+#, fuzzy
 msgid "Signature preparation"
-msgstr ""
+msgstr "Подготовка подписи"
 
 # | msgid "application fields"
 #: bloomerp.signaturepreparationfield models/document_signing/signature_preparation_field.py:27
@@ -10500,16 +10764,19 @@ msgid "Signature preparation fields"
 msgstr "поля приложения"
 
 #: bloomerp.signaturepreparationrole models/document_signing/signature_preparation_role.py:26
+#, fuzzy
 msgid "Signature preparation role"
-msgstr ""
+msgstr "Роль при подготовке подписи"
 
 #: bloomerp.signaturepreparationrole models/document_signing/signature_preparation_role.py:27
+#, fuzzy
 msgid "Signature preparation roles"
-msgstr ""
+msgstr "Роли при подготовке подписи"
 
 #: bloomerp.signaturepreparation models/document_signing/signature_preparation.py:36
+#, fuzzy
 msgid "Signature preparations"
-msgstr ""
+msgstr "Подготовки подписи"
 
 # | msgid "Add at least one recipient."
 # | msgid "Phone recipients"
@@ -10544,9 +10811,9 @@ msgid "Signature request fields"
 msgstr "Идентификатор запроса клиента"
 
 #: communication/builtins/in_app_notifications/signature_request.py:43 document_signing/requests.py:390
-#, python-format
+#, fuzzy, python-format
 msgid "Signature requested: %(title)s"
-msgstr ""
+msgstr "Запрошена подпись: %(title)s"
 
 # | msgid "Sender of the signature request."
 #: bloomerp.signaturerequest models/document_signing/signature_request.py:273
@@ -10570,8 +10837,9 @@ msgid "Signed PDF"
 msgstr "Вы вошли как"
 
 #: bloomerp.signaturerequest.signed_sha256 models/document_signing/signature_request.py:265
+#, fuzzy
 msgid "Signed SHA-256"
-msgstr ""
+msgstr "Подписанный SHA-256"
 
 # | msgid "Joined At"
 # | msgid "Joined at"
@@ -10585,8 +10853,9 @@ msgid "Signed in as"
 msgstr "Вы вошли как"
 
 #: templates/components/document_signing/prepare_sign.html:52
+#, fuzzy
 msgid "Signer roles"
-msgstr ""
+msgstr "Роли подписантов"
 
 # | msgid "Links and folders"
 #: templates/components/document_signing/prepare_sign.html:39
@@ -10598,42 +10867,46 @@ msgstr "Ссылки и папки"
 msgid "Signifies whether the page numbers are included or not."
 msgstr "Указывает, включаются ли номера страниц."
 
-#: route:signature_requests_detail_invitation
+#, fuzzy
 msgctxt "bloomerp:route:name"
 msgid "Signing invitation"
-msgstr ""
+msgstr "Приглашение на подписание"
 
 #: bloomerp.signaturepreparationrole.signing_order bloomerp.signaturerecipient.signing_order
 #: models/document_signing/signature_preparation_role.py:22
 #: models/document_signing/signature_recipient.py:49
+#, fuzzy
 msgid "Signing order"
-msgstr ""
+msgstr "Порядок подписания"
 
 #: templates/views/document_signing/view_status.html:37
-#, python-format
+#, fuzzy, python-format
 msgid "Signing order %(order)s"
-msgstr ""
+msgstr "Порядок подписания: %(order)s"
 
 #: templates/views/document_signing/view_status.html:4
+#, fuzzy
 msgid "Signing timeline"
-msgstr ""
+msgstr "Хронология подписания"
 
-#: route:api_document_signing_preparation
+#, fuzzy
 msgctxt "bloomerp:route:name"
 msgid "SigningPreparationApiView"
-msgstr ""
+msgstr "SigningPreparationApiView"
 
 #: bloomerp.signaturerequest.signature_level models/document_signing/signature_request.py:194
+#, fuzzy
 msgid "Simple electronic signature"
-msgstr ""
+msgstr "Простая электронная подпись"
 
 #: bloomerp.immessageattachment.size workspaces/analytics_tile/model.py:113
 msgid "Size"
 msgstr "Размер"
 
 #: models/document_templates/document_template_header.py:48
+#, fuzzy
 msgid "Size and margins (inches)"
-msgstr ""
+msgstr "Размер и поля (дюймы)"
 
 #: bloomerp.documenttemplate.page_size models/document_templates/document_template.py:218
 msgid "Size of the document template."
@@ -10660,8 +10933,9 @@ msgid "Small Integer Field"
 msgstr "Малое целочисленное поле"
 
 #: models/document_signing/signature_request.py:376
+#, fuzzy
 msgid "Snapshot the layout name and revision."
-msgstr ""
+msgstr "Зафиксируйте название макета и его редакцию."
 
 #: bloomerp.inboxitem.snippet models/communication/inbox/inbox_item.py:102
 msgid "Snippet"
@@ -10718,8 +10992,9 @@ msgid "Source Object Id"
 msgstr "Идентификатор исходного объекта"
 
 #: bloomerp.aiconversationmemory.source_tool_call
+#, fuzzy
 msgid "Source Tool Call"
-msgstr ""
+msgstr "Исходный вызов инструмента"
 
 #: form_behaviors/builtins/fetch.py:489
 msgid "Source and target columns are incompatible."
@@ -10771,8 +11046,9 @@ msgstr "Сортировать по убыванию"
 
 #: bloomerp.signaturerequest.source_preparation_revision
 #: models/document_signing/signature_request.py:242
+#, fuzzy
 msgid "Source preparation revision"
-msgstr ""
+msgstr "Исходная редакция подготовки"
 
 #: bloomerp.emailaccount.oauth_scopes
 msgid "Space-separated OAuth scopes requested for this account."
@@ -10909,6 +11185,14 @@ msgid "Start video call"
 msgstr "Начать видеозвонок"
 
 # | msgid "Start Date"
+# | msgid "Start Deadline"
+# | msgid "Start meeting"
+#: templates/views/pages.html:2
+#, fuzzy
+msgid "Start writing…"
+msgstr "Начать встречу"
+
+# | msgid "Start Date"
 #: bloomerp.airunattempt.started_at bloomerp.aitoolcall.started_at bloomerp.fileextraction.started_at
 #: bloomerp.workflowrun.started_at models/automation/workflow_run.py:426
 #: models/files/file_extraction.py:196
@@ -10934,8 +11218,9 @@ msgid "State"
 msgstr "Состояние"
 
 #: bloomerp.emailauthorizationrequest.state_digest
+#, fuzzy
 msgid "State Digest"
-msgstr ""
+msgstr "Дайджест состояния"
 
 # | msgid "Status"
 #: models/access_control/policy.py:73
@@ -10959,10 +11244,10 @@ msgstr "Статус"
 msgid "Status"
 msgstr "Статус"
 
-#: route:signature_requests_detail_view_status
+#, fuzzy
 msgctxt "bloomerp:route:name"
 msgid "Status"
-msgstr ""
+msgstr "Статус"
 
 #: bloomerp.applicationfield.field_type
 msgid "Status Field"
@@ -11028,7 +11313,6 @@ msgstr "Дополнительное значение"
 msgid "Subject"
 msgstr "Тема"
 
-#: route:forms_detail_submit
 msgctxt "bloomerp:route:name"
 msgid "Submit"
 msgstr "Отправить"
@@ -11041,7 +11325,6 @@ msgstr "URL API отправки"
 msgid "Submit Url"
 msgstr "URL отправки"
 
-#: route:forms_detail_submit
 msgctxt "bloomerp:route:description"
 msgid "Submit a form"
 msgstr "Отправить форму"
@@ -11082,8 +11365,9 @@ msgid "Sum"
 msgstr "Отправить"
 
 #: workspaces/analytics_tile/model.py:365
+#, fuzzy
 msgid "Summarizes query results in expandable rows and nested columns."
-msgstr ""
+msgstr "Сводит результаты запроса в раскрывающиеся строки и вложенные столбцы."
 
 # | msgid "Summary String"
 #: bloomerp.imconversationactivity.summary
@@ -11247,8 +11531,9 @@ msgid "Tentative"
 msgstr "Под вопросом"
 
 #: templates/components/communication/calling/controls.html:18
+#, fuzzy
 msgid "Test incoming ringtone"
-msgstr ""
+msgstr "Проверить входящий рингтон"
 
 #: bloomerp.signaturelayoutfield.field_type bloomerp.signaturepreparationfield.field_type
 #: bloomerp.signaturerequestfield.field_type bloomerp.tile.type
@@ -11257,8 +11542,9 @@ msgid "Text"
 msgstr "Текст"
 
 #: bloomerp.applicationfield.field_type
+#, fuzzy
 msgid "Text Field"
-msgstr ""
+msgstr "Текстовое поле"
 
 #: bloomerp.form.success_text models/forms/form.py:107
 msgid "Text shown after a successful form submission."
@@ -11294,8 +11580,9 @@ msgid "The Y position of the node in the workflow editor."
 msgstr "Позиция узла по оси Y в редакторе рабочего процесса."
 
 #: views/communication/create_email_account.py:534
+#, fuzzy
 msgid "The account changed during setup. Connect again before saving."
-msgstr ""
+msgstr "Во время настройки учетная запись изменилась. Подключитесь снова перед сохранением."
 
 #: bloomerp.apikey.account
 msgid "The account whose permissions this API key uses."
@@ -11428,12 +11715,14 @@ msgid "The document could not be generated. Review the inputs and try again."
 msgstr "Не удалось прочитать настройки политики поля. Проверьте этот шаг и попробуйте снова."
 
 #: templates/components/document_signing/signed_document.html:15
+#, fuzzy
 msgid "The document will be completed when all recipients have signed."
-msgstr ""
+msgstr "Документ будет завершён, когда его подпишут все получатели."
 
 #: models/document_signing/definition.py:49
+#, fuzzy
 msgid "The drawing is too detailed. Clear it and try again."
-msgstr ""
+msgstr "Рисунок слишком сложный. Очистите его и попробуйте снова."
 
 #: bloomerp.todo.effort models/project_management/todo.py:379
 msgid "The effort required for the todo"
@@ -11491,8 +11780,9 @@ msgid "The field must belong to the referenced model."
 msgstr "Поле должно принадлежать указанной модели."
 
 #: models/document_signing/positioned_field.py:90
+#, fuzzy
 msgid "The field must fit inside its page."
-msgstr ""
+msgstr "Поле должно помещаться на странице."
 
 # | msgid "The field policy configuration could not be read. Please review step 2 and try again."
 #: views/access_control/create_policy.py:289
@@ -11542,7 +11832,6 @@ msgstr ""
 "Группы, в которые входит этот пользователь. Пользователь получает все разрешения, предоставленные"
 " каждой из его групп."
 
-#: route:automation_module_automation
 msgctxt "bloomerp:route:description"
 msgid "The homepage for the {module} module."
 msgstr "Главная страница модуля {module}."
@@ -11552,8 +11841,9 @@ msgid "The host has not started this meeting yet."
 msgstr "Организатор ещё не начал эту встречу."
 
 #: communication/builtins/conferencing/controller.py:331
+#, fuzzy
 msgid "The host must end the call instead."
-msgstr ""
+msgstr "В этом случае звонок должен завершить организатор."
 
 #: templates/views/communication/conferencing/meeting.html:16
 msgid "The host will admit you before you can enter the meeting."
@@ -11726,7 +12016,7 @@ msgstr "Родительский элемент должен быть сущес
 msgid "The participant SID is immutable once assigned."
 msgstr "SID участника нельзя изменить после назначения."
 
-#: communication/builtins/instant_messaging/builtins/phone.py:69
+#: communication/builtins/instant_messaging/builtins/phone.py:72
 msgid "The phone number has changed. Select the recipient again."
 msgstr "Номер телефона изменился. Выберите получателя заново."
 
@@ -11739,12 +12029,16 @@ msgid "The priority of the todo"
 msgstr "Приоритет задачи"
 
 #: communication/builtins/emails/sending.py:23
+#, fuzzy
 msgid "The provider did not confirm delivery. Check Sent Items and Drafts before sending again."
 msgstr ""
+"Поставщик не подтвердил доставку. Перед повторной отправкой проверьте папки «Отправленные» и "
+"«Черновики»."
 
 #: communication/builtins/emails/authorization.py:134
+#, fuzzy
 msgid "The provider returned an invalid authorization URL."
-msgstr ""
+msgstr "Поставщик вернул недействительный URL-адрес авторизации."
 
 # | msgid "The numeric field used for the pie slice values."
 #: workspaces/analytics_tile/model.py:418
@@ -11867,8 +12161,9 @@ msgid "The session cannot return to an earlier state."
 msgstr "Сеанс не может вернуться в предыдущее состояние."
 
 #: models/document_signing/definition.py:124
+#, fuzzy
 msgid "The signer's full name."
-msgstr ""
+msgstr "Полное имя подписанта."
 
 #: workspaces/analytics_tile/model.py:114
 msgid "The size"
@@ -11964,8 +12259,9 @@ msgid "This aggregation requires a one-to-many column."
 msgstr "Для этой агрегации требуется столбец связи «один ко многим»."
 
 #: templates/inbox_items/workflow_approval.html:25
+#, fuzzy
 msgid "This approval has already been handled."
-msgstr ""
+msgstr "Это согласование уже обработано."
 
 # | msgid "Object no longer available"
 # | msgid "This selection is no longer available."
@@ -11979,8 +12275,9 @@ msgid "This calendar message requires review and has not changed your calendar."
 msgstr "Это сообщение календаря требует проверки и не изменило ваш календарь."
 
 #: templates/views/communication/conferencing/meeting.html:8
+#, fuzzy
 msgid "This call has ended"
-msgstr ""
+msgstr "Этот звонок завершён"
 
 # | msgid "No workflow graph was available for this execution."
 # | msgid "Browser calling is unavailable for this line."
@@ -12037,8 +12334,9 @@ msgid "This is a partial preview. Download the file to see all data."
 msgstr "Это неполный предварительный просмотр. Скачайте файл, чтобы увидеть все данные."
 
 #: templates/document_signing/invitation_email.html:7
+#, fuzzy
 msgid "This link is personal. Please do not forward it."
-msgstr ""
+msgstr "Эта ссылка предназначена только для вас. Пожалуйста, не пересылайте её."
 
 #: communication/builtins/conferencing/sharing.py:211
 msgid "This meeting is full."
@@ -12062,6 +12360,18 @@ msgstr "Этот объект нельзя удалить, поскольку н
 #: models/automation/workflow_edge.py:72
 msgid "This output port has reached its connection limit."
 msgstr "Для этого выходного порта достигнут предел подключений."
+
+#: serializers/page.py:19
+#, fuzzy
+msgid "This page changed elsewhere. Reload before continuing to edit."
+msgstr "Эта страница была изменена в другом месте. Перезагрузите её, прежде чем продолжить редактирование."
+
+# | msgid "Object no longer available"
+# | msgid "This selection is no longer available."
+#: serializers/page.py:81
+#, fuzzy
+msgid "This page is no longer available to you."
+msgstr "Этот вариант больше недоступен."
 
 #: templates/components/objects/bulk_actions.html:66
 #, python-format
@@ -12109,8 +12419,9 @@ msgstr ""
 "получения разрешения регулирующих органов проверяет Twilio."
 
 #: templates/components/document_signing/start_self_signing.html:10
+#, fuzzy
 msgid "This request includes the selected role and its fields."
-msgstr ""
+msgstr "Этот запрос включает выбранную роль и её поля."
 
 # | msgid "Provider verification and messaging are not enabled yet."
 # | msgid "This provider's messaging transport is not available yet."
@@ -12229,12 +12540,12 @@ msgstr "Время"
 
 #: bloomerp.aiconversation.title bloomerp.applicationfield.title bloomerp.calendarbooking.title
 #: bloomerp.calendarevent.title bloomerp.conferenceroom.title bloomerp.inboxitem.title
-#: bloomerp.signaturepreparation.title bloomerp.signaturerequest.title bloomerp.todo.title
-#: models/communication/calendar/calendar_booking.py:93
+#: bloomerp.page.title bloomerp.signaturepreparation.title bloomerp.signaturerequest.title
+#: bloomerp.todo.title models/communication/calendar/calendar_booking.py:93
 #: models/communication/calendar/calendar_event.py:211
 #: models/communication/conferencing/conference_room.py:12 models/communication/inbox/inbox_item.py:95
 #: models/document_signing/signature_preparation.py:17 models/document_signing/signature_request.py:196
-#: models/project_management/todo.py:387
+#: models/files/page.py:115 models/project_management/todo.py:387
 msgid "Title"
 msgstr "Заголовок"
 
@@ -12280,7 +12591,6 @@ msgstr "Количество задач"
 msgid "Todos"
 msgstr "Задачи"
 
-#: route:log_entries_detail_todos
 msgctxt "bloomerp:route:name"
 msgid "Todos"
 msgstr "Задачи"
@@ -12289,7 +12599,6 @@ msgctxt "bloomerp:module:name"
 msgid "Todos & Initiatives"
 msgstr "Задачи и инициативы"
 
-#: route:log_entries_detail_todos
 msgctxt "bloomerp:route:description"
 msgid "Todos related to a specific object"
 msgstr "Задачи, связанные с определённым объектом"
@@ -12307,8 +12616,9 @@ msgid "Toll-free"
 msgstr "Бесплатный номер"
 
 #: services/email_attachment_services.py:79
+#, fuzzy
 msgid "Too many email attachments or inline images."
-msgstr ""
+msgstr "Слишком много вложений или встроенных изображений в письме."
 
 # | msgid "Loading filters..."
 #: form_fields/bloomerp_file_field.py:118
@@ -12526,8 +12836,9 @@ msgid "Unavailable tool: %(name)s"
 msgstr "Недоступный инструмент: %(name)s"
 
 #: field_types/builtins/text.py:134
+#, fuzzy
 msgid "Underscore"
-msgstr ""
+msgstr "Нижнее подчёркивание"
 
 #: bloomerp.immessagereaction.emoji models/communication/instant_messaging/im_message_reaction.py:25
 msgid "Unicode emoji, including skin tones/ZWJ sequences, or a provider custom emoji key."
@@ -12543,13 +12854,13 @@ msgstr "Неизвестные поля конфигурации действи�
 
 # | msgid "Conversation History"
 # | msgid "Conversation actions"
-#: form_behaviors/execution.py:327
+#: form_behaviors/execution.py:329
 #, python-format
 msgid "Unknown action: %(action)s."
 msgstr "Неизвестное действие: %(action)s."
 
 # | msgid "Unknown carrier provider."
-#: form_behaviors/execution.py:295
+#: form_behaviors/execution.py:297
 msgid "Unknown behavior event."
 msgstr "Неизвестное событие поведения."
 
@@ -12608,11 +12919,16 @@ msgstr "Неподдерживаемое расширение файла."
 msgid "Unsupported layout owner."
 msgstr "Неподдерживаемый владелец макета."
 
+# | msgid "Untitled tile"
+#: models/files/page.py:254 templates/components/pages/editor.html:41
+#, fuzzy
+msgid "Untitled"
+msgstr "Плитка без названия"
+
 #: components/workspaces/tiles/preview.py:202
 msgid "Untitled tile"
 msgstr "Плитка без названия"
 
-#: route:access_control_policies_detail_update
 msgctxt "bloomerp:route:name"
 msgid "Update"
 msgstr "Обновить"
@@ -12621,17 +12937,15 @@ msgstr "Обновить"
 msgid "Update Object"
 msgstr "Обновить объект"
 
-#: route:tiles_detail_update_tile
 msgctxt "bloomerp:route:name"
 msgid "Update Tile"
 msgstr "Обновить плитку"
 
-#: route:calendar_events_detail_update
+#, fuzzy
 msgctxt "bloomerp:route:description"
 msgid "Update a calendar invite"
-msgstr ""
+msgstr "Обновить приглашение в календаре"
 
-#: route:workflows_detail_builder
 msgctxt "bloomerp:route:description"
 msgid "Update a workflow"
 msgstr "Обновить рабочий процесс"
@@ -12643,12 +12957,10 @@ msgstr "Обновить рабочий процесс"
 msgid "Update event"
 msgstr "Создать событие"
 
-#: route:access_control_policies_detail_update
 msgctxt "bloomerp:route:description"
 msgid "Update this policy"
 msgstr "Обновить эту политику"
 
-#: route:tiles_detail_update_tile
 msgctxt "bloomerp:route:description"
 msgid "Update this tile"
 msgstr "Обновить эту плитку"
@@ -12675,15 +12987,16 @@ msgstr "Обновить эту плитку"
 #: bloomerp.immessageattachment.updated_by bloomerp.immessagereaction.updated_by
 #: bloomerp.imthreadreadposition.updated_by bloomerp.inboxfolder.updated_by
 #: bloomerp.inboxitem.updated_by bloomerp.initiative.updated_by bloomerp.label.updated_by
-#: bloomerp.mcpconnection.updated_by bloomerp.mcpintegration.updated_by bloomerp.phonecall.updated_by
-#: bloomerp.phonecallevent.updated_by bloomerp.policy.updated_by bloomerp.savedfilter.updated_by
-#: bloomerp.signatureartifact.updated_by bloomerp.signatureevent.updated_by
-#: bloomerp.signaturelayout.updated_by bloomerp.signaturelayoutfield.updated_by
-#: bloomerp.signaturelayoutrole.updated_by bloomerp.signaturepreparation.updated_by
-#: bloomerp.signaturepreparationfield.updated_by bloomerp.signaturepreparationrole.updated_by
-#: bloomerp.signaturerecipient.updated_by bloomerp.signaturerequest.updated_by
-#: bloomerp.signaturerequestfield.updated_by bloomerp.sqlquery.updated_by bloomerp.tile.updated_by
-#: bloomerp.todo.updated_by bloomerp.userinboxpreference.updated_by bloomerp.voipconnection.updated_by
+#: bloomerp.mcpconnection.updated_by bloomerp.mcpintegration.updated_by bloomerp.page.updated_by
+#: bloomerp.phonecall.updated_by bloomerp.phonecallevent.updated_by bloomerp.policy.updated_by
+#: bloomerp.savedfilter.updated_by bloomerp.signatureartifact.updated_by
+#: bloomerp.signatureevent.updated_by bloomerp.signaturelayout.updated_by
+#: bloomerp.signaturelayoutfield.updated_by bloomerp.signaturelayoutrole.updated_by
+#: bloomerp.signaturepreparation.updated_by bloomerp.signaturepreparationfield.updated_by
+#: bloomerp.signaturepreparationrole.updated_by bloomerp.signaturerecipient.updated_by
+#: bloomerp.signaturerequest.updated_by bloomerp.signaturerequestfield.updated_by
+#: bloomerp.sqlquery.updated_by bloomerp.tile.updated_by bloomerp.todo.updated_by
+#: bloomerp.userinboxpreference.updated_by bloomerp.voipconnection.updated_by
 #: bloomerp.voipnumber.updated_by bloomerp.workflow.updated_by bloomerp.workflownode.updated_by
 #: models/mixins/user_stamp_model_mixin.py:27
 msgid "Updated By"
@@ -12838,8 +13151,9 @@ msgid "Use the arrows to reorder items"
 msgstr "Используйте стрелки, чтобы изменить порядок элементов"
 
 #: templates/models/email_account/provider_instructions/outlook.html:7
+#, fuzzy
 msgid "Use the tenant UUID for the mailbox organization. Mailbox passwords are not needed."
-msgstr ""
+msgstr "Используйте UUID организации для почтового ящика. Пароли от почтового ящика не нужны."
 
 #: form_behaviors/builtins/fetch.py:296
 msgid "Use {{ object.field }} or, in per-row mode, {{ row.column }}."
@@ -12947,7 +13261,7 @@ msgstr "Имя пользователя"
 
 #: bloomerp.aiagentaccess.users bloomerp.policy.users bloomerp.user models/access_control/policy.py:126
 #: models/agents/ai_agent_access.py:100 models/project_management/todo.py:126 models/users/user.py:25
-#: models/users/user.py:186
+#: models/users/user.py:186 services/page_services.py:44 templates/components/pages/editor.html:22
 msgid "Users"
 msgstr "Пользователи"
 
@@ -13015,8 +13329,9 @@ msgid "Variables"
 msgstr "Переменные"
 
 #: bloomerp.aiconversationmemory.version
+#, fuzzy
 msgid "Version"
-msgstr ""
+msgstr "Версия"
 
 #: bloomerp.aimessage.schema_version bloomerp.airunevent.schema_version
 msgid "Version 1"
@@ -13076,10 +13391,10 @@ msgstr "Идентификатор запроса клиента"
 msgid "View row"
 msgstr "Просмотреть строку"
 
-#: route:signature_requests_detail_view_status
+#, fuzzy
 msgctxt "bloomerp:route:description"
 msgid "View the status of a signature request"
-msgstr ""
+msgstr "Просмотреть статус запроса на подпись"
 
 # | msgid "View row"
 # | msgid "View"
@@ -13111,8 +13426,9 @@ msgid "Visible token prefix used to identify the API key without storing the raw
 msgstr "Видимый префикс токена, используемый для идентификации ключа API без хранения исходного токена."
 
 #: models/communication/calendar/calendar_booking_submission.py:42
+#, fuzzy
 msgid "Visitor"
-msgstr ""
+msgstr "Посетитель"
 
 #: workspaces/registry.py:47
 msgid ""
@@ -13153,7 +13469,6 @@ msgstr "Подключение VoIP"
 msgid "VoIP connections"
 msgstr "Подключения VoIP"
 
-#: route:voip_connections
 msgctxt "bloomerp:route:name"
 msgid "VoIP connections"
 msgstr "Подключения VoIP"
@@ -13205,8 +13520,9 @@ msgid "Waiting for a response…"
 msgstr "Ожидание ответа…"
 
 #: templates/inbox_items/workflow_approval.html:22
+#, fuzzy
 msgid "Waiting for an authorized approver to review this step."
-msgstr ""
+msgstr "Ожидание проверки этого этапа уполномоченным утверждающим."
 
 #: bloomerp.aitoolcall.status
 msgid "Waiting for approval"
@@ -13329,8 +13645,9 @@ msgstr ""
 
 #: bloomerp.signaturelayoutfield.width bloomerp.signaturepreparationfield.width
 #: bloomerp.signaturerequestfield.width models/document_signing/positioned_field.py:41
+#, fuzzy
 msgid "Width"
-msgstr ""
+msgstr "Ширина"
 
 msgctxt "bloomerp:module:description"
 msgid "With automation, streamline and optimize your business processes by creating automated workflows."
@@ -13393,7 +13710,6 @@ msgstr "Одобрения инструментов"
 msgid "Workflow runs"
 msgstr "Запуски рабочих процессов"
 
-#: route:workflowrunconsumer
 msgctxt "bloomerp:route:name"
 msgid "WorkflowRunConsumer"
 msgstr "WorkflowRunConsumer"
@@ -13439,8 +13755,9 @@ msgid "Write a message…"
 msgstr "Напишите сообщение…"
 
 #: forms/document_signing/send_signature_request.py:57
+#, fuzzy
 msgid "Write an optional message to your recipients…"
-msgstr ""
+msgstr "Напишите необязательное сообщение для получателей…"
 
 # | msgctxt "bloomerp:route:name"
 # | msgid "Create Policy"
@@ -13534,8 +13851,11 @@ msgid "You can attach up to 20 items."
 msgstr "Можно прикрепить не более 20 элементов."
 
 #: templates/views/communication/conferencing/meeting.html:9
+#, fuzzy
 msgid "You can close this tab. Ask the host for a new meeting link to join another call."
 msgstr ""
+"Вы можете закрыть эту вкладку. Попросите организатора прислать новую ссылку на встречу, чтобы "
+"присоединиться к другому звонку."
 
 #: forms/communication/calendar_event.py:276
 msgid "You cannot add internal attendees."
@@ -13564,9 +13884,9 @@ msgid "You cannot update events in this calendar."
 msgstr "Вы не можете изменять события в этом календаре."
 
 #: templates/document_signing/invitation_email.html:4
-#, python-format
+#, fuzzy, python-format
 msgid "You have been invited to sign “%(title)s”."
-msgstr ""
+msgstr "Вас пригласили подписать документ «%(title)s»."
 
 # | msgid "Groups"
 # | msgid "Group by"
@@ -13576,8 +13896,9 @@ msgid "Your name"
 msgstr "Ваше имя"
 
 #: templates/components/document_signing/prepare_sign.html:75
+#, fuzzy
 msgid "Your original PDF stays unchanged."
-msgstr ""
+msgstr "Исходный PDF-файл останется без изменений."
 
 # | msgid "The row policy configuration could not be read. Please review step 2 and try again."
 # | msgid "The response could not be completed. Please try again."
@@ -13590,13 +13911,14 @@ msgid "Your selected model is unavailable. Choose another model for your next me
 msgstr "Выбранная модель недоступна. Выберите другую модель для следующего сообщения."
 
 #: templates/components/document_signing/signed_document.html:6
+#, fuzzy
 msgid "Your signature has been recorded"
-msgstr ""
+msgstr "Ваша подпись зарегистрирована"
 
 #: communication/builtins/in_app_notifications/signature_request.py:45
-#, python-format
+#, fuzzy, python-format
 msgid "Your signature is required as %(role)s."
-msgstr ""
+msgstr "Требуется ваша подпись в качестве %(role)s."
 
 #: templates/cotton/features/agent/body.html:89
 msgid "Your workspace assistant"
@@ -13635,24 +13957,28 @@ msgid "ai approvals"
 msgstr "одобрения ИИ"
 
 #: bloomerp.aiartifact
+#, fuzzy
 msgid "ai artifact"
-msgstr ""
+msgstr "артефакт ИИ"
 
 #: bloomerp.aiartifact
+#, fuzzy
 msgid "ai artifacts"
-msgstr ""
+msgstr "артефакты ИИ"
 
 #: bloomerp.aiconversation
 msgid "ai conversation"
 msgstr "диалог с ИИ"
 
 #: bloomerp.aiconversationmemory
+#, fuzzy
 msgid "ai conversation memory"
-msgstr ""
+msgstr "память диалога ИИ"
 
 #: bloomerp.aiconversationmemory
+#, fuzzy
 msgid "ai conversation memorys"
-msgstr ""
+msgstr "памяти диалогов ИИ"
 
 #: bloomerp.aiconversation
 msgid "ai conversations"
@@ -13720,7 +14046,6 @@ msgstr "отмена планирования календарного собы�
 msgid "calendar scheduling cancellations"
 msgstr "отмены планирования календарных событий"
 
-#: route:voip_call_status
 msgctxt "bloomerp:route:name"
 msgid "call status"
 msgstr "статус звонка"
@@ -13730,21 +14055,24 @@ msgid "date joined"
 msgstr "дата регистрации"
 
 #: bloomerp.user.email
+#, fuzzy
 msgid "email address"
-msgstr ""
+msgstr "адрес электронной почты"
 
-#: route:email_authorization_callback
+#, fuzzy
 msgctxt "bloomerp:route:name"
 msgid "email authorization callback"
-msgstr ""
+msgstr "обратный вызов авторизации электронной почты"
 
 #: bloomerp.emailauthorizationrequest
+#, fuzzy
 msgid "email authorization request"
-msgstr ""
+msgstr "запрос на авторизацию электронной почты"
 
 #: bloomerp.emailauthorizationrequest
+#, fuzzy
 msgid "email authorization requests"
-msgstr ""
+msgstr "запросы на авторизацию электронной почты"
 
 #: templates/components/communication/calendar/invitation.html:7
 msgid "exclusive end"
@@ -13783,8 +14111,9 @@ msgid "im authorizations"
 msgstr "авторизации в мессенджере"
 
 #: bloomerp.imconnection
+#, fuzzy
 msgid "im connection"
-msgstr ""
+msgstr "подключение к системе мгновенных сообщений"
 
 #: bloomerp.imconnection
 msgid "im connections"
@@ -13894,7 +14223,6 @@ msgstr "упоминание"
 msgid "mentions"
 msgstr "упоминания"
 
-#: route:voip_message_status
 msgctxt "bloomerp:route:name"
 msgid "message status"
 msgstr "статус сообщения"
@@ -13959,10 +14287,10 @@ msgid "saved filter"
 msgstr "сохранённый фильтр"
 
 #: bloomerp.savedfilter
+#, fuzzy
 msgid "saved filters"
-msgstr ""
+msgstr "сохранённые фильтры"
 
-#: route:voip_sms
 msgctxt "bloomerp:route:name"
 msgid "sms"
 msgstr "SMS"
@@ -13991,17 +14319,14 @@ msgstr "права пользователя"
 msgid "username"
 msgstr "имя пользователя"
 
-#: route:voip_voice
 msgctxt "bloomerp:route:name"
 msgid "voice"
 msgstr "голосовая связь"
 
-#: route:conferencing_webhook
 msgctxt "bloomerp:route:name"
 msgid "webhook"
 msgstr "вебхук"
 
-#: route:workspace
 msgctxt "bloomerp:route:name"
 msgid "workspace"
 msgstr "рабочее пространство"
@@ -14019,22 +14344,18 @@ msgstr "у вас нет доступа к настроенным связанн
 msgid "you cannot read the selected related value"
 msgstr "у вас нет доступа к выбранному связанному значению"
 
-#: route:log_entries_model
 msgctxt "bloomerp:route:name"
 msgid "{model_plural}"
 msgstr "{model_plural}"
 
-#: route:automation_module_automation
 msgctxt "bloomerp:route:name"
 msgid "{module}"
 msgstr "{module}"
 
-#: route:permissions_detail_rowpolicyrulepermission_set_relationship
 msgctxt "bloomerp:route:name"
 msgid "{related_model_plural}"
 msgstr "{related_model_plural}"
 
-#: route:permissions_detail_rowpolicyrulepermission_set_relationship
 msgctxt "bloomerp:route:description"
 msgid "{related_model_plural} relationship for {model}"
 msgstr "Связь {related_model_plural} для {model}"
@@ -14371,12 +14692,6 @@ msgstr "Связь {related_model_plural} для {model}"
 # | msgid "Field options updated"
 #~ msgid "Send invitation / update"
 #~ msgstr "Отправить приглашение / обновление"
-
-#~ msgid "Share workspace"
-#~ msgstr "Поделиться рабочей областью"
-
-#~ msgid "Shared with groups"
-#~ msgstr "Доступ предоставлен группам"
 
 #~ msgid "Signifies to which folder a file generated from the template needs to be saved upon creation."
 #~ msgstr "Указывает, в какую папку необходимо сохранить созданный из шаблона файл."

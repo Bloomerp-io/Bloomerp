@@ -49,7 +49,6 @@
     --color-blue-600: oklch(54.6% 0.245 262.881);
     --color-blue-700: oklch(48.8% 0.243 264.376);
     --color-blue-800: oklch(42.4% 0.199 265.638);
-    --color-purple-500: oklch(62.7% 0.265 303.9);
     --color-rose-50: oklch(96.9% 0.015 12.422);
     --color-rose-200: oklch(89.2% 0.058 10.001);
     --color-rose-500: oklch(64.5% 0.246 16.439);
@@ -1343,6 +1342,9 @@
   .min-h-6 {
     min-height: calc(var(--spacing) * 6);
   }
+  .min-h-9 {
+    min-height: calc(var(--spacing) * 9);
+  }
   .min-h-10 {
     min-height: calc(var(--spacing) * 10);
   }
@@ -1639,6 +1641,9 @@
   }
   .flex-none {
     flex: none;
+  }
+  .flex-shrink {
+    flex-shrink: 1;
   }
   .flex-shrink-0 {
     flex-shrink: 0;
@@ -7796,6 +7801,175 @@ body[data-bloomerp-agent="enabled"] .workspace-main {
 @media (prefers-reduced-motion: reduce) {
   [data-call-state="ringing"] .call-availability-dot {
     animation: none;
+  }
+}
+.bloomerp-text-editor {
+  position: relative;
+}
+.bloomerp-text-editor[data-block-hints="true"]::before {
+  display: none;
+}
+.bloomerp-text-editor [data-block-placeholder] {
+  position: relative;
+}
+.bloomerp-text-editor [data-block-placeholder]::after {
+  content: attr(data-block-placeholder);
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0;
+  color: var(--color-gray-400);
+  font-size: 0.875rem;
+  font-weight: normal;
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+}
+.bloomerp-text-editor ul, .bloomerp-text-editor ol {
+  padding-inline-start: 1.75rem;
+}
+.bloomerp-text-editor ul > li::marker {
+  font-size: 1.2em;
+}
+.bloomerp-text-editor li[data-block-placeholder]::after {
+  inset-inline-start: 1.5em;
+}
+.bloomerp-text-editor .bloomerp-text-editor-nested-list-item {
+  list-style: none;
+}
+.bloomerp-editor-block-controls {
+  position: absolute;
+  z-index: 50;
+  display: flex;
+  width: 34px;
+  height: 18px;
+  color: var(--color-gray-400);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 160ms ease, visibility 0s linear 160ms, top 120ms ease, left 120ms ease;
+}
+.bloomerp-editor-block-controls.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+.bloomerp-editor-block-controls[hidden], .bloomerp-editor-outline[hidden], .bloomerp-editor-drop-indicator[hidden] {
+  display: none;
+}
+.bloomerp-editor-block-controls button {
+  width: 16px;
+  height: 18px;
+  font-size: 11px;
+  border-radius: 3px;
+}
+.bloomerp-editor-block-controls button[draggable] {
+  cursor: grab;
+}
+.bloomerp-editor-block-controls button:hover {
+  background: var(--color-gray-100);
+  color: var(--color-primary);
+}
+.bloomerp-editor-block-controls .is-expanded i {
+  transform: rotate(90deg);
+}
+.bloomerp-editor-folded {
+  display: none !important;
+}
+.bloomerp-editor-drop-indicator {
+  position: absolute;
+  height: 2px;
+  pointer-events: none;
+  background: var(--color-primary);
+  z-index: 14;
+}
+.bloomerp-editor-outline {
+  position: fixed;
+  transform: translateY(-50%);
+  z-index: 30;
+  color: var(--color-gray-500);
+}
+.bloomerp-editor-outline summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 10px 6px;
+  width: 34px;
+  max-height: 45vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.bloomerp-editor-outline summary span {
+  display: block;
+  flex-shrink: 0;
+  height: 2px;
+  background: var(--color-gray-300);
+  transition: background 150ms ease;
+}
+.bloomerp-editor-outline summary span.is-current {
+  background: var(--color-gray-800);
+}
+.bloomerp-editor-outline summary::-webkit-details-marker {
+  display: none;
+}
+.bloomerp-editor-outline nav {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(300px, calc(100vw - 80px));
+  max-height: 55vh;
+  overflow-y: auto;
+  background: var(--color-base);
+  border: 1px solid var(--color-gray-200);
+  border-radius: 1rem;
+  padding: 0.5rem;
+  box-shadow: 0 2px 8px #0001;
+}
+.bloomerp-editor-outline nav button {
+  display: block;
+  width: 100%;
+  text-align: start;
+  font-size: 0.875rem;
+  padding: 0.35rem 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bloomerp-editor-outline nav button:hover {
+  color: var(--color-primary);
+  background: var(--color-gray-100);
+}
+.bloomerp-editor-outline nav button.is-current {
+  color: var(--color-gray-900);
+  background: var(--color-gray-100);
+  border-radius: 0.5rem;
+}
+.page-editor-formatting .text-editor-action-toolbar {
+  justify-content: flex-start;
+}
+[data-pages-content] .page-editor-document {
+  padding-left: 3.25rem;
+}
+[data-pages-content] [data-page-controls] [data-page-delete] > span, [data-pages-content] [data-page-controls] [data-page-share] button[aria-haspopup] > span {
+  display: none;
+}
+[data-pages-content] [data-page-controls] [data-page-delete], [data-pages-content] [data-page-controls] [data-page-share] button[aria-haspopup] {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  justify-content: center;
+}
+@media (max-width: 1023px) {
+  .page-editor-document {
+    padding-left: 3.25rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bloomerp-editor-block-controls {
+    transition: none;
   }
 }
 @layer base {

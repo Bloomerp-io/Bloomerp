@@ -7,3 +7,7 @@ __all__ = [
     'FileNode',
     'FileReference',
 ]
+
+from .page import Page
+
+__all__ += ["Page"]

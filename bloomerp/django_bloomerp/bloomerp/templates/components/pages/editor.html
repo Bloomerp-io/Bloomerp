@@ -1,0 +1,54 @@
+{% load i18n %}
+{% translate "Press / for commands or @ for mentions" as editor_placeholder %}
+<div bloomerp-component="bloomerp:page-editor" data-page-id="{{ page.pk|default:'' }}"
+     data-version="{{ page_version }}" data-page-owner="{{ page.owner_id|default:request.user.pk }}"
+     data-can-manage="{{ can_manage_page|yesno:'true,false' }}"
+     data-api-url="{% url 'pages-list' %}" data-editor-url="{% url 'components_pages_editor' %}"
+     class="relative" data-websocket-url="{% if page %}/ws/pages/{{ page.pk }}/{% endif %}">
+    <div data-page-controls class="page-editor-controls flex min-h-9 flex-wrap items-center justify-end gap-2 px-6 pt-4">
+        {% if can_manage_page %}
+            <button type="button" data-page-delete {% if not page %}hidden{% endif %} aria-label="{% translate 'Delete' %}" class="btn btn-secondary btn-sm">
+                <i class="fa-regular fa-trash-can" aria-hidden="true"></i><span>{% translate 'Delete' %}</span>
+            </button>
+        {% endif %}
+        {% if can_manage_page %}
+            <div data-page-share>
+                <c-ui.dropdown.body trigger_text="{% translate 'Share' %}" trigger_aria_label="{% translate 'Share' %}" trigger_icon_class="fa-solid fa-share-nodes"
+                    trigger_button_class="btn-secondary" size="sm" width="w-80" :fixed="True" position="right">
+                    <form data-page-sharing class="space-y-4 p-4">
+                        <p class="text-sm font-semibold">{% translate 'Share page' %}</p>
+                        <p class="text-xs text-gray-500">{% translate 'People you share with can edit this page.' %}</p>
+                        <div data-page-sharing-field="shared_with_users">
+                            <div class="mb-1 text-sm">{% translate 'Users' %}</div>
+                            {{ sharing_user_widget }}
+                        </div>
+                        <div data-page-sharing-field="shared_with_groups">
+                            <div class="mb-1 text-sm">{% translate 'Groups' %}</div>
+                            {{ sharing_group_widget }}
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm w-full">{% translate 'Share' %}</button>
+                    </form>
+                </c-ui.dropdown.body>
+            </div>
+        {% endif %}
+    </div>
+    <div class="page-editor-document mx-auto max-w-3xl px-6 py-4">
+        <div data-page-status role="status" hidden class="mb-3 text-sm text-red-600"></div>
+        <div data-page-formatting class="page-editor-formatting"></div>
+        <form data-page-form>
+            {% csrf_token %}
+            <input type="text" name="title" value="{{ page_title }}" maxlength="255"
+                   data-floating-panel-focus aria-label="{% translate 'Page title' %}" placeholder="{% translate 'Untitled' %}"
+                   class="mb-4 block w-full border-0 bg-transparent p-0 text-4xl font-bold tracking-tight text-inherit placeholder:text-gray-400 focus:outline-none focus:ring-0" />
+            <c-ui.inputs.text_editor name="content" :value="page_content" :placeholder="editor_placeholder" />
+        </form>
+    </div>
+    <template data-page-delete-dialog>
+        <p class="mb-4 text-sm">{% translate 'Delete this page? This cannot be undone.' %}</p>
+        <p data-page-delete-error role="alert" hidden class="mb-4 text-sm text-red-600">{% translate 'Could not delete this page. Please try again.' %}</p>
+        <div class="flex justify-end gap-2">
+            <button type="button" data-page-delete-cancel class="btn btn-secondary btn-sm">{% translate 'Cancel' %}</button>
+            <button type="button" data-page-delete-confirm class="btn btn-danger btn-sm"><i class="fa-regular fa-trash-can" aria-hidden="true"></i>{% translate 'Delete' %}</button>
+        </div>
+    </template>
+</div>
