@@ -11,6 +11,8 @@ from urllib.parse import urlencode, urlsplit, urlunsplit, parse_qsl
 from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
 from django.core import signing
+from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 from django.db import transaction
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
@@ -24,9 +26,7 @@ from bloomerp.oauth import (
 )
 from bloomerp.router import router
 
-CHATGPT_CALLBACK = re.compile(
-    r"^/(?:connector_platform_oauth_redirect|connector/oauth/[A-Za-z0-9_-]+)$"
-)
+HTTPS_CALLBACK_VALIDATOR = URLValidator(schemes=["https"])
 
 
 def _json_error(error: str, status: int = 400) -> JsonResponse:
@@ -42,15 +42,15 @@ def _enabled_or_404() -> bool:
 
 
 def _valid_redirect_uri(uri: str) -> bool:
-    """Allow only ChatGPT's documented HTTPS OAuth callback URLs."""
-    parsed = urlsplit(uri)
-    return (
-        parsed.scheme == "https"
-        and parsed.netloc == "chatgpt.com"
-        and not parsed.query
-        and not parsed.fragment
-        and bool(CHATGPT_CALLBACK.fullmatch(parsed.path))
-    )
+    """Accept HTTPS callbacks with a clear host and no embedded credentials."""
+    if not uri.isascii() or not uri.isprintable() or re.search(r"[ \\?#]", uri):
+        return False
+    try:
+        HTTPS_CALLBACK_VALIDATOR(uri)
+        parsed = urlsplit(uri)
+        return parsed.username is None and parsed.port != 0
+    except (ValidationError, ValueError):
+        return False
 
 
 def _client_redirects(client_id: str) -> list[str] | None:
@@ -108,7 +108,7 @@ def authorization_server_metadata(request: HttpRequest) -> HttpResponse:
 @router.register(re_path=r"^oauth/register$", route_type="api", url_name="oauth_register")
 @csrf_exempt
 def register_client(request: HttpRequest) -> HttpResponse:
-    """Register a public ChatGPT client with allowlisted callback URIs."""
+    """Register a public OAuth client and bind it to its exact callback URIs."""
     if not _enabled_or_404():
         return HttpResponse(status=404)
     if request.method != "POST":
@@ -187,14 +187,21 @@ def authorize(request: HttpRequest) -> HttpResponse:
     if request.method == "GET":
         response = render(
             request, "views/auth/oauth_authorize.html",
-            {"consent_user": request.user, "resource": values["resource"]},
+            {
+                "consent_user": request.user,
+                "resource": values["resource"],
+                "callback_host": urlsplit(values["redirect_uri"]).netloc,
+            },
         )
         response["Cache-Control"] = "no-store"
         return response
-    if request.POST.get("decision") != "approve":
+    decision = request.POST.get("decision")
+    if decision == "deny":
         return _callback(values["redirect_uri"], {
             "error": "access_denied", "state": values["state"]
         })
+    if decision != "approve":
+        return _json_error("invalid_request")
     code = secrets.token_urlsafe(32)
     OAuthAuthorizationCode.objects.create(
         code_hash=hash_oauth_secret(code), user=request.user,
