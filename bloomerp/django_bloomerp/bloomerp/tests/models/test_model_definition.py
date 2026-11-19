@@ -1,11 +1,16 @@
 from unittest.mock import patch
 
 from django.test import SimpleTestCase
+from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 
 from bloomerp.dataviews.kanban.config import KanbanDataView
 from bloomerp.dataviews.table.config import TableDataView
+from bloomerp.models.audit.activity_log import ActivityLogAction
 from bloomerp.models.definition import (
+    ActivityLogContext,
+    ActivityLogDecision,
+    ActivityLogSettings,
     BloomerpModelConfig,
     DataviewModalAction,
     ObjectModalAction,
@@ -32,6 +37,41 @@ from bloomerp.models.definition import (
 )
 
 from bloomerp.workspaces.text_tile.model import TextTileConfig
+
+
+class ActivityLogSettingsSchemaTests(SimpleTestCase):
+    """Expose declarative audit settings while retaining Python callback validation."""
+
+    def test_schema_supports_declarative_activity_logging(self) -> None:
+        """Generate input and output schemas without exposing the Python callback."""
+        for mode in ("validation", "serialization"):
+            with self.subTest(mode=mode):
+                schema = ActivityLogSettings.model_json_schema(mode=mode)
+                Draft202012Validator.check_schema(schema)
+                self.assertEqual(set(schema["properties"]), {"enabled"})
+                validator = Draft202012Validator(schema)
+                self.assertTrue(validator.is_valid({"enabled": False}))
+                self.assertFalse(validator.is_valid({"enabled": "invalid"}))
+
+    def test_schema_generation_retains_runtime_callback(self) -> None:
+        """Keep a configured audit predicate executable after schema discovery."""
+        def record_changes(context: ActivityLogContext) -> ActivityLogDecision:
+            """Record events containing changed fields."""
+            return ActivityLogDecision(record=bool(context.changed_fields))
+
+        settings = ActivityLogSettings(should_record=record_changes)
+        ActivityLogSettings.model_json_schema()
+        self.assertIs(settings.should_record, record_changes)
+        context = ActivityLogContext(
+            action=ActivityLogAction.CHANGE, instance=Todo(), actor=None,
+            changed_fields=frozenset({"title"}),
+        )
+        self.assertTrue(settings.should_record(context).record)
+
+    def test_callback_still_requires_a_python_callable(self) -> None:
+        """Reject callback strings instead of accepting arbitrary JSON values."""
+        with self.assertRaises(ValidationError):
+            ActivityLogSettings(should_record="record_changes")
 
 
 class DefaultDataviewActionTests(SimpleTestCase):

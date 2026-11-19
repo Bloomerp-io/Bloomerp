@@ -21,6 +21,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from pydantic.json_schema import SkipJsonSchema
 
 from bloomerp.config.definition import BloomerpConfig
 from bloomerp.dataviews.definition import BaseDataview
@@ -731,7 +732,9 @@ class ActivityLogSettings(BaseModel):
     """Optional settings for a model's audit functionality."""
 
     enabled: bool = True
-    should_record: Callable[[ActivityLogContext], ActivityLogDecision] | None = Field(
+    should_record: SkipJsonSchema[
+        Callable[[ActivityLogContext], ActivityLogDecision] | None
+    ] = Field(
         default=None,
         description="Callback for enabled logging that decides whether to record an event "
         "and which field values to snapshot. Omit it to use standard activity logging.",
