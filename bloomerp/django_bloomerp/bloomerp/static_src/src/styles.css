@@ -1118,6 +1118,44 @@
       @apply bg-gray-100 cursor-not-allowed
     }
 
+    /* Keep single relations in O2M rows as compact as the neighboring inputs. */
+    .one-to-many-field-widget [bloomerp-component='foreign-field-widget'][data-is-m2m='false'] {
+      .foreign-field-selected {
+        @apply mt-0;
+      }
+
+      &:has(.foreign-field-badge) {
+        input[type='text']:not(:focus) {
+          color: transparent;
+        }
+
+        .foreign-field-selected {
+          @apply absolute inset-0 flex items-center px-2 pointer-events-none text-xs;
+        }
+
+        .foreign-field-badge {
+          @apply min-w-0 max-w-full m-0 p-0 rounded-none bg-transparent text-primary dark:text-primary-400 pointer-events-auto;
+        }
+
+        .foreign-field-badge > :first-child {
+          @apply min-w-0 max-w-full px-0;
+        }
+
+        .foreign-field-badge > button {
+          @apply shrink-0;
+        }
+      }
+
+      /* Focusing the search input reveals its editable label and results. */
+      &:has(input[type='text']:focus) .foreign-field-selected {
+        @apply opacity-0;
+
+        .foreign-field-badge {
+          @apply pointer-events-none;
+        }
+      }
+    }
+
 }
 
 @layer components {
