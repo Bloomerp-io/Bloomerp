@@ -8,10 +8,14 @@ from unittest.mock import patch
 from django.contrib.auth.models import AnonymousUser
 from django.test import SimpleTestCase, override_settings
 from jsonschema import Draft202012Validator
+from pydantic import BaseModel
 from rest_framework.response import Response
 from rest_framework.test import APIRequestFactory, force_authenticate
 
+from bloomerp.mcp.definition import McpTool
 from bloomerp.mcp.view import McpEndpointView
+from bloomerp.models.definition import ActivityLogSettings
+from bloomerp.router import BloomerpRouteRegistry, router
 from bloomerp.views.mcp.get_current_user import get_current_user
 
 
@@ -80,6 +84,36 @@ class CurrentUserMcpTests(SimpleTestCase):
                 self.assertNotIn("isError", result)
                 self.assertEqual(result["structuredContent"], expected)
                 self.assertEqual(json.loads(result["content"][0]["text"]), expected)
+
+    def test_catalog_handles_tools_with_nested_activity_log_settings(self) -> None:
+        """List all tools when a registered input schema embeds audit settings."""
+        class ConfigurationInput(BaseModel):
+            """Represent the optional audit options nested in a builder request."""
+
+            activity_log_settings: ActivityLogSettings | None = None
+
+        registry = BloomerpRouteRegistry()
+        registry.register(
+            name="Configure activity logging",
+            url_name="configure_activity_logging",
+            route_type="mcp",
+            mcp=McpTool(input_schema=ConfigurationInput.model_json_schema),
+        )(get_current_user)
+        routes = router.get_mcp_routes() + registry.get_mcp_routes()
+        user = SimpleNamespace(is_authenticated=True, is_staff=True, is_superuser=False)
+        with patch.object(router, "get_mcp_routes", return_value=routes):
+            response = self.request_mcp("tools/list", {}, user)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("error", response.data)
+        tools = {tool["name"]: tool for tool in response.data["result"]["tools"]}
+        self.assertEqual(set(tools), {route.url_name for route in routes})
+        self.assertIn("get_current_user", tools)
+        schema = tools["configure_activity_logging"]["inputSchema"]
+        Draft202012Validator.check_schema(schema)
+        validator = Draft202012Validator(schema)
+        self.assertTrue(validator.is_valid({"activity_log_settings": {"enabled": False}}))
+        self.assertFalse(validator.is_valid({"activity_log_settings": {"enabled": "invalid"}}))
+        self.assertNotIn("should_record", schema["$defs"]["ActivityLogSettings"]["properties"])
 
     def test_empty_optional_profile_values_are_preserved(self) -> None:
         """Return blank profile fields as strings rather than dropping their keys."""
