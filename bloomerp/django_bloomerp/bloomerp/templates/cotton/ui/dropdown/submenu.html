@@ -6,6 +6,7 @@ Parameters:
 - class : additional classes for the trigger row
 - menu_class : additional classes for the nested menu
 - width : custom width class for the nested menu (default: w-56)
+- overflow_visible : let nested controls display results beyond the menu panel
 - direction : "right", "left", or "auto" (default: "auto")
 - disabled : whether the submenu trigger is disabled
 - event_name : event name used to coordinate submenu open/close state (default: "dropdown-submenu-open")
@@ -121,7 +122,8 @@ Parameters:
         x-transition:leave-start="transform opacity-100 scale-100"
         x-transition:leave-end="transform opacity-0 scale-95"
         class="
-            fixed inset-auto z-[100] m-0 p-0 max-h-[calc(100vh-2rem)] overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg
+            fixed inset-auto z-[100] m-0 p-0 max-h-[calc(100vh-2rem)] rounded-xl border border-gray-200 bg-white shadow-lg
+            {% if overflow_visible %}overflow-visible{% else %}overflow-y-auto{% endif %}
             {{ width|default:'w-56' }}
             {{ menu_class }}
         "

@@ -8,13 +8,14 @@ from urllib.parse import urlsplit, urlunsplit
 
 from django.core.exceptions import PermissionDenied
 from django.forms.utils import flatatt
-from django.http import QueryDict
+from django.http import HttpRequest, HttpResponse, QueryDict
 from django.middleware.csrf import get_token
 from django.template.loader import render_to_string
 from django.utils.html import conditional_escape
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext
+from django_htmx.http import trigger_client_event
 
 from bloomerp.models.definition import (
     DataviewAction,
@@ -28,7 +29,7 @@ from bloomerp.models.definition import (
     ObjectActionGrouping,
     ObjectHTMLAction,
 )
-from bloomerp.permissions.access_tokens import permission_token_url
+from bloomerp.utils.requests import render_message
 
 logger = logging.getLogger(__name__)
 
@@ -38,17 +39,35 @@ ActionButton = ObjectAction | DataviewAction
 ActionGroup = ObjectActionGrouping | DataviewActionGrouping
 HTMX_REQUEST_ATTRIBUTES = ("hx-get", "hx-post", "hx-put", "hx-patch", "hx-delete")
 ACTION_DATAVIEW_PREFERENCE_PARAM = "_action_preference"
-DATAVIEW_OPERATION_CONTEXT_PARAM = "_dataview_operation_context"
 
 
 def with_dataview_context(url: str, context: DataviewActionContext) -> str:
-    """Carry the originating view and filters to a configured execution endpoint."""
+    """Carry the originating preference and filters to a dataview endpoint."""
     parts = urlsplit(url)
     query = QueryDict(context.querystring, mutable=True)
-    query[ACTION_DATAVIEW_PREFERENCE_PARAM] = context.preference.pk
-    if context.operation_context_token:
-        query[DATAVIEW_OPERATION_CONTEXT_PARAM] = context.operation_context_token
+    if context.preference.pk is not None:
+        query[ACTION_DATAVIEW_PREFERENCE_PARAM] = context.preference.pk
     return urlunsplit(parts._replace(query=query.urlencode()))
+
+
+def render_action_success(
+    request: HttpRequest,
+    action: ActionButton,
+    *,
+    content_type_id: int,
+    object_id: str | None = None,
+) -> HttpResponse:
+    """Show the success notice and apply the configured refresh in the originating DataView."""
+    response = render_message(
+        request, gettext(action.success_message or "Action executed successfully"), "success",
+    )
+    detail: dict[str, int | str | bool] = {"contentTypeId": content_type_id, "originOnly": True}
+    if action.refresh_on_success == "item" and object_id is not None:
+        detail["objectId"] = object_id
+        trigger_client_event(response, "bloomerp:dataview-record-refresh", detail, after="swap")
+    elif action.refresh_on_success == "dataview":
+        trigger_client_event(response, "bloomerp:dataview-refresh", detail, after="swap")
+    return response
 
 
 def action_is_visible(action: ActionDefinition, context: ActionContext) -> bool:
@@ -85,8 +104,9 @@ def _button_attrs(
     execution_url: Callable[[str], str],
     *,
     menu_item: bool,
-) -> dict[str, Any]:
-    """Supply standard HTML and HTMX defaults, with per-action attributes taking precedence."""
+    selection_only: bool = False,
+) -> dict[str, Any] | None:
+    """Build the action's attributes with sizing for its surface and menu placement."""
     if menu_item:
         attrs = {
             "class": (
@@ -97,13 +117,28 @@ def _button_attrs(
             "@click": "$dispatch('dropdown-close')",
         }
     elif isinstance(context, DataviewActionContext):
-        attrs = {"class": "btn btn-sm btn-secondary w-full justify-center sm:w-auto"}
+        attrs = {
+            "class": "btn btn-xs btn-ghost" if selection_only
+            else "btn btn-sm btn-secondary w-full justify-center sm:w-auto",
+        }
+    elif context.surface == "dataview_item":
+        attrs = {"class": f"btn btn-{context.button_size} btn-ghost"}
     else:
-        attrs = {"class": "btn btn-xs btn-secondary"}
+        attrs = {"class": f"btn btn-{context.button_size} btn-secondary"}
 
     attrs.update({"type": "button", **action.get_button_attrs(context)})
+    if isinstance(context, ObjectActionContext):
+        attrs["data-object-action-id"] = action.id
+        attrs["data-no-row-click"] = ""
     if not action.label:
         attrs.setdefault("aria-label", action.id.replace("_", " ").replace("-", " "))
+
+    if "href" in attrs:
+        href = attrs["href"]
+        if not isinstance(href, str) or not href:
+            return None
+        attrs.pop("type", None)
+        return attrs
 
     request_attr = next((key for key in HTMX_REQUEST_ATTRIBUTES if key in attrs), None)
     if request_attr is None:
@@ -120,9 +155,11 @@ def _button_attrs(
     if not isinstance(url, str) or not url:
         return attrs
     request = context.request
-    attrs[request_attr] = permission_token_url(request, url)
     default_target = (
-        "#data-view-data-section" if isinstance(context, DataviewActionContext)
+        "#data-view-data-section"
+        if isinstance(context, DataviewActionContext) and (
+            not action.refresh_on_success or action.execution_func is None
+        )
         else "#object-actions-target"
     )
     attrs.setdefault("hx-target", default_target)
@@ -141,8 +178,18 @@ def render_action(
     execution_url: Callable[[str], str],
     *,
     menu_item: bool = False,
+    selection_only: bool | None = None,
 ) -> str:
-    """Render a visible button, template, or non-empty Cotton dropdown."""
+    """Render a visible action or a non-empty dropdown with its trigger size."""
+    child_selection_only = selection_only
+    if isinstance(action, DataviewActionGrouping):
+        if action.requires_selection:
+            if selection_only is False:
+                return ""
+            child_selection_only = None
+    elif isinstance(action, (DataviewAction, DataviewHTMLAction)):
+        if selection_only is not None and action.requires_selection != selection_only:
+            return ""
     if not action_is_visible(action, context):
         return ""
     values = {**template_context, "action": action, "action_context": context, "menu_item": menu_item}
@@ -150,14 +197,23 @@ def render_action(
         items = [
             mark_safe(markup)
             for child in action.actions
-            if (markup := render_action(child, context, template_context, execution_url, menu_item=True)).strip()
+            if (markup := render_action(
+                child, context, template_context, execution_url,
+                menu_item=True, selection_only=child_selection_only,
+            )).strip()
         ]
         if not items:
             return ""
         label = conditional_escape(gettext(action.label)) if action.label else ""
+        group_button_size = "xs" if selection_only else action.button_size
+        if group_button_size is None and isinstance(context, ObjectActionContext):
+            group_button_size = context.button_size
         values.update({
             "items": items,
             "submenu": menu_item,
+            "dataview_group": isinstance(action, DataviewActionGrouping),
+            "selection_only": selection_only,
+            "group_button_size": group_button_size,
             "group_label": label,
             "group_name": label or gettext("More actions"),
             "group_icon": action.icon or ("fa-solid fa-ellipsis" if not action.label else ""),
@@ -168,8 +224,13 @@ def render_action(
             values.update(action.context_func(context))
         template = action.template_name
     else:
-        values["button_attributes"] = flatatt(
-            _button_attrs(action, context, execution_url, menu_item=menu_item)
+        attrs = _button_attrs(
+            action, context, execution_url,
+            menu_item=menu_item, selection_only=selection_only is True,
         )
+        if attrs is None:
+            return ""
+        values["action_tag"] = "a" if "href" in attrs else "button"
+        values["button_attributes"] = flatatt(attrs)
         template = "components/objects/actions/button.html"
     return render_to_string(template, values, request=context.request)

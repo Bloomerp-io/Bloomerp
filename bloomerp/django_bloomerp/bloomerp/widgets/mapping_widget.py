@@ -43,8 +43,9 @@ class MappingWidget(forms.Widget):
         right_widget: forms.Widget | None = None,
         left: list[tuple[Any, str]] | None = None,
         allow_adding_groups: bool = True,
+        fixed_initial_values: Mapping[str, Any] | None = None,
     ) -> None:
-        """Keep per-instance child widgets and optional fixed left-side rows."""
+        """Configure child widgets and initial values for any fixed rows."""
         super().__init__(attrs)
         self.left_widget = deepcopy(left_widget or forms.TextInput())
         self.right_widget = deepcopy(right_widget or forms.TextInput())
@@ -55,6 +56,7 @@ class MappingWidget(forms.Widget):
             )
         self.left = left
         self.allow_adding_groups = allow_adding_groups
+        self.fixed_initial_values = dict(fixed_initial_values or {})
 
     def value_from_datadict(self, data: Any, files: Any, name: str) -> Any:
         """Extract indexed pairs using each child widget's own extraction contract."""
@@ -82,9 +84,16 @@ class MappingWidget(forms.Widget):
         return name not in data and f"{name}__present" not in data
 
     def _row(
-        self, name: str, index: str, key: Any, value: Any, attrs: Mapping[str, Any]
+        self,
+        name: str,
+        index: str,
+        key: Any,
+        value: Any,
+        attrs: Mapping[str, Any],
+        *,
+        key_label: str | None = None,
     ) -> dict[str, Any]:
-        """Render uniquely named child inputs for one mapping row."""
+        """Render uniquely named inputs and an optional visible label for a fixed key."""
         child_attrs = {
             **attrs,
             "class": "w-full min-w-0 rounded-lg border border-gray-200 bg-base px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary",
@@ -92,6 +101,7 @@ class MappingWidget(forms.Widget):
         base_id = attrs.get("id", name)
         return {
             "index": index,
+            "key_label": key_label,
             "left": self.left_widget.render(
                 f"{name}__key_{index}",
                 key,
@@ -107,7 +117,7 @@ class MappingWidget(forms.Widget):
                 {
                     **child_attrs,
                     "id": f"{base_id}__value_{index}",
-                    "aria-label": _("Mapping value"),
+                    "aria-label": key_label or _("Mapping value"),
                 },
             ),
         }
@@ -132,16 +142,26 @@ class MappingWidget(forms.Widget):
         pairs = [
             row for row in pairs if isinstance(row, (tuple, list)) and len(row) == 2
         ]
-        if not self.allow_adding_groups and self.left is not None:
-            saved = dict(pairs)
+        fixed_keys = self.left if not self.allow_adding_groups else None
+        if fixed_keys is not None:
+            saved = {str(key): item for key, item in pairs}
             pairs = [
-                (key, saved.get(str(key), saved.get(key))) for key, _label in self.left
+                (key, saved.get(str(key), self.fixed_initial_values.get(str(key))))
+                for key, _label in fixed_keys
             ]
+        fixed_labels = dict(fixed_keys or ()) if self.left_widget.is_hidden else {}
         widget_attrs = context["widget"]["attrs"]
         context["widget"].update(
             {
                 "rows": [
-                    self._row(name, str(index), key, item, widget_attrs)
+                    self._row(
+                        name,
+                        str(index),
+                        key,
+                        item,
+                        widget_attrs,
+                        key_label=fixed_labels.get(key) if fixed_labels else None,
+                    )
                     for index, (key, item) in enumerate(pairs)
                 ],
                 "empty_row": self._row(name, "__prefix__", None, None, widget_attrs),

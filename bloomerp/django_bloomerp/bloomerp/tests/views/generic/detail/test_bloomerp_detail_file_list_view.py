@@ -1,5 +1,6 @@
 """Exercise record-scoped file-node filters through generated view scenarios."""
 
+import json
 from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
@@ -37,6 +38,7 @@ class TestBloomerpDetailFileListView(BloomerpDetailViewTestCase):
         document = BeautifulSoup(response.content, "html.parser")
         element = document.select_one(f'div[hx-get^="{endpoint}?"]')
         self.assertIsNotNone(element)
+        self.assertEqual(json.loads(element["hx-headers"])["X-Bloomerp-Sync-Url"], "true")
         return QueryDict(urlsplit(element["hx-get"]).query)
 
     def get_test_scenarios(self) -> list[RequestScenario]:
@@ -124,38 +126,33 @@ class TestBloomerpDetailFileListView(BloomerpDetailViewTestCase):
     def token_browses_only_record_files(self, response: HttpResponse) -> bool:
         """Render record files with hidden filter chips and retain the token's read scope."""
         self.assertFalse(UserPolicyManager(self.normal_user).has_global_permission(FileNode, "view"))
+        loader = BeautifulSoup(response.content, "html.parser").select_one('[hx-trigger="load"][hx-headers]')
+        headers = json.loads(loader["hx-headers"])
         query = self.dataview_query(response)
         endpoint = reverse("components_dataview", kwargs={
             "content_type_id": ContentType.objects.get_for_model(FileNode).pk,
         })
-        browser = self.client.get(endpoint, query)
+        browser = self.client.get(endpoint, query, headers=headers)
         self.assertContains(browser, self.linked_file.name)
         self.assertContains(browser, f'data-file-id="{self.linked_file.pk}"')
         self.assertContains(browser, f'data-upload-object-id="{self.file_owner.pk}"')
         self.assertNotContains(browser, "data-rendered-filters")
         self.assertContains(browser, 'data-data-view-button="filter"')
-        action_url = reverse("components_objects_actions", kwargs={
-            "content_type_id": ContentType.objects.get_for_model(FileNode).pk,
-            "object_id": self.linked_file.pk, "action_id": "view_file",
-        })
-        action = BeautifulSoup(browser.content, "html.parser").select_one(f'button[hx-post^="{action_url}?"]')
+        action_url = reverse("components_preview_file", kwargs={"file_id": self.linked_file.pk})
+        action = BeautifulSoup(browser.content, "html.parser").select_one(f'button[hx-get^="{action_url}"]')
         self.assertIsNotNone(action)
-        self.assertEqual(QueryDict(urlsplit(action["hx-post"]).query)["_permission_token"], query["_permission_token"])
+        self.assertNotIn("_permission_token", QueryDict(urlsplit(action["hx-get"]).query))
         self.assertEqual(list(browser.context["queryset"].values_list("pk", flat=True)), [self.linked_file.pk])
-        unfiltered = self.client.get(endpoint, {"_permission_token": query["_permission_token"]})
+        unfiltered = self.client.get(endpoint, headers=headers)
         self.assertEqual(unfiltered.status_code, 200)
         self.assertEqual(list(unfiltered.context["queryset"].values_list("pk", flat=True)), [self.linked_file.pk])
-        manager = UserPolicyManager(self.normal_user, token=query["_permission_token"])
-        self.assertFalse(manager.has_global_permission(FileNode, "change"))
-        self.assertFalse(manager.has_global_permission(FileNode, "delete"))
         from unittest.mock import patch
-
-        from django.test import RequestFactory
 
         from bloomerp.files.access import FileAccessManager
 
-        request = RequestFactory().get("/files/", {"_permission_token": query["_permission_token"]})
-        request.user = self.normal_user
-        with patch("bloomerp.middleware.current_request", return_value=request):
+        with patch("bloomerp.middleware.current_request", return_value=browser.wsgi_request):
+            manager = UserPolicyManager(self.normal_user)
+            self.assertFalse(manager.has_global_permission(FileNode, "change"))
+            self.assertFalse(manager.has_global_permission(FileNode, "delete"))
             self.assertFalse(FileAccessManager(self.normal_user).can_read_file_node(self.private_unreferenced))
         return True

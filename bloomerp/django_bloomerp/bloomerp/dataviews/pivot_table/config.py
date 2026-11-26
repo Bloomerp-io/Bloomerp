@@ -21,6 +21,7 @@ class PivotTableDataView(BaseDataview):
     """A declarative pivot-table dataview."""
 
     view_type: Literal["pivot_table"] = "pivot_table"
+    dataview_component_id: str | None = "pivot-table"
     row_fields: list[str] = Field(default_factory=list)
     column_fields: list[str] = Field(default_factory=list)
     value_fields: list[str] = Field(default_factory=list)

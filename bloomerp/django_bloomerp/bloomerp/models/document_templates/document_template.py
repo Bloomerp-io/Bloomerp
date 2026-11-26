@@ -1,5 +1,6 @@
 import re
 from typing import Any
+from urllib.parse import urlencode
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
@@ -17,7 +18,11 @@ from bloomerp.models.definition import (
     BloomerpModelConfig,
     DetailViewSettings,
     ModelViewSettings,
+    ObjectActionContext,
+    ObjectActionDefinition,
+    ObjectModalAction,
 )
+from bloomerp.models.actions.object.builtins import get_default_object_actions
 from bloomerp.models.document_templates.document_template_header import (
     DocumentTemplateHeader,
 )
@@ -25,6 +30,38 @@ from bloomerp.models.document_templates.document_template_styling import (
     DocumentTemplateStyling,
 )
 from bloomerp.modules.file_management import FileManagement
+
+
+def can_generate_document(context: ObjectActionContext) -> bool:
+    """Expose generation in dataviews embedded on a source record."""
+    return context.dataview is not None and bool(
+        context.dataview.component_args.get("document_content_type_id")
+        and context.dataview.component_args.get("document_object_id")
+    )
+
+
+def generate_document_url(context: ObjectActionContext) -> str:
+    """Open the selected template with the embedding record already selected."""
+    url = reverse("components_generate_document_template", kwargs={"id": context.object.pk})
+    args = context.dataview.component_args if context.dataview is not None else {}
+    params = urlencode({field: args[f"document_{field}"] for field in ("content_type_id", "object_id")})
+    return f"{url}?{params}"
+
+
+def document_template_actions(model: type[models.Model]) -> list[ObjectActionDefinition]:
+    """Keep the standard actions and expose the document generation modal."""
+    return [
+        *get_default_object_actions(model),
+        ObjectModalAction(
+            id="generate-document",
+            label=gettext_noop("Generate document"),
+            icon="fa-solid fa-file",
+            title=gettext_noop("Generate template"),
+            size="full",
+            endpoint=generate_document_url,
+            should_render_func=can_generate_document,
+        ),
+    ]
 
 
 class PageSize(models.TextChoices):
@@ -113,6 +150,7 @@ class DocumentTemplate(BloomerpModel):
 
     bloomerp_config = BloomerpModelConfig(
         module=FileManagement,
+        object_actions=document_template_actions,
         icon="fa fa-lines",
         description=gettext_noop("A text based template that can be re-used to generate PDF's, Emails, ..."),
         model_view_settings=ModelViewSettings(

@@ -1,0 +1,52 @@
+{% load i18n %}
+<fieldset bloomerp-component="booking-availability" class="min-w-0 space-y-5 py-4"{% if widget.attrs.disabled %} disabled{% endif %}>
+    <legend class="sr-only">{% translate "Availability hours" %}</legend>
+    <input type="hidden" name="{{ widget.name }}" value="{{ widget.value }}"{% include "django/forms/widgets/attrs.html" %} data-availability-value data-track-form-value>
+    <p hidden data-availability-unrecognized role="status" class="text-sm text-muted">{% translate "The saved availability could not be displayed. Editing the schedule will replace it." %}</p>
+    <div class="grid gap-3 sm:grid-cols-2">
+        <label class="grid gap-1 text-slate-700 font-medium text-sm">{% translate "Start date" %}<input type="date" class="input w-full" data-availability-start></label>
+        <label class="grid gap-1 text-slate-700 font-medium text-sm">{% translate "End date" %}<input type="date" class="input w-full" data-availability-end></label>
+    </div>
+    <section class="space-y-2">
+        <h3 class="text-slate-700 font-medium text-sm">{% translate "Weekly hours" %}</h3>
+        <div class="divide-y divide-gray-200 rounded-xl border border-gray-200">
+            {% for day, label in weekdays %}
+                <div class="grid items-start gap-2 px-3 py-2 sm:grid-cols-[7rem_minmax(0,1fr)_auto]" data-availability-day="{{ day }}" role="group" aria-label="{{ label }}">
+                    <span class="py-1 text-slate-700 font-medium text-sm">{{ label }}</span>
+                    <div class="space-y-2" data-availability-hours>
+                        <span class="py-1 text-sm text-muted" data-availability-unavailable>{% translate "Unavailable" %}</span>
+                    </div>
+                    <button type="button" class="btn btn-xs btn-ghost w-fit" data-availability-add-hours aria-label="{% blocktranslate %}Add hours for {{ label }}{% endblocktranslate %}">{% translate "+ Hours" %}</button>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+    <section class="space-y-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <h3 class="text-slate-700 font-medium text-sm">{% translate "Date overrides" %}</h3>
+            <button type="button" class="btn btn-ghost btn-sm" data-availability-add-exception>{% translate "Add date" %}</button>
+        </div>
+        <p class="text-sm text-muted">{% translate "Overrides replace the weekly hours on a date. Leave the hours empty to mark that date unavailable." %}</p>
+        <div class="space-y-2" data-availability-exceptions></div>
+    </section>
+    <template data-availability-interval-template>
+        <div class="flex flex-wrap items-center gap-2" data-availability-interval>
+            <input type="time" class="input input-sm w-28" data-availability-from aria-label="{% translate 'From' %}">
+            <span class="text-sm text-muted" aria-hidden="true">–</span>
+            <input type="time" class="input input-sm w-28" data-availability-to aria-label="{% translate 'To' %}">
+            <button type="button" class="icon-button" data-availability-remove-hours aria-label="{% translate 'Remove hours' %}"><i class="fa fa-times" aria-hidden="true"></i></button>
+        </div>
+    </template>
+    <template data-availability-exception-template>
+        <div class="space-y-2 rounded-md border border-gray-200 p-3" data-availability-exception>
+            <div class="flex flex-wrap items-center gap-2">
+                <input type="date" class="input input-sm" data-availability-date aria-label="{% translate 'Override date' %}">
+                <button type="button" class="btn btn-xs btn-ghost" data-availability-add-hours>{% translate "+ Hours" %}</button>
+                <button type="button" class="icon-button" data-availability-remove-exception aria-label="{% translate 'Remove date override' %}"><i class="fa fa-times" aria-hidden="true"></i></button>
+            </div>
+            <div class="space-y-2" data-availability-hours>
+                <span class="text-sm text-muted" data-availability-unavailable>{% translate "Unavailable" %}</span>
+            </div>
+        </div>
+    </template>
+</fieldset>

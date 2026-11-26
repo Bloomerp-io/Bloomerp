@@ -11,7 +11,9 @@ from django.db import models
 from django.http import HttpRequest
 from django.urls import reverse
 
-from bloomerp.communication.builtins.instant_messaging.builtins.phone import phone_recipient_token
+from bloomerp.communication.builtins.instant_messaging.builtins.phone import (
+    phone_recipient_token,
+)
 from bloomerp.communication.builtins.voip.access import VoIPAccessManager
 from bloomerp.form_fields.phone_number_field import normalize_phone_number
 from bloomerp.forms.communication.calendar_event import can_create_calendar_event
@@ -19,7 +21,6 @@ from bloomerp.model_fields.phone_number_field import PhoneNumberField
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import ObjectActionContext
 from bloomerp.models.users.user import AbstractBloomerpUser
-from bloomerp.permissions.access_tokens import permission_token_url
 from bloomerp.permissions.manager import UserPolicyManager, field_access_annotation_name
 
 
@@ -107,7 +108,7 @@ def object_contact_context(context: ObjectActionContext) -> dict[str, Any]:
                 emails.append({
                     **item,
                     "query": query,
-                    "url": permission_token_url(request, f"{reverse('components_new_email')}?{query}"),
+                    "url": f"{reverse('components_new_email')}?{query}",
                 })
             elif raw_value.startswith("+") and normalize_phone_number(value) and access.can_open_phone_chat:
                 phones.append({
@@ -120,7 +121,7 @@ def object_contact_context(context: ObjectActionContext) -> dict[str, Any]:
     if context.surface == "detail" and emails and can_create_calendar_event(request.user):
         calendar_url = reverse("components_calendar_invite_for_object")
         calendar = [
-            {**field, "url": permission_token_url(request, f"{calendar_url}?{field['query']}")}
+            {**field, "url": f"{calendar_url}?{field['query']}"}
             for field in emails
         ]
     return {

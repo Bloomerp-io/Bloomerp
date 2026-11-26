@@ -113,14 +113,14 @@ class TestUserListViewPreferenceModel(BloomerpModelTestCase, BaseBloomerpTestCas
             "SqlQuery": ("name", "datetime_updated"),
             "AIAgentAccess": ("name", "model", "all_staff_users", "all_authenticated_users"),
             "MCPIntegration": ("name", "enabled", "connection_mode", "authentication_type"),
-            "CalendarBooking": (
+            "BookingLink": (
                 "title",
                 "organizing_inbox",
                 "meeting_duration_minutes",
                 "timezone",
                 "active",
             ),
-            "CalendarBookingSubmission": ("name", "email", "calendar_booking", "submitted_at"),
+            "BookingLinkSubmission": ("name", "email", "booking_link", "submitted_at"),
             "CalendarEventParticipant": (
                 "display_name",
                 "email",

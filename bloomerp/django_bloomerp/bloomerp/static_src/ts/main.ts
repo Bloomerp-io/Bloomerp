@@ -1,9 +1,12 @@
 import PagesWorkspace from './components/pages/PagesWorkspace';
+import Tutorial from './components/Tutorial';
 import PageEditor from './components/pages/PageEditor';
 import PagesPanel from './components/pages/PagesPanel';
 import CalendarAvailability from "./components/inbox/CalendarAvailability";
 import InboxCalendarOverlay from "./components/inbox/InboxCalendarOverlay";
 import CalendarEventEditor from "./components/inbox/CalendarEventEditor";
+import BookingAvailability from "./components/widgets/BookingAvailability";
+import BookingLocation from "./components/widgets/BookingLocation";
 import MeetingLobby from './components/communication/MeetingLobby';
 import Calling from "./components/communication/Calling";
 import URLWidget from "./components/widgets/URLWidget";
@@ -39,6 +42,8 @@ import { Sidebar } from './components/sidebar/Sidebar';
 import { DataTable } from './components/data_view_components/DataTable'
 import { DataTableCell } from './components/data_view_components/DataTable'
 import { DataViewContainer } from './components/data_view_components/DataViewContainer';
+import { DataviewActionList } from './components/data_view_components/DataviewActionList';
+import { DataviewCreate } from './components/data_view_components/DataviewCreate';
 import { KanbanBoard } from './components/data_view_components/KanbanBoard';
 import { KanbanCard } from './components/data_view_components/KanbanBoard';
 import { CardView } from './components/data_view_components/CardView';
@@ -46,7 +51,6 @@ import { CardViewCard } from './components/data_view_components/CardView';
 import { PermissionsTable } from './components/PermissionsTable';
 import UnifiedFilterContainer from './components/filters/FilterContainer';
 import RenderedFilter from './components/filters/RenderedFilter';
-import WebsiteBuilder from './components/WebsiteBuilder';
 import PermissionCheckboxes from './components/inputs/PermissionCheckboxes';
 import DropdownInput from './components/inputs/DropdownInput';
 import SelectableCards from './components/inputs/SelectableCards';
@@ -69,7 +73,6 @@ import WorkspaceContainer from './components/workspaces/WorkspaceContainer';
 import WorkspaceTile from './components/workspaces/WorkspaceTile';
 import SqlQueryEditor from './components/inputs/SqlQueryEditor';
 import Canvas from './components/workspaces/tiles/Canvas';
-import DocumentTemplateDataViewContainer from './components/data_view_components/DocumentTemplateDataViewContainer';
 import ForeignFieldDataViewContainer from './components/data_view_components/ForeignFieldDataViewContainer';
 import { SidebarItem } from './components/sidebar/SidebarItem';
 import FocusIn from './components/inputs/FocusIn';
@@ -100,6 +103,7 @@ import MarkdownCodeBlock from './components/MarkdownCodeBlock';
 import { loadTranslations } from './utils/i18n';
 import { setupLanguageSwitch } from './utils/languageSwitch';
 import { FileBrowser } from './components/data_view_components/FileBrowser';
+import ImagePreview from './components/ImagePreview';
 import { initBrowserAgent } from './utils/agent';
 import AgentChat from './components/agent/AgentChat';
 import MessagingPanel from './components/communication/MessagingPanel';
@@ -111,6 +115,7 @@ initBrowserAgent();
 setupLanguageSwitch();
 
 // Register components here
+registerComponent('bloomerp:tutorial', Tutorial);
 registerComponent('bloomerp:pages-workspace', PagesWorkspace);
 registerComponent('bloomerp:page-editor', PageEditor);
 registerComponent('bloomerp:pages-panel', PagesPanel);
@@ -133,10 +138,12 @@ registerComponent('breadcrumb', Breadcrumb);
 registerComponent('resizable-div', ResizableDiv);
 registerComponent('theme-provider', ThemeProvider);
 registerComponent('markdown-code-block', MarkdownCodeBlock);
+registerComponent('image-preview', ImagePreview);
 
 // Dataview component
 registerComponent('dataview-container', DataViewContainer);
-registerComponent('document-templates-dataview', DocumentTemplateDataViewContainer);
+registerComponent('dataview-action-list', DataviewActionList);
+registerComponent('dataview-create', DataviewCreate);
 registerComponent('foreign-field-dataview', ForeignFieldDataViewContainer);
 registerComponent('dataview-display-options', DataViewDisplayOptions);
 registerComponent('pivot-table', PivotTable);
@@ -171,7 +178,6 @@ registerComponent('unified-filter-container', UnifiedFilterContainer)
 registerComponent('rendered-filter', RenderedFilter)
 
 // Website builder
-registerComponent('website-builder', WebsiteBuilder)
 registerComponent('document-template-builder', DocumentTemplateBuilder)
 
 // Permission checkboxes
@@ -225,6 +231,8 @@ registerComponent('dropdown-keyboard', DropdownKeyboard);
 registerComponent('ordered-field-select', OrderedFieldSelect);
 registerComponent('mapping-widget', MappingWidget);
 registerComponent('mailbox-settings', MailboxSettings);
+registerComponent('booking-availability', BookingAvailability);
+registerComponent('booking-location', BookingLocation);
 registerComponent('colored-choices', ColoredChoices);
 registerComponent('char-field-formatting', CharFieldFormatting);
 registerComponent('behavior-builder', BehaviorBuilder);
@@ -242,12 +250,13 @@ registerComponent('inbox-calendar-overlay', InboxCalendarOverlay);
 registerComponent('email-editor', EmailEditor)
 registerComponent("bloomerp:calling", Calling);
 
+SetupAnimationListener();
+
 /** Start component scanning after translations and implementation registrations settle. */
 function startApplication(): void {
     setupComponentAutoInit();
     setupMermaidDisplay();
     initMessagesWebsocket();
-    SetupAnimationListener();
 }
 
 /** Report unavailable translations while allowing the application to start. */

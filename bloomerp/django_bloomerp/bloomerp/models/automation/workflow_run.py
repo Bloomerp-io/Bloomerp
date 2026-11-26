@@ -174,7 +174,7 @@ class WorkflowRun(
                     kwargs={"workflow_run_id": context.object.pk},
                 ),
                 should_render_func=lambda context: context.object.status == WorkflowRunStatus.PAUSED,
-                modal_title=gettext_noop("Approve workflow continuation")
+                title=gettext_noop("Approve workflow continuation")
             )
         ],
         activity_log_settings=ActivityLogSettings(enabled=False),

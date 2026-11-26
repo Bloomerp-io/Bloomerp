@@ -1,19 +1,22 @@
 {% comment %}
 Rich-text field with formatting tools and a searchable Template command, also available
 as /template. Templates are filtered by user access, without content-type restrictions.
+Set toolbar=False to hide the formatting toolbar while keeping editor commands.
+Set editor_rows to control the initial height of the editable area in text rows.
 Selection inserts an editable copy at the cursor or replaces selected text.
 The bubbling, cancellable bloomerp:template-selected event carries detail.template
 (id, name, body) and detail.insert(body). Specialized editors can preventDefault(),
 prepare their variable context, then call insert to preserve the original selection.
 {% endcomment %}
 <c-vars component_name="bloomerp-text-editor" />
-{% load bloomerp %}
+{% load bloomerp l10n %}
 {% generate_uuid as editor_uuid %}
 {% with editor_id=editor_uuid|add:"-"|add:name %}
+{% firstof toolbar|default_if_none:""|stringformat:"s"|lower include_toolbar|default_if_none:""|stringformat:"s"|lower "true" as show_toolbar %}
 
 <div 
     bloomerp-component="{{ component_name }}"
-    class="relative rounded-xl {% if not height %}{% if compact %}min-h-36{% else %}min-h-72{% endif %}{% endif %} {% if has_border %}border border-gray-300 {% if not disabled %}focus-within:border-primary focus-within:ring-1 focus-within:ring-primary{% endif %}{% endif %} {% if disabled %}bg-gray-100 cursor-not-allowed{% endif %} {{ class|default:'' }}"
+    class="relative rounded-xl {% if not height %}{% if compact %}min-h-36{% elif not editor_rows %}min-h-72{% endif %}{% endif %} {% if has_border %}border border-gray-300 {% if not disabled %}focus-within:border-primary focus-within:ring-1 focus-within:ring-primary{% endif %}{% endif %} {% if disabled %}bg-gray-100 cursor-not-allowed{% endif %} {{ class|default:'' }}"
     data-reference-search-url="{% url 'components_objects_references' %}"
     data-reference-upload-url="{% url 'api_assistant_file_upload' %}"
     data-reference-serve-url="{% url 'api_files_serve' %}"
@@ -24,19 +27,19 @@ prepare their variable context, then call insert to preserve the original select
     data-styling="{{ styling|default:'' }}"
     data-override-default-styling="{{ override_default_styling|default:'False'}}"
     data-name="{{ name }}"
-    data-actions-toolbar-section-id="{{ actions_toolbar_section_id }}"
+    data-actions-toolbar-section-id="{% if show_toolbar != 'false' %}{{ actions_toolbar_section_id }}{% endif %}"
     data-editor-id="{{ editor_id }}"
-    data-include-toolbar="{{ include_toolbar }}"
+    data-include-toolbar="{{ show_toolbar }}"
     {% if height %}style="height: {{ height }};"{% endif %}
     >
     <style id="text-editor-styling-{{ editor_id }}"></style>
 
     <!--Toolbar-->
-    {% if include_toolbar != False and include_toolbar != "false" and include_toolbar != "False" %}
+    {% if show_toolbar != "false" %}
     <div class="" id="actions-toolbar-{{ editor_id }}"></div>
     {% endif %}
     <!--End toolbar-->
-    <div id="editor-{{ editor_id }}" class="outline-none bloomerp-text-editor" contenteditable></div>
+    <div id="editor-{{ editor_id }}" class="outline-none bloomerp-text-editor" {% if editor_rows and not compact and not height %}style="min-height: {{ editor_rows|unlocalize }}lh;"{% endif %} contenteditable></div>
     <input type="hidden" data-text-editor-input="true" name="{{ name }}" value="{{ value }}" id="id_{{ name }}">
 </div>
 {% endwith %}

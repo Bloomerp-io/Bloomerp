@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from enum import StrEnum
 from typing import TYPE_CHECKING, Annotated, Literal, Protocol, Self, runtime_checkable
 from uuid import UUID
 
@@ -82,6 +83,33 @@ class BrowserContext(AgentPayload):
     form_revision: int | None = Field(default=None, ge=0)
 
 
+class ModelModality(StrEnum):
+    """Name a model input or output independently of its provider."""
+
+    TEXT = "text"
+    IMAGE = "image"
+    FILE = "file"
+    AUDIO = "audio"
+    VIDEO = "video"
+
+
+class ModelModalities(AgentPayload):
+    """Describe the directions in which a model supports each modality."""
+
+    input: tuple[ModelModality, ...] = (ModelModality.TEXT,)
+    output: tuple[ModelModality, ...] = (ModelModality.TEXT,)
+
+    def accepts_attachment(self, media_type: str) -> bool:
+        """Check an attachment's media category against the declared input modes."""
+        family = media_type.partition("/")[0]
+        modality = (
+            ModelModality(family)
+            if family in {ModelModality.IMAGE, ModelModality.AUDIO, ModelModality.VIDEO}
+            else ModelModality.FILE
+        )
+        return modality in self.input
+
+
 class AgentConfigSnapshot(AgentPayload):
     """Record resolved execution settings; credentials must remain outside storage."""
 
@@ -95,6 +123,7 @@ class AgentConfigSnapshot(AgentPayload):
     instructions: str = ""
     approval_rules: dict[str, JsonValue] = Field(default_factory=dict)
     parameters: dict[str, JsonValue] = Field(default_factory=dict)
+    modalities: ModelModalities | None = None
 
 
 class RunBudgets(AgentPayload):

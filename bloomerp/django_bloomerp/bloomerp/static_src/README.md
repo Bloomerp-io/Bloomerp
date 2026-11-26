@@ -103,7 +103,7 @@ npm run build
 
 This will:
 1. Clean previous builds
-2. Build and minify Tailwind CSS → `../static/css/dist/styles.css`
+2. Build and minify Tailwind CSS → `../static/bloomerp/css/dist/styles.css`
 3. Compile and bundle TypeScript → `../static/bloomerp/js/dist/main.js`
 
 ## How It Works

@@ -2,25 +2,26 @@
 
 {# Keep wide tables from contributing to the surrounding form's intrinsic width. #}
 <div
-    class="one-to-many-field-widget w-full min-w-0 max-w-full [contain:inline-size] rounded-xl border border-gray-200 overflow-hidden bg-white focus:outline-none focus:ring-0"
+    class="one-to-many-field-widget w-full min-w-0 max-w-full [contain:inline-size] rounded-xl overflow-hidden bg-white focus:outline-none focus:ring-0"
     bloomerp-component="one-to-many-field-widget"
     data-one-to-many-name="{{ widget.attrs.name }}"
     data-related-content-type-id="{{ content_type_id|default:'' }}"
     data-detail-url-template="{{ detail_url_template|default:'' }}"
     data-page-size="{{ page_size|default:10 }}"
 >
+    {# Keep absolutely positioned table content inside the scroll area. #}
     <div
-        class="overflow-x-auto"
+        class="relative overflow-x-auto"
         @scroll="$el.querySelectorAll('.bloomerp-dropdown-menu').forEach((menu) => menu.dispatchEvent(new CustomEvent('dropdown-close', { bubbles: true })))"
     >
         <table
             id="data-table-{{ content_type_id }}"
-            class="table-auto table-hover table w-full border-collapse outline-none"
+            class="table table-auto table-hover outline-none"
         >
         <thead>
             <tr>
                 <th class="w-10">
-                    <input type="checkbox" data-one-to-many-select-all {% if not can_edit %}disabled{% endif %}>
+                    <input type="checkbox" class="h-5 w-5 cursor-pointer rounded border-gray-400 text-primary focus:ring-primary" data-one-to-many-select-all {% if not can_edit %}disabled{% endif %}>
                 </th>
                 {% for column in columns %}
                     <th
@@ -29,7 +30,7 @@
                         data-column-default-value="{{ column.default_value_json }}"
                     >
                         <div class="flex items-center justify-between gap-2">
-                            <span>{{ column.title }}</span>
+                            <span class="whitespace-nowrap">{{ column.title }}</span>
                             <c-ui.inputs.one_to_many.column_actions :column="column" :can_edit="can_edit" />
                         </div>
                     </th>
@@ -39,18 +40,23 @@
         </thead>
         <tbody id="data-table-body-{{ content_type_id }}" data-one-to-many-body>
             {% for row in rows %}
-            <tr class="cursor-pointer" data-one-to-many-row>
+            <tr class="cursor-pointer" data-one-to-many-row {% if row.insert_input %}data-one-to-many-pending{% endif %}>
                 <td class="w-10">
                     {{ row.id_input }}
-                    <input type="checkbox" data-one-to-many-row-checkbox {% if not can_edit %}disabled{% endif %}>
+                    {{ row.insert_input }}
+                    <input type="checkbox" class="h-5 w-5 cursor-pointer rounded border-gray-400 text-primary focus:ring-primary" data-one-to-many-row-checkbox {% if not can_edit %}disabled{% endif %}>
                 </td>
                 {% for cell in row.cells %}
                     <td data-no-row-click data-one-to-many-cell="{{ cell.column.field }}">
-                        {{ cell.input }}
+                        {% if row.insert_input %}
+                            <span class="line-clamp-2 wrap-anywhere" data-one-to-many-pending-value>{{ cell.pending_text|force_escape }}</span>
+                        {% else %}
+                            {{ cell.input }}
+                        {% endif %}
                     </td>
                 {% endfor %}
                 <td data-no-row-click>
-                    <c-ui.inputs.one_to_many.row_actions :can_edit="can_edit" :row_id="row.id" :detail_url="row.detail_url" />
+                    <c-ui.inputs.one_to_many.row_actions :can_edit="can_edit" :row_id="row.id" :detail_url="row.detail_url" :pending="row.insert_input" />
                 </td>
             </tr>
             {% empty %}
@@ -62,7 +68,7 @@
             {% endfor %}
         </tbody>
         {% if show_totals %}
-            <tfoot class="border-t border-gray-200 bg-gray-50" data-one-to-many-totals>
+            <tfoot class="bg-gray-50" data-one-to-many-totals>
                 <tr>
                     <td class="px-3 py-2 text-sm font-medium text-gray-700">
                         {% blocktrans %}Totals{% endblocktrans %}
@@ -84,7 +90,7 @@
         <tr class="cursor-pointer" data-one-to-many-row>
             <td class="w-10">
                 {{ empty_row.id_input }}
-                <input type="checkbox" data-one-to-many-row-checkbox {% if not can_edit %}disabled{% endif %}>
+                <input type="checkbox" class="h-5 w-5 cursor-pointer rounded border-gray-400 text-primary focus:ring-primary" data-one-to-many-row-checkbox {% if not can_edit %}disabled{% endif %}>
             </td>
             {% for cell in empty_row.cells %}
                 <td data-no-row-click data-one-to-many-cell="{{ cell.column.field }}">
@@ -103,22 +109,30 @@
             </td>
         </tr>
     </template>
-    <div class="border-t border-gray-200 bg-white px-3 py-2 flex items-center justify-between gap-2">
-        <div class="flex gap-2">
-            <button type="button" class="btn btn-sm btn-secondary" data-one-to-many-add-row {% if not can_edit %}disabled{% endif %}>
-                {% blocktrans %}Add row{% endblocktrans %}
+    <div class="bg-white pr-3 pt-2 pb-1 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap gap-2">
+            <button type="button" class="btn btn-xs btn-ghost" data-one-to-many-add-row {% if not can_edit %}disabled{% endif %}>
+                <span aria-hidden="true"><i class="fa-solid fa-plus"></i></span>
+                <span>{% translate "Add row" %}</span>
             </button>
-            <button type="button" class="btn btn-sm btn-danger hidden" data-one-to-many-delete-rows {% if not can_edit %}disabled{% endif %}>
-                {% blocktrans %}Remove selected{% endblocktrans %}
+            {% if insert_token %}
+                <button type="button" class="btn btn-xs btn-ghost" data-one-to-many-insert-existing="{{ insert_token }}">
+                    <span aria-hidden="true"><i class="fa-solid fa-link"></i></span>
+                    <span>{% translate "Insert existing" %}</span>
+                </button>
+            {% endif %}
+            <button type="button" class="btn btn-xs btn-ghost hidden" data-one-to-many-delete-rows {% if not can_edit %}disabled{% endif %}>
+                <span aria-hidden="true"><i class="fa-solid fa-trash"></i></span>
+                <span>{% translate "Remove selected" %}</span>
             </button>
         </div>
         <div class="hidden items-center gap-2" data-one-to-many-pagination>
-            <button type="button" class="btn btn-sm btn-secondary" data-one-to-many-previous-page aria-label="Previous page">
-                <i class="fa-solid fa-chevron-left"></i>
+            <button type="button" class="icon-button" data-one-to-many-previous-page aria-label="Previous page">
+                <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
             </button>
             <span class="text-sm text-gray-600" data-one-to-many-page-status></span>
-            <button type="button" class="btn btn-sm btn-secondary" data-one-to-many-next-page aria-label="Next page">
-                <i class="fa-solid fa-chevron-right"></i>
+            <button type="button" class="icon-button" data-one-to-many-next-page aria-label="Next page">
+                <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
             </button>
         </div>
     </div>

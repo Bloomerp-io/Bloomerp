@@ -11,8 +11,8 @@ from django.db import models, transaction
 from django.db.models import Max
 from django.utils.translation import gettext_lazy as _
 
-from bloomerp.agents.definition import MessageContent, RunUsage
-from bloomerp.agents.runtime import AgentRuntimeMessage
+from bloomerp.agents.definition import MessageContent, ModelModalities, RunUsage
+from bloomerp.agents.runtime import AgentRuntimeArtifactInput, AgentRuntimeMessage
 from bloomerp.filters.definition import FilterCondition
 from bloomerp.lookups import builtins as lookups
 from bloomerp.models.definition import ApiAccessSettings, ApiSettings
@@ -253,8 +253,9 @@ class AIConversation(AgentModel):
         after_sequence: int = 0,
         limit: int = 100,
         through_sequence: int | None = None,
+        modalities: ModelModalities | None = None,
     ) -> tuple[AgentRuntimeMessage, ...]:
-        """Build bounded text history with validated memory for new requests.
+        """Build bounded history with validated memory and supported attachment references.
 
         The initial turn takes the most recent entries through its trigger. Resume
         callers supply only new user input, never streamed assistant output already
@@ -274,6 +275,11 @@ class AIConversation(AgentModel):
             blocks = MessageContent.model_validate(message.content_blocks).root
             from django.http import HttpRequest
 
+            from bloomerp.agents.artifacts.file import FileArtifactPayload
+            from bloomerp.agents.artifacts.object import (
+                ObjectArtifactPayload,
+                object_prompt_context,
+            )
             from bloomerp.agents.artifacts.registry import AI_ARTIFACT_REGISTRY
             from bloomerp.agents.definition import TextBlock
 
@@ -296,12 +302,34 @@ class AIConversation(AgentModel):
                             artifact.kind, artifact.schema_version
                         )
                         payload = definition.model.model_validate(artifact.payload)
-                        if definition.authorize is not None:
-                            definition.authorize(payload, request)
-                        description = definition.describe(payload)
-                        text = f"Artifact {artifact.pk}: {description.title}. {description.summary}"
+                        if message.role == "user" and isinstance(
+                            payload, ObjectArtifactPayload
+                        ):
+                            summary = object_prompt_context(payload, request)
+                        else:
+                            if definition.authorize is not None:
+                                definition.authorize(payload, request)
+                            description = definition.describe(payload)
+                            summary = f"{description.title}. {description.summary}"
+                        text = f"Artifact {artifact.pk}: {summary}"
                     except (PermissionDenied, LookupError, ValueError):
                         text = "Artifact unavailable."
+                    else:
+                        if (
+                            message.role == "user"
+                            and isinstance(payload, FileArtifactPayload)
+                            and modalities is not None
+                            and modalities.accepts_attachment(payload.media_type)
+                        ):
+                            resolved.append(
+                                AgentRuntimeArtifactInput(
+                                    artifact_id=artifact.pk,
+                                    file_id=payload.file_id,
+                                    media_type=payload.media_type,
+                                    content={"description": text},
+                                )
+                            )
+                            continue
                     resolved.append(TextBlock(text=text))
                 else:
                     raise ValidationError("Unsupported runtime context block")

@@ -606,7 +606,7 @@ export default class SqlQueryEditor extends BaseComponent {
 
             html.push(`
                 <details class="group" open>
-                    <summary class="list-none min-w-0 cursor-pointer px-2 py-1.5 rounded-md bg-white border border-base flex items-center gap-2 text-gray-800" style="list-style: none;" title="${database.name}">
+                    <summary class="list-none min-w-0 cursor-pointer px-2 py-1.5 rounded-md bg-white border border-gray-200 flex items-center gap-2 text-gray-800" style="list-style: none;" title="${database.name}">
                         <i class="fa-solid fa-chevron-right text-[10px] text-gray-400 group-open:rotate-90 transition-transform shrink-0"></i>
                         <i class="${database.icon || 'fa-solid fa-database'} text-xs text-gray-600 shrink-0"></i>
                         <span class="flex-1 min-w-0 truncate">${database.name}</span>
@@ -642,7 +642,7 @@ export default class SqlQueryEditor extends BaseComponent {
             const isActive = this.activeTabId === query.id;
             tabs.push(`
                 <li
-                    class="px-4 py-3 shrink-0 cursor-pointer border-r border-base ${isActive ? 'border-b-2 border-primary bg-primary/5 text-primary font-medium' : 'text-gray-700'}"
+                    class="px-4 py-3 shrink-0 cursor-pointer border-r border-gray-200 ${isActive ? 'border-b-2 border-primary bg-primary/5 text-primary font-medium' : 'text-gray-700'}"
                     data-sql-tab-id="${this.escapeAttribute(query.id)}"
                     title="${this.escapeAttribute(query.name)}"
                 >${this.escapeHtml(query.name)}</li>

@@ -7,8 +7,8 @@
 >
     <header class="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 px-5">
         <div class="flex min-w-0 items-center gap-4">
-            <button type="button" data-inbox-close aria-label="{% translate 'Close message' %}" class="inline-flex size-8 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100">
-                <i class="fa fa-times"></i>
+            <button type="button" data-inbox-close aria-label="{% translate 'Close message' %}" class="icon-button">
+                <i class="fa fa-times" aria-hidden="true"></i>
             </button>
             <div class="flex min-w-0 items-center gap-2">
                 <span class="inline-flex size-6 items-center justify-center rounded-md bg-primary-500 text-xs text-white">
@@ -17,11 +17,13 @@
                 <span class="truncate text-sm font-medium text-gray-950 dark:text-zinc-100">{{ item.title }}</span>
             </div>
         </div>
-        <div class="flex items-center gap-3 text-gray-500">
+        <div class="flex shrink-0 items-center gap-1">
             {% for action in primary_actions %}
                 <c-ui.tooltip title="{{ action.name }}" position="bottom">
                     <button
                         type="button"
+                        class="icon-button"
+                        aria-label="{{ action.name }}"
                         data-inbox-action
                         data-inbox-action-level="item"
                         data-inbox-action-item-id="{{ item.id }}"
@@ -29,12 +31,12 @@
                         data-inbox-action-method="{{ action.http_method }}"
                         data-inbox-action-target="{{ action.target }}"
                     >
-                        <i class="{{ action.icon }}"></i>
+                        <i class="{{ action.icon }}" aria-hidden="true"></i>
                     </button>
                 </c-ui.tooltip>
             {% endfor %}
 
-            <c-ui.dropdown.body trigger_icon_class="fa fa-ellipsis">
+            <c-ui.dropdown.body trigger_icon_class="fa fa-ellipsis" trigger_aria_label="{% translate 'Actions' %}" icon_button=True>
                 {% for action in secondary_actions %}
                     <button
                         type="button"

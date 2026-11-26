@@ -34,6 +34,7 @@ class TestAlignCalendarsComponent(InboxCalendarFixtures, BloomerpComponentTestCa
                 user=self.actor,
                 view_kwargs=kwargs,
                 query_params={"q": "meeting", "calendar_page": "2"},
+                headers={"X-Bloomerp-Sync-Url": "true"},
                 data={
                     "selection": json.dumps(
                         {
@@ -92,17 +93,28 @@ class TestAlignCalendarsComponent(InboxCalendarFixtures, BloomerpComponentTestCa
     def selection_saved(self, response: HttpResponse) -> bool:
         """Return a hidden-filter loader retaining the saved scope, fresh token, and navigation parameters."""
         from bloomerp.communication.calendar.access import calendar_overlay_selection
-        from bloomerp.permissions.definition import PermissionToken
+        from bloomerp.filters.definition import FilterCondition
+        from bloomerp.filters.parser import deserialize_filters
+        from bloomerp.models.communication.calendar import CalendarEvent
+        from bloomerp.tokens import REQUEST_TOKEN_QUERY_KEYS, get_token
 
         saved = calendar_overlay_selection(self.actor, self.source.pk)
         loader = BeautifulSoup(response.content, "html.parser").select_one('[hx-trigger="load"]')
         self.assertIsNotNone(loader)
+        headers = json.loads(loader["hx-headers"])
+        self.assertEqual(headers["X-Bloomerp-Sync-Url"], "true")
         query = parse_qs(urlsplit(loader["hx-get"]).query)
-        grant = PermissionToken.verify(query["_permission_token"][0], audience=str(self.actor.pk))
+        self.assertFalse(REQUEST_TOKEN_QUERY_KEYS.intersection(query))
+        rendered = self.client.get(loader["hx-get"], headers=headers)
+        token = get_token(rendered.wsgi_request)
+        grant = token.policies[CalendarEvent]
+        layout = token.dataviews[CalendarEvent]
+        self.assertEqual(layout.dataview.view_type, "calendar")
         restored = self.client.get(
             reverse("inbox_calendar", kwargs={"inbox_id": self.source.pk})
         )
-        filters = json.loads(restored.context["calendar_filters"]["filter"])
+        filters = deserialize_filters(restored.context["dataview_query_params"]["filter"])
+        self.assertEqual(deserialize_filters(query["filter"][0]), filters)
         self.assertEqual(
             saved, {"inboxes": [str(self.source.pk)], "users": [str(self.owner.pk)]}
         )
@@ -113,16 +125,18 @@ class TestAlignCalendarsComponent(InboxCalendarFixtures, BloomerpComponentTestCa
             for pk in accessible_inboxes(self.owner).values_list("pk", flat=True)
         }
         self.assertEqual(
-            set(grant.rule.row_permissions[0].conditions[0].value), expected
+            set(grant.row_permissions[0].conditions[0].value), expected
         )
-        self.assertEqual(set(filters[0]["conditions"][0]["value"]), expected)
+        self.assertEqual(set(filters[0].conditions[0].value), expected)
+        self.assertIn(
+            FilterCondition(field_path="cancelled", lookup_id="equals", value=False),
+            filters[0].conditions,
+        )
         self.assertEqual(set(query["_arg_hide_filters"]), {"true"})
         self.assertEqual(query["_arg_calendar_inbox"], [str(self.source.pk)])
-        self.assertEqual(query["cancelled"], ["false"])
         self.assertEqual(query["calendar_color_field"], ["inboxes"])
         self.assertEqual(set(query["calendar_color_values"][0].split(",")), expected)
         self.assertEqual(query["calendar_color_preferred"], [str(self.source.pk)])
         self.assertEqual(query["q"], ["meeting"])
         self.assertEqual(query["calendar_page"], ["2"])
-        self.assertEqual(set(json.loads(query["filter"][0])[0]["conditions"][0]["value"]), expected)
         return True

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
@@ -45,22 +46,17 @@ class BulkUploadDraft:
     file_id: str
     selected_fields: list[str]
     total_rows: int
-    original_filename: str
 
 
 @dataclass
 class BulkUploadReviewPage:
     formset: BaseFormSet
-    fields: list[str]
     page: int
-    page_size: int
     total_rows: int
     total_pages: int
     start_row: int
     end_row: int
     page_row_errors: dict[int, dict[str, list[str]]]
-    invalid_row_indexes: list[str]
-    ordered_row_indexes: list[int]
 
 
 @dataclass
@@ -224,7 +220,6 @@ class BulkCrudService:
             file_id=str(draft_file.pk),
             selected_fields=selected_fields,
             total_rows=len(rows),
-            original_filename=str(getattr(uploaded_file, "name", "") or draft_file.name or ""),
         )
 
     def get_draft_file(self, file_id: str | None) -> FileNode | None:
@@ -296,7 +291,7 @@ class BulkCrudService:
         changes: dict[str, dict[str, Any]] | None,
         page: int,
         page_size: int = DEFAULT_REVIEW_PAGE_SIZE,
-        data=None,
+        data: Mapping[str, Any] | None = None,
     ) -> BulkUploadReviewPage:
         """Build the review page for the bulk upload process.
 
@@ -342,20 +337,14 @@ class BulkCrudService:
             for row_index in page_row_indexes
             if row_index in all_row_errors
         }
-        invalid_row_indexes: list[str] = [str(row_index) for row_index in page_row_indexes if row_index in all_row_errors]
-
         return BulkUploadReviewPage(
             formset=formset,
-            fields=fields,
             page=page,
-            page_size=page_size,
             total_rows=total_rows,
             total_pages=total_pages,
             start_row=start_index + 1 if total_rows else 0,
             end_row=end_index,
             page_row_errors=page_row_errors,
-            invalid_row_indexes=invalid_row_indexes,
-            ordered_row_indexes=ordered_row_indexes,
         )
 
     def merge_page_changes(
@@ -803,21 +792,6 @@ class BulkCrudService:
         if isinstance(left, list) or isinstance(right, list):
             return list(left or []) == list(right or [])
         return left == right
-
-    def _apply_changes_to_page_rows(
-        self,
-        *,
-        start_index: int,
-        source_rows: list[dict[str, Any]],
-        changes: dict[str, dict[str, Any]],
-    ) -> list[tuple[int, dict[str, Any]]]:
-        page_rows: list[tuple[int, dict[str, Any]]] = []
-        for offset, source_row in enumerate(source_rows):
-            row_index = start_index + offset
-            row_data = deepcopy(source_row)
-            row_data.update((changes or {}).get(str(row_index), {}))
-            page_rows.append((row_index, row_data))
-        return page_rows
 
     def _normalize_dataframe_headers(self, dataframe: pd.DataFrame) -> pd.DataFrame:
         normalized = dataframe.copy()

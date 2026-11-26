@@ -1,4 +1,5 @@
 """Browser-bound shared meeting guest join endpoint."""
+# SHOULD_API
 
 from uuid import UUID
 

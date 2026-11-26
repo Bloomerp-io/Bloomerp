@@ -12,10 +12,11 @@ from django.utils.translation import gettext as _
 from django.views.generic.edit import FormView
 
 from bloomerp.communication.calendar.outgoing import respond_to_calendar_invitation
-from bloomerp.forms.communication.calendar_event_response import CalendarEventResponseForm
+from bloomerp.forms.communication.calendar_event_response import (
+    CalendarEventResponseForm,
+)
 from bloomerp.models import FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.communication.calendar import CalendarEvent
-from bloomerp.permissions.access_tokens import request_permission_token
 from bloomerp.router import router
 from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.layout_form_mixin import LayoutFormMixin
@@ -70,7 +71,6 @@ class ReplyCalendarInvitationComponentView(LayoutFormMixin, BaseBloomerpView, Fo
         context.update(
             calendar_event=event,
             participant=event.get_participant(self.request.user),
-            permission_token=request_permission_token(self.request.user),
             form_url=reverse("components_calendar_reply", kwargs={"event_id": event.pk}),
         )
         return context

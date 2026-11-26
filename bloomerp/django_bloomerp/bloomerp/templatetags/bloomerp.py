@@ -1,4 +1,6 @@
 import json
+import re
+import uuid
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
@@ -6,34 +8,48 @@ from typing import Any
 import bleach
 from django import template
 from django.conf import settings
-from django.core.exceptions import FieldDoesNotExist, ImproperlyConfigured, ObjectDoesNotExist
-from django.db.models import ForeignKey, Model
-from django.http import HttpRequest
-from bloomerp.models.definition import DataviewActionContext, ObjectActionContext, ObjectActionDefinition
-from bloomerp.models.users.base_preference import BasePreference
-from bloomerp.services.action_services import render_action, with_dataview_context
-from bloomerp.services.preference_services import PreferenceManager
-from bloomerp.utils.models import get_initials, get_detail_view_url, get_delete_view_url
-from django.urls import reverse 
+from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
-from django.utils.safestring import mark_safe
+from django.core.exceptions import (
+    FieldDoesNotExist,
+    ImproperlyConfigured,
+    ObjectDoesNotExist,
+)
+from django.db.models import ForeignKey, Model
+from django.forms.utils import flatatt
+from django.http import HttpRequest
+from django.urls import NoReverseMatch, reverse
 from django.utils.html import escape, format_html
+from django.utils.safestring import mark_safe
 from django.utils.text import Truncator
-import re
-import uuid
-from bloomerp.models import Bookmark, AbstractBloomerpUser, ApplicationField
-import uuid
-from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
+from django.utils.translation import gettext as _
+
 from bloomerp.config.settings import BLOOMERP_LANGUAGES
+from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
+from bloomerp.filters.definition import Filter, FilterCondition
+from bloomerp.models import AbstractBloomerpUser, ApplicationField
+from bloomerp.models.definition import (
+    DataviewActionContext,
+    ObjectActionContext,
+    ObjectActionDefinition,
+)
+from bloomerp.models.users.base_preference import BasePreference
+from bloomerp.models.workspaces.sidebar import Sidebar
 from bloomerp.permissions.manager import (
     FIELD_ACCESS_CONTROLLED_ANNOTATION,
     field_access_annotation_name,
 )
+from bloomerp.services.action_services import render_action, with_dataview_context
+from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.services.sectioned_layout_services import (
     dump_layout_json as dump_layout_json_service,
 )
-from bloomerp.widgets.icon_picker_widget import parse_icon_value as parse_icon_value_service
+from bloomerp.utils.models import get_detail_view_url, get_initials
 from bloomerp.utils.rich_text import sanitize_html
+from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
+from bloomerp.widgets.icon_picker_widget import (
+    parse_icon_value as parse_icon_value_service,
+)
 
 register = template.Library()
 
@@ -451,6 +467,35 @@ def parse_icon_value(value):
 
 
 @register.simple_tag
+def dataview_item_url(obj: Model, dataview: DataviewActionContext | None) -> str:
+    """Address a row by its originating view even if it displays another model."""
+    if not dataview:
+        return ""
+    try:
+        path = reverse(
+            "components_dataview_item",
+            kwargs={"content_type_id": dataview.content_type.pk, "object_id": obj.pk},
+        )
+    except NoReverseMatch:
+        return ""  # Some custom models use keys outside the item route's integer/UUID converter.
+    return with_dataview_context(path, dataview)
+
+
+@register.simple_tag
+def dataview_record_attrs(
+    obj: Model, dataview: DataviewActionContext | None, row_index: int,
+) -> str:
+    """Render the shared attributes used to identify and reload an item in its DataView."""
+    return flatatt({
+        "data-dataview-record": True,
+        "data-object-id": obj.pk,
+        "data-dataview-record-content-type-id": ContentType.objects.get_for_model(obj).pk,
+        "data-dataview-item-index": row_index,
+        "data-dataview-item-url": dataview_item_url(obj, dataview),
+    })
+
+
+@register.simple_tag
 def render_object_action(
     action: ObjectActionDefinition,
     object: Model,
@@ -474,8 +519,8 @@ def render_object_action(
     )
 
     def execution_url(action_id: str) -> str:
-        """Route a configured callback to the server with its originating view."""
-        url = reverse(
+        """Address the record and configured action callback."""
+        return reverse(
             "components_objects_actions",
             kwargs={
                 "content_type_id": content_type.pk,
@@ -483,15 +528,45 @@ def render_object_action(
                 "action_id": action_id,
             },
         )
-        if dataview is not None and dataview.content_type.pk == content_type.pk:
-            return with_dataview_context(url, dataview)
-        return url
 
     return mark_safe(render_action(action, context, {
         "object": object,
         "request": request,
         "content_type_id": content_type.pk,
     }, execution_url))
+
+
+@register.simple_tag
+def selected_sidebar(user: AbstractBloomerpUser) -> BasePreference | None:
+    """Load the user's selected sidebar for pages rendered outside the view mixins."""
+    return PreferenceManager(user).get_or_create_selected(Sidebar)
+
+
+@register.simple_tag
+def view_as_user_widget(user: AbstractBloomerpUser) -> str:
+    """Render the account switcher with active users other than the signed-in user."""
+    user_model = get_user_model()
+    choices = Filter(
+        connector="AND",
+        conditions=[
+            FilterCondition(field_path="is_active", lookup_id="equals", value=True),
+            FilterCondition(
+                field_path=user_model.USERNAME_FIELD,
+                lookup_id="not_equals",
+                value=user.get_username(),
+            ),
+        ],
+    )
+    search_label = _("Search users")
+    return ForeignFieldWidget(
+        model=user_model,
+        attrs={
+            "aria_label": search_label,
+            "placeholder": search_label,
+            "selection_only": True,
+            "choices_filter": f"[{choices.model_dump_json()}]",
+        },
+    ).render("view_as_user", None)
 
 
 @register.simple_tag
@@ -512,11 +587,3 @@ def can_manage_preference_object(user:AbstractBloomerpUser, object:BasePreferenc
         return manager.can_manage(object)
     except:
         return False
-
-
-@register.filter
-def with_permission_token(url: str, request: HttpRequest) -> str:
-    """Preserve the current capability on same-origin object navigation links."""
-    from bloomerp.permissions.access_tokens import permission_token_url
-
-    return permission_token_url(request, url)

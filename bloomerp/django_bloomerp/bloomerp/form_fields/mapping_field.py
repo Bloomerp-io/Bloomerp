@@ -26,9 +26,10 @@ class MappingField(forms.Field):
         left_widget: forms.Widget | None = None,
         right_widget: forms.Widget | None = None,
         allow_adding_groups: bool | None = None,
+        keep_empty_fixed_values: bool = False,
         **kwargs: Any,
     ) -> None:
-        """Configure optional choices, typed fields, widgets and row creation."""
+        """Configure typed rows, including whether fixed rows retain empty values."""
         left = list(left) if left is not None else None
         right = list(right) if right is not None else None
         self.left_field = left_field or (
@@ -46,6 +47,7 @@ class MappingField(forms.Field):
         self.allow_adding_groups = (
             left is None if allow_adding_groups is None else allow_adding_groups
         )
+        self.keep_empty_fixed_values = keep_empty_fixed_values
         self.left = list(left) if left is not None else None
         kwargs.setdefault(
             "widget",
@@ -59,7 +61,7 @@ class MappingField(forms.Field):
         super().__init__(**kwargs)
 
     def to_python(self, value: Any) -> dict[str, Any]:
-        """Validate each pair, rejecting incomplete rows and duplicate cleaned keys."""
+        """Validate each pair and skip empty rows according to the fixed-row policy."""
         if value in self.empty_values:
             return {}
         if isinstance(value, str):
@@ -78,7 +80,11 @@ class MappingField(forms.Field):
             key, item = row
             if key in self.empty_values and item in self.empty_values:
                 continue
-            if not self.allow_adding_groups and item in self.empty_values:
+            if (
+                not self.allow_adding_groups
+                and not self.keep_empty_fixed_values
+                and item in self.empty_values
+            ):
                 continue
             key = str(self.left_field.clean(key))
             if (

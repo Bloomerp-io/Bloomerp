@@ -1,8 +1,10 @@
-<input 
-    data-object-id="{{ object_id }}"
-    data-content-type-id="{{ content_type_id }}"
+{% load i18n %}
+<input
+    {% if object_id %}data-object-id="{{ object_id }}"{% endif %}
     type="checkbox"
-    class="rounded border-gray-400"
-    data-all="{% if all %}true{% else %}false{% endif %}"
+    class="shrink-0 cursor-pointer rounded border-gray-400"
+    aria-label="{% if all %}{% translate 'Select shown records' %}{% elif label %}{% blocktranslate with record=label %}Select {{ record }}{% endblocktranslate %}{% else %}{% translate 'Select record' %}{% endif %}"
+    {% if all %}data-all="true"{% endif %}
+    data-no-row-click
     data-bulk-checkbox
-    >
+>

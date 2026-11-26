@@ -45,7 +45,7 @@ class TestAttachmentMenuE2E(BloomerpE2ETestCase):
         ]
 
     def modal_color_picker(self) -> None:
-        """Keep viewport placement accurate and persist the selected searchable preset."""
+        """Check menu placement and show the saved preset as a dot on the label badge."""
         widget = self.page.locator('#main-content [data-field-name="country"][bloomerp-component="foreign-field-widget"]')
         widget.locator('input[type="text"]').focus()
         self.page.locator('.foreign-field-dropdown:visible [data-action="create-new"]').click()
@@ -69,7 +69,10 @@ class TestAttachmentMenuE2E(BloomerpE2ETestCase):
         submenu.get_by_role("menuitem", name="Yellow", exact=True).click()
         chip = modal.locator('[data-reference-chips] .badge').filter(has_text="Golden modal label")
         expect(chip).to_be_visible()
-        expect(chip).to_have_css("background-color", "rgb(250, 204, 21)")
+        expect(chip).to_have_css("background-color", "rgba(0, 0, 0, 0)")
+        dot = chip.locator('span[aria-hidden="true"]')
+        expect(dot).to_be_visible()
+        expect(dot).to_have_css("background-color", "rgb(250, 204, 21)")
         self.assertEqual(Label.objects.get(name="Golden modal label").color, "#facc15")
         expect(menu).to_be_hidden()
 

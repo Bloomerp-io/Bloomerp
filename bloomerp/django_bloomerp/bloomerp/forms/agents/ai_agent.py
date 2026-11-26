@@ -7,17 +7,23 @@ from urllib.parse import urlsplit
 
 from django import forms
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import BooleanField, F, QuerySet, Value
 from django.forms.boundfield import BoundField
 from django.utils.translation import gettext_lazy as _
 from pydantic import BaseModel, ValidationError
 
+from bloomerp.agents.definition import ModelModalities
 from bloomerp.agents.providers.definition import AIProviderDefinition
 from bloomerp.agents.resource_access import internal_resource_choices
 from bloomerp.agents.tool_access import internal_tool_choices
+from bloomerp.field_types.registry import FieldContext
 from bloomerp.models.agents import AIAgent, MCPIntegration
+from bloomerp.models.agents.ai_agent import model_modalities_form_field
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.permissions.manager import UserPolicyManager, field_access_annotation_name
+
+_MODALITIES_POST_KEYS = ("modalities", "modalities__present", "modalities__rows")
 
 
 class LinesField(forms.CharField):
@@ -142,6 +148,9 @@ class IntegrationSelectionField(forms.ModelMultipleChoiceField):
 class AIAgentDetailsForm(forms.ModelForm):
     """Collect model settings, credentials, and parameters without raw JSON inputs."""
 
+    modalities = model_modalities_form_field(
+        FieldContext(), AIAgent._meta.get_field("modalities").formfield()
+    )
     internal_tools = forms.MultipleChoiceField(
         required=False,
         label=_("Selected built-in Bloomerp tools"),
@@ -171,6 +180,7 @@ class AIAgentDetailsForm(forms.ModelForm):
         fields: ClassVar[list[str]] = [
             "name",
             "model_identifier",
+            "modalities",
             "default_instructions",
             "enabled",
             "internal_tool_mode",
@@ -185,7 +195,7 @@ class AIAgentDetailsForm(forms.ModelForm):
             "max_duration_seconds",
         ]
         widgets: ClassVar[dict[str, forms.Widget]] = {
-            "default_instructions": forms.Textarea(attrs={"rows": 4})
+            "default_instructions": forms.Textarea(attrs={"rows": 4}),
         }
 
     def __init__(
@@ -227,6 +237,19 @@ class AIAgentDetailsForm(forms.ModelForm):
             self.hidden_integration_ids = selected_ids - visible_ids
             self.initial["mcp_integrations"] = list(selected_ids & visible_ids)
         self.provider = provider
+        self.original_model = (
+            self.instance.provider,
+            self.instance.model_identifier,
+            self.instance.base_url or None,
+        )
+        if provider.model_modalities_factory is not None:
+            self.fields["discover_modalities"] = forms.BooleanField(
+                required=False,
+                label=_("Discover model modalities on save"),
+                help_text=_(
+                    "Replace the mapping with the selected provider's model capabilities."
+                ),
+            )
         self.keep_credentials = (
             not self.instance._state.adding
             and self.instance.provider == provider.id
@@ -267,6 +290,9 @@ class AIAgentDetailsForm(forms.ModelForm):
                     self.fields[field_name].initial = None
                 self.schema_fields[root][name] = field_name
         self.field_roots = {name: name for name in self.Meta.fields}
+        self.field_roots.update(
+            dict.fromkeys((*_MODALITIES_POST_KEYS, "discover_modalities"), "modalities")
+        )
         for root, mapping in self.schema_fields.items():
             self.field_roots.update(
                 {field_name: root for field_name in mapping.values()}
@@ -340,6 +366,18 @@ class AIAgentDetailsForm(forms.ModelForm):
                 )
         return value or None
 
+    def clean_modalities(self) -> dict[str, Any]:
+        """Validate the input and output mapping using the shared modality enum."""
+        value = self.cleaned_data["modalities"]
+        if value is None or value == {}:
+            return {}
+        try:
+            return ModelModalities.model_validate(value).model_dump(mode="json")
+        except ValidationError as error:
+            raise forms.ValidationError(
+                _("Enter a valid model modality mapping.")
+            ) from error
+
     def schema_values(self, root: str) -> dict[str, Any]:
         """Read nonempty typed inputs while leaving unspecified options to provider defaults."""
         return {
@@ -369,8 +407,27 @@ class AIAgentDetailsForm(forms.ModelForm):
         return True
 
     def clean(self) -> dict[str, Any]:
-        """Validate credential/parameter schemas for the selected provider."""
+        """Validate provider settings and reset unchanged modalities on model changes."""
         cleaned = super().clean()
+        model = (
+            self.provider.id,
+            cleaned.get("model_identifier", self.instance.model_identifier),
+            cleaned.get("base_url", self.instance.base_url) or None,
+        )
+        mapping_posted = any(
+            self.add_prefix(name) in self.data for name in _MODALITIES_POST_KEYS
+        )
+        mapping_changed = mapping_posted and "modalities" in self.changed_data
+        if "modalities" in cleaned and not mapping_changed:
+            cleaned["modalities"] = self.instance.modalities
+        if model != self.original_model and not mapping_changed:
+            if "modalities" in cleaned:
+                cleaned["modalities"] = {}
+                self.instance.modalities = {}
+            elif self.instance.modalities:
+                self.add_error(
+                    None, _("Changing this model requires access to its modalities.")
+                )
         for name in (
             "request_timeout_seconds",
             "max_tokens",
@@ -410,6 +467,41 @@ class AIAgentDetailsForm(forms.ModelForm):
             ):
                 self.instance.parameters = parameters
         return cleaned
+
+    def discover_model_modalities(self, candidate: AIAgent) -> bool:
+        """Apply provider discovery on an authorized candidate when requested."""
+        discover = self.provider.model_modalities_factory
+        if discover is None or not self.cleaned_data.get("discover_modalities"):
+            return True
+        if (
+            not self.credentials
+            and (candidate.base_url or None) != self.original_model[2]
+        ):
+            self.add_error(
+                "discover_modalities", _("Enter credentials for the new endpoint.")
+            )
+            return False
+        try:
+            credentials = (
+                self.provider.credentials_schema.model_validate(self.credentials)
+                if self.credentials
+                else candidate.validated_credentials()
+            )
+            modalities = discover(
+                candidate.model_identifier, credentials, candidate.base_url
+            )
+        except (DjangoValidationError, ValueError):
+            modalities = None
+        if modalities is None:
+            self.add_error(
+                "discover_modalities",
+                _(
+                    "Capabilities could not be discovered. Check the model and endpoint or enter the mapping manually."
+                ),
+            )
+            return False
+        candidate.modalities = modalities.model_dump(mode="json")
+        return True
 
     def group_fields(self, group: str) -> list[BoundField]:
         """Return visible inputs for one named section of the details page."""

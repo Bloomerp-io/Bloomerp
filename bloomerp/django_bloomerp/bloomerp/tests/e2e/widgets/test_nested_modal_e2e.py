@@ -139,7 +139,7 @@ class TestNestedModalE2E(BloomerpE2ETestCase):
         self.assertEqual(self.page.locator('body').evaluate("body => body.style.overflow"), "")
 
     def check_shell(self) -> None:
-        """Verify slot nodes survive shell construction and controls fire only once."""
+        """Verify slot preservation and fullscreen controls with focused and nested content."""
         self.page.evaluate("""() => {
             const declaration = document.createElement('div');
             declaration.id = 'shell-test-modal';
@@ -162,24 +162,52 @@ class TestNestedModalE2E(BloomerpE2ETestCase):
         expect(modal.locator('[data-modal-container]')).to_have_class(re.compile(r'\bh-full\b'))
         modal.get_by_role('button', name="Toggle fullscreen").click()
         self.assertNotIn('h-full', modal.locator('[data-modal-container]').get_attribute('class').split())
+        field = modal.locator('input')
+        field.evaluate("""(
+        /** Set up a focused control that handles Space locally. @param {HTMLInputElement} input @returns {void} */
+        function interceptSpace(input) {
+            /** Keep Space from bubbling. @param {KeyboardEvent} event @returns {void} */
+            function stopSpace(event) {
+                if (event.code === 'Space') event.stopPropagation();
+            }
+            input.addEventListener('keydown', stopSpace);
+        }
+        )""")
+        field.press("ControlOrMeta+Shift+Space")
+        expect(modal.locator('[data-modal-container]')).to_have_class(re.compile(r'\bh-full\b'))
+        field.press("ControlOrMeta+Shift+Space")
+        self.assertNotIn('h-full', modal.locator('[data-modal-container]').get_attribute('class').split())
+        expect(field).to_be_focused()
+        expect(field).to_have_value("preserved state")
         self.assertIn('p-6', modal.locator('[data-modal-body]').get_attribute('class').split())
         modal.click(position={"x": 1, "y": 1})
         expect(modal).to_be_visible()
         modal.get_by_role('button', name="Close", exact=True).click()
         expect(modal).to_be_hidden()
-        modal.evaluate("""parent => {
+        modal.evaluate("""(
+        /** Open a fullscreen child over the existing modal. @param {HTMLElement} parent @returns {void} */
+        function openChild(parent) {
             parent.__bloomerp_component.setOpener(document.body);
             parent.__bloomerp_component.open();
             const child = document.createElement('div');
             child.id = 'reusable-child-modal';
             child.setAttribute('bloomerp-component', 'modal');
+            child.dataset.modalSize = 'full';
             document.body.appendChild(child);
             document.body.dispatchEvent(new CustomEvent('htmx:load', {detail: {elt: child}}));
             child.__bloomerp_component.setOpener(parent.querySelector('input'));
             child.__bloomerp_component.open();
-            parent.__bloomerp_component.close();
-        }""")
+        }
+        )""")
         reusable_child = self.page.locator('#reusable-child-modal')
+        child_container = reusable_child.locator('[data-modal-container]')
+        expect(child_container).to_have_class(re.compile(r'\bh-full\b'))
+        self.page.keyboard.press("ControlOrMeta+Shift+Space")
+        expect(child_container).to_have_class(re.compile(r'\bmax-w-2xl\b'))
+        self.assertNotIn('h-full', modal.locator('[data-modal-container]').get_attribute('class').split())
+        self.page.keyboard.press("ControlOrMeta+Shift+Space")
+        expect(child_container).to_have_class(re.compile(r'\bh-full\b'))
+        modal.evaluate("document.getElementById('shell-test-modal').__bloomerp_component.close()")
         expect(modal).to_be_hidden()
         expect(reusable_child).to_be_hidden()
         reusable_child.evaluate("child => { child.__bloomerp_component.setOpener(document.body); child.__bloomerp_component.open(); }")

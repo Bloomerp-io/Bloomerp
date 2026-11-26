@@ -2,7 +2,7 @@ import base64
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
-from django.http import HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 
 from bloomerp.files.access import FileAccessManager
@@ -59,6 +59,8 @@ def generate_document_template(
             return HttpResponse(
                 "You do not have permission to view this document template.", status=403
             )
+    if not policy_manager.has_access_to_object(document_template, BloomerpPermission.VIEW):
+        return HttpResponse("You do not have permission to view this document template.", status=403)
 
     # Conditionally get the object ID and template ID
     content_type_id = request.GET.get("content_type_id")
@@ -66,7 +68,13 @@ def generate_document_template(
     instance = None
     if content_type_id and object_id:
         content_type: ContentType = get_object_or_404(ContentType, id=content_type_id)
-        instance = get_object_or_404(content_type.model_class(), id=object_id)
+        model = content_type.model_class()
+        if model is None or not document_template.content_types.filter(pk=content_type.pk).exists():
+            raise Http404("Document template does not apply to this model")
+        instance = get_object_or_404(
+            policy_manager.get_accessible_queryset(model, BloomerpPermission.VIEW),
+            pk=object_id,
+        )
 
     # Get the form instance
     form = service.get_form(instance=instance)(

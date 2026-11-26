@@ -1,0 +1,45 @@
+{% load bloomerp %}
+
+<div
+    role="button" tabindex="0"
+    class="calendar-event block w-full rounded-xl px-2 text-left text-xs shadow-xs transition-opacity hover:opacity-80 {{ event.color_classes }} {% if event.display_duration_minutes < 8 %}border-x{% elif event.display_duration_minutes < 33 %}border py-0.5{% else %}border py-1{% endif %} {% if calendar_view_mode == 'day' or calendar_view_mode == 'week' %}{% if not event.all_day %}absolute z-10 overflow-hidden{% endif %}{% endif %}"
+    {% if calendar_view_mode == 'day' or calendar_view_mode == 'week' %}{% if not event.all_day %}data-calendar-overlap-column="{{ event.timed_column }}" data-calendar-overlap-columns="{{ event.timed_columns }}" style="top: calc({{ event.start_minute|floatformat:'-6u' }} * 5rem / 60); height: calc({{ event.display_duration_minutes|floatformat:'-6u' }} * 5rem / 60); left: calc({{ event.timed_column }} * 100% / {{ event.timed_columns }} + 0.25rem); width: calc(100% / {{ event.timed_columns }} - 0.5rem);"{% endif %}{% endif %}
+    title="{{ event.object }}"
+    data-calendar-unit="{{ calendar_unit }}"
+    data-calendar-event
+    {% dataview_record_attrs event.object dataview_action_context row_index %}
+    data-dataview-item-placement="event:{{ calendar_unit }}:{{ event.start_ms|stringformat:'d' }}:{{ event.end_ms|stringformat:'d' }}"
+    data-calendar-all-day="{{ event.all_day|yesno:'true,false' }}"
+    data-calendar-start="{{ event.start_ms }}"
+    data-calendar-end="{{ event.end_ms }}"
+    data-calendar-can-edit-start="{{ event.can_edit_start|yesno:'true,false' }}"
+    data-calendar-can-edit-end="{{ event.can_edit_end|yesno:'true,false' }}"
+    data-calendar-can-unschedule="{{ event.can_unschedule|yesno:'true,false' }}"
+    draggable="{{ event.can_move|yesno:'true,false' }}"
+    data-detail-url="{{ event.object.get_absolute_url }}"
+    data-object-string="{{ event.object }}"
+    bloomerp-component="calendar-cell"
+>
+    {% if event.can_edit_start %}
+    <span class="absolute {% if calendar_view_mode == 'day' or calendar_view_mode == 'week' %}inset-x-0 top-0 h-2 cursor-ns-resize{% else %}inset-y-0 left-0 w-2 cursor-ew-resize{% endif %}" data-calendar-resize-start aria-hidden="true"></span>
+    {% endif %}
+    {% if event.can_edit_end %}
+    <span class="absolute {% if calendar_view_mode == 'day' or calendar_view_mode == 'week' %}inset-x-0 bottom-0 h-2 cursor-ns-resize{% else %}inset-y-0 right-0 w-2 cursor-ew-resize{% endif %}" data-calendar-resize-end aria-hidden="true"></span>
+    {% endif %}
+    <div class="flex min-w-0 items-center gap-1">
+        <c-features.dataviews.checkbox object_id="{{ event.object.pk }}" :label="event.object" />
+        <span class="min-w-0 flex-1">
+            <span class="block truncate font-medium">{{ event.object }}</span>
+            {% include "dataview/calendar/event_time.html" %}
+        </span>
+        {% include "dataview/calendar/group_dots.html" %}
+        {% include "dataview/calendar/actions.html" %}
+    </div>
+    {% if fields %}
+    <span class="mt-0.5 block truncate opacity-75">
+        {% for field in fields %}
+            {% render_dataview_value object=event.object application_field=field user=request.user row_index=row_index column_index=forloop.counter0 url=event.object.get_absolute_url split_view_enabled=preference.split_view_enabled %}{% if not forloop.last %} · {% endif %}
+        {% endfor %}
+    </span>
+    {% endif %}
+</div>

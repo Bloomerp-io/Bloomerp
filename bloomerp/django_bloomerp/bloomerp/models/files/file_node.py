@@ -27,12 +27,12 @@ from bloomerp.models.definition import (
     BloomerpModelConfig,
     ModelViewSettings,
     ObjectActionContext,
+    ObjectDrawerAction,
     ObjectModalAction,
     StringSearchSettings,
     get_default_dataview_actions,
 )
 from bloomerp.models.files.file_reference import FileReference
-from bloomerp.models.object_actions.drawer import drawer_action
 from bloomerp.modules.file_management import FileManagement
 
 
@@ -41,6 +41,11 @@ def _can_view_file_node(context: ObjectActionContext) -> bool:
     from bloomerp.files.access import FileAccessManager
 
     return FileAccessManager(context.request.user).can_read_file_node(context.object)
+
+
+def _preview_url(context: ObjectActionContext) -> str:
+    """Resolve the preview endpoint for this file node."""
+    return reverse("components_preview_file", kwargs={"file_id": context.object.pk})
 
 
 def _can_change_file_node(context: ObjectActionContext) -> bool:
@@ -118,50 +123,50 @@ FILE_NODE_CONFIG = BloomerpModelConfig(
     string_search_settings=StringSearchSettings(string_search_fields=["name"]),
     object_actions=lambda model: [
         *get_default_object_actions(model),
-        drawer_action(
+        ObjectDrawerAction(
             id="view_file",
             label=gettext_noop("View"),
             should_render_func=_can_view_file_node,
-            endpoint=lambda context: reverse(
-                "components_preview_file", kwargs={"file_id": context.object.pk},
-            ),
+            endpoint=_preview_url,
+            title=gettext_noop("File preview"),
+            size="xl",
         ),
         ObjectModalAction(
             id="email",
             label=gettext_noop("Email"),
             endpoint=_email_url,
             should_render_func=_can_view_file_node,
-            modal_size="full",
-            modal_title=gettext_noop("New email"),
+            size="full",
+            title=gettext_noop("New email"),
         ),
         ObjectModalAction(
             id="rename_file",
             label=gettext_noop("Rename"),
             endpoint=_rename_url,
             should_render_func=_can_change_file_node,
-            modal_title=gettext_noop("Rename file"),
+            title=gettext_noop("Rename file"),
         ),
         ObjectModalAction(
             id="move_file",
             label=gettext_noop("Move"),
             endpoint=_move_url,
             should_render_func=_can_change_file_node,
-            modal_title=gettext_noop("Move file"),
+            title=gettext_noop("Move file"),
         ),
         ObjectModalAction(
             id="delete_file",
             label=gettext_noop("Delete"),
             endpoint=_delete_url,
             should_render_func=_can_delete_file_node,
-            modal_title=gettext_noop("Delete file"),
+            title=gettext_noop("Delete file"),
         ),
         ObjectModalAction(
             id="sign",
             label=gettext_noop("Sign"),
             endpoint=_prepare_sign_url,
             should_render_func=_can_prepare_sign,
-            modal_size="full",
-            modal_title=gettext_noop("Sign document"),
+            size="full",
+            title=gettext_noop("Sign document"),
         ),
     ],
 )

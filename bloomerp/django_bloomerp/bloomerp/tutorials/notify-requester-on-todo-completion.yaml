@@ -1,0 +1,356 @@
+schema_version: 1
+tutorial:
+  source_key: notify-requester-on-todo-completion
+  name: Create your first workflow
+  description: >-
+    <p>Learn to build an automation in BloomERP. You’ll connect a trigger,
+    a condition, and an action to notify the requester of a completed to-do.</p>
+  is_active: true
+  available_to_all: true
+  topics: [getting-started]
+  revisions:
+    - number: 6
+      published_at: "2026-11-25T00:00:00+01:00"
+      trigger_route: workflows_model
+      auto_start: false
+      steps:
+        - sequence: 1
+          key: introduction
+          name: How workflows work
+          destination_route: workflows_model
+          size: medium
+          text: >-
+            <p>A workflow automates a task. In the Builder, each block is a
+            <strong>node</strong>. Connections tell BloomERP where to send the
+            data and which node runs next.</p>
+            <ul class="list-disc pl-5">
+              <li><strong>Trigger</strong> starts the workflow, for example when a
+                  record changes or at a scheduled time.</li>
+              <li><strong>Flow</strong> controls what happens next. A condition
+                  can send urgent requests down a different branch.</li>
+              <li><strong>Action</strong> does the work, such as sending an
+                  email, creating a record, or generating a PDF.</li>
+            </ul>
+            <p>You’ll use one of each to watch for to-do updates, check for
+            <strong>Completed</strong>, and send an Inbox notification to
+            the person in <strong>Requested By</strong>.</p>
+
+        - sequence: 2
+          key: name-workflow
+          name: Name the workflow
+          destination_route: workflows_add
+          text: >-
+            <p>Give your workflow a name that describes what it does, such as
+            <strong>Notify requester when a to-do is completed</strong>.</p>
+          show_as_tooltip: true
+          interaction:
+            highlights:
+              - &workflow_name {id: name, label: Name, selector: '#main-content input#id_name', allow_interaction: true}
+            tooltip_highlight_id: name
+            before: []
+            after: []
+
+        - sequence: 3
+          key: save-workflow
+          name: Set up logging and open the Builder
+          destination_route: workflows_add
+          text: >-
+            <p>Keep <strong>Active</strong> checked so the workflow can run.
+            Leave <strong>Run Asynchronously</strong> unchecked to run it
+            immediately. Check <strong>Enable Logging</strong> so you can
+            inspect each step of the test run.</p>
+            <p>Leave <strong>Notify on completion</strong> unchecked. Turn it on
+            whenever you want the workflow creator to receive an Inbox summary
+            when a run succeeds or fails. The <strong>Send User Message</strong>
+            action you’ll add later sends the notification to the to-do’s requester.</p>
+            <p>Select <strong>Save</strong> to open the Builder.</p>
+          advance_mode: navigation
+          advance_url_pattern: /automation/workflows/*/builder/
+          hide_next_button: true
+          interaction:
+            highlights:
+              - {id: save, label: Save, selector: '#main-content #object-crud-container-save-button', allow_interaction: true}
+              - {id: active, label: Active, selector: 'label:has(input[name="active"]), #id_active', allow_interaction: true}
+              - {id: asynchronous, label: Run Asynchronously, selector: 'label:has(input[name="run_asynchronously"]), #id_run_asynchronously', allow_interaction: true}
+              - {id: logging, label: Enable Logging, selector: 'label:has(input[name="enable_logging"]), #id_enable_logging', allow_interaction: true}
+              - {id: notify-on-completion, label: Notify on completion, selector: 'label:has(input[name="notify_on_completion"]), #id_notify_on_completion', allow_interaction: true}
+              - *workflow_name
+            advance_highlight_id: save
+            before: []
+            after: []
+
+        - sequence: 4
+          key: open-node-library
+          name: Open the node library
+          text: >-
+            <p>Select <strong>Add Node</strong> to see the blocks you can
+            use in this workflow.</p>
+          show_as_tooltip: true
+          advance_mode: click
+          hide_next_button: true
+          interaction:
+            highlights:
+              - &add_node {id: add-node, label: Add Node, selector: '#add-node-btn', allow_interaction: true}
+            tooltip_highlight_id: add-node
+            advance_highlight_id: add-node
+            before: []
+            after: []
+
+        - sequence: 5
+          key: add-update-trigger
+          name: Add an update trigger
+          text: >-
+            <p>Choose <strong>On Object Update</strong>. It starts a run when
+            an existing record of the selected model is saved.</p>
+          show_as_tooltip: true
+          advance_mode: click
+          advance_delay_ms: 250
+          hide_next_button: true
+          interaction:
+            highlights:
+              - {id: update, label: On Object Update, selector: '#node-drawer [data-workflow-node-item][data-node-subtype-id="ON_OBJECT_UPDATE"]', allow_interaction: true}
+            tooltip_highlight_id: update
+            advance_highlight_id: update
+            before:
+              - {kind: wait, highlight_id: update}
+            after: []
+
+        - sequence: 6
+          key: open-trigger-editor
+          name: Open the trigger’s options
+          text: >-
+            <p>Double-click a node to open its editor and choose how it
+            behaves. Try it on the highlighted <strong>On Object Update</strong>
+            node to see its options.</p>
+          show_as_tooltip: true
+          advance_mode: dblclick
+          hide_next_button: true
+          interaction:
+            highlights:
+              - {id: trigger, label: Update trigger, selector: '#drawflow .workflow-node-card--trigger', allow_interaction: true}
+              - &close_editor {id: close-editor, label: Close node editor, selector: '#bloomerp-general-use-modal [bloomerp-close-modal="bloomerp-general-use-modal"]', allow_interaction: true}
+            tooltip_highlight_id: trigger
+            advance_highlight_id: trigger
+            before: []
+            after: []
+
+        - sequence: 7
+          key: configure-update-trigger
+          name: Watch the Todo model
+          include_backdrop: false
+          text: >-
+            <p>In <strong>Model</strong>, search for <strong>Todo</strong>
+            and select <strong>Bloomerp | Todo</strong>. Once you see
+            <strong>All changes saved</strong>, close the node editor.</p>
+            <p>The trigger passes the updated to-do to the next node as
+            <code>input.instance</code>.</p>
+          show_as_tooltip: true
+          advance_mode: click
+          advance_delay_ms: 250
+          hide_next_button: true
+          interaction:
+            highlights:
+              - {id: model, label: Model picker, selector: '[data-node-sub-type="ON_OBJECT_UPDATE"] [data-field-name="content_type_id"]', allow_interaction: true}
+              - *close_editor
+            tooltip_highlight_id: close-editor
+            advance_highlight_id: close-editor
+            before:
+              - {kind: wait, highlight_id: model}
+            after: []
+
+        - sequence: 8
+          key: add-condition
+          name: Add a condition
+          text: >-
+            <p>Choose <strong>If Condition</strong>. This node lets you decide
+            which updates should lead to an action.</p>
+          show_as_tooltip: true
+          advance_mode: click
+          advance_delay_ms: 250
+          hide_next_button: true
+          interaction:
+            highlights:
+              - {id: condition, label: If Condition, selector: '#node-drawer [data-workflow-node-item][data-node-subtype-id="IF_CONDITION"]', allow_interaction: true}
+            tooltip_highlight_id: condition
+            advance_highlight_id: condition
+            before:
+              - &open_drawer {kind: click, selector: '#add-node-btn'}
+              - {kind: fill, selector: '#node-drawer [data-workflow-node-search]', value: If Condition}
+              - {kind: wait, highlight_id: condition}
+            after: []
+
+        - sequence: 9
+          key: connect-trigger
+          name: Pass the update to the condition
+          text: >-
+            <p>Drag the condition to the right of the trigger so you can see
+            both. If you need more room, select <strong>Zoom out</strong>.
+            Drag from the trigger’s <strong>Output</strong> on the right to
+            the condition’s input on the left.</p>
+          show_as_tooltip: true
+          interaction:
+            highlights:
+              - &canvas_anchor {id: builder, label: Builder toolbar, selector: '[data-workflow-edit-tools]', allow_interaction: false}
+              - &canvas {id: canvas, label: Workflow canvas, selector: '#drawflow', allow_interaction: true}
+              - &zoom_out {id: zoom-out, label: Zoom out, selector: '#zoom-out-btn', allow_interaction: true}
+              - {id: trigger-output, label: Trigger output, selector: '#drawflow .drawflow-node:has(.workflow-node-card--trigger) [data-workflow-port-id="default"]', allow_interaction: true}
+              - {id: condition-input, label: Condition input, selector: '#drawflow .drawflow-node:has(.workflow-node-card--flow) .inputs .input', allow_interaction: true}
+            tooltip_highlight_id: builder
+            before: []
+            after: []
+
+        - sequence: 10
+          key: open-condition-editor
+          name: Open the condition’s options
+          text: >-
+            <p>Double-click <strong>If Condition</strong> to open its editor.
+            Its options let you choose which value to check and how to compare it.</p>
+          show_as_tooltip: true
+          advance_mode: dblclick
+          hide_next_button: true
+          interaction:
+            highlights:
+              - {id: condition-node, label: Condition node, selector: '#drawflow .workflow-node-card--flow', allow_interaction: true}
+              - *close_editor
+            tooltip_highlight_id: condition-node
+            advance_highlight_id: condition-node
+            before: []
+            after: []
+
+        - sequence: 11
+          key: check-completed-status
+          name: Route completed to-dos through True
+          size: medium
+          text: >-
+            <p>Use these values to check the to-do’s status. Once you see
+            <strong>All changes saved</strong>, close the node editor.</p>
+            <ul class="list-disc pl-5">
+              <li><strong>Field</strong> <code>input.instance.status</code></li>
+              <li><strong>Operator</strong> <strong>Equals</strong></li>
+              <li><strong>Value</strong> <code>completed</code></li>
+            </ul>
+            <p><strong>True</strong> receives every save with a Completed
+            status, including later edits to a completed to-do.</p>
+          show_as_tooltip: true
+          advance_mode: click
+          advance_delay_ms: 250
+          hide_next_button: true
+          interaction:
+            highlights:
+              - {id: field, label: Field, selector: '[data-node-sub-type="IF_CONDITION"] input[name="field"]', allow_interaction: true}
+              - {id: operator, label: Operator, selector: '[data-node-sub-type="IF_CONDITION"] select[name="operator"]', allow_interaction: true}
+              - {id: value, label: Value, selector: '[data-node-sub-type="IF_CONDITION"] input[name="value"]', allow_interaction: true}
+              - *close_editor
+            tooltip_highlight_id: close-editor
+            advance_highlight_id: close-editor
+            before:
+              - {kind: wait, highlight_id: field}
+            after: []
+
+        - sequence: 12
+          key: add-message-action
+          name: Add the notification action
+          text: >-
+            <p>Choose <strong>Send User Message</strong> to deliver an
+            in-app notification to a BloomERP user.</p>
+          show_as_tooltip: true
+          advance_mode: click
+          advance_delay_ms: 250
+          hide_next_button: true
+          interaction:
+            highlights:
+              - {id: message-action, label: Send User Message, selector: '#node-drawer [data-workflow-node-item][data-node-subtype-id="SEND_USER_MESSAGE"]', allow_interaction: true}
+            tooltip_highlight_id: message-action
+            advance_highlight_id: message-action
+            before:
+              - *open_drawer
+              - {kind: fill, selector: '#node-drawer [data-workflow-node-search]', value: Send User Message}
+              - {kind: wait, highlight_id: message-action}
+            after: []
+
+        - sequence: 13
+          key: connect-message
+          name: Connect the True branch
+          text: >-
+            <p>Move the action to an open part of the canvas. Use
+            <strong>Zoom out</strong> if you need more room. Drag from the
+            condition’s <strong>True</strong> output to the action’s input.
+            Leave <strong>False</strong> unconnected so those updates stop here.</p>
+          show_as_tooltip: true
+          interaction:
+            highlights:
+              - *canvas_anchor
+              - *canvas
+              - *zoom_out
+              - {id: true-output, label: True output, selector: '#drawflow .drawflow-node:has(.workflow-node-card--flow) [data-workflow-port-id="true"]', allow_interaction: true}
+              - {id: action-input, label: Message action input, selector: '#drawflow .drawflow-node:has(.workflow-node-card--action) .inputs .input', allow_interaction: true}
+            tooltip_highlight_id: builder
+            before: []
+            after: []
+
+        - sequence: 14
+          key: send-requester-message
+          name: Use the to-do’s requester and title
+          size: medium
+          text: |
+            <p>Double-click <strong>Send User Message</strong> and select
+            <strong>JSON</strong>. Replace the editor contents with the
+            following configuration, then wait for the changes to save.</p>
+            <pre class="overflow-x-auto"><code>{
+              "users": ["{{ input.instance.requested_by_id }}"],
+              "message": "Your to-do {{ input.instance.title }} was completed.",
+              "message_type": "success"
+            }</code></pre>
+            <p>BloomERP fills in the recipient and title from the to-do at
+            runtime. Close the editor and select <strong>Next</strong> to
+            open Todos.</p>
+          show_as_tooltip: true
+          interaction:
+            highlights:
+              - {id: message-node, label: Message action, selector: '#drawflow .workflow-node-card--action', allow_interaction: true}
+              - {id: json, label: JSON editor tab, selector: '[data-node-sub-type="SEND_USER_MESSAGE"] [data-workflow-config-edit-mode="json"]', allow_interaction: true}
+              - {id: parameters, label: JSON configuration, selector: '[data-node-sub-type="SEND_USER_MESSAGE"] [bloomerp-component="code-editor-widget"]', allow_interaction: true}
+              - {id: autosave, label: Autosave status, selector: '[data-node-sub-type="SEND_USER_MESSAGE"] [data-workflow-node-config-status]', allow_interaction: false}
+              - *close_editor
+            tooltip_highlight_id: autosave
+            before: []
+            after: []
+
+        - sequence: 15
+          key: try-completing-todo
+          name: Complete a test to-do
+          destination_route: todos_model
+          include_backdrop: false
+          show_as_tooltip: true
+          advance_mode: navigation
+          advance_url_pattern: /inbox/
+          hide_next_button: true
+          text: >-
+            <p>Create or open a test to-do that is still in progress. Set
+            <strong>Requested By</strong> to yourself. Change
+            <strong>Status</strong> to <strong>Completed</strong> and save.</p>
+            <p>Open <strong>Inbox</strong> to check the result.</p>
+          interaction:
+            highlights:
+              - {id: todos, label: Todos toolbar, selector: '#main-content [bloomerp-component="dataview-action-list"]:not([hidden])', allow_interaction: true}
+              - {id: inbox, label: Inbox, selector: '#inbox-btn', allow_interaction: true}
+            tooltip_highlight_id: todos
+            before: []
+            after: []
+
+        - sequence: 16
+          key: verify-notification
+          name: Check your Inbox
+          destination_route: inbox
+          include_backdrop: false
+          text: >-
+            <p>Choose <strong>Notifications</strong> in the folder menu.
+            Look for a <strong>Success</strong> notification with your test
+            to-do’s title.</p>
+            <p>Use the workflow’s <strong>Runs</strong> tab whenever you want
+            to see which nodes ran and inspect what they received.</p>
+          interaction:
+            highlights:
+              - {id: folders, label: Inbox folder picker, selector: '#select-folder-dropdown button[aria-haspopup="true"]', allow_interaction: true}
+            before: []
+            after: []

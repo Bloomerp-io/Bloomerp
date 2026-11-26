@@ -1,3 +1,4 @@
+import { requestContextHeaders } from "../../utils/requestContext";
 import BaseComponent from "../BaseComponent";
 import { getSdk } from "../../sdk/getSdk";
 import { t } from "../../utils/i18n";
@@ -10,7 +11,6 @@ export interface AvailabilitySelection {
     endTime: string;
     endDate: string;
     allDay: boolean;
-    token?: string;
 }
 
 interface AvailabilityUser {
@@ -55,8 +55,8 @@ export default class CalendarAvailability extends BaseComponent {
             const result = await getSdk().client.request<{ users: AvailabilityUser[] }>(this.element.dataset.url!, {
                 query: {
                     day: this.selection!.day, timezone: this.selection!.timezone, users,
-                    ...(this.selection!.token ? { _permission_token: this.selection!.token } : {}),
                 }, signal: controller.signal,
+                headers: requestContextHeaders(this.element, this.element.dataset.url!),
             });
             if (controller.signal.aborted) return;
             this.render(pane, result.users);
@@ -80,16 +80,17 @@ export default class CalendarAvailability extends BaseComponent {
             return;
         }
         const table = document.createElement("table");
-        table.className = "w-full table-fixed border-collapse text-xs";
+        table.className = "table table-sm table-fixed";
         const header = table.createTHead().insertRow();
         const timeHeading = document.createElement("th");
-        timeHeading.className = "w-14";
+        timeHeading.scope = "col";
+        timeHeading.className = "sticky top-0 w-14 bg-white";
         timeHeading.textContent = t("Time");
         header.append(timeHeading);
         for (const user of users) {
             const cell = document.createElement("th");
             cell.scope = "col";
-            cell.className = "sticky top-0 border-b border-gray-200 bg-white p-2 font-medium";
+            cell.className = "sticky top-0 bg-white p-2";
             cell.textContent = user.label;
             cell.title = user.available ? user.label : t("Availability unavailable");
             header.append(cell);
@@ -101,6 +102,7 @@ export default class CalendarAvailability extends BaseComponent {
             const clock = `${hour}:${minute}`;
             const row = body.insertRow();
             const time = row.insertCell();
+            time.className = "p-0";
             const button = document.createElement("button");
             button.type = "button";
             button.dataset.availabilityTime = clock;
@@ -114,7 +116,7 @@ export default class CalendarAvailability extends BaseComponent {
             for (const user of users) {
                 const cell = row.insertCell();
                 const busy = user.busy.some(this.overlaps.bind(this, slot));
-                cell.className = "border border-gray-100 " + (!user.available ? "bg-gray-100" : busy ? "bg-primary-100" : "bg-white");
+                cell.className = "border border-gray-100 p-0 " + (!user.available ? "bg-gray-100" : busy ? "bg-primary-100" : "bg-white");
                 cell.textContent = !user.available ? "?" : busy ? t("Busy") : "";
                 cell.title = !user.available ? t("Availability unavailable") : busy ? t("Busy") : t("No visible conflicts");
             }

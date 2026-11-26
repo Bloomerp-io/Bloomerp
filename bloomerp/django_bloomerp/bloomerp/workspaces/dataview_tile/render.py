@@ -1,13 +1,23 @@
 import json
 from copy import copy
+from datetime import timedelta
 
-from django.db.models import ObjectDoesNotExist
 from django.http import HttpRequest
+from django.utils import timezone
 
 from bloomerp.components.objects.dataviews.dataview import dataview
-from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.filters.parser import deserialize_filters
 from bloomerp.filters.resolver import FilterFieldResolver, filters_for_tile
+from bloomerp.models.users.user_list_view_preference import UserListViewPreference
+from bloomerp.services.preference_services import PreferenceManager
+from bloomerp.tokens import (
+    REQUEST_TOKEN_QUERY_KEYS,
+    DataviewToken,
+    RequestToken,
+    issue_token,
+    request_query_params,
+)
+from bloomerp.utils.models import get_model_and_content_type_or_404
 from bloomerp.workspaces.base import BaseTileRenderer
 from bloomerp.workspaces.dataview_tile.model import DataViewTileConfig
 
@@ -19,18 +29,20 @@ class DataViewTileRenderer(BaseTileRenderer):
         if config.content_type_id is None:
             return ""
 
+        model, content_type = get_model_and_content_type_or_404(config.content_type_id)
         preference = None
         if config.list_view_preference_id is not None:
-            try:
-                preference = UserListViewPreference.objects.get(
-                    id=config.list_view_preference_id
-                )
-            except ObjectDoesNotExist:
-                pass
+            preference = UserListViewPreference.objects.filter(
+                pk=config.list_view_preference_id, content_type=content_type,
+            ).first()
             if preference is not None:
                 preference = preference.effective_preference
+        if preference is None:
+            preference = PreferenceManager(request.user).get_or_create_selected(
+                UserListViewPreference, {"content_type_id": content_type.pk},
+            )
 
-        get_params = request.GET.copy()
+        get_params = request_query_params(request)
         if "filter" in get_params:
             resolver = None
             if get_params.get("workspace_id"):
@@ -40,7 +52,7 @@ class DataViewTileRenderer(BaseTileRenderer):
             get_params["filter"] = json.dumps([group.model_dump() for group in filters])
 
         for key, value in config.initial_query_params.items():
-            if key in get_params or value is None:
+            if key in REQUEST_TOKEN_QUERY_KEYS or key in get_params or value is None:
                 continue
             if isinstance(value, list):
                 get_params.setlist(key, [str(item) for item in value])
@@ -50,13 +62,19 @@ class DataViewTileRenderer(BaseTileRenderer):
         for key in ["tile_id", "colspan", "max_cols", "workspace_id", "config"]:
             get_params.pop(key, None)
 
+        expiry = timezone.now() + timedelta(days=1)
+        layout = DataviewToken(
+            model=model,
+            user=request.user,
+            expiry=expiry,
+            preference_id=preference.pk,
+            dataview_actions=config.actions,
+        )
         request = copy(request)
         request.GET = get_params
+        issue_token(RequestToken(
+            expiry=expiry,
+            dataviews={model: layout},
+        ), request, activate=True)
 
-        
-        return dataview(
-            request,
-            content_type_id=config.content_type_id,
-            preference=preference,
-            actions=config.actions,
-        ).content.decode("utf-8")
+        return dataview(request, content_type_id=content_type.pk).content.decode("utf-8")

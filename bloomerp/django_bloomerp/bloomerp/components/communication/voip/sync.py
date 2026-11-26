@@ -8,7 +8,7 @@ from django.views.decorators.http import require_POST
 from bloomerp.router import router
 from bloomerp.models.communication.voip import VoIPConnection
 from bloomerp.communication.builtins.voip.actions import synchronize_numbers
-
+# SHOULD_API
 
 @router.register(
     path="components/communication/voip/<uuid:connection_id>/sync/",

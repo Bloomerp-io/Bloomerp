@@ -5,13 +5,14 @@
 
 
 <aside id="sidebar"
-    class="fixed left-0 top-0 h-screen w-64 transform -translate-x-full transition-transform duration-300 ease-in-out z-[70] overflow-visible bg-base dark:bg-zinc-950"
-    bloomerp-component="sidebar">
+    class="group/workspace-sidebar fixed inset-y-0 left-0 w-64 transform -translate-x-full transition-transform duration-250 ease-out motion-reduce:transition-none z-[70] overflow-visible bg-base dark:bg-zinc-950 data-[preview-layout]:top-[var(--sidebar-preview-top,0px)]"
+    bloomerp-component="sidebar" inert>
     <div class="px-4 pt-2 pb-6 flex flex-col h-full overflow-visible">
-        <div class="flex items-center justify-between">
+        <div data-sidebar-brand class="flex shrink-0 items-center justify-between lg:min-h-[var(--sidebar-brand-height,0px)] lg:group-data-[preview-layout]/workspace-sidebar:hidden">
             <a hx-get="{% url "bloomerp_home_view" %}" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true" hx-animation="dot-dot-dot"
                 class="flex items-center hover:cursor-pointer h-full overflow-hidden ">
-                <span class="hidden md:block w-24 mb-1  overflow-hidden">
+                {# Exclude the wordmark's transparent bottom padding from its centered box. #}
+                <span class="hidden aspect-[32/9] w-24 overflow-hidden md:block">
                     <img src="{% static 'bloomerp/img/bloomerp-background-trans.png' %}"
                         class="w-full origin-center dark:hidden">
                     <img src="{% static 'bloomerp/img/bloomerp-background-dark.png' %}"
@@ -20,12 +21,10 @@
                 <img src="{% static 'bloomerp/img/bloomerp-touch-icon.png' %}" class="md:hidden" width="30" height="30">
             </a>
 
-            <c-ui.shortcut_tooltip shortcut="mod+shift+b" action="click" position="left" text="Toggle sidebar    ">
-                <button id="sidebar-toggle" type="button"
-                    class="hover:cursor-pointer flex h-10 w-10 items-center justify-center">
-                    <c-icons.lines_horizontal size="24" />
-                </button>
-            </c-ui.shortcut_tooltip>
+            <button type="button" data-sidebar-close aria-label="{% translate 'Hide sidebar' %}"
+                class="flex h-10 w-10 cursor-pointer items-center justify-center rounded-lg text-secondary hover:bg-primary-50 lg:hidden">
+                <span aria-hidden="true"><c-icons.close size="20" class="block" /></span>
+            </button>
         </div>
         <!-- End Logo -->
 
@@ -83,113 +82,39 @@
         <hr class="text-gray-300 my-4">
 
         
-        <div class="h-full">
-            <div class="flex justify-between">
-                <span class="text-gray-500 text-sm px-2">
-                    {% blocktrans %}Sidebar{% endblocktrans %}
-                </span>
-                <div>
-                    <c-ui.dropdown.body
-                        trigger_icon_class="fa-solid fa-ellipsis"
-                        trigger_button_class="ml-auto p-1 border-none text-xs rounded-md bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700 hover:cursor-pointer"
-                        size="sm" 
-                        direction="down"
-                        >
-
-                        <c-ui.dropdown.submenu 
-                            text="Select Sidebar" 
-                            icon="fa fa-bars" 
-                            id="select-sidebar-btn"
-                            width="w-80"
-                            >
-                            <div
-                                hx-get="{% url 'components_select_preference' model='Sidebar' %}"
-                                hx-trigger="click from:#select-sidebar-btn"
-                                hx-target="this"
-                                hx-swap="innerHTML"
-                                class="min-w-48"
-                            >
-                                <div class="px-4 py-2 text-xs text-gray-500">Loading sidebars...</div>
-                            </div>
-                        </c-ui.dropdown.submenu>
-
-                        {% can_manage_preference_object request.user sidebar as can_manage %}
-
-                        {% if can_manage %}
-                        <c-ui.dropdown.submenu
-                            id="create-folder-btn" 
-                            text="Create Folder" 
-                            icon="fa fa-folder"
-                        >
-                            <div
-                                id="sidebar-create-folder-panel"
-                                hx-get="{% url 'components_workspaces_sidebar_create_folder' sidebar_id=sidebar.id %}"
-                                hx-trigger="click from:#create-folder-btn"
-                                hx-target="this"
-                                hx-swap="innerHTML"
-                                
-                            >
-                                Loading form...
-                            </div>
-                        </c-ui.dropdown.submenu>
-
-                        <c-ui.dropdown.submenu 
-                            text="Add Link"
-                            icon="fa-solid fa-link"
-                            id="add-link-btn"
-                        >
-                        <div
-                                id="sidebar-add-link-panel"
-                                hx-get="{% url 'components_workspaces_sidebar_create_link' sidebar_id=sidebar.id %}"
-                                hx-trigger="click from:#add-link-btn"
-                                hx-target="this"
-                                hx-swap="innerHTML"
-                                
-                            >
-                            Loading form...
-                        </div>
-
-                        </c-ui.dropdown.submenu>
-                        {% endif %}
-                    </c-ui.dropdown.body>
-
-                </div>
-            </div>
-
-            <div class="min-h-0 flex-1 overflow-y-auto overflow-x-visible">
-                {% include "components/ui/sidebar/content.html" with sidebar=sidebar can_manage=can_manage %}
-            </div>
-        </div>
-                
+        {% include "components/ui/sidebar/preferences.html" %}
 
         <!-- Profile -->
         <div class="mt-auto pt-3">
             {% translate "Account Settings" as account_settings_label %}
             {% translate "Theme" as theme_label %}
             {% translate "Languages" as languages_label %}
+            {% translate "Tutorials" as tutorials_label %}
+            {% url 'misc_module_my_tutorials' as my_tutorials_url %}
             {% translate "Sign Out" as sign_out_label %}
             <nav class="ml-auto">
                 <ul class="flex items-center space-x-4 mb-0">
                     <li class="relative pr-3">
                         <c-ui.dropdown.body
                             trigger_text="{% avatar object=request.user class_name='rounded-full w-8 h-8' size=32 %}<span class='hidden md:block ml-2 text-sm font-medium text-gray-700'>{{request.user.first_name}} {{request.user.last_name}}</span>"
+                            trigger_button_id="sidebar-account-trigger"
                             position="left" size="md" direction="up" :icon="False">
                             <div class="px-4 py-3 border-b border-gray-200">
                                 <h6 class="text-sm font-semibold text-primary-800">{{request.user.username}}</h6>
                             </div>
 
-                            <c-ui.dropdown.item text="{{ account_settings_label }}" icon="bi bi-gear"
+                            <c-ui.dropdown.item text="{{ account_settings_label }}" icon="fa-solid fa-gear"
                                 hx_get="{% url 'users_my_profile_overview' %}" hx_target="#main-content"
                                 hx_swap="innerHTML" hx_push_url="true" />
 
-                            <c-ui.dropdown.submenu text="{{ theme_label }}" icon="bi bi-circle-half" direction="right">
+                            <c-ui.dropdown.submenu text="{{ theme_label }}" icon="fa-solid fa-circle-half-stroke" direction="right">
                                 <c-app.theme_selector />
                             </c-ui.dropdown.submenu>
                             
                             {% get_current_language as current_language %}
                             {% get_bloomerp_languages as available_languages %}
                             {% get_language_info_list for available_languages as languages %}
-                            <c-ui.dropdown.submenu text="{{ languages_label }}" icon="bi bi-translate" direction="right">
+                            <c-ui.dropdown.submenu text="{{ languages_label }}" icon="fa-solid fa-language" direction="right">
                                 {% for language in languages %}
                                     <form action="{% url 'set_language' %}" method="post" data-language-switch>
                                         {% csrf_token %}
@@ -210,9 +135,15 @@
                                 {% endfor %}
                             </c-ui.dropdown.submenu>
 
+                            <c-ui.dropdown.item text="{{ tutorials_label }}" icon="fa-solid fa-graduation-cap"
+                                href="{{ my_tutorials_url }}" hx_get="{{ my_tutorials_url }}" hx_target="#main-content"
+                                hx_swap="innerHTML" hx_push_url="true" close_menu=True />
+
+                            <c-app.sidebar.view_as_user />
+
                             <c-ui.dropdown.item type="divider" />
 
-                            <c-ui.dropdown.item text="{{ sign_out_label }}" icon="bi bi-box-arrow-right" danger=True
+                            <c-ui.dropdown.item text="{{ sign_out_label }}" icon="fa-solid fa-right-from-bracket" danger=True
                                 onclick="document.getElementById('logoutForm').submit()" />
 
                             <!-- Hidden logout form -->

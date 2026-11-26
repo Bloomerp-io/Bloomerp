@@ -1,10 +1,12 @@
 import htmx from 'htmx.org';
+import { $getRoot } from 'lexical';
 import FloatingPanel from '../FloatingPanel';
 import ArtifactPicker, { type ArtifactChoice } from './ArtifactPicker';
 import { getComponent } from '../BaseComponent';
-import BloomerpAgent, { getBrowserAgent, type ConversationApprovalRules } from '../../utils/agent';
+import { BloomerpTextEditor } from '../text_editor/BloomerpTextEditor';
+import BloomerpAgent, { getBrowserAgent, type ConversationApprovalRules, type EditorAttachment } from '../../utils/agent';
 import { parseAgentEditorState } from '../../utils/agentEditorState';
-import { renderAgentMessage } from '../../utils/agentMarkdown';
+import { formatAgentPrompt, renderAgentMessage } from '../../utils/agentMarkdown';
 import { updateAgentProgress, renderAgentProgress, type AgentProgressState } from '../../utils/agentProgress';
 import '../../../styles/agentMarkdown.css';
 
@@ -21,6 +23,7 @@ type ConversationSnapshot = {
 export default class AgentChat extends FloatingPanel {
     private attachments: ArtifactChoice[] = [];
     private attachmentBusy = false;
+    private editorUploads = 0;
     private approvalRules: ConversationApprovalRules = {default: 'writes', tools: {}};
     private approvalRequestId: string | null = null;
     private selectedAgentId: string | null = null;
@@ -29,7 +32,8 @@ export default class AgentChat extends FloatingPanel {
     private agentSelectionRequired: boolean = false;
     private availableAgents: {id: string; name: string}[] = [];
     private lifecycle: AbortController | null = null;
-    private input: HTMLTextAreaElement | null = null;
+    private composer: BloomerpTextEditor | null = null;
+    private input: HTMLElement | null = null;
     private messages: HTMLElement | null = null;
 
     private bridge: BloomerpAgent | null = null;
@@ -69,7 +73,17 @@ export default class AgentChat extends FloatingPanel {
         if (!this.element) return;
         this.lifecycle?.abort();
         this.lifecycle = new AbortController();
-        this.input = this.element.querySelector('[data-agent-input]');
+        const host = this.element.querySelector<HTMLElement>('[data-agent-composer] [bloomerp-component]');
+        const editor = host ? getComponent(host) : null;
+        this.composer = editor instanceof BloomerpTextEditor ? editor : null;
+        this.input = this.composer?.editor?.getRootElement() ?? null;
+        if (this.input) {
+            this.input.dataset.agentInput = '';
+            this.input.dataset.floatingPanelFocus = '';
+            this.input.setAttribute('role', 'textbox');
+            this.input.setAttribute('aria-multiline', 'true');
+            this.input.setAttribute('aria-label', host?.parentElement?.dataset.editorLabel ?? '');
+        }
         this.messages = this.element.querySelector('[data-agent-messages]');
         const signal = this.lifecycle.signal;
         this.initializeFloatingPanel(signal);
@@ -77,10 +91,12 @@ export default class AgentChat extends FloatingPanel {
         this.element.addEventListener('submit', this.onSubmit, { signal });
         this.element.addEventListener('agent:attachments-changed', this.onAttachments, { signal });
         this.element.addEventListener('input', this.onInput, { signal });
+        this.element.addEventListener('bloomerp:references-changed', this.onEditorChange, { signal });
+        this.element.addEventListener('bloomerp:file-upload-state', this.onEditorUpload, { signal });
         this.element.addEventListener('change', this.onHistoryFilter, { signal });
         this.element.addEventListener('change', this.onAgentChanged, { signal });
         this.element.addEventListener('change', this.onApprovalChanged, { signal });
-        this.element.addEventListener('keydown', this.onKeyDown, { signal });
+        this.element.addEventListener('keydown', this.onKeyDown, { signal, capture: true });
         this.bridge = getBrowserAgent();
         this.bridge?.addEventListener('connected', this.onConnectionChanged, { signal });
         this.bridge?.addEventListener('disconnected', this.onConnectionChanged, { signal });
@@ -92,17 +108,20 @@ export default class AgentChat extends FloatingPanel {
         const restored = this.restoreEditorState();
         if (this.isPage) {
             this.conversationId = this.element.dataset.initialConversation || null;
-            if (this.input) this.input.value = this.element.dataset.initialQuery || '';
+            if (!restored) this.restoreDraft(this.element.dataset.initialQuery || '');
             this.historyVisible = false;
         } else if (!restored) this.restoreActiveRun();
         this.onConnectionChanged();
     }
 
-    /** Preserve the selected AI conversation and unsent prompt in the dedicated view URL. */
+    /** Transfer a panel draft through tab-local state when opening fullscreen. */
     protected override getFullscreenUrl(): URL {
         const url = super.getFullscreenUrl();
         if (this.conversationId) url.searchParams.set('conversation', this.conversationId);
-        if (this.input?.value) url.searchParams.set('query', this.input.value);
+        if (!this.isPage) {
+            this.saveEditorState();
+            url.searchParams.set('draft', 'panel');
+        }
         return url;
     }
 
@@ -311,7 +330,7 @@ export default class AgentChat extends FloatingPanel {
             this.messages?.replaceChildren();
             this.showHistory(false);
             this.showError('');
-            if (this.input && !preserveComposer) this.input.value = '';
+            if (!preserveComposer) this.composer?.setValue('');
             const welcome = this.element?.querySelector<HTMLElement>('[data-agent-welcome]');
             if (welcome) welcome.hidden = true;
         }
@@ -373,8 +392,10 @@ export default class AgentChat extends FloatingPanel {
         this.updateConversationTitle(snapshot.conversation.title);
         for (const message of snapshot.messages) {
             if (this.messageRows.has(message.id)) continue;
-            const content = message.content.filter(this.isTextBlock).map(this.blockText).join('\n\n');
-            const text = content ? this.appendMessage(content, message.role === 'user') : null;
+            const blocks = message.content.filter(this.isTextBlock);
+            const content = blocks.map(this.blockText).join('\n\n');
+            const user = message.role === 'user';
+            const text = content ? this.appendMessage(content, user, !user || blocks[0]?.format === 'markdown') : null;
             for (const artifact of message.artifacts ?? []) {
                 this.renderArtifact(artifact.id, message.created_at);
             }
@@ -488,12 +509,28 @@ export default class AgentChat extends FloatingPanel {
         return `bloomerp.agent.active.${this.element?.getAttribute('data-agent-user') ?? ''}${this.isPage ? '.page' : ''}`;
     }
 
+    /** Read the editor's text without counting HTML markup as a draft. */
+    private draftText(): string {
+        /** Extract the plain text of the current Lexical document. */
+        function read(): string { return $getRoot().getTextContent(); }
+        return this.composer?.editor?.getEditorState().read(read) ?? '';
+    }
+
+    /** Restore rich HTML or turn a legacy plain draft into literal editor text. */
+    private restoreDraft(draft: string, html?: string): void {
+        if (html !== undefined) { this.composer?.setValue(html); return; }
+        const paragraph = document.createElement('p');
+        paragraph.textContent = draft;
+        this.composer?.setValue(`<p>${paragraph.innerHTML.replace(/\r?\n/g, '<br>')}</p>`);
+    }
+
     /** Save the selected chat and unsent editor state independently of run completion. */
     private saveEditorState = (): void => {
         try {
             sessionStorage.setItem(`${this.storageKey()}.editor`, JSON.stringify({
                 conversationId: this.conversationId,
-                draft: this.input?.value ?? '',
+                draft: this.draftText(),
+                draftHtml: this.composer?.getValue() ?? '',
                 attachments: this.attachments,
                 open: this.panel ? !this.panel.hidden : false,
                 historyVisible: this.historyVisible,
@@ -502,26 +539,24 @@ export default class AgentChat extends FloatingPanel {
         this.syncPageUrl();
     };
 
-    /** Restore editor metadata, accepting page attachments only when they match URL state. */
+    /** Restore the selected chat's draft and attachments from tab-local storage. */
     private restoreEditorState(): boolean {
         try {
-            const keys = [this.storageKey()];
-            if (this.isPage) keys.push(`bloomerp.agent.active.${this.element.dataset.agentUser}`);
-            for (const key of keys) {
-                const saved = parseAgentEditorState(sessionStorage.getItem(`${key}.editor`));
-                if (!saved) continue;
-                if (this.isPage && (saved.conversationId !== (this.element.dataset.initialConversation || null)
-                    || saved.draft !== (this.element.dataset.initialQuery || ''))) continue;
-                this.conversationId = saved.conversationId;
-                if (this.input) this.input.value = saved.draft;
-                this.attachments = saved.attachments;
-                const form = this.element?.querySelector<HTMLElement>('[data-artifact-search-url]');
-                const picker = form ? getComponent(form) : null;
-                if (picker instanceof ArtifactPicker) picker.restoreSelection(saved.attachments);
-                this.historyVisible = this.isPage ? false : saved.historyVisible;
-                return true;
-            }
-            return false;
+            const key = this.isPage && this.element.dataset.restorePanelDraft === 'panel'
+                ? `bloomerp.agent.active.${this.element.dataset.agentUser}` : this.storageKey();
+            const saved = parseAgentEditorState(sessionStorage.getItem(`${key}.editor`));
+            if (!saved) return false;
+            const initialQuery = this.element.dataset.initialQuery;
+            if (this.isPage && (saved.conversationId !== (this.element.dataset.initialConversation || null)
+                || (initialQuery && saved.draft !== initialQuery))) return false;
+            this.conversationId = saved.conversationId;
+            this.restoreDraft(saved.draft, saved.draftHtml);
+            this.attachments = saved.attachments;
+            const form = this.element.querySelector<HTMLElement>('[data-artifact-search-url]');
+            const picker = form ? getComponent(form) : null;
+            if (picker instanceof ArtifactPicker) picker.restoreSelection(saved.attachments);
+            this.historyVisible = this.isPage ? false : saved.historyVisible;
+            return true;
         } catch { return false; }
     }
 
@@ -595,7 +630,7 @@ export default class AgentChat extends FloatingPanel {
         this.messages?.replaceChildren();
         const welcome = this.element?.querySelector<HTMLElement>('[data-agent-welcome]');
         if (welcome) welcome.hidden = false;
-        if (this.input) this.input.value = '';
+        this.composer?.setValue('');
         this.setStatus(this.bridge?.connected ? 'ready' : 'disconnected');
         this.syncComposer();
         this.input?.focus();
@@ -640,15 +675,17 @@ export default class AgentChat extends FloatingPanel {
             if (title) this.editConversation({title});
             return;
         }
-        this.submit(this.input?.value.trim() ?? '');
+        const content = this.composer ? formatAgentPrompt(this.composer.getValue(), this.element.ownerDocument) : '';
+        this.submit(content, 'markdown');
     };
 
     /** Send one correlated message and retain the draft if transport fails. */
-    private submit(content: string): void {
-        if (!this.selectedAgentId || (!content && !this.attachments.length) || this.attachmentBusy || this.clientMessageId || this.selectionRequest || this.conversationArchived || !this.bridge?.connected) return;
+    private submit(content: string, format: 'plain' | 'markdown' = 'plain'): void {
+        const attachments = [...this.attachments.map(this.attachmentToken), ...this.editorAttachments()];
+        if (!this.selectedAgentId || (!content && !attachments.length) || this.attachmentBusy || this.editorUploads || this.clientMessageId || this.selectionRequest || this.conversationArchived || !this.bridge?.connected) return;
         const messageId = crypto.randomUUID();
         try {
-            this.bridge.sendChat(content, this.conversationId, messageId, this.attachments.map(this.attachmentToken), this.selectedAgentId, this.conversationId ? undefined : this.approvalRules);
+            this.bridge.sendChat(content, this.conversationId, messageId, attachments, this.selectedAgentId, this.conversationId ? undefined : this.approvalRules, format);
         } catch {
             this.setStatus('disconnected');
             return;
@@ -667,12 +704,11 @@ export default class AgentChat extends FloatingPanel {
         this.runId = null;
         this.cancellationRequested = false;
         if (!this.conversationId) this.conversationTitle = content.slice(0, 255) || this.attachments[0]?.title || '';
-        if (content) this.appendMessage(content, true);
+        if (content) this.appendMessage(content, true, format === 'markdown');
         this.response = this.appendMessage('', false);
         this.progress = {sequence: 0, key: 'waiting', toolTitle: ''};
         this.displayProgress();
         this.showThinking();
-        if (this.input) this.input.value = '';
         this.setStatus('responding');
         this.watchResponse();
         this.syncComposer();
@@ -785,7 +821,13 @@ export default class AgentChat extends FloatingPanel {
         this.watchResponse();
         if (message.status === 'accepted' && typeof message.run_id === 'string'
             && typeof message.conversation_id === 'string') {
-            this.clearAttachments();
+            const firstAcceptance = !this.runId;
+            this.runId = message.run_id;
+            this.conversationId = message.conversation_id;
+            if (firstAcceptance) {
+                this.composer?.setValue('');
+                this.clearAttachments();
+            }
             for (const id of Array.isArray(message.artifact_ids) ? message.artifact_ids : []) {
                 if (typeof id === 'string') {
                     this.renderArtifact(id, new Date().toISOString());
@@ -794,8 +836,6 @@ export default class AgentChat extends FloatingPanel {
                     if (card && row?.parentElement === this.messages) this.messages?.insertBefore(card, row);
                 }
             }
-            this.runId = message.run_id;
-            this.conversationId = message.conversation_id;
             this.updateConversationTitle(this.conversationTitle);
             this.saveActiveRun();
             if (this.cancellationRequested) this.sendCancellation();
@@ -1121,24 +1161,45 @@ export default class AgentChat extends FloatingPanel {
         if (removed && this.element && removed.contains(this.element)) this.destroy();
     };
 
-    /** Update the send button and composer size after text changes. */
+    /** Debounce native input in the conversation-history search. */
     private onInput = (event: Event): void => {
         if (event.target instanceof Element && event.target.matches('[data-agent-search]')) {
             if (this.historySearchTimer !== null) window.clearTimeout(this.historySearchTimer);
             this.historySearchTimer = window.setTimeout(this.refreshHistory, 250);
-            return;
         }
+    };
+
+    /** Synchronize after Lexical commits a composer change. */
+    private onEditorChange = (event: Event): void => {
+        if (event.target === this.composer?.element) this.syncComposer();
+    };
+
+    /** Keep Send disabled until the shared editor finishes its image uploads. */
+    private onEditorUpload = (event: Event): void => {
+        if (event.target !== this.composer?.element) return;
+        this.editorUploads = Math.max(0, this.editorUploads + (event as CustomEvent<{delta: number}>).detail.delta);
         this.syncComposer();
     };
+
+    /** Read distinct object and image identities from the current editor state. */
+    private editorAttachments(): EditorAttachment[] {
+        const references = new Map<string, EditorAttachment>();
+        for (const {kind, target_id, content_type_id} of this.composer?.getReferences() ?? []) {
+            if (kind !== 'object' && kind !== 'file') continue;
+            references.set(`${kind}:${content_type_id ?? ''}:${target_id}`, {kind, target_id, content_type_id});
+        }
+        return [...references.values()];
+    }
 
     /** Debounce conversation-title searches without delaying composer input. */
     private refreshHistory = (): void => { this.loadHistory(); };
 
     /** Send on Enter while preserving Shift+Enter and input-method composition. */
     private onKeyDown = (event: KeyboardEvent): void => {
-        if (event.target === this.input && event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+        if (event.target === this.input && event.key === 'Enter' && !event.shiftKey && !event.isComposing && !event.defaultPrevented) {
             event.preventDefault();
-            this.element?.querySelector<HTMLFormElement>('[data-agent-form]')?.requestSubmit();
+            event.stopPropagation();
+            if (!event.repeat) this.element?.querySelector<HTMLFormElement>('[data-agent-form]')?.requestSubmit();
         }
     };
 
@@ -1158,7 +1219,7 @@ export default class AgentChat extends FloatingPanel {
         this.element?.querySelector('[data-artifact-search-url]')?.dispatchEvent(new CustomEvent('agent:clear-attachments'));
     }
 
-    /** Keep the draft composer height and send availability in sync. */
+    /** Keep draft editing and chat controls in sync with submission state. */
     private syncComposer(): void {
         this.renderApprovalPicker();
         this.saveEditorState();
@@ -1168,7 +1229,7 @@ export default class AgentChat extends FloatingPanel {
         if (form) form.dataset.attachmentsDisabled = String(busy || !!this.selectionRequest || this.conversationArchived);
         for (const button of form?.querySelectorAll<HTMLButtonElement>('[data-artifact-plus], [data-artifact-remove]') ?? []) button.disabled = busy || !!this.selectionRequest || this.conversationArchived;
         if (send) {
-            send.disabled = !this.selectedAgentId || (!this.input?.value.trim() && !this.attachments.length) || this.attachmentBusy || busy || !!this.selectionRequest || this.conversationArchived || !this.bridge?.connected;
+            send.disabled = !this.selectedAgentId || (!this.draftText().trim() && !this.attachments.length && !this.editorAttachments().length) || this.attachmentBusy || !!this.editorUploads || busy || !!this.selectionRequest || this.conversationArchived || !this.bridge?.connected;
             send.hidden = busy;
         }
         const stop = this.element?.querySelector<HTMLButtonElement>('[data-agent-action="stop"]');
@@ -1181,26 +1242,22 @@ export default class AgentChat extends FloatingPanel {
         for (const prompt of this.element?.querySelectorAll<HTMLButtonElement>('[data-agent-prompt]') ?? []) {
             prompt.disabled = busy || !!this.selectionRequest || this.conversationArchived || !this.bridge?.connected;
         }
-        if (this.input) {
-            this.input.disabled = !!this.selectionRequest || this.conversationArchived;
-            this.input.style.height = 'auto';
-            this.input.style.height = `${Math.min(144, Math.max(48, this.input.scrollHeight))}px`;
-        }
+        this.composer?.editor?.setEditable(!this.selectionRequest && !this.conversationArchived && (!busy || !!this.runId));
     }
 
-    /** Append literal user text or sanitized assistant Markdown in a block-capable bubble. */
-    private appendMessage(content: string, user: boolean): HTMLElement | null {
+    /** Append a bubble with the message's stored text format. */
+    private appendMessage(content: string, user: boolean, markdown: boolean = !user): HTMLElement | null {
         if (!this.messages) return null;
         const welcome = this.element?.querySelector<HTMLElement>('[data-agent-welcome]');
         if (welcome) welcome.hidden = true;
         const row = document.createElement('div');
         row.dataset.createdAt = new Date().toISOString();
         row.className = user ? 'flex justify-end' : 'flex';
-        const text = document.createElement(user ? 'p' : 'div');
+        const text = document.createElement('div');
         text.className = user
-            ? 'max-w-[90%] whitespace-pre-wrap break-words rounded-xl bg-primary px-3.5 py-2.5 text-sm leading-6 text-white'
+            ? `max-w-[90%] break-words rounded-xl bg-primary px-3.5 py-2.5 text-sm leading-6 text-white ${markdown ? 'agent-markdown' : 'whitespace-pre-wrap'}`
             : 'agent-markdown min-w-0 w-full break-words text-sm leading-6 text-gray-600 dark:text-zinc-300';
-        renderAgentMessage(text, content, user);
+        renderAgentMessage(text, content, user, markdown);
         row.append(text);
         this.messages.append(row);
         return text;

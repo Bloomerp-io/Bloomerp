@@ -10,12 +10,12 @@ from bloomerp.models.users.user_object_layout_preference import (
     UserObjectLayoutPreference,
 )
 from bloomerp.services.preference_services import PreferenceManager
-from bloomerp.tests.e2e.base import BaseE2ETestCase
+from bloomerp.tests.base import E2EAction, E2ERequestScenario, e2e_test_case
 from bloomerp.tests.e2e.generic.test_crud_mixin import TestCrudE2EMixin
 from bloomerp.utils.models import get_create_view_url
 
 
-class TestOneToManyWidgetE2E(TestCrudE2EMixin, BaseE2ETestCase):
+class TestOneToManyWidgetE2E(TestCrudE2EMixin, e2e_test_case.BloomerpE2ETestCase):
     create_foreign_models = True
     inline_fields = [
         "first_name",
@@ -57,7 +57,50 @@ class TestOneToManyWidgetE2E(TestCrudE2EMixin, BaseE2ETestCase):
         preference.save(update_fields=["layout"])
         self.customer_type = self.CustomerTypeModel.objects.get(name="Retail")
         self.CustomerModel._meta.get_field("age").default = 42
-        self.login_as_admin()
+        self._authenticate_browser(self.admin_user)
+
+    def get_test_scenarios(self) -> list[E2ERequestScenario]:
+        """Cover horizontal scrolling in a detail form with a wide inline table."""
+        country = self.CountryModel.objects.get(name="Belgium")
+        self.create_customer("Ada", "Lovelace", 30, country=country)
+        return [
+            E2ERequestScenario(
+                name="Wide inline table scrolls inside the detail field",
+                user=self.admin_user,
+                url=country.get_absolute_url(),
+                actions=[
+                    E2EAction(
+                        name="Scroll to the last column in a narrow viewport",
+                        execute=self.scroll_wide_table,
+                    ),
+                ],
+            )
+        ]
+
+    def scroll_wide_table(self) -> None:
+        """Reach the row actions without making the parent field overflow."""
+        self.page.set_viewport_size({"width": 480, "height": 900})
+        widget = self.get_widget()
+        expect(widget).to_be_visible()
+        table = widget.get_by_role("table")
+        scroll_offset: int = table.evaluate(
+            """table => {
+                const scroller = table.parentElement;
+                scroller.scrollLeft = scroller.scrollWidth;
+                return scroller.scrollLeft;
+            }"""
+        )
+        self.assertGreater(scroll_offset, 0)
+        row_actions = self.get_rows().first.get_by_role("button", name="Clone row")
+        row_actions.scroll_into_view_if_needed()
+        expect(row_actions).to_be_in_viewport()
+        overflow: int = widget.evaluate(
+            """widget => {
+                const field = widget.closest("[data-layout-item-id]");
+                return field.scrollWidth - field.clientWidth;
+            }"""
+        )
+        self.assertEqual(overflow, 0)
 
     def get_base_url(self) -> str:
         return reverse(get_create_view_url(model=self.CountryModel))
@@ -91,6 +134,100 @@ class TestOneToManyWidgetE2E(TestCrudE2EMixin, BaseE2ETestCase):
         )
         actions.get_by_role("button", name="Column actions").click()
         return actions
+
+    def test_insert_existing_customer(self) -> None:
+        """Exercise the foreign-field picker and persist a pending link on Save."""
+        self.insertion_country = self.CountryModel.objects.get(name="Belgium")
+        other_country = self.CountryModel.objects.get(name="Netherlands")
+        self.create_customer("Already assigned", "Example", 28, country=other_country)
+        self.create_customer("Other available", "Example", 20)
+        self.insertable_customer = self.create_customer("Available customer", "Example", 28)
+        scenario = E2ERequestScenario(
+            name="Insert an existing customer through the dataview",
+            user=self.admin_user,
+            url=self.insertion_country.get_absolute_url(),
+            actions=[
+                E2EAction(name="Stage, discard, and save an existing row", execute=self.verify_existing_insertion),
+            ],
+        )
+        self._run_request_scenario(scenario, scenario.name)
+
+    def test_insert_existing_customer_on_create(self) -> None:
+        """Stage the relation before the new parent has a database row."""
+        self.insertable_customer = self.create_customer("Available customer", "Example", 28)
+        planet = self.PlanetModel.objects.get(name="Earth")
+        scenario = E2ERequestScenario(
+            name="Insert an existing customer when creating a parent",
+            user=self.admin_user,
+            url=f"{self.get_base_url()}?{urlencode({'planet': str(planet.pk)})}",
+            actions=[
+                E2EAction(name="Create the parent and link the customer", execute=self.save_new_parent_with_existing_row),
+            ],
+        )
+        self._run_request_scenario(scenario, scenario.name)
+
+    def save_new_parent_with_existing_row(self) -> None:
+        """Save a new parent and verify that its pending row retained its identity."""
+        self.stage_existing_customer()
+        form = self.get_widget().locator("xpath=ancestor::form[1]")
+        form.locator('[name="name"]').fill("Country from existing row")
+        with self.expect_response_for(self.get_base_url(), method="POST") as response:
+            form.get_by_role("button", name="Save", exact=True).click()
+        self.assertEqual(response.value.status, 302)
+        self.insertable_customer.refresh_from_db()
+        self.assertEqual(self.insertable_customer.country.name, "Country from existing row")
+
+    def stage_existing_customer(self, *, filter_by_age: bool = False) -> Locator:
+        """Select an unassigned customer from the standard foreign-field picker."""
+        self.get_widget().get_by_role("button", name="Insert existing").click()
+        picker = self.page.get_by_role("dialog", name="Insert existing")
+        dataview = picker.locator('[bloomerp-component="foreign-field-dataview"]')
+        available = dataview.get_by_role("cell", name="Available customer", exact=True)
+        assigned = dataview.get_by_role("cell", name="Already assigned", exact=True)
+        expect(available).to_be_visible()
+        expect(assigned).to_have_count(0)
+        if filter_by_age:
+            other = dataview.get_by_role("cell", name="Other available", exact=True)
+            expect(other).to_be_visible()
+            filter_button = dataview.get_by_role("button", name="Filter", exact=True)
+            filter_button.click()
+            editor = dataview.locator('[data-filter-host-editor] [bloomerp-component="unified-filter-container"]')
+            editor.get_by_label("Field", exact=True).select_option(label="Age")
+            editor.get_by_label("Lookup", exact=True).select_option("equals")
+            editor.locator('.filter-value-editor input:not([type="hidden"])').fill("28")
+            editor.get_by_role("button", name="Apply", exact=True).click()
+            expect(available).to_be_visible()
+            expect(other).to_have_count(0)
+            expect(assigned).to_have_count(0)
+            filter_button.click()
+        available.dblclick()
+        expect(picker).to_be_hidden()
+        pending = self.get_widget().locator("[data-one-to-many-pending]")
+        expect(pending).to_contain_text("Available customer")
+        self.insertable_customer.refresh_from_db()
+        self.assertIsNone(self.insertable_customer.country_id)
+        return pending
+
+    def verify_existing_insertion(self) -> None:
+        """Discard a staged link, then link the same record with its values intact."""
+        pending = self.stage_existing_customer(filter_by_age=True)
+        pending.get_by_role("button", name="Remove row").click()
+        expect(pending).to_have_count(0)
+        self.insertable_customer.refresh_from_db()
+        self.assertIsNone(self.insertable_customer.country_id)
+
+        self.stage_existing_customer()
+        with self.expect_response_for(self.insertion_country.get_absolute_url(), method="POST") as response:
+            self.page.get_by_role("button", name="Save", exact=True).click()
+        self.assertEqual(response.value.status, 200)
+        expect(self.get_rows()).to_have_count(1)
+        expect(self.get_rows().first.locator('input[name$="__id"]')).to_have_value(
+            str(self.insertable_customer.pk),
+        )
+        expect(self.get_rows().first.locator('[data-one-to-many-cell="age"] input')).to_have_value("28")
+        self.insertable_customer.refresh_from_db()
+        self.assertEqual(self.insertable_customer.country_id, self.insertion_country.pk)
+        self.assertEqual(self.insertion_country.customers.count(), 1)
 
     # ---------------------------------------
     # Test row Actions

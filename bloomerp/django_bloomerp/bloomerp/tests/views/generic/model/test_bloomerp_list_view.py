@@ -7,6 +7,7 @@ from django.http import HttpResponse
 from django.utils.translation import gettext_lazy
 
 from bloomerp.models.project_management.initiative import Initiative
+from bloomerp.models.users import User
 from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.tests.base import (
     BloomerpModelViewTestCase,
@@ -23,7 +24,14 @@ class TestBloomerpListView(BloomerpModelViewTestCase):
     auto_create_customers = False
 
     def get_test_scenarios(self) -> list[RequestScenario]:
-        """Cover rendered list labels for navigation, plural forms and access."""
+        """Cover rendered list labels, navigation, and permission-denied pages."""
+        staff_denial_validators = [
+            self.contains_text("Access denied"),
+            self.contains_text('id="sidebar"'),
+            self.contains_text('id="sidebar-toggle"'),
+            self.contains_text('id="main-content"'),
+            self.contains_text("Go to home"),
+        ]
         return [
             ModelRequestScenario(
                 name="Full page shows the model plural",
@@ -69,10 +77,46 @@ class TestBloomerpListView(BloomerpModelViewTestCase):
                 expected=ExpectedResult(response_validators=self.has_title("Werkruimten")),
             ),
             ModelRequestScenario(
-                name="List view still requires global view permission",
+                name="A full page denial keeps workspace navigation for staff",
                 model=self.CustomerModel,
                 user=self.normal_user,
-                expected=ExpectedResult(status_code=403),
+                expected=ExpectedResult(status_code=403, response_validators=staff_denial_validators),
+            ),
+            ModelRequestScenario(
+                name="A denial on history restoration keeps workspace navigation for staff",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                headers={"HX-Request": "true", "HX-History-Restore-Request": "true"},
+                expected=ExpectedResult(status_code=403, response_validators=staff_denial_validators),
+            ),
+            ModelRequestScenario(
+                name="A denial on HTMX navigation renders a swappable fragment",
+                model=self.CustomerModel,
+                user=self.normal_user,
+                headers={"HX-Request": "true", "HX-Target": "main-content"},
+                expected=ExpectedResult(
+                    response_validators=[
+                        self.contains_text("Access denied"),
+                        self.does_not_contain_text("<!DOCTYPE html>"),
+                        self.does_not_contain_text('id="sidebar"'),
+                    ],
+                ),
+            ),
+            ModelRequestScenario(
+                name="A non-staff denial has a standalone page with sign-out",
+                model=self.CustomerModel,
+                prepare=self.create_non_staff_user,
+                expected=ExpectedResult(
+                    status_code=403,
+                    response_validators=[
+                        self.contains_text("<!DOCTYPE html>"),
+                        self.contains_text("Staff Access Required"),
+                        self.contains_text('name="csrfmiddlewaretoken"'),
+                        self.contains_text("Sign out"),
+                        self.does_not_contain_text('id="sidebar"'),
+                        self.does_not_contain_text('id="main-content"'),
+                    ],
+                ),
             ),
             ModelRequestScenario(
                 name="Anonymous list requests still require login",
@@ -80,6 +124,10 @@ class TestBloomerpListView(BloomerpModelViewTestCase):
                 expected=ExpectedResult(status_code=302),
             ),
         ]
+
+    def create_non_staff_user(self, scenario: RequestScenario) -> None:
+        """Authenticate the scenario with an account outside the workspace staff."""
+        scenario.user = User.objects.create_user(username="non-staff", is_staff=False)
 
     def has_title(self, title: str) -> Callable[[HttpResponse], bool]:
         """Check the rendered breadcrumb uses the route label and original URL."""

@@ -260,7 +260,7 @@ export default class ReferenceAttachments extends BaseComponent {
         }
         this.form?.dispatchEvent(new CustomEvent("bloomerp:attachments-changed", { bubbles: true, detail: { dirty: this.isDirty(), undo: previous ? undoAttachments : undefined } }));
     }
-    /** Render reference chips and one compact dropdown for all attached files. */
+    /** Render reference chips with muted label swatches and a grouped file dropdown. */
     private render(): void {
         this.element.hidden = this.entries.length === 0;
         const section = this.element.closest<HTMLElement>("[data-layout-header-section-2]");
@@ -274,9 +274,12 @@ export default class ReferenceAttachments extends BaseComponent {
             const chip = document.createElement("span");
             chip.className = "badge badge-secondary gap-2";
             if (entry.kind === "label") {
-                const color = this.safeLabelColor(entry.color);
-                chip.style.backgroundColor = color;
-                chip.style.color = this.labelForeground(color);
+                chip.className = "badge badge-secondary bg-transparent gap-1.5";
+                const swatch = document.createElement("span");
+                swatch.className = "size-2 shrink-0 rounded-full";
+                swatch.style.backgroundColor = this.safeLabelColor(entry.color);
+                swatch.setAttribute("aria-hidden", "true");
+                chip.append(swatch);
             }
             const label = document.createElement(entry.kind === "object" && entry.url ? "a" : "span");
             label.className = "inline-flex items-center gap-2";
@@ -326,7 +329,7 @@ export default class ReferenceAttachments extends BaseComponent {
             if (entry.kind !== "file") continue;
             total += 1;
             const row = document.createElement("div");
-            row.className = "flex items-center gap-2 px-3 py-1 text-sm transition-colors duration-150 hover:bg-gray-100";
+            row.className = "group/reference-file flex items-center gap-2 px-3 py-1 text-sm transition-colors duration-150 hover:bg-gray-100";
             const link = document.createElement("a");
             link.className = "link min-w-0 flex-1 truncate";
             link.textContent = entry.label;
@@ -342,7 +345,12 @@ export default class ReferenceAttachments extends BaseComponent {
             row.append(link);
             const remove = this.createRemovalButton(entry, index);
             if (remove) {
-                remove.className = "btn btn-sm btn-ghost shrink-0";
+                remove.className = "icon-button";
+                remove.dataset.iconButtonAppearance = "plain";
+                const icon = document.createElement("i");
+                icon.className = "fa-solid fa-xmark [@media(hover:hover)]:opacity-0 group-hover/reference-file:opacity-100 group-focus-within/reference-file:opacity-100";
+                icon.setAttribute("aria-hidden", "true");
+                remove.replaceChildren(icon);
                 row.append(remove);
             }
             list.append(row);
@@ -372,12 +380,6 @@ export default class ReferenceAttachments extends BaseComponent {
     /** Limit presentation colors to the same hex contract accepted by the endpoint. */
     private safeLabelColor(color?: string): string {
         return color && /^#[0-9a-f]{6}$/i.test(color) ? color : "#64748b";
-    }
-    /** Choose legible text on both light and dark preset backgrounds. */
-    private labelForeground(color: string): string {
-        const value = parseInt(color.slice(1), 16);
-        const brightness = ((value >> 16) * 299 + ((value >> 8) & 255) * 587 + (value & 255) * 114) / 1000;
-        return brightness >= 150 ? "#111827" : "#ffffff";
     }
     /** Replace label search with a searchable preset picker before creating anything. */
     private showLabelColors(name: string): void {

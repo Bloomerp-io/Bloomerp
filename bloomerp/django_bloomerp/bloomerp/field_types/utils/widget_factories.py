@@ -50,6 +50,7 @@ def inline_widget(context: FieldContext) -> forms.Widget:
     return OneToManyFieldWidget(
         attrs={
             **context.attrs,
+            "application_field": application_field,
             "related_model": (
                 application_field.get_related_model() if application_field else None
             ),

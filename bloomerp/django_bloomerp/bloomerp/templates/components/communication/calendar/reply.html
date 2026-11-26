@@ -1,10 +1,10 @@
 {% load i18n bloomerp %}
 <form id="calendar-event-response-form" method="post" action="{{ form_url }}"
       hx-post="{{ form_url }}" hx-target="#calendar-event-response-form" hx-swap="outerHTML" hx-push-url="false"
+      {% if form_request_context_id %}data-request-context-id="{{ form_request_context_id }}" hx-headers="{{ form_request_context_headers }}"{% endif %}
       hx-sync="this:drop" bloomerp-component="object-crud-view-container"
       data-layout="{{ layout|dump_layout_json }}" class="space-y-5 p-6">
     {% csrf_token %}
-    {% if permission_token %}<input type="hidden" name="_permission_token" value="{{ permission_token }}">{% endif %}
     {{ form.sequence }}
     <div>
         <h2 class="text-lg font-semibold">{{ calendar_event.title }}</h2>

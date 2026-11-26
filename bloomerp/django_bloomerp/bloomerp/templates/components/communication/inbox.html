@@ -82,12 +82,14 @@
             </c-ui.dropdown.body>
             </div>
 
-            <div class="flex items-center gap-3 text-gray-500">
+            <div class="flex shrink-0 items-center gap-1">
                 {% for action in primary_actions %}
                     <c-ui.tooltip
                         title="{{ action.name }}" position="bottom">
                         <button
                             type="button"
+                            class="icon-button"
+                            aria-label="{{ action.name }}"
                             data-inbox-action
                             data-inbox-action-level="folder"
                             data-inbox-action-item-id="{{ inbox_preference.selected_inbox_folder.pk }}"
@@ -95,7 +97,7 @@
                             data-inbox-action-method="{{ action.http_method }}"
                             data-inbox-action-target="{{ action.target }}"
                         >
-                            <i class="{{ action.icon }}"></i>
+                            <i class="{{ action.icon }}" aria-hidden="true"></i>
                         </button>
                     </c-ui.tooltip>
                 {% endfor %}
@@ -103,6 +105,8 @@
                 {% if secondary_actions %}
                 <c-ui.dropdown.body
                     trigger_icon_class="fa fa-ellipsis"
+                    trigger_aria_label="{% translate 'Actions' %}"
+                    icon_button=True
                 >
                     {% for action in secondary_actions %}
                         <button
@@ -130,6 +134,8 @@
                 {% endif %}
                 <c-ui.dropdown.body
                     trigger_icon_class="fa fa-filter"
+                    trigger_aria_label="{% translate 'Filters' %}"
+                    icon_button=True
                     id="select-filter-dropdown"
                 >
                     {% for filter in filters %}
@@ -153,7 +159,7 @@
                 {% if inbox_calendar_url %}
                 <c-ui.tooltip title="{% translate 'Calendar' %}" position="bottom">
                     <a href="{{ inbox_calendar_url }}" hx-get="{{ inbox_calendar_url }}" hx-target="#main-content" hx-push-url="true"
-                       class="inline-flex items-center justify-center rounded-xl px-3 py-2 text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200"
+                       class="icon-button"
                        aria-label="{% translate 'Calendar' %}" data-inbox-calendar>
                         <i class="fa fa-calendar" aria-hidden="true"></i>
                     </a>

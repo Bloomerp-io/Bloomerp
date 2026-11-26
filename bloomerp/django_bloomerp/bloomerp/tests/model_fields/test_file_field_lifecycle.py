@@ -109,7 +109,7 @@ class TestFileFieldLifecycle(BaseBloomerpTestCaseWithModels):
         )
         files, _entries = renderer._visible_entries()
         html = render_to_string(
-            "dataviews/files.html", {"files": files, "file_actions": []}
+            FileBrowserRenderer.template_name, {"files": files, "file_actions": []}
         )
         link = BeautifulSoup(html, "html.parser").select_one(
             "a[data-preview-object-id]"

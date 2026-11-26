@@ -46,6 +46,36 @@ def parse_filters(args: Mapping[str, Any] | QueryDict, *, model: type[Model] | N
     return groups
 
 
+def serialize_filters(filters: Filters) -> str:
+    """Encode filter groups for the shared filter query parameter."""
+    return _FILTERS_ADAPTER.dump_json(filters).decode("utf-8")
+
+
+def serialize_filter_query_params(
+    filters: Filters | None, *, shorthand: bool = False
+) -> dict[str, str]:
+    """Encode simple equality constraints as shorthand when requested."""
+    if not filters:
+        return {}
+
+    group = filters[0]
+    if (
+        shorthand
+        and len(filters) == 1
+        and group.connector == "AND"
+        and len({condition.field_path for condition in group.conditions})
+        == len(group.conditions)
+        and all(
+            condition.lookup_id == "equals" and isinstance(condition.value, (str, int))
+            for condition in group.conditions
+        )
+    ):
+        return {
+            condition.field_path: str(condition.value) for condition in group.conditions
+        }
+    return {"filter": serialize_filters(filters)}
+
+
 def deserialize_filters(value: str) -> Filters:
     """Read a JSON list of Filter groups; value cleaning belongs to compilation."""
     if not isinstance(value, str):

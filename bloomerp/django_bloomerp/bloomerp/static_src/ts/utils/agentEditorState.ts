@@ -3,6 +3,7 @@ import type { ArtifactChoice } from '../components/agent/ArtifactPicker';
 export type AgentEditorState = {
     conversationId: string | null;
     draft: string;
+    draftHtml?: string;
     attachments: ArtifactChoice[];
     open: boolean;
     historyVisible: boolean;
@@ -15,6 +16,7 @@ export function parseAgentEditorState(value: string | null): AgentEditorState | 
         if (!state || (state.conversationId !== null && (typeof state.conversationId !== 'string'
             || !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(state.conversationId)))
             || typeof state.draft !== 'string' || typeof state.open !== 'boolean'
+            || (state.draftHtml !== undefined && typeof state.draftHtml !== 'string')
             || typeof state.historyVisible !== 'boolean' || !Array.isArray(state.attachments)
             || state.attachments.length > 20 || !state.attachments.every(isArtifactChoice)) return null;
         return state as AgentEditorState;

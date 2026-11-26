@@ -7,7 +7,7 @@ import os
 from types import SimpleNamespace
 from typing import Any
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 from uuid import uuid4
 
 import httpx
@@ -15,12 +15,16 @@ from pydantic import BaseModel, ValidationError
 from pydantic_ai import Agent, NativeOutput
 from pydantic_ai.models.openrouter import OpenRouterModel
 
+from bloomerp.agents.definition import ModelModalities, ModelModality
 from bloomerp.agents.providers.builtins.pydantic_ai_common import PydanticAISettings
 from bloomerp.agents.providers.builtins.pydantic_openrouter import (
     create_openrouter_model,
 )
+from bloomerp.agents.providers.definition import DefaultAIProviderCredentialsSchema
 from bloomerp.agents.providers.registry import AI_PROVIDER_REGISTRY, provider_choices
+from bloomerp.agents.retries import MAX_MODEL_RETRIES
 from bloomerp.agents.runtime import (
+    AgentRuntimeArtifactInput,
     AgentRuntimeConfig,
     AgentRuntimeCredentials,
     AgentRuntimeEvent,
@@ -66,8 +70,8 @@ class OpenRouterProviderTests(IsolatedAsyncioTestCase):
         self.credentials = AgentRuntimeCredentials(api_key="mock-openrouter-key")
         self.requests: list[httpx.Request] = []
 
-    def test_registration_reuses_existing_contract_without_discovery(self) -> None:
-        """Expose a distinct selectable provider without a discovery callback or adapter."""
+    def test_registration_reuses_existing_runtime(self) -> None:
+        """Expose a distinct provider through the existing runtime and registry."""
         registration = AI_PROVIDER_REGISTRY.get("openrouter")
         self.assertEqual(registration.name, "OpenRouter")
         self.assertIs(registration.config_schema, PydanticAISettings)
@@ -80,6 +84,57 @@ class OpenRouterProviderTests(IsolatedAsyncioTestCase):
         for existing in ("openai", "openai_chat", "anthropic", "deepseek"):
             with self.subTest(provider=existing):
                 self.assertIsNotNone(AI_PROVIDER_REGISTRY.get(existing))
+
+    def test_discovers_modalities_for_selected_model(self) -> None:
+        """Read both directions from the selected catalog entry using shared enum values."""
+        discover = AI_PROVIDER_REGISTRY.get("openrouter").model_modalities_factory
+        assert discover is not None
+        credentials = DefaultAIProviderCredentialsSchema(api_key="mock-openrouter-key")
+        response = httpx.Response(
+            200,
+            request=httpx.Request("GET", "https://openrouter.ai/api/v1/models"),
+            json={
+                "data": [
+                    {"id": "other/model"},
+                    {
+                        "id": self.request.config.model,
+                        "architecture": {
+                            "input_modalities": [
+                                "text",
+                                "file",
+                                "image",
+                                "video",
+                                "unknown",
+                            ],
+                            "output_modalities": ["text", "audio"],
+                        },
+                    },
+                ]
+            },
+        )
+        with patch(
+            "bloomerp.agents.providers.builtins.common.httpx.get",
+            return_value=response,
+        ) as get:
+            result = discover(self.request.config.model, credentials, None)
+            self.assertIsNone(discover("other/unknown", credentials, None))
+            self.assertIsNone(
+                discover(
+                    self.request.config.model, credentials, "https://custom.example/v1"
+                )
+            )
+        assert result is not None
+        self.assertEqual(
+            set(result.input),
+            {
+                ModelModality.TEXT,
+                ModelModality.FILE,
+                ModelModality.IMAGE,
+                ModelModality.VIDEO,
+            },
+        )
+        self.assertEqual(result.output, (ModelModality.TEXT, ModelModality.AUDIO))
+        self.assertEqual(get.call_count, 2)
 
     async def test_model_endpoint_credentials_and_client_are_explicit(self) -> None:
         """Keep vendor IDs, configured endpoints, explicit credentials and client ownership."""
@@ -246,6 +301,8 @@ class OpenRouterProviderTests(IsolatedAsyncioTestCase):
         request = AgentRuntimeRunRequest.model_validate(
             self.request.model_dump()
             | {
+                "attachment_reader": self.request.attachment_reader,
+                "attachment_byte_limit": self.request.attachment_byte_limit,
                 "tools": (
                     {
                         "identifier": "lookup",
@@ -258,7 +315,7 @@ class OpenRouterProviderTests(IsolatedAsyncioTestCase):
                             "additionalProperties": False,
                         },
                     },
-                )
+                ),
             }
         )
         coordinator = Coordinator()
@@ -285,7 +342,22 @@ class OpenRouterProviderTests(IsolatedAsyncioTestCase):
     async def test_registered_provider_streams_tools_and_preserves_settings(
         self,
     ) -> None:
-        """Exercise real SDK serialization, streamed tool dispatch, settings and final text."""
+        """Exercise real SDK serialization of native files alongside streamed tool calls."""
+        self.request.config.modalities = ModelModalities(
+            input=(ModelModality.TEXT, ModelModality.IMAGE, ModelModality.FILE)
+        )
+        self.request.attachment_byte_limit = 100
+        self.request.attachment_reader = AsyncMock(return_value=b"test bytes")
+        message = self.request.messages[0]
+        message.content += tuple(
+            AgentRuntimeArtifactInput(
+                artifact_id=uuid4(),
+                file_id=uuid4(),
+                media_type=media_type,
+                content={"description": "Attached input"},
+            )
+            for media_type in ("image/png", "application/pdf")
+        )
         client = httpx.AsyncClient(transport=httpx.MockTransport(self.stream_response))
         events = await self.collect_runtime(client)
         self.assertEqual(events[-1].kind, "run.completed", events[-1])
@@ -311,6 +383,30 @@ class OpenRouterProviderTests(IsolatedAsyncioTestCase):
             self.assertEqual(body["max_completion_tokens"], 123)
             self.assertTrue(body["stream"])
             self.assertEqual(request.extensions["timeout"]["read"], 17)
+            content = [
+                part
+                for message in body["messages"]
+                if message["role"] == "user"
+                for part in message["content"]
+                if isinstance(part, dict)
+            ]
+            self.assertIn(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": "data:image/png;base64,dGVzdCBieXRlcw=="},
+                },
+                content,
+            )
+            self.assertIn(
+                {
+                    "type": "file",
+                    "file": {
+                        "filename": "filename.pdf",
+                        "file_data": "data:application/pdf;base64,dGVzdCBieXRlcw==",
+                    },
+                },
+                content,
+            )
         second_body = json.loads(self.requests[1].content)
         tool_result = next(
             message for message in second_body["messages"] if message["role"] == "tool"
@@ -371,8 +467,13 @@ class OpenRouterProviderTests(IsolatedAsyncioTestCase):
     async def test_provider_rejections_remain_safe_failures_without_sdk_retries(
         self,
     ) -> None:
-        """Keep unsupported requests and provider errors distinct from successful completion."""
-        for status, retryable in ((400, False), (401, False), (429, True), (503, True)):
+        """Redact provider response bodies and apply the shared runtime retry policy."""
+        for status, code in (
+            (400, "provider_error"),
+            (401, "provider_error"),
+            (429, "provider_rate_limited"),
+            (503, "provider_unavailable"),
+        ):
             with self.subTest(status=status):
                 requests: list[httpx.Request] = []
 
@@ -394,11 +495,18 @@ class OpenRouterProviderTests(IsolatedAsyncioTestCase):
                     )
 
                 client = httpx.AsyncClient(transport=httpx.MockTransport(reject))
-                events = await self.collect_runtime(client)
+                with patch(
+                    "bloomerp.agents.runtimes.pydantic_ai.asyncio.sleep",
+                    new=AsyncMock(),
+                ):
+                    events = await self.collect_runtime(client)
                 self.assertEqual(events[-1].kind, "run.failed", events[-1])
-                self.assertEqual(events[-1].error.code, "provider_error")
+                self.assertEqual(events[-1].error.code, code)
+                retryable = status in {429, 503}
                 self.assertEqual(events[-1].error.retryable, retryable)
-                self.assertEqual(len(requests), 1)
+                self.assertEqual(
+                    len(requests), 1 + (MAX_MODEL_RETRIES if retryable else 0)
+                )
                 self.assertEqual(self.coordinator.calls, [])
                 self.assertNotIn(
                     "mock-openrouter-key",

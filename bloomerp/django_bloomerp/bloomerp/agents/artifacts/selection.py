@@ -1,18 +1,37 @@
-"""Signed, owner-bound attachment candidates shared by discovery and message ingestion."""
+"""Resolve signed picker candidates and editor references for chat attachments."""
 
 import hashlib
 import json
-from typing import Any
+from typing import Any, Literal
+from uuid import UUID
 
+from django.contrib.contenttypes.models import ContentType
 from django.core import signing
 from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest
+from pydantic import Field
 
-from bloomerp.agents.definition import AIArtifactPayload, AIArtifactTypeDefinition
+from bloomerp.agents.definition import (
+    AgentPayload,
+    AIArtifactPayload,
+    AIArtifactTypeDefinition,
+)
 
+from .file import FILE_ARTIFACT, FileArtifactPayload
+from .object import OBJECT_ARTIFACT, ObjectArtifactPayload
 from .registry import AI_ARTIFACT_REGISTRY
 
 SALT = "bloomerp.agent.attachment"
+
+
+class EditorAttachment(AgentPayload):
+    """Carry only the identity of an inline object or stored image."""
+
+    kind: Literal["object", "file"]
+    target_id: str = Field(min_length=1, max_length=255)
+    content_type_id: int | None = Field(
+        default=None, gt=0, le=2_147_483_647, strict=True
+    )
 
 
 def selection_item(
@@ -42,8 +61,38 @@ def selection_item(
     }
 
 
-def resolve_selection(token: str, request: HttpRequest) -> dict[str, Any]:
-    """Reauthorize a signed candidate at send time, independent of UI visibility."""
+def _editor_payload(
+    reference: EditorAttachment,
+) -> tuple[AIArtifactTypeDefinition, AIArtifactPayload]:
+    """Resolve an editor identity to registered attachment metadata for authorization."""
+    from bloomerp.models import FileNode
+    from bloomerp.services.object_reference_services import supports_object_references
+
+    if reference.kind == "file":
+        file = FileNode.objects.filter(
+            pk=UUID(reference.target_id), kind="FILE"
+        ).first()
+        if file is None:
+            raise PermissionDenied("Attachment unavailable")
+        return FILE_ARTIFACT, FileArtifactPayload(
+            file_id=file.pk,
+            name=file.name or str(file.pk),
+            media_type=file.meta.get("mime_type") or "application/octet-stream",
+        )
+    content_type = ContentType.objects.filter(pk=reference.content_type_id).first()
+    model = content_type.model_class() if content_type else None
+    if model is None or not supports_object_references(model):
+        raise PermissionDenied("Attachment unavailable")
+    return OBJECT_ARTIFACT, ObjectArtifactPayload(
+        model_label=model._meta.label,
+        object_id=reference.target_id,
+    )
+
+
+def _signed_payload(
+    token: str, request: HttpRequest
+) -> tuple[AIArtifactTypeDefinition, AIArtifactPayload]:
+    """Read the metadata from a current picker token belonging to this user."""
     try:
         body = signing.loads(token, salt=SALT, max_age=86400)
     except signing.BadSignature as error:
@@ -55,7 +104,18 @@ def resolve_selection(token: str, request: HttpRequest) -> dict[str, Any]:
     definition = AI_ARTIFACT_REGISTRY.get_type(body["type"], body["version"])
     if definition.search is None and definition.upload is None:
         raise PermissionDenied("This artifact cannot be manually attached")
-    payload = definition.model.model_validate(body["payload"])
+    return definition, definition.model.model_validate(body["payload"])
+
+
+def resolve_selection(
+    selection: str | EditorAttachment, request: HttpRequest
+) -> dict[str, Any]:
+    """Reauthorize picker selections and editor references through the same artifact rules."""
+    definition, payload = (
+        _editor_payload(selection)
+        if isinstance(selection, EditorAttachment)
+        else _signed_payload(selection, request)
+    )
     if definition.authorize:
         definition.authorize(payload, request)
     return {

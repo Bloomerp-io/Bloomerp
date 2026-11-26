@@ -1,12 +1,19 @@
 from abc import ABC, abstractmethod
+from functools import cached_property
 from typing import Any, Type
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.http import HttpRequest, HttpResponse
+from django.shortcuts import get_object_or_404
 
 from bloomerp.form_fields.files_relation_field import FilesCleanedData
+from bloomerp.form_fields.one_to_many_field import (
+    ROW_ID_KEY,
+    ROW_INSERT_KEY,
+    OneToManyField,
+)
 from bloomerp.forms.model_form import (
     BloomerpModelForm,
     bloomerp_modelform_factory,
@@ -23,10 +30,15 @@ from bloomerp.services.crud_reference_services import prepare_reference_submissi
 from bloomerp.services.object_reference_services import Reference, reconcile_references
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.services.sectioned_layout_services import create_default_layout
+from bloomerp.tokens import (
+    REQUEST_TOKEN_QUERY_KEYS,
+    DetailViewToken,
+    get_detail_token,
+)
 from bloomerp.views.mixins.application_field_layout_form_mixin import (
     ApplicationFieldLayoutFormMixin,
 )
-from bloomerp.views.mixins.layout_mixin import LayoutBinding
+from bloomerp.views.mixins.layout_mixin import ChangeContext, LayoutBinding
 
 
 class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
@@ -47,11 +59,25 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
         raise NotImplementedError
 
     def get_layout_binding(self) -> LayoutBinding:
+        """Bind the token layout or the viewer's usual model layout to this form."""
         target_content_type = ContentType.objects.get_for_model(self.model)
-        owner = PreferenceManager(self.get_user()).get_or_create_selected(
-            UserObjectLayoutPreference,
-            scope={"content_type_id": target_content_type.pk},
-        )
+        scope = {"content_type_id": target_content_type.pk}
+        manager = PreferenceManager(self.get_user())
+        token = self.field_layout_override
+        if token is None:
+            owner = manager.get_or_create_selected(UserObjectLayoutPreference, scope)
+        elif token.field_layout is not None:
+            layout = create_default_layout(self.model, layout=token.field_layout)
+            owner = UserObjectLayoutPreference(
+                user=self.get_user(), content_type=target_content_type,
+                name=token.field_layout.name, layout=layout.model_dump(),
+            )
+        else:
+            available = manager.get_available(UserObjectLayoutPreference, scope)
+            owner = get_object_or_404(
+                available,
+                models.Q(pk=token.preference_id) | models.Q(source_object_id=token.preference_id),
+            ).effective_preference
         return LayoutBinding(
             owner=owner,
             target_content_type=target_content_type,
@@ -78,14 +104,24 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
         for row in layout.rows:
             row.items = [item for item in row.items if str(item.id) in available_ids]
 
-        if had_items and not any(row.items for row in layout.rows):
+        if self.field_layout_override is None and had_items and not any(row.items for row in layout.rows):
             layout = create_default_layout(self.model, application_fields=available_fields)
 
         self._resolved_model_layout = layout
         return layout
 
-    def get_can_change(self):
+    def get_can_change(self) -> bool:
+        """Allow layout editing for manageable preferences when the view opts in."""
+        token = self.field_layout_override
+        if token is not None and not token.allow_layout_edit:
+            return False
         return PreferenceManager(self.get_user()).can_manage(self.get_layout_object())
+
+    def get_change_context(self) -> ChangeContext | None:
+        """Omit layout mutation links when a token pins a read-only layout."""
+        if self.field_layout_override is not None and not self.get_can_change():
+            return None
+        return super().get_change_context()
 
     def get_can_manage_attachments(self) -> bool:
         """Allow attachments for record creators or users who may change this record."""
@@ -132,6 +168,7 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
         return None
 
     def get_hidden_initial_fields(self) -> list[tuple[str, str]]:
+        """Carry create defaults that have no visible form control."""
         if not self.is_create_layout():
             return []
 
@@ -163,7 +200,7 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
         return [
             (field_name, value)
             for field_name, value in submitted_data.items()
-            if not self._is_rendered_initial_field(
+            if field_name not in REQUEST_TOKEN_QUERY_KEYS and not self._is_rendered_initial_field(
                 field_name,
                 layout_field_names,
                 one_to_many_columns,
@@ -186,7 +223,7 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
                 continue
             nested_parts = field_name[len(prefix):].split("__", 1)
             return len(nested_parts) == 2 and (
-                nested_parts[1] == "id" or nested_parts[1] in column_names
+                nested_parts[1] in {ROW_ID_KEY, ROW_INSERT_KEY} or nested_parts[1] in column_names
             )
 
         return False
@@ -337,6 +374,9 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
                         or application_field.pk not in changeable_field_ids
                     )
         self.apply_layout_widget_config(form)
+        for form_field in form.fields.values():
+            if isinstance(form_field, OneToManyField) and not form_field.disabled:
+                form_field.enable_existing_insertion(self.get_user())
         self._layout_form = form
         return form
 
@@ -519,5 +559,22 @@ class LayoutModelFormMixin(ApplicationFieldLayoutFormMixin, ABC):
         context["form_hx_target"] = self.get_form_hx_target()
         context["form_hx_push_url"] = self.get_form_hx_push_url()
         context["full_form_url"] = self.get_full_form_url()
+        context["show_layout_preferences"] = self.field_layout_override is None
+        context["create_next_url"] = self.request.path if self.detail_view_token is None else self.request.get_full_path()
         context["hidden_initial_fields"] = self.get_hidden_initial_fields()
         return context
+
+    @cached_property
+    def detail_view_token(self) -> DetailViewToken | None:
+        """Resolve the detail view token once for this view's lifetime."""
+        return self.get_detail_view_token()
+
+    @property
+    def field_layout_override(self) -> DetailViewToken | None:
+        """Return the token when it pins an inline or saved field layout."""
+        token = self.detail_view_token
+        return token if token is not None and token.has_layout_override else None
+
+    def get_detail_view_token(self) -> DetailViewToken | None:
+        """Verify the request token or let a custom form supply its own."""
+        return get_detail_token(self.request, self.model, create=self.is_create_layout())

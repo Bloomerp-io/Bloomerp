@@ -1,4 +1,5 @@
 """Authorize browser admission to an existing conference session."""
+# SHOULD_API
 
 from uuid import UUID
 

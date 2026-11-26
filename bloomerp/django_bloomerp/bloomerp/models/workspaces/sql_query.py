@@ -23,11 +23,6 @@ from bloomerp.models.definition import (
 from bloomerp.utils.sql import SqlQueryExecutor
 
 
-def _apply_query_url(context: ObjectActionContext) -> str:
-    """Open the execution component with the saved query's identifier."""
-    return f"{reverse('components_execute_sql_query')}?{urlencode({'query_id': str(context.object.pk)})}"
-
-
 def _can_apply_query(context: ObjectActionContext) -> bool:
     """Offer Apply to users allowed to execute SQL and read this query's SQL field."""
     from bloomerp.permissions.definition import BloomerpPermission
@@ -84,10 +79,10 @@ class SqlQuery(BloomerpModel):
             ObjectModalAction(
                 id="apply_query",
                 label=gettext_noop("Apply query"),
-                endpoint=_apply_query_url,
+                endpoint=lambda context: f"{reverse('components_execute_sql_query')}?{urlencode({'query_id': str(context.object.pk)})}",
                 should_render_func=_can_apply_query,
                 icon="fa-solid fa-play",
-                modal_size="xl",
+                size="xl",
             )
         ]
     )

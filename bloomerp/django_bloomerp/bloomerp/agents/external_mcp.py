@@ -15,8 +15,8 @@ from django.utils import timezone
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError
 
+from bloomerp.mcp.client import MCPUnavailableError, RemoteMcpSession
 from bloomerp.models.agents import AIAgent, MCPConnection, MCPIntegration
-from bloomerp.services.mcp.client import MCPUnavailableError, RemoteMcpSession
 
 EXTERNAL_NAME = re.compile(r"^external_([0-9a-f]{32})_([0-9a-f]{20})$")
 

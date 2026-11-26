@@ -347,9 +347,9 @@ endpoint. Its URL includes `preference_id`, so embedded and shared dataviews do
 not accidentally dispatch through the viewer's globally selected preference.
 Shared preferences are resolved through the viewer's available preferences and
 do not grant permission to manage the source preference. Explicitly embedded
-preferences receive a short-lived, user-bound signed operation context so a
-shared container can keep operating without separately sharing its preference.
-The signed context grants no model, row, or field permissions. Return the
+preferences are authorized in the short-lived, session-bound request context
+supplied by the container. `X-Bloomerp-Context` carries its ID on subsequent
+requests and authorizes use of the preference for renderer operations. Return the
 superclass response for unknown actions. Mutation actions must validate the
 HTTP method and check change permission for every affected object; receiving a
 permission-filtered view queryset does not itself grant write access.

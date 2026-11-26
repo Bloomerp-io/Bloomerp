@@ -11,6 +11,7 @@ from bloomerp.models.definition import (
     ObjectAction,
     ObjectActionContext,
     ObjectActionGrouping,
+    ObjectDrawerAction,
     ObjectModalAction,
     get_object_actions,
 )
@@ -108,8 +109,8 @@ class TestActionsExecuteComponent(
         actions = [
             ObjectActionGrouping(id="more", actions=[
                 ObjectActionGrouping(id="previews", actions=[
-                    ObjectAction(
-                        id="view_file", label="View", method="GET", execution_func=self.preview_action,
+                    ObjectDrawerAction(
+                        id="view_file", label="View", execution_func=self.preview_action,
                     ),
                 ]),
             ]),
@@ -164,6 +165,7 @@ class TestActionsExecuteComponent(
             action for action in get_object_actions(FileNode, surface="detail")
             if action.id == "view_file"
         )
+        self.assertIsInstance(preview, ObjectDrawerAction)
         file = FileNode.objects.create(
             content=SimpleUploadedFile("preview.png", b"image"), kind="FILE",
         )
@@ -171,6 +173,10 @@ class TestActionsExecuteComponent(
         url = reverse("components_preview_file", kwargs={"file_id": file.pk})
         self.assertIn(f'hx-get="{url}"', markup)
         self.assertIn('hx-target="#bloomerp-general-use-drawer-body"', markup)
+        self.assertIn('hx-push-url="false"', markup)
+        self.assertIn('bloomerp-open-drawer="bloomerp-general-use-drawer"', markup)
+        self.assertIn('bloomerp-set-drawer-title-to="File preview"', markup)
+        self.assertIn('bloomerp-set-drawer-size-to="xl"', markup)
 
     def test_modal_and_icon_only_buttons_render_in_dropdown(self) -> None:
         """Render a secondary group trigger and honor button attributes inside the menu."""
@@ -179,7 +185,7 @@ class TestActionsExecuteComponent(
         obj = self.create_customer("Grouped", "Action", 30)
         action = ObjectModalAction(
             id="review", icon="fa fa-eye", endpoint="/review/",
-            modal_title="Review", modal_size="xl",
+            title="Review", size="xl",
             button_attrs={"aria-label": "Review record", "hx-target": "#custom-modal-body"},
         )
         html = render_object_action(

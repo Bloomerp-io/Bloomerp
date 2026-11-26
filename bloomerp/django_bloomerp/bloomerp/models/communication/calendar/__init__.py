@@ -1,13 +1,13 @@
 """Shared calendar meetings, attendees, and booking configuration."""
 
-from .calendar_booking import CalendarBooking
-from .calendar_booking_submission import CalendarBookingSubmission
+from .booking_link import BookingLink
+from .booking_link_submission import BookingLinkSubmission
 from .calendar_event import CalendarEvent
 from .calendar_event_participant import CalendarEventParticipant
 
 __all__ = [
-    "CalendarBooking",
-    "CalendarBookingSubmission",
+    "BookingLink",
+    "BookingLinkSubmission",
     "CalendarEvent",
     "CalendarEventParticipant",
 ]

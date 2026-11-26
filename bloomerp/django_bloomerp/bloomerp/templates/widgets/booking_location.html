@@ -1,0 +1,13 @@
+{% load i18n %}
+<div bloomerp-component="booking-location" data-meeting-value="{{ widget.meeting_value }}" class="flex flex-wrap items-center gap-x-4 gap-y-2">
+    <div class="min-w-0 flex-1 basis-48">
+        {% include "django/forms/widgets/input.html" %}
+    </div>
+    <label class="flex shrink-0 items-center gap-2 text-sm">
+        <input type="checkbox" class="checkbox"
+               name="{{ widget.name }}__meeting" data-booking-meeting
+               {% if widget.create_meeting %}checked{% endif %}
+               {% if widget.attrs.disabled %}disabled{% endif %}>
+        {% translate "Create a Bloomerp meeting" %}
+    </label>
+</div>

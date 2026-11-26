@@ -457,7 +457,7 @@ class ModelConfigExtensionTests(SimpleTestCase):
                 with self.subTest(action_type=action_type, title=title):
                     action = action_type(
                         id="review", label="Review", endpoint=self.modal_endpoint,
-                        modal_title=title,
+                        title=title,
                     )
                     self.assertEqual(
                         action.default_button_attrs()["bloomerp-set-modal-title-to"], title or "Review",

@@ -13,7 +13,6 @@ from django.utils import timezone
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.permissions.definition import (
     AccessRule,
-    PermissionToken,
     RowPolicyRuleContent,
 )
 from bloomerp.tests.base import (
@@ -21,6 +20,7 @@ from bloomerp.tests.base import (
     ExpectedResult,
     RequestScenario,
 )
+from bloomerp.tokens import REQUEST_TOKEN_QUERY_KEYS, RequestToken
 
 from .validators import response_has_widget, widget_has_input
 
@@ -202,26 +202,27 @@ class TestValueEditorComponent(BloomerpComponentTestCase):
     def test_structured_value_restoration(self):
         """Objects and arrays restore without coercing their contents to strings."""
 
-    def view_token(self) -> str:
+    def view_token(self) -> RequestToken:
         """Issue a test capability for one readable field on the dynamic customer model."""
-        return PermissionToken(
-            model_label=self.CustomerModel._meta.label_lower,
-            audience=str(self.normal_user.pk), expiry=timezone.now() + timedelta(minutes=5),
-            rule=AccessRule(
-                row_permissions=[RowPolicyRuleContent(permissions=["view"], conditions=[])],
-                field_permissions={"first_name": ["view"]},
-            ),
-        ).sign()
+        rule = AccessRule(
+            row_permissions=[RowPolicyRuleContent(permissions=["view"], conditions=[])],
+            field_permissions={"first_name": ["view"]},
+        )
+        return RequestToken(
+            expiry=timezone.now() + timedelta(minutes=5),
+            policies={self.CustomerModel: rule},
+        )
 
     def attach_view_token(self, scenario: RequestScenario) -> None:
-        """Carry the signed grant in the URL, including when the request body is JSON."""
-        scenario.query_params = {"_permission_token": self.view_token()}
+        """Carry the grant on the context header, including for JSON requests."""
+        scenario.headers = {**(scenario.headers or {}), **self.request_context_headers(self.view_token(), self.normal_user)}
 
-    def test_filter_templates_forward_the_request_token(self) -> None:
-        """Keep all filter subrequests scoped to the same capability as their parent view."""
-        token = self.view_token()
-        request = RequestFactory().get("/calendar/", {"_permission_token": token})
+    def test_filter_templates_render_clean_endpoints(self) -> None:
+        """Leave filter URL construction independent of the current view's grant."""
+        headers = self.request_context_headers(self.view_token(), self.normal_user)
+        request = RequestFactory().get("/calendar/", headers=headers)
         request.user = self.normal_user
+        request.session = self.client.session
         content_type = self.get_content_type_for_model(self.CustomerModel)
         preference = UserListViewPreference.objects.create(user=self.normal_user, content_type=content_type)
         context = {"request": request, "scope": "model", "id": content_type.pk, "filter_host": preference}
@@ -231,4 +232,4 @@ class TestValueEditorComponent(BloomerpComponentTestCase):
                 urls = re.findall(r'data-[a-z-]+-url="([^"]+)"', html)
                 self.assertTrue(urls)
                 for url in urls:
-                    self.assertEqual(parse_qs(urlsplit(unescape(url)).query).get("_permission_token"), [token])
+                    self.assertFalse(REQUEST_TOKEN_QUERY_KEYS.intersection(parse_qs(urlsplit(unescape(url)).query)))

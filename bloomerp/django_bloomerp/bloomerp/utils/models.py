@@ -5,7 +5,6 @@ from django.contrib.contenttypes.models import ContentType
 from bloomerp.models import ApplicationField
 from django.shortcuts import get_object_or_404
 
-from django.apps import apps
 from bloomerp.i18n.models import model_verbose_name_in_source_language
 
 
@@ -54,34 +53,15 @@ def model_name_plural_underline(model:Model) -> str:
     """
     return model_verbose_name_in_source_language(model, plural=True).replace(' ', '_').lower()
 
-def string_search(cls, query: str):
-    '''
-    Class method to search in all string fields of the model.
-    Returns a QuerySet filtered by the query in all CharField or TextField attributes.
-
-    Can be given to a model as a class method to search in all string fields of the model.
-
-    Usage:
-    ```
-    model.string_search = classmethod(string_search)
-
-    '''
-    from bloomerp.services.object_services import string_search_on_queryset
+def string_search(cls: type[Model], query: str) -> QuerySet:
+    """Provide a model class method for searching its configured text fields."""
+    from bloomerp.services.search_services import string_search_on_queryset
 
     return string_search_on_queryset(cls.objects.all(), query)
 
-def string_search_on_qs(qs: QuerySet, query: str):
-    '''
-    Function to search in all string fields of a QuerySet.
-    Returns a QuerySet filtered by the query in all CharField or TextField attributes.
-
-    Usage:
-    ```
-    qs = MyModel.objects.all()
-    qs = string_search_on_qs(qs, 'search query')
-    ```
-    '''
-    from bloomerp.services.object_services import string_search_on_queryset
+def string_search_on_qs(qs: QuerySet, query: str) -> QuerySet:
+    """Search the supplied queryset using its model's configured text fields."""
+    from bloomerp.services.search_services import string_search_on_queryset
 
     return string_search_on_queryset(qs, query)
 
@@ -276,7 +256,8 @@ def get_initials(object:Model) -> str:
     return ''.join([word[0].upper() for word in object.__str__().split()])[0:2]
 
 def string_search_queryset(qs: QuerySet, search_value: str) -> QuerySet:
-    from bloomerp.services.object_services import string_search_on_queryset
+    """Filter an existing queryset using its model's text search settings."""
+    from bloomerp.services.search_services import string_search_on_queryset
 
     return string_search_on_queryset(qs, search_value)
 

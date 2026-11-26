@@ -11,6 +11,7 @@ from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.core.exceptions import ValidationError as DjangoValidationError
 from pydantic import AliasChoices, Field, JsonValue, ValidationError
 
+from bloomerp.agents.artifacts.selection import EditorAttachment
 from bloomerp.agents.controller import (
     AgentApprovalDecision,
     AgentChatRequest,
@@ -34,7 +35,10 @@ class AgentChatEnvelope(AgentControllerPayload):
 
     type: Literal["chat.message"]
     message: str
-    attachments: list[str] = Field(default_factory=list, max_length=20)
+    format: Literal["plain", "markdown"] = "plain"
+    attachments: list[str | EditorAttachment] = Field(
+        default_factory=list, max_length=20
+    )
     agent_id: UUID | None = Field(
         default=None, validation_alias=AliasChoices("agent_id", "model_id")
     )
@@ -245,7 +249,13 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 )
                 submission = await self.controller.execute(
                     AgentChatRequest(
-                        content=[{"type": "text", "text": envelope.message}],
+                        content=[
+                            {
+                                "type": "text",
+                                "text": envelope.message,
+                                "format": envelope.format,
+                            }
+                        ],
                         agent_id=envelope.agent_id,
                         approval_rules=envelope.approval_rules,
                         conversation_id=envelope.conversation_id,

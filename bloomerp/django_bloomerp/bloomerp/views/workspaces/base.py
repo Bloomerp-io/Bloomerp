@@ -81,12 +81,6 @@ class BaseWorkspaceView(LayoutMixin, BaseBloomerpView):
     def get_workspace(self) -> Optional[Workspace]:
         pass
     
-    def build_workspace_item(self, workspace: Workspace) -> dict:
-        workspace = workspace.effective_preference
-        return {
-            "workspace": workspace,
-        }
-
     def get_create_url(self) -> str:
         url = reverse(get_create_view_url(Workspace, "relative"))
         params = []

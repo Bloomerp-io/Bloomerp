@@ -13,6 +13,10 @@ type SidebarDropValues = {
 
 type GapDropzoneSize = 'resting' | 'dragging' | 'active';
 
+const PREVIEW_EDGE_WIDTH = 6;
+const PREVIEW_OPEN_DELAY_MS = 250;
+const PREVIEW_CLOSE_DELAY_MS = 140;
+
 /**
  * Sidebar component to manage the behavior of the sidebar
  * in the Bloomerp application. The sidebar can be opened,
@@ -22,55 +26,41 @@ type GapDropzoneSize = 'resting' | 'dragging' | 'active';
  * to persist user preferences across sessions.
  */
 export class Sidebar extends BaseComponent {
-    private mainElement : HTMLElement | null;
-    private overlayElement : HTMLElement | null;
-    private sidebarButton : HTMLElement | null;
-    private floatingButton : HTMLElement | null;
-	private _isOpen : boolean;
-	private readonly storageKey = 'bloomerp_sidebar_state';
-    private hoverTimer: number | null = null;
+    private mainElement: HTMLElement | null;
+    private overlayElement: HTMLElement | null;
+    private controlListeners: AbortController | null = null;
+    private _isOpen: boolean;
+    private readonly storageKey = 'bloomerp_sidebar_state';
+    private readonly desktopViewport = window.matchMedia('(min-width: 64rem)');
+    private previewWanted = false;
+    private previewOpen = false;
+    private previewTimer: number | undefined;
+    private addendumResizeObserver: ResizeObserver | null = null;
     private activeDraggedItemId: string | null = null;
     private activeDraggedItemElement: HTMLElement | null = null;
     private activeDropzone: SidebarDropzone | null = null;
 
-    // Buttons
-    private selectSidebarBtn : HTMLButtonElement | null = null;
-    private createSidebarBtn : HTMLButtonElement | null = null;
-    
+    /** Restore the sidebar preference and attach its controls and item handlers. */
+    public override initialize(): void {
+        this.mainElement = document.getElementById('main');
+        this.overlayElement = document.getElementById('sidebar-overlay');
+        this.addendumResizeObserver = new ResizeObserver(this.updateHeaderGeometry);
 
-	public initialize(): void {
-		this.mainElement = document.getElementById('main');
-		this.overlayElement = document.getElementById('sidebar-overlay');
-        this.sidebarButton = document.getElementById('sidebar-toggle')
-        this.floatingButton = document.getElementById('sidebar-toggle-floating');
-
-		// Get state
-		const storedState = localStorage.getItem(this.storageKey);
-
-		if (storedState !== null) {
-            this._isOpen = storedState === 'true';
-        } else {
-            // Default: open on large screens (>= 1024px), closed on small
-            this._isOpen = window.innerWidth >= 1024;
-        }
-
-		// Apply initial state
+        const storedState = localStorage.getItem(this.storageKey);
+        this._isOpen = storedState === null ? this.desktopViewport.matches : storedState === 'true';
         this.updateUI();
 
-        // Setup event listeners
         this.setupEventListeners();
         this.setupDragAndDrop();
+    }
 
-        // Bind visibility handlers for the floating button (mouse/touch)
-        this.bindFloatingVisibilityHandlers();
-        
-	}
-
+    /** Release the sidebar's event listeners and pending preview. */
     public override destroy(): void {
+        this.controlListeners?.abort();
+        this.addendumResizeObserver?.disconnect();
+        this.clearPreview();
         if (!this.element) return;
 
-        window.removeEventListener('mousemove', this.onWindowMouseMove);
-        window.removeEventListener('touchstart', this.onWindowTouchStart);
         document.removeEventListener('dragover', this.onDocumentDragOver);
         document.removeEventListener('dragend', this.onDocumentDragEnd);
         document.removeEventListener('drop', this.onDocumentDrop);
@@ -81,105 +71,164 @@ export class Sidebar extends BaseComponent {
         this.element.removeEventListener('drop', this.onDrop);
     }
 
-	private updateUI(): void {
+    /** Reconnect sidebar header alignment after an out-of-band addendum swap. */
+    public override onAfterSwap(): void {
+        this.syncHeader();
+    }
+
+    /** Reconcile the cached header with the live sidebar state after navigation. */
+    public override onHistoryRestore(): void {
+        this.syncHeader();
+    }
+
+    /** Show a hover preview over the workspace and shift it only when pinned open. */
+    private updateUI(): void {
         if (!this.element) return;
 
-        if (this._isOpen) {
-            // Open state: remove translate-x-full to show sidebar
-            this.element.classList.remove('-translate-x-full');
-            
-            // Show overlay on mobile
-            if (this.overlayElement) {
-                this.overlayElement.classList.remove('hidden');
-            }
-
-            // Adjust main content margin
-            if (this.mainElement) {
-                this.mainElement.classList.add('lg:ml-64');
-                this.mainElement.classList.remove('ml-2');
-            }
-
-            if (this.floatingButton) {
-                this.floatingButton.classList.add('hidden');
-            }
-        } else {
-            // Closed state: add translate-x-full to hide sidebar
-            this.element.classList.add('-translate-x-full');
-            
-            // Hide overlay
-            if (this.overlayElement) {
-                this.overlayElement.classList.add('hidden');
-            }
-
-            // Adjust main content margin
-            if (this.mainElement) {
-                this.mainElement.classList.remove('lg:ml-64');
-                this.mainElement.classList.add('ml-2');
-            }
-
-            if (this.floatingButton) {
-                // Keep the floating button hidden by default when sidebar is closed;
-                // visibility will be controlled by pointer/touch handlers.
-                this.floatingButton.classList.add('hidden');
-            }
-        }
+        const visible = this.isOpen();
+        // Keep the preview inset while it slides out.
+        if (visible) this.element.toggleAttribute('data-preview-layout', this.previewOpen);
+        this.element.classList.toggle('-translate-x-full', !visible);
+        this.element.inert = !visible;
+        this.overlayElement?.classList.toggle('hidden', !this._isOpen);
+        this.mainElement?.classList.toggle('lg:ml-64', this._isOpen);
+        this.syncHeader();
     }
 
-    private bindFloatingVisibilityHandlers(): void {
-        window.addEventListener('mousemove', this.onWindowMouseMove);
-        window.addEventListener('touchstart', this.onWindowTouchStart, {passive:true});
-    }
+    /** Sync the toggle and observe the addendum while the sidebar is visible. */
+    private readonly syncHeader = (): void => {
+        this.updateHeaderToggle();
+        this.addendumResizeObserver?.disconnect();
+        if (!this.isOpen()) return;
 
-    private handlePointer(clientX: number, clientY: number): void {
-        if (this._isOpen) return; // don't show floating when sidebar is open
+        const addendum = this.mainElement?.querySelector('#htmx-addendum');
+        if (addendum) this.addendumResizeObserver?.observe(addendum, {box: 'border-box'});
+        this.updateHeaderGeometry();
+    };
 
-        const nearLeft = clientX < 80 && clientY < 120;
+    /** Align the pinned logo to the addendum center or the hover panel to its lower edge. */
+    private readonly updateHeaderGeometry = (): void => {
+        const sidebar = this.element;
+        const main = this.mainElement;
+        if (!sidebar || !main || !this.isOpen()) return;
 
-        if (nearLeft) {
-            if (this.hoverTimer) {
-                window.clearTimeout(this.hoverTimer);
-                this.hoverTimer = null;
-            }
-            this.showFloating();
-        } else {
-            if (!this.hoverTimer) {
-                this.hoverTimer = window.setTimeout(() => {
-                    this.hideFloating();
-                    this.hoverTimer = null;
-                }, 600);
-            }
-        }
-    }
+        const addendum = main.querySelector('#htmx-addendum')?.getBoundingClientRect();
+        if (this.previewOpen || !addendum) sidebar.style.removeProperty('--sidebar-brand-height');
 
-    private showFloating(): void {
-        if (!this.floatingButton) return;
-        this.floatingButton.classList.remove('hidden');
-    }
-
-    private hideFloating(): void {
-        if (!this.floatingButton) return;
-        this.floatingButton.classList.add('hidden');
-    }
-
-	private setupEventListeners(): void {
-        // Close on overlay click
-        if (this.overlayElement) {
-            this.overlayElement.addEventListener('click', () => {
-                this.close();
-            });
+        if (this.previewOpen) {
+            const top = Math.max(0, addendum?.bottom ?? 0);
+            sidebar.style.setProperty('--sidebar-preview-top', `${top}px`);
+            return;
         }
 
-        if (this.sidebarButton) {
-			this.sidebarButton.addEventListener('click', () => {
-				this.toggle()
-			})
-		}
+        const brand = sidebar.querySelector('[data-sidebar-brand]');
+        if (!addendum || !brand) return;
 
-        if (this.floatingButton) {
-            this.floatingButton.addEventListener('click', () => {
-                this.toggle()
-            })
+        // The pinned logo stays with the sidebar when the workspace content scrolls.
+        const contentScroll = main.querySelector('#main-content')?.scrollTop ?? 0;
+        const center = addendum.top + addendum.height / 2 + main.scrollTop + contentScroll;
+        const brandHeight = Math.max(0, 2 * (center - brand.getBoundingClientRect().top));
+        sidebar.style.setProperty('--sidebar-brand-height', `${brandHeight}px`);
+    };
+
+    /** Track the addendum on scroll while the hover panel is open. */
+    private readonly onWorkspaceScroll = (): void => {
+        if (this.previewOpen) this.updateHeaderGeometry();
+    }
+
+    /** Find the current header button since HTMX replaces it during navigation. */
+    private getHeaderToggle(): HTMLButtonElement | null {
+        return this.mainElement?.querySelector<HTMLButtonElement>('#sidebar-toggle') ?? null;
+    }
+
+    /** Keep the current button's accessible label and icon in sync. */
+    private readonly updateHeaderToggle = (): void => {
+        const toggle = this.getHeaderToggle();
+        if (!toggle) return;
+
+        toggle.setAttribute('aria-expanded', String(this.isOpen()));
+        const stateLabel = this._isOpen ? toggle.dataset.hideLabel : toggle.dataset.showLabel;
+        const label = this.previewOpen ? toggle.dataset.pinLabel : stateLabel;
+        if (label) toggle.setAttribute('aria-label', label);
+    };
+
+    /** Route clicks from the current toolbar button to the persistent sidebar. */
+    private readonly onHeaderClick = (event: MouseEvent): void => {
+        if (event.target instanceof Element && event.target.closest('#sidebar-toggle')) {
+            this.toggle();
         }
+    };
+
+    /** Dismiss the mobile sidebar and return focus to the header button. */
+    private readonly onDismiss = (): void => {
+        this.close();
+        this.getHeaderToggle()?.focus({preventScroll: true});
+    };
+
+    /** Bind sidebar controls, fragment updates, and desktop hover preview events. */
+    private setupEventListeners(): void {
+        this.controlListeners?.abort();
+        this.controlListeners = new AbortController();
+        const {signal} = this.controlListeners;
+
+        this.overlayElement?.addEventListener('click', this.onDismiss, {signal});
+        this.element?.querySelector('[data-sidebar-close]')?.addEventListener('click', this.onDismiss, {signal});
+        this.mainElement?.addEventListener('click', this.onHeaderClick, {signal});
+        this.mainElement?.addEventListener('htmx:afterSwap', this.syncHeader, {signal});
+        this.mainElement?.addEventListener('scroll', this.onWorkspaceScroll, {capture: true, passive: true, signal});
+        window.addEventListener('resize', this.updateHeaderGeometry, {passive: true, signal});
+        document.addEventListener('pointermove', this.onPreviewPointerMove, {passive: true, signal});
+        document.documentElement.addEventListener('pointerleave', this.onPreviewPointerLeave, {signal});
+        window.addEventListener('blur', this.onPreviewPointerLeave, {signal});
+        this.desktopViewport.addEventListener('change', this.onPreviewPointerLeave, {signal});
+    }
+
+    /** Follow the mouse across the left edge, toggle, and open preview panel. */
+    private readonly onPreviewPointerMove = (event: PointerEvent): void => {
+        if (event.pointerType !== 'mouse' || this._isOpen || !this.desktopViewport.matches) return;
+
+        const target = event.target;
+        const overSidebar = target instanceof Element && (
+            target.closest('#sidebar-toggle') || (this.previewOpen && this.element?.contains(target))
+        );
+        this.setPreviewIntent(event.clientX < PREVIEW_EDGE_WIDTH || Boolean(overSidebar));
+    };
+
+    /** Cancel hover intent when the pointer leaves the page or the preview loses its viewport. */
+    private readonly onPreviewPointerLeave = (): void => {
+        this.setPreviewIntent(false);
+    };
+
+    /** Wait for steady hover and allow the mouse to cross from the toggle into the panel. */
+    private setPreviewIntent(wanted: boolean): void {
+        if (wanted === this.previewWanted) return;
+
+        this.previewWanted = wanted;
+        window.clearTimeout(this.previewTimer);
+        this.previewTimer = undefined;
+        if (wanted === this.previewOpen) return;
+
+        this.previewTimer = window.setTimeout(
+            this.applyPreviewIntent,
+            wanted ? PREVIEW_OPEN_DELAY_MS : PREVIEW_CLOSE_DELAY_MS,
+        );
+    }
+
+    /** Apply the temporary state without changing the saved sidebar preference. */
+    private readonly applyPreviewIntent = (): void => {
+        this.previewTimer = undefined;
+        const focusWasInside = this.element?.contains(document.activeElement);
+        this.previewOpen = this.previewWanted;
+        this.updateUI();
+        if (!this.previewOpen && focusWasInside) this.getHeaderToggle()?.focus({preventScroll: true});
+    };
+
+    /** Clear the preview and its timer before pinning the sidebar or releasing the component. */
+    private clearPreview(): void {
+        window.clearTimeout(this.previewTimer);
+        this.previewTimer = undefined;
+        this.previewWanted = false;
+        this.previewOpen = false;
     }
 
     private setupDragAndDrop(): void {
@@ -195,44 +244,40 @@ export class Sidebar extends BaseComponent {
         document.addEventListener('drop', this.onDocumentDrop);
     }
 
+    /** Switch the sidebar between its expanded and collapsed states. */
     public toggle(): void {
-        this._isOpen = !this._isOpen;
-        this.saveState();
-        this.updateUI();
+        if (this._isOpen) this.close();
+        else this.open();
     }
 
+    /** Pin the sidebar open and focus its dismiss button on mobile. */
     public open(): void {
         if (this._isOpen) return;
         this._isOpen = true;
+        this.clearPreview();
         this.saveState();
         this.updateUI();
+        this.element?.querySelector<HTMLButtonElement>('[data-sidebar-close]')?.focus({preventScroll: true});
     }
 
+    /** Close the sidebar and return any focus inside it to the workspace. */
     public close(): void {
         if (!this._isOpen) return;
+        const focusWasInside = this.element?.contains(document.activeElement);
         this._isOpen = false;
         this.saveState();
         this.updateUI();
+        if (focusWasInside) this.getHeaderToggle()?.focus({preventScroll: true});
     }
 
+    /** Return whether the sidebar is visible, including during a hover preview. */
     public isOpen(): boolean {
-        return this._isOpen;
+        return this._isOpen || this.previewOpen;
     }
 
     private saveState(): void {
         localStorage.setItem(this.storageKey, String(this._isOpen));
     }
-
-    private readonly onWindowMouseMove = (event: MouseEvent): void => {
-        this.handlePointer(event.clientX, event.clientY);
-    };
-
-    private readonly onWindowTouchStart = (event: TouchEvent): void => {
-        const touch = event.touches.item(0);
-        if (!touch) return;
-
-        this.handlePointer(touch.clientX, touch.clientY);
-    };
 
     private readonly onDragStart = (event: DragEvent): void => {
         if (!this.element) return;

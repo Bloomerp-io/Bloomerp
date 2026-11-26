@@ -7,7 +7,11 @@
         :trigger_text="group_label"
         :trigger_icon_class="group_icon"
         :trigger_aria_label="group_name"
-        trigger_button_class="btn-secondary"
+        trigger_button_class="{% if selection_only or action_context.surface == 'dataview_item' %}btn-ghost{% else %}btn-secondary{% endif %}"
+        :trigger_size="group_button_size"
+        trigger_class="{% if dataview_group and not selection_only %}w-full sm:w-auto{% endif %}"
+        wrapper_class="{% if dataview_group and not selection_only %}w-full sm:w-auto{% endif %}"
+        direction="{% if selection_only %}up{% else %}down{% endif %}"
         :fixed="True"
         size="sm"
     >

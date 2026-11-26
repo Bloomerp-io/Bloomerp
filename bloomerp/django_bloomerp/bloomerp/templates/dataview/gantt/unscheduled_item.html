@@ -1,0 +1,19 @@
+{% load i18n bloomerp %}
+
+<div
+    class="flex min-w-0 items-center gap-2 px-3 py-2 text-sm text-dark {% if row.can_edit_start and row.can_edit_end %}cursor-grab hover:bg-gray-100 active:cursor-grabbing{% else %}cursor-not-allowed opacity-60{% endif %}"
+    data-gant-unscheduled-item
+    {% dataview_record_attrs row.object dataview_action_context row_index %}
+    data-dataview-item-placement="unscheduled"
+    data-object-string="{{ row.object }}"
+    data-detail-url="{{ row.object.get_absolute_url }}"
+    data-gant-can-edit-start="{{ row.can_edit_start|yesno:'true,false' }}"
+    data-gant-can-edit-end="{{ row.can_edit_end|yesno:'true,false' }}"
+    draggable="{% if row.can_edit_start and row.can_edit_end %}true{% else %}false{% endif %}"
+    tabindex="0"
+    bloomerp-component="gant-chart-sidebar-item"
+>
+    <c-features.dataviews.checkbox object_id="{{ row.object.pk }}" :label="row.object" />
+    {% if row.can_edit_start and row.can_edit_end %}<i class="fa fa-grip-vertical text-gray-400" aria-hidden="true"></i>{% endif %}
+    <span class="truncate">{{ row.object }}</span>
+</div>

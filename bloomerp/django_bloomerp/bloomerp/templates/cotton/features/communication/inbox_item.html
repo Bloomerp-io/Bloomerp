@@ -8,25 +8,30 @@
         hx-swap-oob="true"
     {% endif %}
 >
-    <button id="inbox-item-button-{{ item.id }}" type="button" data-inbox-row-button aria-keyshortcuts="Enter Space" class="w-full p-2 text-left hover:bg-gray-50 focus-visible:outline-none">
-        <div class="flex items-center gap-4">
-            <span class="mt-0.5 inline-flex size-5 items-center justify-center rounded-md bg-primary-500 text-[0.7rem] text-white">
+    <button id="inbox-item-button-{{ item.id }}" type="button" data-inbox-row-button aria-keyshortcuts="Enter Space"
+        class="flex w-full items-start gap-2 px-3 py-2 text-left hover:bg-gray-50 focus-visible:outline-none">
+        {% if item.icon %}
+            <span class="inline-flex size-5 shrink-0 items-center justify-center rounded-md text-xs {% if item.is_read %}bg-primary-50 text-primary-700{% else %}bg-primary-500 text-white{% endif %}" aria-hidden="true">
                 <i class="{{ item.icon }}"></i>
             </span>
-            <span class="min-w-0 flex-1">
-                <span class="flex flex-col">
-                    <span class="{% if not item.is_read %} font-bold {% endif %}">{{ item.actor }}</span>
-                    <div class="flex items-center justify-between gap-4">
-                        <span class="truncate text-sm {% if not item.is_read %}font-bold{% endif %}">{% translate item.title %}</span>
-                        <span class="text-sm text-gray-600">{{ item.datetime_received|date:request.user.datetime_view_preference }}</span>
-                    </div>
+        {% endif %}
+        <span class="min-w-0 flex-1">
+            <span class="flex min-w-0 items-center justify-between gap-2">
+                <span class="min-w-0 truncate text-sm leading-5 text-gray-900 {% if item.is_read %}font-normal{% else %}font-bold{% endif %}">
+                    {% if item.actor %}{{ item.actor }}{% else %}{% translate item.title %}{% endif %}
                 </span>
-                {% if item.snippet %}
-                <span class="mt-3 flex items-center gap-2 text-sm text-gray-600">
-                    <span class="truncate">{% translate item.snippet %}</span>
-                </span>
+                {% if item.datetime_received %}
+                    <time datetime="{{ item.datetime_received|date:'c' }}" class="shrink-0 whitespace-nowrap text-xs text-gray-500">
+                        {{ item.datetime_received|date:request.user.datetime_view_preference }}
+                    </time>
                 {% endif %}
             </span>
-        </div>
+            {% if item.actor %}
+                <span class="block truncate text-sm leading-5 text-gray-900 {% if item.is_read %}font-normal{% else %}font-bold{% endif %}">{% translate item.title %}</span>
+            {% endif %}
+            {% if item.snippet %}
+                <span class="block truncate text-sm leading-4 text-gray-600">{% translate item.snippet %}</span>
+            {% endif %}
+        </span>
     </button>
 </div>

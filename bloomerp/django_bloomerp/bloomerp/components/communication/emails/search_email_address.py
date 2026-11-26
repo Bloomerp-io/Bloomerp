@@ -1,4 +1,5 @@
 """Optional recipient suggestions from readable email fields on searchable models."""
+# SHOULD_API
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required

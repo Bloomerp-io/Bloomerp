@@ -718,7 +718,7 @@ export class BookmarkApi extends ModelApi<Bookmark, BookmarkId, BookmarkCreate, 
   }
 }
 
-export interface CalendarBooking {
+export interface BookingLink {
   active: boolean;
   availability_hours: unknown;
   created_by: number | null;
@@ -736,10 +736,10 @@ export interface CalendarBooking {
   updated_by: number | null;
 }
 
-export type CalendarBookingId = string;
-export type CalendarBookingFieldName = "active" | "availability_hours" | "created_by" | "datetime_created" | "datetime_updated" | "description" | "id" | "meeting_duration_minutes" | "object_labels" | "organizing_inbox" | "public_token" | "target_inboxes" | "timezone" | "title" | "updated_by";
+export type BookingLinkId = string;
+export type BookingLinkFieldName = "active" | "availability_hours" | "created_by" | "datetime_created" | "datetime_updated" | "description" | "id" | "meeting_duration_minutes" | "object_labels" | "organizing_inbox" | "public_token" | "target_inboxes" | "timezone" | "title" | "updated_by";
 
-export interface CalendarBookingCreate {
+export interface BookingLinkCreate {
   active?: boolean;
   availability_hours?: unknown;
   created_by?: number | null;
@@ -747,15 +747,15 @@ export interface CalendarBookingCreate {
   meeting_duration_minutes: number;
   organizing_inbox: number;
   target_inboxes?: Array<number>;
-  timezone: string;
+  timezone?: string;
   title: string;
   updated_by?: number | null;
 }
 
-export type CalendarBookingUpdate = Partial<CalendarBookingCreate>;
-export type CalendarBookingQuery = Partial<Record<CalendarBookingFieldName | `${CalendarBookingFieldName}__${string}`, QueryValue | QueryValue[]>>;
+export type BookingLinkUpdate = Partial<BookingLinkCreate>;
+export type BookingLinkQuery = Partial<Record<BookingLinkFieldName | `${BookingLinkFieldName}__${string}`, QueryValue | QueryValue[]>>;
 
-export const calendarBookingsFields: Record<CalendarBookingFieldName, BloomerpFieldMetadata> = {
+export const bookingLinksFields: Record<BookingLinkFieldName, BloomerpFieldMetadata> = {
   "active": {"name": "active", "title": "Active", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
   "availability_hours": {"name": "availability_hours", "title": "Availability hours", "fieldType": "JSONField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
   "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
@@ -768,21 +768,21 @@ export const calendarBookingsFields: Record<CalendarBookingFieldName, BloomerpFi
   "organizing_inbox": {"name": "organizing_inbox", "title": "Organizing inbox", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "Inbox", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
   "public_token": {"name": "public_token", "title": "Public Token", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "target_inboxes": {"name": "target_inboxes", "title": "Destination inboxes", "fieldType": "ManyToManyField", "dbFieldType": null, "nullable": false, "many": true, "relatedModel": "Inbox", "editable": true, "requiredOnCreate": false, "tsType": "Array<number>", "choices": null},
-  "timezone": {"name": "timezone", "title": "Availability timezone", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "timezone": {"name": "timezone", "title": "Availability timezone", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "title": {"name": "title", "title": "Title", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
 
-export const calendarBookingsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
-export const calendarBookingsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+export const bookingLinksCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const bookingLinksPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
-export class CalendarBookingApi extends ModelApi<CalendarBooking, CalendarBookingId, CalendarBookingCreate, CalendarBookingUpdate, CalendarBookingQuery, CalendarBookingFieldName> {
+export class BookingLinkApi extends ModelApi<BookingLink, BookingLinkId, BookingLinkCreate, BookingLinkUpdate, BookingLinkQuery, BookingLinkFieldName> {
   constructor(client: BloomerpHttpClient) {
-    super(client, "/api/calendar_bookings/");
+    super(client, "/api/booking_links/");
   }
 }
 
-export interface CalendarBookingSubmission {
+export interface BookingLinkSubmission {
   calendar_booking: string;
   created_by: number | null;
   datetime_created: string;
@@ -795,10 +795,10 @@ export interface CalendarBookingSubmission {
   updated_by: number | null;
 }
 
-export type CalendarBookingSubmissionId = string;
-export type CalendarBookingSubmissionFieldName = "calendar_booking" | "created_by" | "datetime_created" | "datetime_updated" | "email" | "id" | "name" | "object_labels" | "submitted_at" | "updated_by";
+export type BookingLinkSubmissionId = string;
+export type BookingLinkSubmissionFieldName = "calendar_booking" | "created_by" | "datetime_created" | "datetime_updated" | "email" | "id" | "name" | "object_labels" | "submitted_at" | "updated_by";
 
-export interface CalendarBookingSubmissionCreate {
+export interface BookingLinkSubmissionCreate {
   calendar_booking: string;
   created_by?: number | null;
   email: string;
@@ -807,11 +807,11 @@ export interface CalendarBookingSubmissionCreate {
   updated_by?: number | null;
 }
 
-export type CalendarBookingSubmissionUpdate = Partial<CalendarBookingSubmissionCreate>;
-export type CalendarBookingSubmissionQuery = Partial<Record<CalendarBookingSubmissionFieldName | `${CalendarBookingSubmissionFieldName}__${string}`, QueryValue | QueryValue[]>>;
+export type BookingLinkSubmissionUpdate = Partial<BookingLinkSubmissionCreate>;
+export type BookingLinkSubmissionQuery = Partial<Record<BookingLinkSubmissionFieldName | `${BookingLinkSubmissionFieldName}__${string}`, QueryValue | QueryValue[]>>;
 
-export const calendarBookingSubmissionsFields: Record<CalendarBookingSubmissionFieldName, BloomerpFieldMetadata> = {
-  "calendar_booking": {"name": "calendar_booking", "title": "Calendar booking", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": "CalendarBooking", "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+export const bookingLinkSubmissionsFields: Record<BookingLinkSubmissionFieldName, BloomerpFieldMetadata> = {
+  "calendar_booking": {"name": "calendar_booking", "title": "Booking link", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": "BookingLink", "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
   "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
   "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
@@ -823,12 +823,12 @@ export const calendarBookingSubmissionsFields: Record<CalendarBookingSubmissionF
   "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
 } as const;
 
-export const calendarBookingSubmissionsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
-export const calendarBookingSubmissionsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+export const bookingLinkSubmissionsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const bookingLinkSubmissionsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
 
-export class CalendarBookingSubmissionApi extends ModelApi<CalendarBookingSubmission, CalendarBookingSubmissionId, CalendarBookingSubmissionCreate, CalendarBookingSubmissionUpdate, CalendarBookingSubmissionQuery, CalendarBookingSubmissionFieldName> {
+export class BookingLinkSubmissionApi extends ModelApi<BookingLinkSubmission, BookingLinkSubmissionId, BookingLinkSubmissionCreate, BookingLinkSubmissionUpdate, BookingLinkSubmissionQuery, BookingLinkSubmissionFieldName> {
   constructor(client: BloomerpHttpClient) {
-    super(client, "/api/calendar_booking_submissions/");
+    super(client, "/api/booking_link_submissions/");
   }
 }
 
@@ -887,7 +887,7 @@ export type CalendarEventQuery = Partial<Record<CalendarEventFieldName | `${Cale
 
 export const calendarEventsFields: Record<CalendarEventFieldName, BloomerpFieldMetadata> = {
   "all_day": {"name": "all_day", "title": "All day", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
-  "calendar_booking_submission": {"name": "calendar_booking_submission", "title": "Booking submission", "fieldType": "OneToOneField", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "CalendarBookingSubmission", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
+  "calendar_booking_submission": {"name": "calendar_booking_submission", "title": "Booking submission", "fieldType": "OneToOneField", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "BookingLinkSubmission", "editable": true, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
   "calendar_uid": {"name": "calendar_uid", "title": "Calendar Uid", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
   "cancelled": {"name": "cancelled", "title": "Cancelled", "fieldType": "BooleanField", "dbFieldType": "bool", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "boolean", "choices": null},
   "conference_session": {"name": "conference_session", "title": "Conference session", "fieldType": "OneToOneField", "dbFieldType": "char(32)", "nullable": true, "many": false, "relatedModel": "ConferenceSession", "editable": false, "requiredOnCreate": false, "tsType": "string | null", "choices": null},
@@ -1861,6 +1861,109 @@ export const oAuthAuthorizationCodesPublicAccess: BloomerpModelPublicAccessMetad
 export class OAuthAuthorizationCodeApi extends ModelApi<OAuthAuthorizationCode, OAuthAuthorizationCodeId, OAuthAuthorizationCodeCreate, OAuthAuthorizationCodeUpdate, OAuthAuthorizationCodeQuery, OAuthAuthorizationCodeFieldName> {
   constructor(client: BloomerpHttpClient) {
     super(client, "/api/o_auth_authorization_codes/");
+  }
+}
+
+export interface Page {
+  content: string;
+  created_by: number | null;
+  datetime_created: string;
+  datetime_updated: string;
+  id: string;
+  object_labels: unknown;
+  owner: number;
+  shared_with_groups: Array<number>;
+  shared_with_users: Array<number>;
+  title: string;
+  updated_by: number | null;
+}
+
+export type PageId = string;
+export type PageFieldName = "content" | "created_by" | "datetime_created" | "datetime_updated" | "id" | "object_labels" | "owner" | "shared_with_groups" | "shared_with_users" | "title" | "updated_by";
+
+export interface PageCreate {
+  content?: string;
+  created_by?: number | null;
+  owner: number;
+  shared_with_groups?: Array<number>;
+  shared_with_users?: Array<number>;
+  title?: string;
+  updated_by?: number | null;
+}
+
+export type PageUpdate = Partial<PageCreate>;
+export type PageQuery = Partial<Record<PageFieldName | `${PageFieldName}__${string}`, QueryValue | QueryValue[]>>;
+
+export const pagesFields: Record<PageFieldName, BloomerpFieldMetadata> = {
+  "content": {"name": "content", "title": "Content", "fieldType": "TextField", "dbFieldType": "text", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "owner": {"name": "owner", "title": "Owner", "fieldType": "ForeignKey", "dbFieldType": "bigint", "nullable": false, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": true, "tsType": "number", "choices": null},
+  "shared_with_groups": {"name": "shared_with_groups", "title": "Shared with groups", "fieldType": "ManyToManyField", "dbFieldType": null, "nullable": false, "many": true, "relatedModel": "Group", "editable": true, "requiredOnCreate": false, "tsType": "Array<number>", "choices": null},
+  "shared_with_users": {"name": "shared_with_users", "title": "Shared with users", "fieldType": "ManyToManyField", "dbFieldType": null, "nullable": false, "many": true, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "Array<number>", "choices": null},
+  "title": {"name": "title", "title": "Title", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+} as const;
+
+export const pagesCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const pagesPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+
+export class PageApi extends ModelApi<Page, PageId, PageCreate, PageUpdate, PageQuery, PageFieldName> {
+  constructor(client: BloomerpHttpClient) {
+    super(client, "/api/pages/");
+  }
+}
+
+export interface PhoneCallEvent {
+  call: string;
+  created_by: number | null;
+  datetime_created: string;
+  datetime_updated: string;
+  event_id: string;
+  id: string;
+  object_labels: unknown;
+  occurred_at: string;
+  status: string;
+  updated_by: number | null;
+}
+
+export type PhoneCallEventId = string;
+export type PhoneCallEventFieldName = "call" | "created_by" | "datetime_created" | "datetime_updated" | "event_id" | "id" | "object_labels" | "occurred_at" | "status" | "updated_by";
+
+export interface PhoneCallEventCreate {
+  call: string;
+  created_by?: number | null;
+  event_id: string;
+  occurred_at: string;
+  status: string;
+  updated_by?: number | null;
+}
+
+export type PhoneCallEventUpdate = Partial<PhoneCallEventCreate>;
+export type PhoneCallEventQuery = Partial<Record<PhoneCallEventFieldName | `${PhoneCallEventFieldName}__${string}`, QueryValue | QueryValue[]>>;
+
+export const phoneCallEventsFields: Record<PhoneCallEventFieldName, BloomerpFieldMetadata> = {
+  "call": {"name": "call", "title": "Call", "fieldType": "ForeignKey", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": "PhoneCall", "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "created_by": {"name": "created_by", "title": "Created By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+  "datetime_created": {"name": "datetime_created", "title": "Datetime Created", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "datetime_updated": {"name": "datetime_updated", "title": "Datetime Updated", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "event_id": {"name": "event_id", "title": "Event identifier", "fieldType": "CharField", "dbFieldType": "varchar(255)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "id": {"name": "id", "title": "ID", "fieldType": "UUIDField", "dbFieldType": "char(32)", "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "string", "choices": null},
+  "object_labels": {"name": "object_labels", "title": "Object labels", "fieldType": "BloomerpLabelsField", "dbFieldType": null, "nullable": false, "many": false, "relatedModel": null, "editable": false, "requiredOnCreate": false, "tsType": "unknown", "choices": null},
+  "occurred_at": {"name": "occurred_at", "title": "Occurred at", "fieldType": "DateTimeField", "dbFieldType": "datetime", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "status": {"name": "status", "title": "Status", "fieldType": "CharField", "dbFieldType": "varchar(24)", "nullable": false, "many": false, "relatedModel": null, "editable": true, "requiredOnCreate": true, "tsType": "string", "choices": null},
+  "updated_by": {"name": "updated_by", "title": "Updated By", "fieldType": "UserField", "dbFieldType": "bigint", "nullable": true, "many": false, "relatedModel": "User", "editable": true, "requiredOnCreate": false, "tsType": "number | null", "choices": null},
+} as const;
+
+export const phoneCallEventsCapabilities: BloomerpModelCapabilities = {"list": true, "retrieve": true, "create": true, "createMany": true, "update": true, "partialUpdate": true, "destroy": true} as const;
+export const phoneCallEventsPublicAccess: BloomerpModelPublicAccessMetadata = {"listAllowed": false, "readAllowed": false, "listFields": [], "readFields": [], "nesting": [], "authenticatedFallbackEnabled": true} as const;
+
+export class PhoneCallEventApi extends ModelApi<PhoneCallEvent, PhoneCallEventId, PhoneCallEventCreate, PhoneCallEventUpdate, PhoneCallEventQuery, PhoneCallEventFieldName> {
+  constructor(client: BloomerpHttpClient) {
+    super(client, "/api/phone_call_events/");
   }
 }
 
@@ -3180,6 +3283,225 @@ export class WorkspaceApi extends ModelApi<Workspace, WorkspaceId, WorkspaceCrea
   }
 }
 
+export interface CustomTutorialRevisionsCreateTutorialStepInput {
+  "name": string;
+  "text"?: string;
+  "size"?: "small" | "medium" | "large";
+  "include_backdrop": boolean;
+  "show_as_tooltip"?: boolean;
+  "advance_mode"?: "manual" | "click" | "dblclick" | "input" | "navigation" | "delay";
+  "advance_delay_ms"?: number;
+  "advance_url_pattern"?: string;
+  "hide_next_button"?: boolean;
+  "interaction"?: unknown;
+  "step_id": string;
+  "page_path": string;
+}
+
+export interface CustomTutorialRevisionsCreateTutorialStepOutput {
+  "id": string;
+  "sequence": number;
+  "name": string;
+}
+
+export interface CustomEligibleTutorialsInput {
+
+}
+
+export interface CustomEligibleTutorialsOutputTutorialsItem {
+  "revision_id": string;
+  "name": string;
+  "trigger_route": string;
+  "auto_start": boolean;
+}
+
+export interface CustomEligibleTutorialsOutput {
+  "tutorials": Array<CustomEligibleTutorialsOutputTutorialsItem>;
+}
+
+export interface CustomTutorialRevisionsPreviewTutorialRevisionInput {
+
+}
+
+export interface CustomTutorialRevisionsPreviewTutorialRevisionOutputIntroduction {
+  "name": string;
+  "description": string;
+}
+
+export interface CustomTutorialRevisionsPreviewTutorialRevisionOutputStepsItem {
+  "id": string;
+  "name": string;
+  "text": string;
+  "size": "small" | "medium" | "large";
+  "destination_url": string | null;
+  "include_backdrop": boolean;
+  "show_as_tooltip": boolean;
+  "advance_mode": "manual" | "click" | "dblclick" | "input" | "navigation" | "delay";
+  "advance_delay_ms": number;
+  "advance_url_pattern": string;
+  "hide_next_button": boolean;
+  "interaction": unknown;
+}
+
+export interface CustomTutorialRevisionsPreviewTutorialRevisionOutput {
+  "introduction": CustomTutorialRevisionsPreviewTutorialRevisionOutputIntroduction;
+  "steps": Array<CustomTutorialRevisionsPreviewTutorialRevisionOutputStepsItem>;
+}
+
+export interface CustomTutorialRevisionsReorderTutorialStepsInput {
+  "step_ids": Array<string>;
+}
+
+export interface CustomTutorialRevisionsReorderTutorialStepsOutputStepsItem {
+  "id": string;
+  "sequence": number;
+  "name": string;
+}
+
+export interface CustomTutorialRevisionsReorderTutorialStepsOutput {
+  "steps": Array<CustomTutorialRevisionsReorderTutorialStepsOutputStepsItem>;
+}
+
+export interface CustomTutorialPlaybackPostInput {
+  "revision_id": string;
+  "automatic"?: boolean;
+}
+
+export interface CustomTutorialPlaybackPostOutputIntroduction {
+  "name": string;
+  "description": string;
+}
+
+export interface CustomTutorialPlaybackPostOutputStepsItem {
+  "id": string;
+  "name": string;
+  "text": string;
+  "size": "small" | "medium" | "large";
+  "destination_url": string | null;
+  "include_backdrop": boolean;
+  "show_as_tooltip": boolean;
+  "advance_mode": "manual" | "click" | "dblclick" | "input" | "navigation" | "delay";
+  "advance_delay_ms": number;
+  "advance_url_pattern": string;
+  "hide_next_button": boolean;
+  "interaction": unknown;
+}
+
+export interface CustomTutorialPlaybackPostOutput {
+  "introduction": CustomTutorialPlaybackPostOutputIntroduction;
+  "steps": Array<CustomTutorialPlaybackPostOutputStepsItem>;
+}
+
+export interface CustomTutorialPlaybackPatchInput {
+  "revision_id": string;
+  "outcome": "completed" | "dismissed";
+  "step_id": string;
+}
+
+export interface CustomTutorialPlaybackPatchOutput {
+
+}
+
+export interface CustomTutorialRevisionsTutorialRevisionSettingsGetInput {
+
+}
+
+export interface CustomTutorialRevisionsTutorialRevisionSettingsGetOutputRoutesItem {
+  "url": string;
+  "name": string;
+  "description": string;
+}
+
+export interface CustomTutorialRevisionsTutorialRevisionSettingsGetOutput {
+  "trigger_path": string | null;
+  "auto_start": boolean | null;
+  "can_edit_trigger": boolean;
+  "can_edit_auto_start": boolean;
+  "routes": Array<CustomTutorialRevisionsTutorialRevisionSettingsGetOutputRoutesItem>;
+}
+
+export interface CustomTutorialRevisionsTutorialRevisionSettingsPatchInput {
+  "trigger_path"?: string;
+  "auto_start"?: boolean;
+}
+
+export interface CustomTutorialRevisionsTutorialRevisionSettingsPatchOutput {
+  "trigger_path": string | null;
+  "auto_start": boolean | null;
+  "can_edit_trigger": boolean;
+  "can_edit_auto_start": boolean;
+}
+
+export interface CustomTutorialRevisionsTutorialRevisionStepsInput {
+
+}
+
+export interface CustomTutorialRevisionsTutorialRevisionStepsOutputStepsItem {
+  "id": string;
+  "sequence": number;
+  "name": string;
+}
+
+export interface CustomTutorialRevisionsTutorialRevisionStepsOutput {
+  "steps": Array<CustomTutorialRevisionsTutorialRevisionStepsOutputStepsItem>;
+}
+
+export interface CustomTutorialStepsTutorialStepDetailGetInput {
+
+}
+
+export interface CustomTutorialStepsTutorialStepDetailGetOutput {
+  "name": string;
+  "text": string;
+  "size": "small" | "medium" | "large" | null;
+  "include_backdrop": boolean;
+  "show_as_tooltip": boolean | null;
+  "advance_mode": "manual" | "click" | "dblclick" | "input" | "navigation" | "delay" | null;
+  "advance_delay_ms": number | null;
+  "advance_url_pattern": string | null;
+  "hide_next_button": boolean | null;
+  "page_path": string | null;
+  "interaction": unknown | null;
+}
+
+export interface CustomTutorialStepsTutorialStepDetailPutInput {
+  "name": string;
+  "text"?: string;
+  "size"?: "small" | "medium" | "large";
+  "include_backdrop": boolean;
+  "show_as_tooltip"?: boolean;
+  "advance_mode"?: "manual" | "click" | "dblclick" | "input" | "navigation" | "delay";
+  "advance_delay_ms"?: number;
+  "advance_url_pattern"?: string;
+  "hide_next_button"?: boolean;
+  "interaction"?: unknown;
+  "page_path"?: string;
+}
+
+export interface CustomTutorialStepsTutorialStepDetailPutOutput {
+  "id": string;
+  "sequence": number;
+  "name": string;
+}
+
+export interface CustomTutorialStepsTutorialStepDetailPostInput {
+  "step_id": string;
+}
+
+export interface CustomTutorialStepsTutorialStepDetailPostOutput {
+  "id": string;
+  "sequence": number;
+  "name": string;
+}
+
+export interface CustomTutorialStepsTutorialStepDetailDeleteInput {
+
+}
+
+export interface CustomTutorialStepsTutorialStepDetailDeleteOutput {
+  "deleted": boolean;
+}
+
 export interface CustomWorkflowsSaveInputNodesItem {
   "id"?: number;
   "client_id": string;
@@ -3243,6 +3565,71 @@ export class CustomApi {
   /** Reuse the SDK authentication and request transport. */
   constructor(private readonly client: BloomerpHttpClient) {}
 
+  /** Call POST /api/tutorial_revisions/<int_or_uuid:pk>/steps/create/. */
+  tutorialRevisionsCreateTutorialStep(payload: CustomTutorialRevisionsCreateTutorialStepInput, pathParams: { "pk": string | number }, options?: BloomerpRequestOptions): Promise<CustomTutorialRevisionsCreateTutorialStepOutput> {
+    return this.client.request<CustomTutorialRevisionsCreateTutorialStepOutput>("/api/tutorial_revisions/<int_or_uuid:pk>/steps/create/".replace("<int_or_uuid:pk>", encodeURIComponent(String(pathParams["pk"]))), { ...options, method: "POST", body: JSON.stringify(payload) });
+  }
+
+  /** Call GET /api/tutorials/eligible/. */
+  eligibleTutorials(payload: CustomEligibleTutorialsInput, options?: BloomerpRequestOptions): Promise<CustomEligibleTutorialsOutput> {
+    return this.client.request<CustomEligibleTutorialsOutput>("/api/tutorials/eligible/", { ...options, method: "GET", query: payload as unknown as QueryParams });
+  }
+
+  /** Call GET /api/tutorial_revisions/<int_or_uuid:pk>/preview/. */
+  tutorialRevisionsPreviewTutorialRevision(payload: CustomTutorialRevisionsPreviewTutorialRevisionInput, pathParams: { "pk": string | number }, options?: BloomerpRequestOptions): Promise<CustomTutorialRevisionsPreviewTutorialRevisionOutput> {
+    return this.client.request<CustomTutorialRevisionsPreviewTutorialRevisionOutput>("/api/tutorial_revisions/<int_or_uuid:pk>/preview/".replace("<int_or_uuid:pk>", encodeURIComponent(String(pathParams["pk"]))), { ...options, method: "GET", query: payload as unknown as QueryParams });
+  }
+
+  /** Call POST /api/tutorial_revisions/<int_or_uuid:pk>/steps/reorder/. */
+  tutorialRevisionsReorderTutorialSteps(payload: CustomTutorialRevisionsReorderTutorialStepsInput, pathParams: { "pk": string | number }, options?: BloomerpRequestOptions): Promise<CustomTutorialRevisionsReorderTutorialStepsOutput> {
+    return this.client.request<CustomTutorialRevisionsReorderTutorialStepsOutput>("/api/tutorial_revisions/<int_or_uuid:pk>/steps/reorder/".replace("<int_or_uuid:pk>", encodeURIComponent(String(pathParams["pk"]))), { ...options, method: "POST", body: JSON.stringify(payload) });
+  }
+
+  /** Call POST /api/tutorials/playback/. */
+  tutorialPlaybackPost(payload: CustomTutorialPlaybackPostInput, options?: BloomerpRequestOptions): Promise<CustomTutorialPlaybackPostOutput> {
+    return this.client.request<CustomTutorialPlaybackPostOutput>("/api/tutorials/playback/", { ...options, method: "POST", body: JSON.stringify(payload) });
+  }
+
+  /** Call PATCH /api/tutorials/playback/. */
+  tutorialPlaybackPatch(payload: CustomTutorialPlaybackPatchInput, options?: BloomerpRequestOptions): Promise<CustomTutorialPlaybackPatchOutput> {
+    return this.client.request<CustomTutorialPlaybackPatchOutput>("/api/tutorials/playback/", { ...options, method: "PATCH", body: JSON.stringify(payload) });
+  }
+
+  /** Call GET /api/tutorial_revisions/<int_or_uuid:pk>/settings/. */
+  tutorialRevisionsTutorialRevisionSettingsGet(payload: CustomTutorialRevisionsTutorialRevisionSettingsGetInput, pathParams: { "pk": string | number }, options?: BloomerpRequestOptions): Promise<CustomTutorialRevisionsTutorialRevisionSettingsGetOutput> {
+    return this.client.request<CustomTutorialRevisionsTutorialRevisionSettingsGetOutput>("/api/tutorial_revisions/<int_or_uuid:pk>/settings/".replace("<int_or_uuid:pk>", encodeURIComponent(String(pathParams["pk"]))), { ...options, method: "GET", query: payload as unknown as QueryParams });
+  }
+
+  /** Call PATCH /api/tutorial_revisions/<int_or_uuid:pk>/settings/. */
+  tutorialRevisionsTutorialRevisionSettingsPatch(payload: CustomTutorialRevisionsTutorialRevisionSettingsPatchInput, pathParams: { "pk": string | number }, options?: BloomerpRequestOptions): Promise<CustomTutorialRevisionsTutorialRevisionSettingsPatchOutput> {
+    return this.client.request<CustomTutorialRevisionsTutorialRevisionSettingsPatchOutput>("/api/tutorial_revisions/<int_or_uuid:pk>/settings/".replace("<int_or_uuid:pk>", encodeURIComponent(String(pathParams["pk"]))), { ...options, method: "PATCH", body: JSON.stringify(payload) });
+  }
+
+  /** Call GET /api/tutorial_revisions/<int_or_uuid:pk>/steps/. */
+  tutorialRevisionsTutorialRevisionSteps(payload: CustomTutorialRevisionsTutorialRevisionStepsInput, pathParams: { "pk": string | number }, options?: BloomerpRequestOptions): Promise<CustomTutorialRevisionsTutorialRevisionStepsOutput> {
+    return this.client.request<CustomTutorialRevisionsTutorialRevisionStepsOutput>("/api/tutorial_revisions/<int_or_uuid:pk>/steps/".replace("<int_or_uuid:pk>", encodeURIComponent(String(pathParams["pk"]))), { ...options, method: "GET", query: payload as unknown as QueryParams });
+  }
+
+  /** Call GET /api/tutorial_steps/<int_or_uuid:pk>/. */
+  tutorialStepsTutorialStepDetailGet(payload: CustomTutorialStepsTutorialStepDetailGetInput, pathParams: { "pk": string | number }, options?: BloomerpRequestOptions): Promise<CustomTutorialStepsTutorialStepDetailGetOutput> {
+    return this.client.request<CustomTutorialStepsTutorialStepDetailGetOutput>("/api/tutorial_steps/<int_or_uuid:pk>/".replace("<int_or_uuid:pk>", encodeURIComponent(String(pathParams["pk"]))), { ...options, method: "GET", query: payload as unknown as QueryParams });
+  }
+
+  /** Call PUT /api/tutorial_steps/<int_or_uuid:pk>/. */
+  tutorialStepsTutorialStepDetailPut(payload: CustomTutorialStepsTutorialStepDetailPutInput, pathParams: { "pk": string | number }, options?: BloomerpRequestOptions): Promise<CustomTutorialStepsTutorialStepDetailPutOutput> {
+    return this.client.request<CustomTutorialStepsTutorialStepDetailPutOutput>("/api/tutorial_steps/<int_or_uuid:pk>/".replace("<int_or_uuid:pk>", encodeURIComponent(String(pathParams["pk"]))), { ...options, method: "PUT", body: JSON.stringify(payload) });
+  }
+
+  /** Call POST /api/tutorial_steps/<int_or_uuid:pk>/. */
+  tutorialStepsTutorialStepDetailPost(payload: CustomTutorialStepsTutorialStepDetailPostInput, pathParams: { "pk": string | number }, options?: BloomerpRequestOptions): Promise<CustomTutorialStepsTutorialStepDetailPostOutput> {
+    return this.client.request<CustomTutorialStepsTutorialStepDetailPostOutput>("/api/tutorial_steps/<int_or_uuid:pk>/".replace("<int_or_uuid:pk>", encodeURIComponent(String(pathParams["pk"]))), { ...options, method: "POST", body: JSON.stringify(payload) });
+  }
+
+  /** Call DELETE /api/tutorial_steps/<int_or_uuid:pk>/. */
+  tutorialStepsTutorialStepDetailDelete(payload: CustomTutorialStepsTutorialStepDetailDeleteInput, pathParams: { "pk": string | number }, options?: BloomerpRequestOptions): Promise<CustomTutorialStepsTutorialStepDetailDeleteOutput> {
+    return this.client.request<CustomTutorialStepsTutorialStepDetailDeleteOutput>("/api/tutorial_steps/<int_or_uuid:pk>/".replace("<int_or_uuid:pk>", encodeURIComponent(String(pathParams["pk"]))), { ...options, method: "DELETE", body: JSON.stringify(payload) });
+  }
+
   /** Call POST /api/workflows/save/. */
   workflowsSave(payload: CustomWorkflowsSaveInput, options?: BloomerpRequestOptions): Promise<CustomWorkflowsSaveOutput> {
     return this.client.request<CustomWorkflowsSaveOutput>("/api/workflows/save/", { ...options, method: "POST", body: JSON.stringify(payload) });
@@ -3286,17 +3673,17 @@ export class BloomerpSdk {
         publicAccess: bookmarksPublicAccess,
         fields: bookmarksFields,
       },
-      calendarBookings: {
-        endpoint: "/api/calendar_bookings/",
-        capabilities: calendarBookingsCapabilities,
-        publicAccess: calendarBookingsPublicAccess,
-        fields: calendarBookingsFields,
+      bookingLinks: {
+        endpoint: "/api/booking_links/",
+        capabilities: bookingLinksCapabilities,
+        publicAccess: bookingLinksPublicAccess,
+        fields: bookingLinksFields,
       },
-      calendarBookingSubmissions: {
-        endpoint: "/api/calendar_booking_submissions/",
-        capabilities: calendarBookingSubmissionsCapabilities,
-        publicAccess: calendarBookingSubmissionsPublicAccess,
-        fields: calendarBookingSubmissionsFields,
+      bookingLinkSubmissions: {
+        endpoint: "/api/booking_link_submissions/",
+        capabilities: bookingLinkSubmissionsCapabilities,
+        publicAccess: bookingLinkSubmissionsPublicAccess,
+        fields: bookingLinkSubmissionsFields,
       },
       calendarEvents: {
         endpoint: "/api/calendar_events/",
@@ -3405,6 +3792,18 @@ export class BloomerpSdk {
         capabilities: oAuthAuthorizationCodesCapabilities,
         publicAccess: oAuthAuthorizationCodesPublicAccess,
         fields: oAuthAuthorizationCodesFields,
+      },
+      pages: {
+        endpoint: "/api/pages/",
+        capabilities: pagesCapabilities,
+        publicAccess: pagesPublicAccess,
+        fields: pagesFields,
+      },
+      phoneCallEvents: {
+        endpoint: "/api/phone_call_events/",
+        capabilities: phoneCallEventsCapabilities,
+        publicAccess: phoneCallEventsPublicAccess,
+        fields: phoneCallEventsFields,
       },
       accessControlPolicies: {
         endpoint: "/api/access_control_policies/",
@@ -3557,8 +3956,8 @@ export class BloomerpSdk {
   public readonly activityLogs: ActivityLogApi;
   public readonly applicationFields: ApplicationFieldApi;
   public readonly bookmarks: BookmarkApi;
-  public readonly calendarBookings: CalendarBookingApi;
-  public readonly calendarBookingSubmissions: CalendarBookingSubmissionApi;
+  public readonly bookingLinks: BookingLinkApi;
+  public readonly bookingLinkSubmissions: BookingLinkSubmissionApi;
   public readonly calendarEvents: CalendarEventApi;
   public readonly calendarEventParticipants: CalendarEventParticipantApi;
   public readonly comments: CommentApi;
@@ -3577,6 +3976,8 @@ export class BloomerpSdk {
   public readonly initiatives: InitiativeApi;
   public readonly oAuthAccessTokens: OAuthAccessTokenApi;
   public readonly oAuthAuthorizationCodes: OAuthAuthorizationCodeApi;
+  public readonly pages: PageApi;
+  public readonly phoneCallEvents: PhoneCallEventApi;
   public readonly accessControlPolicies: PolicyApi;
   public readonly accessControlRowPolicies: RowPolicyApi;
   public readonly accessControlRowPolicyRules: RowPolicyRuleApi;
@@ -3612,8 +4013,8 @@ export class BloomerpSdk {
     this.activityLogs = new ActivityLogApi(this.client);
     this.applicationFields = new ApplicationFieldApi(this.client);
     this.bookmarks = new BookmarkApi(this.client);
-    this.calendarBookings = new CalendarBookingApi(this.client);
-    this.calendarBookingSubmissions = new CalendarBookingSubmissionApi(this.client);
+    this.bookingLinks = new BookingLinkApi(this.client);
+    this.bookingLinkSubmissions = new BookingLinkSubmissionApi(this.client);
     this.calendarEvents = new CalendarEventApi(this.client);
     this.calendarEventParticipants = new CalendarEventParticipantApi(this.client);
     this.comments = new CommentApi(this.client);
@@ -3632,6 +4033,8 @@ export class BloomerpSdk {
     this.initiatives = new InitiativeApi(this.client);
     this.oAuthAccessTokens = new OAuthAccessTokenApi(this.client);
     this.oAuthAuthorizationCodes = new OAuthAuthorizationCodeApi(this.client);
+    this.pages = new PageApi(this.client);
+    this.phoneCallEvents = new PhoneCallEventApi(this.client);
     this.accessControlPolicies = new PolicyApi(this.client);
     this.accessControlRowPolicies = new RowPolicyApi(this.client);
     this.accessControlRowPolicyRules = new RowPolicyRuleApi(this.client);

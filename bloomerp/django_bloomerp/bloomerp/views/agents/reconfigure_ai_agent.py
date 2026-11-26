@@ -129,6 +129,14 @@ class ReconfigureAIAgentView(CreateAIAgentView, BaseBloomerpDetailView):
             manager = UserPolicyManager(self.request.user)
             if not manager.candidate_matches_row_policies(candidate, "change"):
                 raise PermissionDenied("Agent changes are outside your permitted rows.")
+            if not form.discover_model_modalities(candidate):
+                return WizardError(message=_("Review the agent details."), step=1)
+            if form.cleaned_data.get(
+                "discover_modalities"
+            ) and not manager.candidate_matches_row_policies(candidate, "change"):
+                raise PermissionDenied(
+                    "Discovered modalities are outside your permitted rows."
+                )
             try:
                 # Use a savepoint so a database error does not break the outer
                 # transaction before the form is rendered again.

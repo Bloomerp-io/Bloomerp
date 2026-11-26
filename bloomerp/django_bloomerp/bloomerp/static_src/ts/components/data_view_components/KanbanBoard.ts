@@ -1,3 +1,4 @@
+import { requestContextHeaders } from "../../utils/requestContext";
 import { t as _ } from "@/utils/i18n";
 import { BaseDataViewComponent } from "./BaseDataViewComponent";
 import { getComponent } from "../BaseComponent";
@@ -391,6 +392,7 @@ export class KanbanBoard extends BaseDataViewComponent {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
+                    ...requestContextHeaders(card, moveUrl),
                     ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
                 },
                 body,
@@ -415,7 +417,7 @@ export class KanbanBoard extends BaseDataViewComponent {
         }
     }
 
-    /** Refresh only a card's contents while preserving its component, selection and focus. */
+    /** Refresh a card's contents while keeping its component and keyboard focus. */
     private updateCard(card: HTMLElement, html: string): void {
         if (!html.trim()) {
             const dropzone = card.closest<HTMLElement>('.kanban-column-body');
@@ -432,12 +434,9 @@ export class KanbanBoard extends BaseDataViewComponent {
         template.innerHTML = html;
         const updated = template.content.querySelector<HTMLElement>(`[${componentIdentifier}="kanban-card"]`);
         if (!updated) return;
-        const checked = card.querySelector<HTMLInputElement>('[data-bulk-checkbox]')?.checked ?? false;
         card.dataset.objectString = updated.dataset.objectString ?? '';
         card.dataset.detailUrl = updated.dataset.detailUrl ?? '';
         htmx.swap(card, updated.innerHTML, { swapStyle: 'innerHTML', swapDelay: 0, settleDelay: 0 });
-        const checkbox = card.querySelector<HTMLInputElement>('[data-bulk-checkbox]');
-        if (checkbox) checkbox.checked = checked;
         getComponent(card)?.onAfterSwap();
     }
 

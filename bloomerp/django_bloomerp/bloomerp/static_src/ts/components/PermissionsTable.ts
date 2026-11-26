@@ -566,7 +566,7 @@ export class PermissionsTable extends BaseComponent {
             field.classList.remove(
                 "bg-white",
                 "text-gray-700",
-                "border-base",
+                "border-gray-200",
                 "bg-gray-100",
                 "text-gray-500",
                 "border-gray-300",
@@ -576,7 +576,7 @@ export class PermissionsTable extends BaseComponent {
             );
 
             if (usageCount === 0) {
-                field.classList.add("bg-white", "text-gray-700", "border-base");
+                field.classList.add("bg-white", "text-gray-700", "border-gray-200");
             } else if (usageCount === 1) {
                 field.classList.add("bg-gray-100", "text-gray-500", "border-gray-300");
             } else {

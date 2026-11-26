@@ -56,12 +56,18 @@ export default class PageEditor extends BaseComponent {
         }
     }
 
+    /** Put the caret in the visible document body so the user can start typing. */
+    public focusBody(): void {
+        if (!this.element.getClientRects().length) return;
+        this.editor().editor?.focus(undefined, { defaultSelection: 'rootStart' });
+    }
+
     /** Move forward Tab from the page title directly into the document. */
     private keydown = (event: KeyboardEvent): void => {
         if (event.defaultPrevented || event.isComposing) return;
         if (event.key === 'Tab' && !event.shiftKey && (event.target as Element).matches('[name="title"]')) {
             event.preventDefault();
-            this.editor().editor?.focus(undefined, { defaultSelection: 'rootStart' });
+            this.focusBody();
         }
     };
 

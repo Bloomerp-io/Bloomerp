@@ -4,24 +4,26 @@
 {% translate "View row" as view_row_label %}
 
 <div class="flex items-center justify-end gap-1">
+    {% if not pending %}
     <c-ui.tooltip text="{{ clone_row_label }}" position="top">
-        <button type="button" class="h-7 w-7 rounded-xl text-gray-500 hover:bg-gray-100 hover:text-primary" data-one-to-many-clone-row aria-label="{{ clone_row_label }}" {% if not can_edit %}disabled{% endif %}>
-            <i class="fa-solid fa-clone"></i>
+        <button type="button" class="icon-button" data-one-to-many-clone-row aria-label="{{ clone_row_label }}" {% if not can_edit %}disabled{% endif %}>
+            <i class="fa-solid fa-clone" aria-hidden="true"></i>
         </button>
     </c-ui.tooltip>
+    {% endif %}
     <c-ui.tooltip text="{{ remove_row_label }}" position="top">
-        <button type="button" class="h-7 w-7 rounded-xl text-gray-500 hover:bg-danger-light hover:text-danger-dark" data-one-to-many-delete-row aria-label="{{ remove_row_label }}" {% if not can_edit %}disabled{% endif %}>
-            <i class="fa-solid fa-trash"></i>
+        <button type="button" class="icon-button" data-one-to-many-delete-row aria-label="{{ remove_row_label }}" {% if not can_edit %}disabled{% endif %}>
+            <i class="fa-solid fa-trash" aria-hidden="true"></i>
         </button>
     </c-ui.tooltip>
     <a
-        class="h-7 w-7 rounded-xl text-gray-500 hover:bg-gray-100 hover:text-primary {% if not row_id %}hidden{% else %}inline-flex items-center justify-center{% endif %}"
+        class="icon-button {% if not row_id %}hidden{% endif %}"
         {% if detail_url %}href="{{ detail_url }}"{% endif %}
         data-one-to-many-view-row
         data-object-id="{{ row_id|default:'' }}"
         data-detail-url="{{ detail_url|default:'' }}"
         aria-label="{{ view_row_label }}"
     >
-        <i class="fa-solid fa-magnifying-glass"></i>
+        <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
     </a>
 </div>

@@ -439,3 +439,5 @@ class EmailAccount(BloomerpModel):
 
     def __str__(self) -> str:
         return self.name or self.email_address
+
+    

@@ -5,7 +5,7 @@
         <div class="im-chat-identity"><c-features.instant_messaging.identity :identity="identity" :show_provider="False" /></div>
         <c-ui.dropdown.body width="w-80" :fixed="True" menu_class="max-h-80 overflow-y-auto">
             <c-slot name="trigger_html">
-                <button type="button" class="im-icon-button text-primary-800" x-ref="trigger" aria-label="{% translate 'Group settings' %}" aria-haspopup="true" :aria-expanded="open.toString()" @click="open = !open; if (open) $nextTick(() => resolvePlacement())">
+                <button type="button" class="icon-button" x-ref="trigger" aria-label="{% translate 'Group settings' %}" aria-haspopup="true" :aria-expanded="open.toString()" @click="open = !open; if (open) $nextTick(() => resolvePlacement())">
                     <i class="fa-solid fa-gear" aria-hidden="true"></i>
                 </button>
             </c-slot>
@@ -13,15 +13,15 @@
         </c-ui.dropdown.body>
         {% else %}<div class="im-chat-identity"><c-features.instant_messaging.identity :identity="identity" /></div>{% endif %}
         {% if conversation.kind != 'group' or calling.groups %}
-        {% if calling.audio %}<button type="button" class="im-icon-button text-primary-800" data-call-action="start" data-media-mode="audio" data-start-url="{% url 'components_im_start_call' conversation.pk %}" aria-label="{% translate 'Start audio call' %}"><i class="fa-solid fa-phone" aria-hidden="true"></i></button>{% endif %}
-        {% if calling.video %}<button type="button" class="im-icon-button text-primary-800" data-call-action="start" data-media-mode="video" data-start-url="{% url 'components_im_start_call' conversation.pk %}" aria-label="{% translate 'Start video call' %}"><i class="fa-solid fa-video" aria-hidden="true"></i></button>{% endif %}
+        {% if calling.audio %}<button type="button" class="icon-button" data-call-action="start" data-media-mode="audio" data-start-url="{% url 'components_im_start_call' conversation.pk %}" aria-label="{% translate 'Start audio call' %}"><i class="fa-solid fa-phone" aria-hidden="true"></i></button>{% endif %}
+        {% if calling.video %}<button type="button" class="icon-button" data-call-action="start" data-media-mode="video" data-start-url="{% url 'components_im_start_call' conversation.pk %}" aria-label="{% translate 'Start video call' %}"><i class="fa-solid fa-video" aria-hidden="true"></i></button>{% endif %}
         {% endif %}
         {% if business_number %}<small>{{ business_number }}</small>{% endif %}
     </header>
     {% if thread_root %}<div class="im-thread-banner bg-base"><span>{% translate 'Thread' %}</span><button type="button" hx-get="{% url 'components_conversation' conversation.pk %}" hx-target="closest .im-conversation-content" hx-swap="outerHTML">{% translate 'Back to conversation' %}</button></div>{% endif %}
     {% include "components/communication/instant_messaging/messages.html" %}
     <form class="im-composer-wrap" data-send-form action="{% url 'components_im_send_message' conversation.pk %}" method="post">{% csrf_token %}
-        <div class="im-quote-preview" data-quote-preview hidden><span data-quote-text></span><button type="button" class="im-icon-button text-primary-800" data-cancel-quote aria-label="{% translate 'Cancel quoted reply' %}">×</button></div>
+        <div class="im-quote-preview" data-quote-preview hidden><span data-quote-text></span><button type="button" class="icon-button" data-cancel-quote aria-label="{% translate 'Cancel quoted reply' %}">×</button></div>
         <c-ui.chat.composer :name="editor_name" disabled="{% if not can_send %}true{% endif %}" />
         <p data-send-error role="alert" hidden></p>
     </form>

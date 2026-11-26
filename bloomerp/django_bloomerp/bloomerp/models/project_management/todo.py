@@ -16,11 +16,14 @@ from bloomerp.dataviews.kanban.config import KanbanDataView
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models import FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.definition import (
+    ActionResponse,
     BloomerpModelConfig,
     DetailTab,
     DetailTabsConfiguration,
     DetailViewSettings,
     ModelViewSettings,
+    ObjectAction,
+    ObjectActionDefinition,
     StringSearchSettings,
 )
 from bloomerp.utils.models import get_list_view_url
@@ -333,7 +336,7 @@ class Todo(BloomerpModel):
                     "show_legend": False,
                 },
             ),
-        ]
+        ],
     )
 
     avatar = None
@@ -507,3 +510,5 @@ class Todo(BloomerpModel):
             return ""
         
         return f"todo/{str(self.id)[-4:]}-{slugify(self.title)}"
+
+    

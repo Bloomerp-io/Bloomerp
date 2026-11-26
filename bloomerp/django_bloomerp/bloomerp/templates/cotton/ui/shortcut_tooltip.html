@@ -4,10 +4,11 @@ shortcut_tooltip
 Component that allows you to create shortcuts which has tooltips
 
 Parameters:
-- shortcut (string): the actual shortcut (ex. mod+k)
+- shortcut (string): a chord such as mod+k or ordered steps such as k then a
 - action (string): focus | click | ... (more tbd)
 - position (string): bottom | top | right | left
 - text (string): optional text
+- wrapper_class (string): optional classes for the tooltip wrapper
 - target (string): optional query selector for the element that should receive the initial action
 - focus_target (string): optional query selector for the element that should be focused after the action runs
 - focus_scope (string): where to search for `focus_target`
@@ -35,7 +36,7 @@ Slots:
     data-target="{{ target }}"
     data-focus-target="{{ focus_target }}"
     data-focus-scope="{{ focus_scope }}"
-    class="relative"
+    class="relative {{ wrapper_class }}"
 
     
     >

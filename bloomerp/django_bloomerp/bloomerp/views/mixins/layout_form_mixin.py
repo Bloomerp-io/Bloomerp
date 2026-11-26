@@ -6,6 +6,7 @@ from django.views.generic.edit import FormMixin
 
 from bloomerp.models import LayoutItem
 from bloomerp.services.sectioned_layout_services import get_layout_widget_attrs
+from bloomerp.tokens import request_token_headers, request_token_id
 from bloomerp.views.mixins.layout_mixin import LayoutMixin
 
 
@@ -81,7 +82,11 @@ class LayoutFormMixin(LayoutMixin, FormMixin):
         return self.get_form()[self.resolve_form_key(item)].label
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        """Render form errors and preserve the context for subsequent form requests."""
         context = super().get_context_data(**kwargs)
+        if context_id := request_token_id(self.request):
+            context["form_request_context_id"] = context_id
+            context["form_request_context_headers"] = request_token_headers(context_id)
         form = self.get_form()
         layout_field_names = {
             self.resolve_form_key(item)

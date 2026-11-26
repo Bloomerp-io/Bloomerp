@@ -8,6 +8,7 @@ import FormBehaviorRuntime from "../behaviors/FormBehaviorRuntime";
 import { t } from "@/utils/i18n";
 import showMessage from "../../utils/messages";
 import { MessageType } from "../UiMessage";
+import { getDetailPageKey } from "../../utils/itemNavigation";
 
 type RowInfo = {
     element: HTMLElement;
@@ -68,6 +69,16 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
     private saveRequest: XMLHttpRequest | null = null;
     private saveButtons: SaveButtonState[] = [];
 
+    /** Report whether replacing this form would discard field or attachment edits. */
+    public get hasPendingFormChanges(): boolean {
+        return this.pendingChanges.length > 0 || this.attachmentsDirty;
+    }
+
+    /** Report whether this form is waiting for its save response. */
+    public get isSavingForm(): boolean {
+        return this.saveRequest !== null;
+    }
+
     protected getItemSelector(): string {
         return `[${componentIdentifier}="detail-view-value"]`;
     }
@@ -83,6 +94,44 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
 
     protected override onInitialItemFocus(item: DetailViewCell): void {
         this.currentItem = item;
+    }
+
+    /** Leave focus on the surrounding page or pane when an object detail mounts. */
+    protected override shouldFocusFirstItemOnMount(): boolean {
+        return !this.element.closest("[data-detail-view-grid]");
+    }
+
+    /** Let the detail frame own Page keys before applying the general field navigation aliases. */
+    protected override getItemNavigationKey(event: KeyboardEvent): string | null {
+        if (!this.editMode && getDetailPageKey(event) && !this.shouldFocusFirstItemOnMount()) return null;
+        return super.getItemNavigationKey(event);
+    }
+
+    /** Enter the first rendered field, or continue down from the currently focused field. */
+    public focusDetailFieldDown(target: Element): boolean {
+        if (this.editMode) return false;
+        const field = target.closest<HTMLElement>(this.getItemSelector());
+        const current = field && this.element.contains(field) ? this.getItemComponent(field) : null;
+        if (current) {
+            this.currentItem = current;
+            const next = this.findNextItem("ArrowDown");
+            return next !== null && next !== current && this.focusAvailableDetailField(next);
+        }
+
+        for (const item of this.items) {
+            if (this.focusAvailableDetailField(item)) return true;
+        }
+        return false;
+    }
+
+    /** Focus an available field and report whether focus actually reached it. */
+    private focusAvailableDetailField(item: DetailViewCell): boolean {
+        const field = item.element;
+        if (!field || field.closest("[inert]") || !this.isActionableElement(field)) return false;
+        const index = this.items.indexOf(item);
+        if (index < 0) return false;
+        this.focusItemByIndex(index);
+        return field.contains(document.activeElement);
     }
 
     /** Connect field history, manual attachment history, and layout behavior for this form. */
@@ -706,7 +755,15 @@ export default class ObjectCRUDViewContainer extends BaseSectionedLayoutContaine
             url.searchParams.append(key, value);
         });
 
-        window.location.assign(url.toString());
+        htmx.ajax(
+            "get",
+            url.toString(),
+            {
+                source: this.openFullFormBtn ?? form,
+                target: "#main-content",
+                push: "true",
+            }
+        )
     }
 
 }

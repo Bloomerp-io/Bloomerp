@@ -1,3 +1,4 @@
+import { requestContextHeaders } from "../../utils/requestContext";
 import { getSdk } from "../../sdk/getSdk";
 import { t as _ } from "../../utils/i18n";
 
@@ -307,7 +308,10 @@ export class EmailRecipients {
         this.searchRequest = controller;
         try {
             const result = await getSdk().client.request<{ suggestions: { email: string; label: string; user_id?: string; display_name?: string }[] }>(
-                this.searchUrl!, { query: { q: query }, signal: controller.signal },
+                this.searchUrl!, {
+                    query: { q: query }, signal: controller.signal,
+                    headers: requestContextHeaders(this.source, this.searchUrl!),
+                },
             );
             if (controller.signal.aborted || this.entry.value.trim() !== query || document.activeElement !== this.entry) return;
             this.suggestions.replaceChildren();

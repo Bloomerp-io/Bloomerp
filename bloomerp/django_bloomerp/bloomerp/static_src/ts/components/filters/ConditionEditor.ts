@@ -16,14 +16,14 @@ export class ConditionEditor {
     private error = element('p', 'filter-condition-error text-danger-dark text-xs');
     private navigation = element('div', 'filter-condition-navigation');
 
-    constructor(private api: FilterApi, remove: () => void, private changed: () => void = () => {}) {
+    /** Build the field editor and its remove control. */
+    constructor(private api: FilterApi, remove: () => void, private changed: () => void = (): void => {}) {
         this.element.dataset.filterCondition = '';
         const header = element('div', 'flex items-start');
         this.navigation.classList.add('flex-1', 'min-w-0');
         const removeLabel = t('Remove condition');
         const removeButton = button('×', remove, 'filter-condition-remove');
         removeButton.setAttribute('aria-label', removeLabel);
-        removeButton.title = removeLabel;
         addTooltip(removeButton, { text: removeLabel, position: 'top' });
         header.append(this.navigation, removeButton);
         this.error.setAttribute('role', 'alert');

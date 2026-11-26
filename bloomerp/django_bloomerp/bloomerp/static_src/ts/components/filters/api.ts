@@ -1,3 +1,4 @@
+import { requestContextHeaders } from "@/utils/requestContext";
 import { getCsrfToken } from '@/utils/cookies';
 import { t } from '@/utils/i18n';
 import type { FieldGroup, FilterScope, LookupDefinition, Filter, SavedFilter } from './definition';
@@ -17,7 +18,11 @@ export class FilterApi {
         });
         const response = await fetch(url, {
             method: post ? 'POST' : 'GET', credentials: 'same-origin', signal: this.controller.signal,
-            ...(post ? { headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() ?? '' }, body: JSON.stringify(data) } : {}),
+            headers: {
+                ...requestContextHeaders(this.root, url),
+                ...(post ? { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() ?? '' } : {}),
+            },
+            ...(post ? { body: JSON.stringify(data) } : {}),
         });
         if (!response.ok) {
             const error = await response.json().catch(() => null);

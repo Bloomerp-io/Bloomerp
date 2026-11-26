@@ -2,6 +2,14 @@
 {% load crispy_forms_tags %}
 {% load cotton %}
 
+<div class="contents"
+    data-preference-refresh="object-layout"
+    {% if form_request_context_id %}data-request-context-id="{{ form_request_context_id }}" hx-headers="{{ form_request_context_headers }}"{% endif %}
+    {% if form_request_context_id %}data-request-context-id="{{ form_request_context_id }}" hx-headers="{{ form_request_context_headers }}"{% endif %}
+    data-preference-refresh-url="{{ request.get_full_path }}"
+    data-preference-refresh-target="{{ form_hx_target }}"
+    {% if form.is_bound %}data-preference-bound-form{% endif %}
+>
 {% if layout_non_field_errors %}
     <div class="space-y-2 mb-4">
         {% for error in layout_non_field_errors %}
@@ -14,13 +22,13 @@
 
 <form
     {% if layout_is_create %}
-        hx-post="{{ request.path }}"
+        hx-post="{{ request.get_full_path }}"
         hx-encoding="multipart/form-data"
         hx-target="{{ form_hx_target|default:'#main-content' }}"
         hx-swap="innerHTML"
         hx-push-url="{{ form_hx_push_url|yesno:'true,false' }}"
     {% else %}
-        hx-post="{{ request.path }}"
+        hx-post="{{ request.get_full_path }}"
         hx-encoding="multipart/form-data"
         hx-target="{{ form_hx_target|default:'#detail-view-content' }}"
         hx-swap="innerHTML"
@@ -90,6 +98,7 @@
         <!--Buttons right-->
         {% if full_form_url %}
         <c-slot name="buttons_right">
+            {% if show_layout_preferences %}
             <c-features.preferences.select_preference_button
                 model="UserObjectLayoutPreference"
                 :args="{
@@ -97,6 +106,7 @@
                 }"
                 selected_preference_name="{{ layout_preference_object.name }}"
             />
+            {% endif %}
 
             <div class="hidden flex gap-3" id="object-crud-container-buttons">
                 <button type="button" class="btn btn-sm btn-secondary" id="object-crud-container-back-button">
@@ -124,7 +134,7 @@
                 <button
                     type="submit"
                     name="next"
-                    value="{{ request.path }}"
+                    value="{{ create_next_url }}"
                     class="btn btn-sm btn-secondary"
                     id="object-crud-container-save-and-create-new-button"
                 >
@@ -148,6 +158,7 @@
         </c-slot>
         {% else %}
         <c-slot name="buttons_right">
+            {% if show_layout_preferences %}
             <c-ui.shortcut_tooltip
                     shortcut="mod+shift+p"
                     action="click"
@@ -161,6 +172,7 @@
                 selected_preference_name="{{ layout_preference_object.name }}"
             />
             </c-ui.shortcut_tooltip>
+            {% endif %}
 
             <div class="hidden flex gap-3" id="object-crud-container-buttons">
                 <button type="button" class="btn btn-sm btn-secondary" id="object-crud-container-back-button">
@@ -195,7 +207,7 @@
                     <button
                         type="submit"
                         name="next"
-                        value="{{ request.path }}"
+                        value="{{ create_next_url }}"
                         class="btn btn-sm btn-secondary"
                         id="object-crud-container-save-and-create-new-button"
                     >
@@ -241,3 +253,4 @@
         
     </c-features.layout.container>
 </form>
+</div>

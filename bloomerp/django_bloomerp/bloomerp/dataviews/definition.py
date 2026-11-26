@@ -16,6 +16,7 @@ from typing import (
 )
 
 from django import forms
+from django.core.exceptions import ValidationError
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db import models
 from django.db.models import QuerySet
@@ -32,9 +33,12 @@ if TYPE_CHECKING:
 
     from bloomerp.filters.definition import Filters
     from bloomerp.models.application_field import ApplicationField
-    from bloomerp.models.definition import ObjectActionDefinition
+    from bloomerp.models.definition import DataviewActionContext, ObjectActionDefinition
     from bloomerp.models.users.user_list_view_preference import UserListViewPreference
     from bloomerp.services.user_services import DataViewFields
+
+
+DATAVIEW_PAGE_PARAM = "_dataview_page"
 
 
 @dataclass
@@ -53,7 +57,9 @@ class DataviewState:
     query: str | None = None
     count: int = 0
     filters: Filters | None = None
-    operation_context_token: str | None = None
+    layout_actions: list[str] | None = None
+    create_url: str | None = None
+    hide_filters: bool = False
     object_actions: list[ObjectActionDefinition] = field(default_factory=list)
     context: dict[str, Any] = field(default_factory=dict)
 
@@ -80,6 +86,7 @@ class BaseDataviewRenderer:
     """Base renderer for the inner dataview body."""
 
     template_name: str = ""
+    item_template_name: str = ""
     reserved_query_params: set[str] = set()
 
     def __init__(self, state: DataviewState):
@@ -194,6 +201,8 @@ class BaseDataviewRenderer:
         context = dict(self.state.context)
         context.update({
             "content_type_id": self.state.content_type_id,
+            "dataview_component_id": getattr(self.options, "dataview_component_id", None),
+            "dataview_item_template": self.item_template_name,
             "queryset": objects,
             "fields": self.state.render_fields,
             "avatar_field": self.state.avatar_field,
@@ -220,6 +229,44 @@ class BaseDataviewRenderer:
             request=self.state.request,
         )
 
+    def get_item(self, object_id: str) -> Model | None:
+        """Find a record within this view's permission-filtered queryset."""
+        try:
+            return self.state.queryset.filter(pk=object_id).first()
+        except (ValidationError, ValueError):
+            return None
+
+    def get_item_context(
+        self,
+        obj: Model,
+        row_index: int,
+        action_context: DataviewActionContext,
+        *,
+        placement: str = "",
+    ) -> dict[str, Any] | None:
+        """Build the shared fragment context, or request a view refresh if placement changed."""
+        context = BaseDataviewRenderer.get_context_data(self, DataviewPagination(queryset=[obj]))
+        context.update({
+            "object": obj,
+            "row_index": row_index,
+            "dataview_action_context": action_context,
+        })
+        return context
+
+    def render_item(
+        self,
+        obj: Model,
+        row_index: int,
+        action_context: DataviewActionContext,
+        *,
+        placement: str = "",
+    ) -> str | None:
+        """Render one record with its renderer's required item template."""
+        context = self.get_item_context(obj, row_index, action_context, placement=placement)
+        if context is None:
+            return None
+        return render_to_string(self.item_template_name, context, request=self.state.request)
+
 
 class BaseDataview(BaseModel):
     """Shared declarative settings for a default model dataview."""
@@ -235,6 +282,18 @@ class BaseDataview(BaseModel):
     display_fields: list[str] = Field(default_factory=list)
     default_filters: dict[str, str | list[str]] = Field(default_factory=dict)
     view_mode: Literal["normal", "split", "drawer"] = "normal"
+    item_click_action_id: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Registered Object Action ID to run on click. If unset, open record details.",
+    )
+    component_args: dict[str, str] = Field(default_factory=dict)
+    container_component_id: str = Field(
+        default="dataview-container", description="Registered component for the dataview container."
+    )
+    dataview_component_id: str | None = Field(
+        default=None, description="Registered component for the rendered dataview body."
+    )
 
     @classmethod
     def option_field_names(cls) -> list[str]:
@@ -247,9 +306,12 @@ class BaseDataview(BaseModel):
         ]
 
     def dump_options(self) -> dict[str, Any]:
-        """Serialize only view-specific preference options."""
+        """Serialize view-specific options and explicitly configured behavior."""
+        overrides = self.model_fields_set & {
+            "container_component_id", "dataview_component_id", "item_click_action_id",
+        }
         return self.model_dump(
-            include=set(self.option_field_names()),
+            include=set(self.option_field_names()) | overrides,
             mode="json",
         )
 
@@ -465,3 +527,9 @@ class DataviewTypeDefinition:
     config_cls: type[BaseDataview]
     requires_display_fields: bool = True
     available_for_model: Callable[[Type[models.Model]], bool] = lambda model: True
+    record_based: bool = True
+
+
+
+    
+    

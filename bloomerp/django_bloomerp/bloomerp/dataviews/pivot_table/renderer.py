@@ -415,7 +415,7 @@ class PivotTable:
 class PivotTableDataviewRenderer(BaseDataviewRenderer):
     """Render permission-filtered records as a reusable pivot table."""
 
-    template_name = "cotton/features/dataviews/pivot_table.html"
+    template_name = "dataview/pivot_table/body.html"
 
     @classmethod
     def paginate_queryset(

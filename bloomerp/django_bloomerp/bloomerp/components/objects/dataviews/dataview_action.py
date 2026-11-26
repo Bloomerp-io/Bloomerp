@@ -5,10 +5,14 @@ from bloomerp.components.objects.dataviews.dataview import (
     build_dataview_action_context,
     build_execution_dataview_state,
 )
-from bloomerp.models.definition import DataviewAction, get_dataview_actions
+from bloomerp.models.actions.dataview.builtins import get_dataview_actions
+from bloomerp.models.definition import DataviewAction
 from bloomerp.router import router
-from bloomerp.services.action_services import action_is_visible, find_executable_action
-from bloomerp.utils.requests import render_message
+from bloomerp.services.action_services import (
+    action_is_visible,
+    find_executable_action,
+    render_action_success,
+)
 
 
 @router.register(
@@ -40,10 +44,10 @@ def configured_dataview_action(
     context = build_dataview_action_context(request, state)
     if not all(action_is_visible(item, context) for item in (*groups, action)):
         return HttpResponse(status=403)
+    if not context.selected_ids and any(item.requires_selection for item in (*groups, action)):
+        return HttpResponse(gettext("Select at least one record."), status=400)
 
     response = action.execution_func(context)
     if response is not None:
         return response
-    return render_message(
-        request, gettext(action.success_message or "Action executed successfully"), "success",
-    )
+    return render_action_success(request, action, content_type_id=content_type_id)

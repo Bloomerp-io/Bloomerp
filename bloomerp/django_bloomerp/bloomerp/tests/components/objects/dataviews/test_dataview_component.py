@@ -1,25 +1,30 @@
 """Readable dataview scenarios for the draft unified filtering pipeline."""
+import json
 from collections.abc import Callable
 from datetime import timedelta
-from django.utils import timezone
-from unittest import skip
+from functools import partial
+from urllib.parse import parse_qsl, urlsplit
 
 from bs4 import BeautifulSoup
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model, QuerySet
 from django.http import HttpResponse
+from django.utils import timezone
 from pydantic import TypeAdapter
 
-from bloomerp.dataviews.card.config import CardDataView
-from bloomerp.dataviews.definition import BaseDataview, DataviewTypeDefinition
-from bloomerp.dataviews.kanban.config import KanbanDataView
+from bloomerp.dataviews.definition import BaseDataview
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.filters.definition import Filter, FilterCondition, Filters
+from bloomerp.models.actions.object.call_dataview import call_dataview_action
 from bloomerp.models.application_field import ApplicationField
-from bloomerp.models.communication.label import Label
-from bloomerp.models.communication.object_label import ObjectLabel
+from bloomerp.models.definition import (
+    FieldLayout,
+    LayoutItem,
+    LayoutRow,
+    ObjectActionTarget,
+)
 from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.models.filters.filter import SavedFilter
 from bloomerp.models.project_management.initiative import Initiative
@@ -29,16 +34,22 @@ from bloomerp.models.users.user_list_view_preference import UserListViewPreferen
 from bloomerp.permissions.definition import (
     AccessRule,
     BloomerpPermission,
-    PermissionToken,
-    RowPolicyRuleCondition,
     RowPolicyRuleContent,
 )
 from bloomerp.permissions.manager import PolicyManager
 from bloomerp.services.preference_services import PreferenceManager
+from bloomerp.templatetags.bloomerp import render_object_action
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
     RequestScenario,
+)
+from bloomerp.tokens import (
+    REQUEST_TOKEN_HEADER,
+    REQUEST_TOKEN_QUERY_KEYS,
+    DataviewToken,
+    DetailViewToken,
+    RequestToken,
 )
 
 
@@ -234,6 +245,64 @@ class TestDataviewComponent(BloomerpComponentTestCase):
             for menu in soup.select("[data-dropdown-panel]")
         )
 
+    def prepare_dataview_action(
+        self, scenario: RequestScenario, *, target: ObjectActionTarget,
+        detail_view_token: DetailViewToken | None = None,
+    ) -> None:
+        """Render an action and extract its filtered URL and context header."""
+        layout = DataviewToken(
+            model=self.CustomerModel, user=self.admin_user, expiry=timezone.now() + timedelta(hours=1),
+            dataview=TableDataView(display_fields=["first_name"]),
+        )
+        token = RequestToken(
+            expiry=layout.expiry,
+            dataviews={self.CustomerModel: layout},
+            detail_views={self.CustomerModel: detail_view_token} if detail_view_token is not None else {},
+        )
+        action = call_dataview_action(
+            "open-customers",
+            self.CustomerModel,
+            "Open customers",
+            target=target,
+            request_token=token,
+            filters=[Filter(connector="AND", conditions=[
+                FilterCondition(field_path="first_name", lookup_id="equals", value="First Name 3"),
+            ])],
+        )
+        request = self.authenticated_context_request(self.admin_user)
+        markup = render_object_action(action, self.CustomerModel.objects.first(), request)
+        button = BeautifulSoup(markup, "html.parser").select_one("button[hx-get]")
+        self.assertIsNotNone(button)
+        if target == "main":
+            self.assertEqual(button["hx-target"], "#main-content")
+            self.assertEqual(button["hx-push-url"], "true")
+        else:
+            self.assertEqual(button[f"bloomerp-open-{target}"], f"bloomerp-general-use-{target}")
+            self.assertEqual(button["hx-target"], f"#bloomerp-general-use-{target}-body")
+            self.assertEqual(button["hx-push-url"], "false")
+        scenario.query_params = dict(parse_qsl(urlsplit(button["hx-get"]).query))
+        self.assertFalse(REQUEST_TOKEN_QUERY_KEYS.intersection(scenario.query_params))
+        scenario.headers = {**(scenario.headers or {}), **json.loads(button["hx-headers"])}
+
+    def renders_action_context(self, response: HttpResponse) -> bool:
+        """Make the opening header visible to later row navigation."""
+        self.assertEqual(response.context["dataview_request_context_id"], response.wsgi_request.headers[REQUEST_TOKEN_HEADER])
+        return True
+
+    def prepare_scoped_access(self, scenario: RequestScenario) -> None:
+        """Grant only the requested row and field through the request context."""
+        self.set_view_type(TableDataView(display_fields=["age"]))(scenario)
+        rule = AccessRule(
+            row_permissions=[RowPolicyRuleContent(
+                permissions=[BloomerpPermission.VIEW],
+                conditions=[FilterCondition(field_path="age", lookup_id="equals", value=5)],
+            )],
+            field_permissions={"age": [BloomerpPermission.VIEW]},
+        )
+        scenario.headers = self.request_context_headers(
+            RequestToken(policies={self.CustomerModel: rule}), self.normal_user,
+        )
+
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Exercise rendering, filtering, and permission-aware field choices."""
         for i in range(10):
@@ -246,6 +315,35 @@ class TestDataviewComponent(BloomerpComponentTestCase):
 
         kwargs = {"content_type_id": self.get_content_type_for_model(self.CustomerModel).pk}
         customers = self.CustomerModel.objects
+        action_rows = self.contains_entries(customers.filter(age=3), ["first_name"])
+        detail_view_token = DetailViewToken(
+            model=self.CustomerModel,
+            user=self.admin_user,
+            expiry=timezone.now() + timedelta(hours=1),
+            field_layout=FieldLayout(rows=[LayoutRow(columns=1, items=[LayoutItem(id="first_name")])]),
+        )
+        overlay_targets: tuple[ObjectActionTarget, ...] = ("modal", "drawer")
+        target_scenarios = [
+            RequestScenario(
+                name=f"A Data View action loads the same filtered rows in the {target}",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                headers={"HX-Request": "true", "HX-Target": f"bloomerp-general-use-{target}-body"},
+                prepare=partial(self.prepare_dataview_action, target=target),
+                expected=ExpectedResult(response_validators=[
+                    action_rows, self.does_not_contain_text('id="htmx-addendum"'),
+                ]),
+            )
+            for target in overlay_targets
+        ]
+        target_scenarios.append(RequestScenario(
+            name="A Dataview action forwards its signed row layout to the container",
+            user=self.admin_user,
+            view_kwargs=kwargs,
+            headers={"HX-Request": "true", "HX-Target": "bloomerp-general-use-drawer-body"},
+            prepare=partial(self.prepare_dataview_action, target="drawer", detail_view_token=detail_view_token),
+            expected=ExpectedResult(response_validators=[action_rows, self.renders_action_context]),
+        ))
 
         customer_content_type = ContentType.objects.get_for_model(self.CustomerModel)
         document_template_content_type = ContentType.objects.get_for_model(DocumentTemplate)
@@ -280,6 +378,27 @@ class TestDataviewComponent(BloomerpComponentTestCase):
 
 
         request_scenarios += [
+            *target_scenarios,
+            RequestScenario(
+                name="Main Data View action renders the filtered records and navigation",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                headers={"HX-Request": "true", "HX-Target": "main-content"},
+                prepare=partial(self.prepare_dataview_action, target="main"),
+                expected=ExpectedResult(response_validators=[
+                    action_rows, self.contains_text('id="htmx-addendum"'),
+                    self.contains_text('data-sync-url="true"'),
+                ]),
+            ),
+            RequestScenario(
+                name="Reloading a main Data View restores the app shell and filtered records",
+                user=self.admin_user,
+                view_kwargs=kwargs,
+                prepare=partial(self.prepare_dataview_action, target="main"),
+                expected=ExpectedResult(response_validators=[
+                    action_rows, self.contains_text('id="main-content"'),
+                ]),
+            ),
             RequestScenario(
                 name="Default Contact uses row-specific access even when the field is outside the table columns",
                 user=self.normal_user,
@@ -633,32 +752,7 @@ class TestDataviewComponent(BloomerpComponentTestCase):
                 name="Access token provides temporary access",
                 user=self.normal_user,
                 view_kwargs=kwargs,
-                prepare=self.set_view_type(TableDataView(display_fields=["age"])),
-                query_params={
-                    "_permission_token" : PermissionToken(
-                        rule=AccessRule(
-                            row_permissions=[
-                                RowPolicyRuleContent(
-                                    connector="AND",
-                                    conditions=[
-                                        FilterCondition(
-                                            field_path="age",
-                                            lookup_id="equals",
-                                            value=5
-                                        )
-                                    ],
-                                    permissions=[BloomerpPermission.VIEW]
-                                )
-                            ],
-                            field_permissions={
-                                "age" : [BloomerpPermission.VIEW]
-                            }
-                        ),
-                        model_label=self.CustomerModel._meta.label_lower,
-                        audience=str(self.normal_user.pk),
-                        expiry=timezone.now() + timedelta(minutes=10),
-                    ).sign()
-                },
+                prepare=self.prepare_scoped_access,
             expected=ExpectedResult(
                 status_code=200,
                 response_validators=[

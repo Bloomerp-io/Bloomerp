@@ -1,0 +1,19 @@
+{% load i18n %}
+{% for item in unscheduled_items %}
+    {% include dataview_item_template with row=item event=item variant="unscheduled" row_index=forloop.counter0 %}
+{% empty %}
+    <p class="p-3 text-sm text-light">
+        {% if unscheduled_search %}{% translate "No matching records." %}{% else %}{% translate "No unscheduled records." %}{% endif %}
+    </p>
+{% endfor %}
+{% if unscheduled_next_url %}
+    <div
+        class="p-3 text-center text-xs text-light"
+        hx-get="{{ unscheduled_next_url }}"
+        hx-trigger="intersect once"
+        hx-target="this"
+        hx-sync="closest [data-unscheduled-panel]:drop"
+        hx-swap="outerHTML"
+        hx-push-url="false"
+    >{% translate "Loading more…" %}</div>
+{% endif %}

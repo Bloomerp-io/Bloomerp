@@ -13,10 +13,12 @@ import httpx
 from pydantic import JsonValue
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.messages import (
+    BinaryContent,
     ModelMessage,
     ModelRequest,
     ThinkingPart,
     ToolReturnPart,
+    UserPromptPart,
 )
 from pydantic_ai.models import Model
 from pydantic_ai.models.function import (
@@ -26,7 +28,9 @@ from pydantic_ai.models.function import (
     FunctionModel,
 )
 
+from bloomerp.agents.definition import ModelModalities, ModelModality
 from bloomerp.agents.runtime import (
+    AgentRuntimeArtifactInput,
     AgentRuntimeCheckpoint,
     AgentRuntimeConfig,
     AgentRuntimeCredentials,
@@ -121,6 +125,54 @@ class PydanticAIRuntimeTests(IsolatedAsyncioTestCase):
     async def asyncTearDown(self) -> None:
         """Release adapters even after assertion failures."""
         await self.runtime.aclose()
+
+    async def test_native_attachment_is_reopened_without_persisting_bytes(self) -> None:
+        """Read a non-PDF document at each model turn and respect revoked access."""
+        file_id = uuid4()
+        data = b"a,b\n1,2"
+        reader = AsyncMock(side_effect=[data, None])
+        message = self.request.messages[0]
+        block = AgentRuntimeArtifactInput(
+            artifact_id=uuid4(),
+            file_id=file_id,
+            media_type="text/csv",
+            content={"description": "Quarterly report"},
+        )
+        request = self.request.model_copy(
+            update={
+                "messages": (
+                    message.model_copy(update={"content": (*message.content, block)}),
+                ),
+                "config": self.request.config.model_copy(
+                    update={
+                        "modalities": ModelModalities(
+                            input=(ModelModality.TEXT, ModelModality.FILE)
+                        ),
+                    }
+                ),
+                "attachment_reader": reader,
+                "attachment_byte_limit": 100,
+            }
+        )
+        events = await self.collect(request)
+        self.assertEqual(events[-1].kind, "run.completed")
+        binaries = [
+            item
+            for history in self.histories
+            for message in history
+            for part in message.parts
+            if isinstance(part, UserPromptPart) and not isinstance(part.content, str)
+            for item in part.content
+            if isinstance(item, BinaryContent)
+        ]
+        self.assertEqual(binaries, [BinaryContent(data=data, media_type="text/csv")])
+        self.assertEqual(reader.await_count, 2)
+        reader.assert_awaited_with(file_id, "text/csv", 100)
+        for event in events:
+            if event.kind == "checkpoint.created":
+                serialized = event.checkpoint.model_dump_json()
+                self.assertIn(str(file_id), serialized)
+                self.assertNotIn(binaries[0].base64, serialized)
 
     async def test_model_receives_structured_result_without_duplicate_text(
         self,

@@ -1,4 +1,5 @@
 """Generic discovery and upload boundary for registered attachable artifact types."""
+# API ENDPOINT
 
 from typing import TYPE_CHECKING
 from uuid import UUID

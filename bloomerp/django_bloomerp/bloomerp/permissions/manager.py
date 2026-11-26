@@ -1,4 +1,3 @@
-from operator import contains
 from typing import Optional, Type
 
 from django.apps import apps
@@ -11,7 +10,6 @@ from django.db.models import (
     Exists,
     IntegerField,
     Max,
-    Model,
     OuterRef,
     Q,
     Value,
@@ -20,13 +18,12 @@ from django.db.models import (
 from django.db.models.query import QuerySet
 
 from bloomerp.filters.definition import Filters
-from bloomerp.models.access_control import row_policy
+from bloomerp.models import BloomerpModel
 from bloomerp.models.access_control.field_policy import FieldPolicy
 from bloomerp.models.access_control.policy import Policy
 from bloomerp.models.access_control.row_policy import RowPolicy
 from bloomerp.models.access_control.row_policy_rule import RowPolicyRule
 from bloomerp.models.application_field import ApplicationField
-from bloomerp.models import BloomerpModel
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.modules.definition import ModuleConfig
 from bloomerp.permissions.compilers.django_q_permission_compiler import (
@@ -44,12 +41,11 @@ from bloomerp.permissions.definition import (
     AccessRule,
     BloomerpPermission,
     PermissionMatch,
-    PermissionToken,
     PermissionScope,
     RowPolicyRuleContent,
 )
+from bloomerp.tokens import PermissionToken, get_token
 from bloomerp.utils.models import resolve_model_and_content_type
-
 
 FIELD_ACCESS_ANNOTATION_PREFIX = "_bloomerp_can_view_field_"
 FIELD_ACCESS_CONTROLLED_ANNOTATION = "_bloomerp_field_access_controlled"
@@ -141,16 +137,15 @@ class UserPolicyManager:
         use_request_token: bool = True,
     ) -> None:
         """Combine stored grants with a capability, optionally ignoring inherited request grants."""
-        from bloomerp.permissions.access_tokens import request_permission_token
-
         self.user = user
         self.is_anonymous = not user or user.is_anonymous
-        encoded = token if token is not None else (
-            request_permission_token(user) if use_request_token else None
+        self.token = PermissionToken.verify(token, user=user) if token is not None else None
+        from bloomerp.middleware import current_request
+
+        request = current_request() if token is None and use_request_token else None
+        self.request_token = (
+            get_token(request) if request is not None and getattr(request, "user", None) == user else None
         )
-        self.token = PermissionToken.verify(
-            encoded, audience=str(user.pk) if user and user.is_authenticated else None,
-        ) if encoded is not None else None
         self._policies: QuerySet[Policy] | None = None
         self.policies = self.get_user_policies()
 
@@ -159,11 +154,12 @@ class UserPolicyManager:
         from django.core.exceptions import PermissionDenied
         from django.utils import timezone
 
-        if self.token is None:
-            return None
-        if self.token.expiry <= timezone.now():
-            raise PermissionDenied("Permission token expired")
-        return self.token.rule if self.token.model_label == model._meta.label_lower else None
+        label = model._meta.label_lower
+        if self.token is not None and self.token.model._meta.label_lower == label:
+            if self.token.expiry <= timezone.now():
+                raise PermissionDenied("Permission token expired")
+            return self.token.rule
+        return self.request_token.policies.get(model) if self.request_token is not None else None
 
     def get_user_policies(self) -> QuerySet[Policy]:
         """Retrieve all policies associated with the user.
@@ -838,6 +834,7 @@ class UserPolicyManager:
         that can influence the predicate; a union of field IDs is insufficient.
         """
         from django.core.exceptions import PermissionDenied
+
         from bloomerp.filters.resolver import FilterFieldResolver
         from bloomerp.permissions.compilers.base import BasePermissionCompiler
 
@@ -1070,6 +1067,7 @@ class PolicyManager:
         if rule._legacy_content_type_ids - {content_type.pk}:
             raise ValueError("Field belongs to a different content type")
         from django.core.exceptions import ValidationError as DjangoValidationError
+
         from bloomerp.filters.resolver import FilterFieldResolver, resolve_lookup
         resolver = FilterFieldResolver.for_model(content_type.model_class())
         for condition in rule.conditions:

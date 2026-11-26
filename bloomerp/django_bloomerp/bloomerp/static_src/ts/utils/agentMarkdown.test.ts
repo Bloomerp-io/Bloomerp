@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { JSDOM } from 'jsdom';
-import { renderAgentMessage } from './agentMarkdown.ts';
+import { formatAgentPrompt, renderAgentMessage } from './agentMarkdown.ts';
 
 /** Create a browser-owned message target without executing scripts or fetching resources. */
 function messageTarget(): HTMLElement {
@@ -34,6 +34,22 @@ function keepsUserTextLiteral(): void {
     renderAgentMessage(target, content, true);
     assert.equal(target.textContent, content);
     assert.equal(target.children.length, 0);
+}
+
+/** Round-trip chat formatting while keeping editor markup and image data out of the prompt. */
+function roundTripsComposerMarkdown(): void {
+    const target = messageTarget();
+    const content = formatAgentPrompt('<p><b><strong>Draft</strong></b> and <i><em>context</em></i></p><ul><li>Check one</li></ul>'
+        + '<pre><code>const result = 42;</code></pre><table><tbody><tr><td>Invoice</td><td>42</td></tr></tbody></table>'
+        + '<img src="data:image/png;base64,raw-bytes">', target.ownerDocument);
+    assert.match(content, /\*\*Draft\*\*/);
+    assert.doesNotMatch(content, /<table>|raw-bytes|\*{4}/);
+    renderAgentMessage(target, content, true, true);
+    assert.equal(target.querySelector('strong')?.textContent, 'Draft');
+    assert.equal(target.querySelector('em')?.textContent, 'context');
+    assert.equal(target.querySelector('li')?.textContent, 'Check one');
+    assert.equal(target.querySelector('pre code')?.textContent, 'const result = 42;\n');
+    assert.equal(target.querySelector('td')?.textContent, 'Invoice');
 }
 
 /** Reparse every streamed prefix safely and converge to the same HTML as restored history. */
@@ -100,6 +116,7 @@ function fallsBackWithoutBrowser(): void {
 
 test('assistant Markdown formats blocks and inline text', formatsAssistantMarkdown);
 test('user messages remain plain text', keepsUserTextLiteral);
+test('composer Markdown preserves rich text and omits image bytes', roundTripsComposerMarkdown);
 test('partial streamed Markdown matches restored history', handlesPartialStreams);
 test('raw HTML cannot activate browser or application behavior', escapesUntrustedHtml);
 test('unsafe URLs are removed', sanitizesLinks);

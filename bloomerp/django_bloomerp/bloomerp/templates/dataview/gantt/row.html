@@ -1,0 +1,65 @@
+{% load i18n bloomerp %}
+
+<div
+    class="grid min-h-16 border-b border-gray-200 last:border-b-0"
+    data-gant-layout
+    data-gant-row
+    {% dataview_record_attrs row.object dataview_action_context row_index %}
+    data-dataview-item-placement="scheduled:{{ row.start_ms|stringformat:'d' }}:{{ row.end_ms|stringformat:'d' }}"
+>
+    <div
+        class="sticky left-0 z-30 min-w-0 cursor-pointer overflow-hidden border-r border-gray-200 bg-base px-3 py-2"
+        data-detail-url="{{ row.object.get_absolute_url }}"
+        data-object-id="{{ row.object.pk }}"
+        data-object-string="{{ row.object }}"
+        bloomerp-component="gant-chart-sidebar-item"
+    >
+        <div class="flex min-w-0 items-center gap-2">
+            <c-features.dataviews.checkbox object_id="{{ row.object.pk }}" :label="row.object" />
+            <span class="truncate text-sm font-medium text-dark" title="{{ row.object }}">{{ row.object }}</span>
+        </div>
+        <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+            {% for field in fields %}
+            <div class="min-w-0 text-xs text-gray-500">
+                <span class="font-medium">{{ field.title }}:</span>
+                {% render_dataview_value object=row.object application_field=field user=request.user row_index=row_index column_index=forloop.counter0 url=row.object.get_absolute_url split_view_enabled=preference.split_view_enabled %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="relative min-h-16 bg-base" data-gant-timeline-row data-gant-dropzone>
+        {% if row.scheduled %}
+        <div
+            class="absolute top-3 z-20 flex h-10 min-w-1 select-none cursor-grab items-center rounded-xl bg-primary px-2 text-xs font-medium text-white shadow-xs hover:brightness-95 active:cursor-grabbing"
+            title="{{ row.object }} · {% if row.shows_time %}{{ row.start|date:'M j, Y H:i' }} – {{ row.end|date:'M j, Y H:i' }}{% else %}{{ row.start|date:'M j, Y' }} – {{ row.end|date:'M j, Y' }}{% endif %}"
+            data-gant-item
+            data-start="{{ row.start_ms }}"
+            data-end="{{ row.end_ms }}"
+            data-detail-url="{{ row.object.get_absolute_url }}"
+            data-object-id="{{ row.object.pk }}"
+            data-object-string="{{ row.object }}"
+            data-dependency-from-id="{{ row.dependency_from_id }}"
+            data-dependency-for-id="{{ row.dependency_for_id }}"
+            data-row-index="{{ row_index }}"
+            data-column-index="0"
+            data-gant-can-edit-start="{{ row.can_edit_start|yesno:'true,false' }}"
+            data-gant-can-edit-end="{{ row.can_edit_end|yesno:'true,false' }}"
+            data-gant-can-unschedule="{{ row.can_unschedule|yesno:'true,false' }}"
+            bloomerp-component="gant-chart-item"
+        >
+            {% if row.can_edit_start %}
+            <span class="absolute inset-y-0 left-0 w-3 cursor-ew-resize" data-gant-resize-start aria-hidden="true"></span>
+            {% endif %}
+            <span class="truncate">{{ row.object }}</span>
+            {% if row.can_edit_end %}
+            <span class="absolute inset-y-0 right-0 w-3 cursor-ew-resize" data-gant-resize-end aria-hidden="true"></span>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="flex h-full items-center px-3 text-xs text-gray-500">
+            {% blocktrans %}Start or end date is missing.{% endblocktrans %}
+        </div>
+        {% endif %}
+    </div>
+</div>

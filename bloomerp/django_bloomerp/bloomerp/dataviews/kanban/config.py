@@ -50,6 +50,7 @@ class KanbanDataView(BaseDataview):
     """A declarative Kanban dataview."""
 
     view_type: Literal["kanban"] = "kanban"
+    dataview_component_id: str | None = "kanban-board"
     group_by_field: str | None = None
     custom_groupings: dict[str, list[str]] = Field(default_factory=dict)
     custom_group_order: list[str] = Field(default_factory=list)

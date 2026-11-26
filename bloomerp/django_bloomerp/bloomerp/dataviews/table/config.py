@@ -21,6 +21,7 @@ class TableDataView(BaseDataview):
     """A declarative table dataview."""
 
     view_type: Literal["table"] = "table"
+    dataview_component_id: str | None = "datatable"
     page_size: Literal[10, 25, 50, 100] = 25
     sort_field: str | None = None
     sort_direction: Literal["asc", "desc"] = "asc"

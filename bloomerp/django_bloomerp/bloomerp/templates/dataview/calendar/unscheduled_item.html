@@ -1,0 +1,16 @@
+{% load bloomerp %}
+
+<div
+    class="flex min-w-0 items-center gap-2 px-3 py-2 text-sm text-dark {% if event.can_edit_start and event.can_edit_end %}cursor-grab hover:bg-gray-100 active:cursor-grabbing{% else %}cursor-not-allowed opacity-60{% endif %}"
+    data-calendar-unscheduled-event
+    {% dataview_record_attrs event.object dataview_action_context row_index %}
+    data-dataview-item-placement="unscheduled"
+    data-calendar-can-edit-start="{{ event.can_edit_start|yesno:'true,false' }}"
+    data-calendar-can-edit-end="{{ event.can_edit_end|yesno:'true,false' }}"
+    draggable="{% if event.can_edit_start and event.can_edit_end %}true{% else %}false{% endif %}"
+>
+    <c-features.dataviews.checkbox object_id="{{ event.object.pk }}" :label="event.object" />
+    {% if event.can_edit_start and event.can_edit_end %}<i class="fa fa-grip-vertical text-gray-400" aria-hidden="true"></i>{% endif %}
+    <span class="truncate">{{ event.object }}</span>
+    {% include "dataview/calendar/actions.html" %}
+</div>

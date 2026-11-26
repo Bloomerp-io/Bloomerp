@@ -11,9 +11,29 @@ from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.contrib import messages
 from django_cotton import render_component
+from django_htmx.http import trigger_client_event
 
 from bloomerp.models import FieldLayout
 from bloomerp.utils.renderer import render_field
+
+MODAL_CREATE_HEADER = "X-Bloomerp-Modal-Create"
+CREATE_MODAL_BODY_ID = "bloomerp-general-use-modal-body"
+CREATE_DRAWER_BODY_ID = "bloomerp-general-use-drawer-body"
+
+
+def is_drawer_create(request: HttpRequest) -> bool:
+    """Check whether the create request is targeting the shared drawer body."""
+    htmx = getattr(request, "htmx", None)
+    return bool(htmx and htmx.target == CREATE_DRAWER_BODY_ID)
+
+
+def modal_saved_response(notices: list[dict[str, str]]) -> HttpResponse:
+    """Close the submitting form's modal with a successful save result."""
+    return trigger_client_event(
+        HttpResponse(status=204),
+        "bloomerp:close-modal",
+        {"result": "saved", "messages": notices},
+    )
 
 def parse_bool_parameter(value : Any, default_value=False) -> bool:
     """

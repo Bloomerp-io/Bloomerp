@@ -14,6 +14,7 @@ from bloomerp.permissions.manager import UserPolicyManager
 if TYPE_CHECKING:
     from bloomerp.models.communication.inbox.inbox import Inbox
     from bloomerp.models.communication.inbox.inbox_item import InboxItem
+    from bloomerp.tokens import PermissionToken
 
 
 def invitation_context(
@@ -181,8 +182,8 @@ def calendar_overlay_inboxes(
 
 def issue_calendar_token(
     user: AbstractBloomerpUser, inbox_id: int, selected: list[str]
-) -> str:
-    """Delegate event reads for validated overlay inboxes and writes for the current inbox only."""
+) -> PermissionToken:
+    """Build a grant for overlay reads and writes scoped to the current inbox."""
     from datetime import timedelta
 
     from django.utils import timezone
@@ -192,9 +193,9 @@ def issue_calendar_token(
     from bloomerp.permissions.definition import (
         AccessRule,
         BloomerpPermission,
-        PermissionToken,
         RowPolicyRuleContent,
     )
+    from bloomerp.tokens import PermissionToken
 
     # This endpoint delegates only after resolve_calendar_inbox checks ownership/sharing.
     view_condition = FilterCondition(
@@ -216,9 +217,9 @@ def issue_calendar_token(
         "organizing_inbox",
         "organizer_email",
     }
-    token = PermissionToken(
-        model_label=CalendarEvent._meta.label_lower,
-        audience=str(user.pk),
+    return PermissionToken(
+        model=CalendarEvent,
+        user=user,
         expiry=timezone.now() + timedelta(hours=1),
         rule=AccessRule(
             row_permissions=[
@@ -248,5 +249,4 @@ def issue_calendar_token(
                 for field in fields
             },
         ),
-    ).sign()
-    return token
+    )

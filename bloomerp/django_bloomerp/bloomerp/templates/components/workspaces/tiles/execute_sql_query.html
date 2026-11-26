@@ -16,8 +16,8 @@
 				</div>
 			</div>
 		{% else %}
-			<table class="table table-sm w-full">
-				<thead class="bg-base">
+			<table class="table">
+				<thead>
 					<tr>
 						<th class="w-10">#</th>
 						{% for column in columns %}
@@ -51,7 +51,7 @@
 		{% endif %}
 	</div>
 
-	<div class="px-3 py-2 border-t border-base text-xs text-gray-600 flex items-center justify-between">
+	<div class="px-3 py-2 border-t border-gray-200 text-xs text-gray-600 flex items-center justify-between">
 		<span>
 			<span data-sql-exec-time>{% if execution_ms is not None %}{{ execution_ms }}ms{% else %}--{% endif %}</span>
 			|

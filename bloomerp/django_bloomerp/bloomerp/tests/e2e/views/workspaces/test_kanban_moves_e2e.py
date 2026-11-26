@@ -71,7 +71,7 @@ class TestKanbanMovesE2E(BloomerpE2ETestCase):
             schema=DataViewTileConfig(
                 content_type_id=content_type.pk,
                 list_view_preference_id=preference.pk,
-                actions=[],
+                actions=["bulk-actions"],
             ).model_dump(mode="json"),
         )
         self.workspace = Workspace.objects.create(

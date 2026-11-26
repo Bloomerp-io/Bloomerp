@@ -1,17 +1,23 @@
 from typing import Any
+
 from django.apps import apps
+from django.contrib.contenttypes.models import ContentType
 from django.db.models.fields.reverse_related import ManyToOneRel
+
+from bloomerp.filters.definition import Filter, FilterCondition, Filters
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.communication import Comment
 from bloomerp.models.files import FileNode
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
+from bloomerp.tokens import DataviewToken, get_token
 from bloomerp.views.generic.detail.base import BaseBloomerpDetailView
-from django.contrib.contenttypes.models import ContentType
+from bloomerp.views.mixins.dataview_mixin import DataviewMixin
 
-class ForeignRelationshipView(BaseBloomerpDetailView):
-    template_name: str = "views/generic/detail/foreign_relationship.html"
+
+class ForeignRelationshipView(DataviewMixin, BaseBloomerpDetailView):
+    dataview_filter_shorthand = True
     model = None
     related_model = None 
     attribute_name = None
@@ -35,19 +41,30 @@ class ForeignRelationshipView(BaseBloomerpDetailView):
             and permission_manager.has_field_permission(relationship_field, BloomerpPermission.VIEW)
         )
 
-    def get_context_data(self, **kwargs: Any) -> dict:
-        ctx = super().get_context_data(**kwargs)
-        ctx["foreign_content_type_id"] = ContentType.objects.get_for_model(self.related_model).id
-        
-        filters = {
-            self.relationship_field_name: str(self.object.pk)
-        }
-        ctx["filters"] = filters
-        ctx["args"] = {
-            "hide_filters" : self.relationship_field_name
-        }
-        
-        return ctx
+    def get_dataview_content_type_id(self) -> int:
+        """Render the model on the reverse side of the relationship."""
+        return ContentType.objects.get_for_model(self.related_model).pk
+
+    def get_dataview_filters(self) -> Filters:
+        """Scope the dataview to records related to the current object."""
+        if self.relationship_dataview_token() is not None:
+            return []
+        return [Filter(connector="AND", conditions=[FilterCondition(
+            field_path=self.relationship_field_name, lookup_id="equals", value=str(self.object.pk),
+        )])]
+
+    def get_dataview_args(self) -> dict[str, str]:
+        """Pass the relationship field to the frontend's filter controls."""
+        args = {"hide_filters": self.relationship_field_name}
+        if self.relationship_dataview_token() is not None:
+            args["related_record"] = str(self.object.pk)
+        return args
+
+    def relationship_dataview_token(self) -> DataviewToken | None:
+        """Use the context's related layout when it targets this relationship."""
+        context = get_token(self.request)
+        token = context.dataviews.get(self.related_model) if context else None
+        return token if token and token.relationship_field == self.relationship_field_name else None
 
 
 def _iter_foreign_relationship_specs() -> list[dict[str, Any]]:

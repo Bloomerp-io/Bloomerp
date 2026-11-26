@@ -1,0 +1,80 @@
+{% load bloomerp i18n %}
+
+<div class="h-full" data-preference-refresh="sidebar" data-preference-refresh-url="{% url 'components_sidebar_preferences' %}">
+    <div class="flex items-center justify-between">
+        <span class="text-gray-500 text-sm px-2">
+            {% blocktrans %}Sidebar{% endblocktrans %}
+        </span>
+        <div>
+            <c-ui.dropdown.body
+                trigger_icon_class="fa-solid fa-ellipsis"
+                trigger_aria_label="{% translate 'Sidebar options' %}"
+                icon_button="plain"
+                size="sm"
+                direction="down"
+                >
+
+                <c-ui.dropdown.submenu
+                    text="Select Sidebar"
+                    icon="fa fa-bars"
+                    id="select-sidebar-btn"
+                    width="w-80"
+                    >
+                    <div
+                        hx-get="{% url 'components_select_preference' model='Sidebar' %}"
+                        hx-trigger="click from:#select-sidebar-btn"
+                        hx-target="this"
+                        hx-swap="innerHTML"
+                        class="min-w-48"
+                    >
+                        <div class="px-4 py-2 text-xs text-gray-500">Loading sidebars...</div>
+                    </div>
+                </c-ui.dropdown.submenu>
+
+                {% can_manage_preference_object request.user sidebar as can_manage %}
+
+                {% if can_manage %}
+                <c-ui.dropdown.submenu
+                    id="create-folder-btn"
+                    text="Create Folder"
+                    icon="fa fa-folder"
+                >
+                    <div
+                        id="sidebar-create-folder-panel"
+                        hx-get="{% url 'components_workspaces_sidebar_create_folder' sidebar_id=sidebar.id %}"
+                        hx-trigger="click from:#create-folder-btn"
+                        hx-target="this"
+                        hx-swap="innerHTML"
+
+                    >
+                        Loading form...
+                    </div>
+                </c-ui.dropdown.submenu>
+
+                <c-ui.dropdown.submenu
+                    text="Add Link"
+                    icon="fa-solid fa-link"
+                    id="add-link-btn"
+                >
+                <div
+                        id="sidebar-add-link-panel"
+                        hx-get="{% url 'components_workspaces_sidebar_create_link' sidebar_id=sidebar.id %}"
+                        hx-trigger="click from:#add-link-btn"
+                        hx-target="this"
+                        hx-swap="innerHTML"
+
+                    >
+                    Loading form...
+                </div>
+
+                </c-ui.dropdown.submenu>
+                {% endif %}
+            </c-ui.dropdown.body>
+
+        </div>
+    </div>
+
+    <div class="min-h-0 flex-1 overflow-y-auto overflow-x-visible">
+        {% include "components/ui/sidebar/content.html" with sidebar=sidebar can_manage=can_manage %}
+    </div>
+</div>

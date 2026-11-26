@@ -126,10 +126,10 @@ function enterListMode(host: BloomerpTextEditor, trigger: string, listType: List
     const selection = $getSelection();
     if (!$isRangeSelection(selection) || !selection.isCollapsed()) return false;
     const anchor = selection.anchor.getNode();
-    const block = anchor.getTopLevelElementOrThrow();
+    const block = anchor.getTopLevelElement();
     // Only a complete paragraph prefix is a Markdown trigger, never a word
     // in the middle of a paragraph, list, heading, or source code block.
-    if (block.getType() !== 'paragraph' || block.getTextContent() !== trigger
+    if (block?.getType() !== 'paragraph' || block.getTextContent() !== trigger
         || selection.anchor.offset !== trigger.length || getCurrentWord(host.editor) !== trigger) return false;
     removeTextFromCurrentSelection(trigger);
     return host.actionRegistry.execute(listType === "number" ? "ordered_list" : "unordered_list", "shortcut");

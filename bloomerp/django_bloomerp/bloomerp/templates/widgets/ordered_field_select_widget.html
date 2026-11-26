@@ -1,43 +1,49 @@
-<div class="max-h-80 space-y-2 overflow-y-auto pr-1" bloomerp-component="ordered-field-select">
-    {% for option in widget.options %}
-        <div
-            class="flex items-center gap-2 rounded border border-gray-200 bg-white px-2 py-2"
-            data-ordered-field-option
-        >
-            <div class="flex gap-1">
-                <button
-                    type="button"
-                    class="btn btn-xs btn-ghost"
-                    data-ordered-field-move="up"
-                    title="Move up"
-                >
-                    <i class="fa-solid fa-arrow-up"></i>
-                </button>
-                <button
-                    type="button"
-                    class="btn btn-xs btn-ghost"
-                    data-ordered-field-move="down"
-                    title="Move down"
-                >
-                    <i class="fa-solid fa-arrow-down"></i>
-                </button>
-            </div>
-            {% if option.required %}
-                <input type="hidden" name="{{ option.name }}" value="{{ option.value }}">
-            {% endif %}
-            <label class="flex min-w-0 flex-1 items-center gap-2 text-sm text-gray-700">
-                <input
-                    type="checkbox"
-                    name="{{ option.name }}"
-                    value="{{ option.value }}"
-                    {% if option.selected %}checked{% endif %}
-                    {% if option.required %}disabled{% endif %}
-                >
-                <span class="truncate">{{ option.label }}</span>
-                {% if option.required %}
-                    <span class="rounded bg-rose-50 px-1.5 py-0.5 text-xs font-medium text-rose-700">Required</span>
-                {% endif %}
-            </label>
-        </div>
-    {% endfor %}
-</div>
+{% load i18n %}
+{% if widget.options %}
+    <div class="max-h-80 overflow-y-auto">
+        <table class="table table-sm table-hover" aria-label="{% translate 'Inline fields' %}">
+            <thead>
+                <tr>
+                    <th scope="col" class="w-8 border-0 bg-transparent p-0"><span class="sr-only">{% translate 'Reorder' %}</span></th>
+                    <th scope="col" class="border-0 bg-transparent p-0"><span class="sr-only">{% translate 'Field' %}</span></th>
+                </tr>
+            </thead>
+            <tbody bloomerp-component="ordered-field-select">
+                {% for option in widget.options %}
+                    <tr data-ordered-field-option>
+                        <td>
+                            <button
+                                type="button"
+                                class="inline-flex h-5 w-5 shrink-0 touch-none cursor-grab items-center justify-center rounded text-xs text-gray-500 hover:bg-gray-100 active:cursor-grabbing dark:text-zinc-400 dark:hover:bg-zinc-800"
+                                data-ordered-field-drag
+                                aria-label="{% blocktranslate with label=option.label %}Reorder {{ label }} with the arrow keys{% endblocktranslate %}"
+                                title="{% translate 'Drag to reorder' %}"
+                                {% if widget.options|length == 1 %}disabled{% endif %}
+                            >
+                                <i class="fa-solid fa-grip-vertical" aria-hidden="true"></i>
+                            </button>
+                        </td>
+                        <td>
+                            {% if option.required %}
+                                <input type="hidden" name="{{ option.name }}" value="{{ option.value }}">
+                            {% endif %}
+                            <label class="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    name="{{ option.name }}"
+                                    value="{{ option.value }}"
+                                    {% if option.selected %}checked{% endif %}
+                                    {% if option.required %}disabled{% endif %}
+                                >
+                                <span class="min-w-0 wrap-break-word">{{ option.label }}</span>
+                                {% if option.required %}
+                                    <span class="rounded bg-rose-50 px-1.5 py-0.5 text-xs font-medium text-rose-700">{% translate 'Required' %}</span>
+                                {% endif %}
+                            </label>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endif %}

@@ -49,6 +49,8 @@ export async function navigateAgentPage(url: string): Promise<void> {
     } finally { document.removeEventListener('htmx:afterRequest', onAfterRequest); }
 }
 
+export type EditorAttachment = {kind: 'object' | 'file'; target_id: string; content_type_id?: number};
+
 /** Connect this tab to the backend without owning component or chat rendering. */
 export default class BloomerpAgent extends EventTarget {
     private readonly navigate: (url: string) => Promise<void>;
@@ -148,12 +150,14 @@ export default class BloomerpAgent extends EventTarget {
 
     /** Send correlated chat input to the persisted agent controller. */
     sendChat(message: string, conversationId: string | null = null,
-        clientMessageId: string = crypto.randomUUID(), attachments: string[] = [], agentId: string | null = null, approvalRules?: ConversationApprovalRules): void {
+        clientMessageId: string = crypto.randomUUID(), attachments: (string | EditorAttachment)[] = [], agentId: string | null = null,
+        approvalRules?: ConversationApprovalRules, format: 'plain' | 'markdown' = 'plain'): void {
         this.send({
             type: 'chat.message',
             agent_id: agentId,
             ...(approvalRules ? {approval_rules: approvalRules} : {}),
             ...(attachments.length ? {attachments} : {}),
+            ...(format === 'markdown' ? {format} : {}),
             message,
             conversation_id: conversationId,
             client_message_id: clientMessageId,

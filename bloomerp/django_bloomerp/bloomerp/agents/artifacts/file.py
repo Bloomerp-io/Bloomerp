@@ -1,7 +1,10 @@
 """Search, upload and render file references through existing library permissions."""
 
+from __future__ import annotations
+
 import mimetypes
 from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from django.conf import settings
@@ -20,6 +23,9 @@ from bloomerp.agents.definition import (
     AIArtifactSearchRequest,
     AIArtifactTypeDefinition,
 )
+
+if TYPE_CHECKING:
+    from bloomerp.models.users.user import AbstractBloomerpUser
 
 
 class FileArtifactPayload(AIArtifactPayload):
@@ -55,6 +61,33 @@ def authorize_file(payload: FileArtifactPayload, request: HttpRequest) -> None:
 def file_reference(payload: FileArtifactPayload) -> UUID:
     """Connect selected metadata to the existing relational FileNode reference."""
     return payload.file_id
+
+
+def read_file_attachment(
+    user: AbstractBloomerpUser, file_id: UUID, media_type: str, byte_limit: int
+) -> bytes | None:
+    """Open currently authorized file content within the remaining request budget."""
+    from bloomerp.files.access import FileAccessManager
+    from bloomerp.models.files.file_node import FileNode
+
+    file = (
+        FileAccessManager(user)
+        .get_queryset(FileNode.objects.filter(pk=file_id, kind="FILE"))
+        .first()
+    )
+    if file is None:
+        return None
+    metadata = file.metadata
+    if metadata.mime_type != media_type or (
+        metadata.size is not None and metadata.size > byte_limit
+    ):
+        return None
+    try:
+        with file.content.open("rb") as content:
+            data = content.read(byte_limit + 1)
+    except (OSError, ValueError):
+        return None
+    return data if 0 < len(data) <= byte_limit else None
 
 
 def search_files(

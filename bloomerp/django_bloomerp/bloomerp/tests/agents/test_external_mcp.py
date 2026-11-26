@@ -36,10 +36,10 @@ from bloomerp.agents.runtime import (
     AgentRuntimeToolProposal,
 )
 from bloomerp.agents.runtimes.pydantic_ai import PydanticAIRuntime
+from bloomerp.mcp.client import MCPUnavailableError
 from bloomerp.mcp.definition import McpTool
 from bloomerp.models.agents import AIApproval, AIRun, MCPConnection, MCPIntegration
 from bloomerp.router import BloomerpRouteRegistry, router
-from bloomerp.services.mcp.client import MCPUnavailableError
 from bloomerp.tests.agents.test_controller import (
     OPTIONS,
     agent_test_config,
@@ -51,7 +51,7 @@ from bloomerp.tests.base import (
     ChannelContext,
     ChannelScenario,
 )
-from bloomerp.tests.services.mcp._server import ProtocolServer
+from bloomerp.tests.mcp._server import ProtocolServer
 
 
 async def external_stream(
@@ -130,7 +130,7 @@ class TestExternalMcpExecution(BloomerpChannelTestCase):
         self.server = ProtocolServer()
         self.enterContext(
             patch(
-                "bloomerp.services.mcp.client.PublicHTTPTransport",
+                "bloomerp.mcp.client.PublicHTTPTransport",
                 side_effect=self.transport,
             )
         )

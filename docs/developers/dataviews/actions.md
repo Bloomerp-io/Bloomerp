@@ -10,7 +10,7 @@ dataview.
 | --- | --- | --- |
 | Renderer operation | `BaseDataviewRenderer.handle_action()` | Behavior owned by the rendered preference's dataview renderer and dependent on its configuration or filtered state. |
 | Standalone component endpoint | A routed function under `bloomerp.components` | A reusable server capability with its own URL and input contract that does not need dispatch through the selected renderer. |
-| Configured dataview action | `DataviewAction`, `DataviewHTMLAction`, or `DataviewModalAction` | Model-configured buttons, HTML, and modals in the dataview toolbar. |
+| Configured dataview action | `DataviewAction`, `DataviewHTMLAction`, `DataviewModalAction`, or `DataviewDrawerAction` | Model-configured buttons, HTML, modals, and drawers in the dataview toolbar. |
 
 These mechanisms are not interchangeable. In particular,
 `BaseDataviewRenderer.handle_action()` is unrelated to the model-configured
@@ -53,15 +53,13 @@ query string, so the rebuilt state represents the same filtered dataview.
 
 An embedding such as a shared workspace tile may be authorized to render a
 preference that was not shared independently with its viewer. When `dataview()`
-receives an explicit `preference`, it adds a signed
-`_dataview_operation_context` value to operation URLs. The token is bound to
-the viewer, content type, and preference and expires after 24 hours. The
-dispatcher considers it only when normal `PreferenceManager.get_available()`
-resolution fails. Refreshing the embedding issues a new token.
+receives an explicit `preference`, it authorizes that preference for its
+content type in the session-bound request context. Subsequent operations use
+the container's `X-Bloomerp-Context` header. The dispatcher checks the context
+when normal `PreferenceManager.get_available()` resolution fails.
 
-The token grants access to the renderer configuration only. It never grants
-model, row, field, or related-object access; mutation handlers must still
-perform their normal write authorization.
+The preference authorization applies to renderer configuration. Mutation
+handlers still perform their normal write authorization.
 
 The dispatcher does not maintain a global operation catalog. The resolved
 preference's renderer interprets the string. Therefore
@@ -117,7 +115,7 @@ Kanban uses renderer operations for both lane loading and card movement.
 1. The main dataview component builds a permission-filtered `DataviewState`.
 2. `KanbanDataviewRenderer.get_context_data()` resolves the configured grouping
    field and builds the initial page for every column.
-3. `cotton/features/dataviews/kanban.html` renders the board, columns, cards,
+3. `dataview/kanban/body.html` renders the board, columns, cards,
    and per-column loader elements.
 4. The board declares `bloomerp-component="kanban-board"`.
 5. The frontend registry initializes `KanbanBoard`, which adds selection,
@@ -217,9 +215,10 @@ class TimelineDataviewRenderer(BaseDataviewRenderer):
 
 Build pagination links against `components_dataview_renderer_operation` with
 `content_type_id`, `preference_id`, and `action`. Preserve the active search and
-filter query parameters and any `_dataview_operation_context` token. Only
-replace the renderer's own pagination parameter. Use the built-in Kanban loader
-as a reference for carrying this state into subsequent requests.
+filter query parameters. Replace only the renderer's own pagination parameter.
+The Data View container provides `X-Bloomerp-Context` to descendant HTMX
+requests. Use `requestContextHeaders` for programmatic requests from a renderer.
+The shared context authorizes the embedded preference for subsequent operations.
 
 ## Implementing a mutation operation
 
@@ -307,5 +306,24 @@ when viewable, and `preference=None`. Existing template variables such as `actio
 and `request` remain available unless the callback explicitly overrides them.
 Callbacks run only after the action's visibility check passes.
 
-Both `DataviewModalAction` and `ObjectModalAction` default `modal_title` to
+Both `DataviewModalAction` and `ObjectModalAction` default `title` to
 `label` when it is omitted, null, or empty. An explicit title is preserved.
+
+`ObjectDrawerAction` and `DataviewDrawerAction` load a fragment with `GET` by
+default and open the shared drawer without adding a browser history entry.
+`title` defaults to the action label. `size` accepts `sm`, `md`, `lg`, `xl`,
+`2xl`, `4xl`, `6xl`, or `full` for drawers. Custom drawers use `drawer_id` to select the
+drawer element and load into `#{drawer_id}-body` by default. A custom drawer can
+mark its heading with `data-drawer-title`. Its template controls the side and
+backdrop behavior.
+
+`call_dataview_action(..., target="drawer")` and
+`create_object_action(..., target="main")` accept the same three targets.
+`"modal"` is the default and opens the shared modal. `"drawer"` opens the
+shared drawer. `"main"` navigates the main content and creates a browser
+history entry. Data View filters and create-form initial values carry through
+in all three targets.
+
+Use `filters` for the initial dataview filter and `request_token` for scoped
+permissions and destination view settings. Both overlay targets use `title`
+and `size`.

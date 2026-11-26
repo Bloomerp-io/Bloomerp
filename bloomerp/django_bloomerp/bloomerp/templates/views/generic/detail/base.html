@@ -8,6 +8,8 @@
 	bloomerp-component="detail-view-frame"
 	class="grid gap-6 xl:h-full xl:min-h-0 xl:overflow-hidden xl:gap-0 {% if include_detail_aside %}xl:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)_auto]{% else %}xl:grid-cols-[minmax(0,1fr)_auto]{% endif %}"
 	data-detail-view-grid
+	{% if request_context_headers %}data-request-context-id="{{ detail_request_context_id }}" hx-headers="{{ request_context_headers }}"{% endif %}
+	tabindex="-1"
 	data-sidebar-preference-url="{% url 'components_detail_sidebar_preference' %}"
 >
 
@@ -22,6 +24,8 @@
 				data-save-url="{% url 'components_detail_tabs_preference' %}"
 				data-item-modal-url="{% url 'components_detail_tabs_item_modal' %}"
 				data-tab-strip
+				data-preference-refresh="detail-tabs"
+				data-preference-refresh-url="{{ request.get_full_path }}"
 				data-detail-content-target="#{{ detail_content_id|default:'detail-view-content' }}"
 				data-detail-push-url="{{ detail_push_url|default:'true' }}"
 				class="sticky top-0 z-40 flex shrink-0 border-b border-gray-200 bg-white"
@@ -40,7 +44,8 @@
 								<button
 									type="button"
 									data-folder-toggle
-									class="h-full w-full px-4 py-2 text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 hover:cursor-pointer hover:bg-gray-50"
+										aria-expanded="false"
+										class="detail-tab-control h-full w-full px-4 py-2 text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 hover:cursor-pointer"
 								>
 									{{ item.name }}
 								</button>
@@ -77,7 +82,7 @@
 									role="tab"
 									aria-selected="{% if item.is_active %}true{% else %}false{% endif %}"
 									{% if not item.is_external %}hx-get="{{ item.href }}" hx-swap="innerHTML" hx-target="#{{ detail_content_id|default:'detail-view-content' }}" hx-push-url="{{ detail_push_url|default:'true' }}"{% endif %}
-									class="block h-full w-full px-4 py-2 text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 hover:bg-gray-50"
+										class="detail-tab-control block h-full w-full px-4 py-2 text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500"
 								>{{ item.name }}</a>
 							</li>
 							{% endif %}
@@ -85,23 +90,41 @@
 					</ul>
 				</div>
 				<div class="flex shrink-0 items-stretch border-l border-gray-200">
+					{% with tab_button_class="h-full w-12 rounded-none px-4" %}
+					{% translate "Open detail sidebar" as open_detail_sidebar_label %}
+					{% if detail_tabs_preference %}
 					<c-features.preferences.select_preference_button
 						model="UserDetailViewTabsPreference"
 						selected_preference_name="{{ detail_tabs_preference.name }}"
 						:args="detail_tabs_preference.get_scope"
 						icon_only=True
 						trigger_icon_class="fa fa-chevron-down"
-						trigger_button_class="btn-ghost"
-						trigger_class="h-full rounded-none px-4"
+							trigger_button_class="detail-tab-control"
+						:trigger_class="tab_button_class"
 						trigger_aria_label="{% translate "Select tabs preference" %}"
 						wrapper_class="h-full"
 					/>
+					{% endif %}
+					<c-ui.shortcut_tooltip shortcut="mod+shift+y" action="click" position="left"
+						text="{% translate 'Toggle detail sidebar' %}" wrapper_class="hidden h-full items-stretch xl:flex">
+						<button type="button" data-resizable-div-toggle hidden
+							aria-controls="resizable-div-detail-aside" aria-expanded="false"
+							aria-label="{{ open_detail_sidebar_label }}"
+							data-expand-label="{{ open_detail_sidebar_label }}" data-collapse-label="{% translate 'Close detail sidebar' %}"
+								class="group/sidebar-toggle btn btn-sm detail-tab-control border-0 border-l border-gray-200 {{ tab_button_class }}">
+							<span class="relative block" aria-hidden="true">
+								<c-icons.sidebar_right size="14" class="block" />
+								<c-icons.sidebar_right_selected size="14" class="absolute inset-0 opacity-0 transition-opacity duration-250 ease-out group-aria-expanded/sidebar-toggle:opacity-100 motion-reduce:transition-none" />
+							</span>
+						</button>
+					</c-ui.shortcut_tooltip>
+					{% endwith %}
 				</div>
 			</div>
 			<!--End Card Tabs-->
 
 			<!--Content-->
-			<div id="{{ detail_content_id|default:'detail-view-content' }}" class="min-w-0 p-4 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+			<div id="{{ detail_content_id|default:'detail-view-content' }}" data-detail-view-content class="no-scrollbar min-w-0 p-4 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
 				{% block content %}
 					{% if include_detail_content %}
 						{% include include_detail_content %}
@@ -113,7 +136,7 @@
 	</section>
 
 	<!--Side section-->
-	<c-ui.resizable_div id="detail-aside" toggle_shortcut="mod+shift+y" start_width="22rem" fit_to_main_bottom="true" force_open="{% if highlight_comment_id %}true{% endif %}" force_close="{% if detail_sidebar_force_close %}true{% endif %}" class="w-full xl:border-0 border-t border-gray-200  xl:h-full xl:min-h-0 xl:self-stretch xl:-ml-px xl:w-[22rem]">
+	<c-ui.resizable_div id="detail-aside" start_width="22rem" fit_to_main_bottom="true" force_open="{% if highlight_comment_id %}true{% endif %}" force_close="{% if detail_sidebar_force_close %}true{% endif %}" class="w-full border-t border-gray-200 transition-none duration-250 ease-out xl:h-full xl:min-h-0 xl:self-stretch xl:-ml-px xl:w-[22rem] xl:border-0 motion-safe:data-[animate-width]:transition-[width,flex-basis,max-width]">
 		<aside class="xl:h-full xl:min-h-0">
 			<div class="relative flex flex-col overflow-hidden border-r border-gray-200 bg-white xl:h-full xl:min-h-0" data-resizable-div-panel>
 				<div class="pointer-events-none absolute left-0 top-0 z-40 h-full w-px bg-gray-200"></div>
@@ -126,7 +149,13 @@
 				<div class="flex flex-col xl:min-h-0 xl:flex-1">
 					<div class="flex flex-wrap justify-center gap-2">
 						{% for action in object_actions %}
-							{% render_object_action action=action object=object request=request content_type_id=content_type_id %}
+							{% if action.shortcut %}
+								<c-ui.shortcut_tooltip shortcut="{{ action.shortcut }}">
+									{% render_object_action action=action object=object request=request content_type_id=content_type_id %}
+								</c-ui.shortcut_tooltip>
+							{% else %}
+								{% render_object_action action=action object=object request=request content_type_id=content_type_id %}
+							{% endif %}
 						{% endfor %}
 					</div>
 					{% if detail_sidebar_url %}

@@ -233,7 +233,7 @@ def _remember_calendar_delivery(
     return delivery
 
 
-def _calendar_send_key(
+def calendar_send_key(
     account: EmailAccount, event: CalendarEvent, method: str, payload: bytes,
     recipients: list[str],
 ) -> str:
@@ -273,23 +273,34 @@ def require_event_access(
         raise PermissionDenied("You cannot change these calendar event fields.")
 
 
+def calendar_sender_matches_inbox(
+    account: EmailAccount, inbox_id: int, *, event: CalendarEvent | None = None,
+) -> bool:
+    """Allow an inbox sender or the original sender of a confirmed booking invitation."""
+    if (
+        event is not None
+        and event.organizing_inbox_id == inbox_id
+        and event.calendar_booking_submission_id is not None
+        and event.invitation_sent_at is not None
+        and account.email_address.lower() == event.organizer_email.lower()
+    ):
+        return True
+    return InboxFolder.objects.filter(
+        inbox_id=inbox_id, type="email", related_object_id=str(account.pk),
+    ).exists()
+
+
 def _email_account(
-    user: AbstractBloomerpUser, account_id: UUID, inbox_id: int
+    user: AbstractBloomerpUser, account_id: UUID, inbox_id: int,
+    *, event: CalendarEvent | None = None,
 ) -> EmailAccount:
-    """Resolve a usable sender explicitly linked to the relevant source Inbox."""
+    """Resolve an accessible sender for the inbox or an existing booking invitation."""
     account = (
         accessible_email_accounts(user)
         .filter(pk=account_id, status=EmailAccount.Status.ACTIVE)
         .first()
     )
-    if (
-        account is None
-        or not InboxFolder.objects.filter(
-            inbox_id=inbox_id,
-            type="email",
-            related_object_id=str(account_id),
-        ).exists()
-    ):
+    if account is None or not calendar_sender_matches_inbox(account, inbox_id, event=event):
         raise PermissionDenied("This email identity is not available in this Inbox.")
     return account
 
@@ -304,7 +315,7 @@ def _send(
     """Send a calendar alternative through the configured provider and Sent-copy path."""
     if account.pk != _calendar_locked_account.get():
         raise ValidationError("The sending account changed. Refresh this event before sending again.")
-    operation_key = _calendar_send_key(account, event, method, payload, recipients)
+    operation_key = calendar_send_key(account, event, method, payload, recipients)
     previous_deliveries = list(InboxItem.objects.filter(
         item_type="email",
         folder__type="email",
@@ -352,9 +363,9 @@ def calendar_sender(user: AbstractBloomerpUser, event: CalendarEvent) -> EmailAc
     """Resolve the original sending identity without trusting changed composer values."""
     accounts = accessible_email_accounts(user).filter(email_address__iexact=event.organizer_email, status="active").order_by("pk")
     for account in accounts:
-        if InboxFolder.objects.filter(
-            inbox_id=event.organizing_inbox_id, type="email", related_object_id=str(account.pk),
-        ).exists():
+        if event.organizing_inbox_id is not None and calendar_sender_matches_inbox(
+            account, event.organizing_inbox_id, event=event,
+        ):
             return account
     raise ValidationError("The original sending account is required to cancel this invitation.")
 
@@ -432,7 +443,7 @@ def send_calendar_request(
         raise PermissionDenied(
             "Only the organizer can send meeting updates or cancellations."
         )
-    account = _email_account(user, email_account_id, event.organizing_inbox_id)
+    account = _email_account(user, email_account_id, event.organizing_inbox_id, event=event)
     if account.email_address.lower() != event.organizer_email.lower():
         raise ValidationError(
             "The sending email identity must match the meeting organizer."

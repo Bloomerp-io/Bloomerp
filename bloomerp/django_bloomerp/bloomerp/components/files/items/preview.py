@@ -6,7 +6,7 @@ import csv
 import mimetypes
 import re
 from collections.abc import AsyncIterator, Iterable, Iterator, Sequence
-from io import StringIO
+from io import BytesIO, StringIO
 from pathlib import PurePath
 from typing import TYPE_CHECKING, Any, TypedDict
 
@@ -37,6 +37,10 @@ MAX_PREVIEW_ROWS = 200
 MAX_PREVIEW_COLUMNS = 50
 MAX_PREVIEW_CELL_CHARACTERS = 2_000
 MAX_TEXT_BYTES = 256 * 1024
+HEIF_EXTENSIONS = {"heic", "heif"}
+MAX_HEIF_BYTES = 64 * 1024 * 1024
+MAX_HEIF_PIXELS = 64_000_000
+MAX_HEIF_PREVIEW_EDGE = 4096
 
 
 def _file_extension(file: FileNode) -> str:
@@ -114,6 +118,30 @@ def _media_response(
     if _file_extension(file) == "pdf":
         response["X-Frame-Options"] = "SAMEORIGIN"
     return response
+
+
+def _heif_response(file: FileNode) -> HttpResponse:
+    """Convert the primary HEIC or HEIF image to a bounded browser-friendly preview."""
+    from pillow_heif import open_heif
+
+    try:
+        with file.content.open("rb") as source:
+            data = source.read(MAX_HEIF_BYTES + 1)
+        if len(data) > MAX_HEIF_BYTES:
+            return HttpResponse(status=422)
+        heif = open_heif(data)
+        if heif.size[0] * heif.size[1] > MAX_HEIF_PIXELS:
+            return HttpResponse(status=422)
+        with heif.to_pillow() as image, BytesIO() as output:
+            image.thumbnail((MAX_HEIF_PREVIEW_EDGE, MAX_HEIF_PREVIEW_EDGE))
+            image.save(output, format="WEBP", quality=90, icc_profile=image.info.get("icc_profile"))
+            return HttpResponse(
+                output.getvalue(),
+                content_type="image/webp",
+                headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"},
+            )
+    except (EOFError, IndexError, OSError, RuntimeError, SyntaxError, ValueError):
+        return HttpResponse(status=422)
 
 
 class SheetPreview(TypedDict):
@@ -205,7 +233,7 @@ def _markdown_preview(text: str) -> SafeString:
 def preview_file(
     request: HttpRequest, file_id: str | FileNode
 ) -> HttpResponse | StreamingHttpResponse:
-    """Render authorized, escaped previews for documents, sheets, images, and media."""
+    """Render authorized previews, converting HEIC and HEIF images for the browser."""
     from bloomerp.files.access import FileAccessManager
     from bloomerp.models.files.file_node import FileNode
 
@@ -233,7 +261,7 @@ def preview_file(
     extension = _file_extension(file)
     if extension == "pdf":
         context["kind"] = "pdf"
-    elif extension in {
+    elif extension in HEIF_EXTENSIONS or extension in {
         "apng",
         "avif",
         "bmp",
@@ -296,6 +324,8 @@ def preview_file(
         except (UnicodeError, OSError):
             context["kind"] = "unsupported"
     if request.GET.get("raw") == "1":
+        if extension in HEIF_EXTENSIONS:
+            return _heif_response(file)
         if context["kind"] not in {"pdf", "image", "video", "audio"}:
             return HttpResponse(status=400)
         return _media_response(request, file)

@@ -3,7 +3,6 @@ from django.http import HttpRequest, HttpResponse
 
 from bloomerp.router import router
 from bloomerp.services.preference_services import PreferenceManager
-from bloomerp.utils.requests import render_page_refresh
 
 
 @router.register(
@@ -12,6 +11,7 @@ from bloomerp.utils.requests import render_page_refresh
 )
 @login_required
 def new_preference(request: HttpRequest, model: str) -> HttpResponse:
+    """Create and select a named copy so the chooser can refresh its region."""
     if request.method != "POST":
         return HttpResponse("Method not allowed", status=405)
 
@@ -23,7 +23,11 @@ def new_preference(request: HttpRequest, model: str) -> HttpResponse:
     name = request.POST.get("name", "").strip()
     if not name:
         return HttpResponse("A preference name is required.", status=400)
+    if len(name) > 255:
+        return HttpResponse("The preference name is too long.", status=400)
 
     scope = preference_model.normalize_scope(request.POST.dict())
+    if len(scope) != len(preference_model.preference_scope_fields):
+        return HttpResponse("Preference scope is required.", status=400)
     manager.create(preference_model, name=name, scope=scope)
-    return render_page_refresh()
+    return HttpResponse(status=204)

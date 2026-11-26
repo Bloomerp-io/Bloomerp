@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from django.db import models
 from django.contrib.contenttypes.models import ContentType
+from django.db import models
 from django.db.models import Exists, Model, OuterRef, Q, QuerySet, Subquery, Value
 from django.db.models.functions import Cast, Replace
 from django.http import HttpRequest
 
-from bloomerp.models import ApplicationField
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.permissions.compilers.django_q_permission_compiler import (
     DjangoQPermissionCompiler,
@@ -212,7 +211,8 @@ class FileAccessManager:
             permission_manager = resolver.permission_manager
             library_manager = (
                 UserPolicyManager(self.user, use_request_token=False)
-                if permission_manager.token is not None else permission_manager
+                if permission_manager.token is not None or permission_manager.request_token is not None
+                else permission_manager
             )
             if library_manager.has_global_permission(queryset.model, BloomerpPermission.VIEW):
                 readable |= Q(unreferenced)

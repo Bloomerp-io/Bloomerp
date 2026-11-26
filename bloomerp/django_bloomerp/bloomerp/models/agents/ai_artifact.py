@@ -8,6 +8,8 @@ if TYPE_CHECKING:
     from django.contrib.auth.base_user import AbstractBaseUser
     from django.http import HttpRequest
 
+    from bloomerp.agents.artifacts.selection import EditorAttachment
+
     from .ai_tool_call import AIToolCall
 
 from django.core.exceptions import ValidationError
@@ -224,18 +226,20 @@ class AIArtifact(AgentModel):
 
     @classmethod
     def resolve_selections(
-        cls, tokens: list[str], user: "AbstractBaseUser"
+        cls, selections: "list[str | EditorAttachment]", user: "AbstractBaseUser"
     ) -> list[dict[str, Any]]:
-        """Resolve bounded signed candidates and recheck source permissions before ingestion."""
+        """Resolve bounded attachments and recheck their source permissions before ingestion."""
         from django.http import HttpRequest
 
         from bloomerp.agents.artifacts.selection import resolve_selection
 
-        if len(tokens) > 20 or any(len(token) > 32768 for token in tokens):
+        if len(selections) > 20 or any(
+            isinstance(item, str) and len(item) > 32768 for item in selections
+        ):
             raise ValidationError("Too many or oversized attachments")
         request = HttpRequest()
         request.user = user
         try:
-            return [resolve_selection(token, request) for token in tokens]
+            return [resolve_selection(item, request) for item in selections]
         except (ValueError, KeyError) as error:
             raise ValidationError("Attachment unavailable; select it again") from error

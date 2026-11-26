@@ -1,6 +1,7 @@
 import BaseComponent, { getComponent } from "../BaseComponent";
 import { Drawer } from "../Drawer";
 import htmx from "htmx.org";
+import { DATAVIEW_ROOT, type DataViewContainer } from "./DataViewContainer";
 
 export abstract class BaseDataViewCell extends BaseComponent {
     private detailUrl : string;
@@ -89,16 +90,35 @@ export abstract class BaseDataViewCell extends BaseComponent {
         this.element.addEventListener('contextmenu', this.onContextMenu, true);
     }
 
-    /**
-     * Click functionality:
-     * a standard onClick will be provided that can be
-     * overwritten.
-     */
+    /** Run the layout's item action or fall back to the existing detail navigation. */
     public click(target?: string | HTMLElement): void {
+        const layout = this.element?.closest<HTMLElement>('[data-item-click]');
+        if (layout?.dataset.itemClick === 'action') {
+            const item = this.element?.closest('[data-dataview-item]') ?? this.element;
+            for (const button of item?.querySelectorAll<HTMLButtonElement>('button[data-object-action-id]') ?? []) {
+                if (button.dataset.objectActionId !== layout.dataset.itemActionId) continue;
+                button.click();
+                break;
+            }
+            return;
+        }
         if (this.handleClickOverride(this.onClickOverride, 'onClickOverride')) return;
         if (this.handleClickOverride(this.dataViewClickOverride, 'dataViewClickOverride')) return;
 
         this.performDefaultClick(target);
+    }
+
+    /** Toggle an enabled record checkbox with Space and prevent scrolling while it is held. */
+    public handleRecordSelectionShortcut(event: KeyboardEvent): boolean {
+        if (event.key !== ' ' || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return false;
+        if (this.element.closest('[bloomerp-component="foreign-field-dataview"]')) return false;
+        const checkbox = this.element.closest('[data-dataview-record]')
+            ?.querySelector<HTMLInputElement>('input[data-bulk-checkbox][data-object-id]:enabled');
+        if (!checkbox || checkbox.hidden) return false;
+
+        event.preventDefault();
+        if (!event.repeat) checkbox.click();
+        return true;
     }
 
     private handleClickOverride(
@@ -121,8 +141,9 @@ export abstract class BaseDataViewCell extends BaseComponent {
         return false;
     }
 
+    /** Return the row URL used with its dataview context. */
     public getDetailUrl(): string {
-        return this.detailUrl;
+        return this.detailUrl || '';
     }
 
     /** Refresh cached navigation and object metadata after updating a cell's contents. */
@@ -133,19 +154,22 @@ export abstract class BaseDataViewCell extends BaseComponent {
         this.objectId = this.element.dataset.objectId ?? null;
     }
 
+    /** Keep focus on the embedded pane while HTMX replaces its detail content. */
     protected performDefaultClick(target?: string | HTMLElement): void {
-        if (this.detailUrl) {
-            const resolvedTarget = target ?? this.resolveDefaultTarget();
-            const shouldPush = this.shouldPushUrl(resolvedTarget);
-            htmx.ajax(
-                'get',
-                this.detailUrl,
-                {
-                    target: resolvedTarget,
-                    push: shouldPush ? "true" : "false"
-                }
-            );
+        const detailUrl = this.getDetailUrl();
+        if (!detailUrl) return;
+        const resolvedTarget = target ?? this.resolveDefaultTarget();
+        const shouldPush = this.shouldPushUrl(resolvedTarget);
+        if (resolvedTarget instanceof HTMLElement
+            && resolvedTarget.matches('[data-split-view-detail-pane], [data-drawer-detail-pane]')) {
+            if (!resolvedTarget.hasAttribute('tabindex')) resolvedTarget.tabIndex = -1;
+            resolvedTarget.focus({ preventScroll: true });
         }
+        void htmx.ajax('get', detailUrl, {
+            source: this.element,
+            target: resolvedTarget,
+            push: shouldPush ? 'true' : 'false',
+        });
     }
 
     /** Navigate on cell double-clicks while leaving embedded action controls independent. */

@@ -1,6 +1,13 @@
 """Verify detail-tab reconfiguration preserves settings, identity, and encrypted secrets."""
 
 from typing import Any
+from unittest.mock import patch
+
+import httpx
+from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
+from django.http import HttpResponse
+from django.urls import resolve, reverse
 
 from bloomerp.models import ApplicationField
 from bloomerp.models.agents import AIAgent, AIAgentAccess
@@ -13,10 +20,6 @@ from bloomerp.tests.base import (
 )
 from bloomerp.views.agents.create_ai_agent import CreateAIAgentView
 from bloomerp.views.agents.reconfigure_ai_agent import ReconfigureAIAgentView
-from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.models import ContentType
-from django.http import HttpResponse
-from django.urls import resolve, reverse
 
 
 class ReconfigureAIAgentViewTests(BloomerpDetailViewTestCase):
@@ -138,8 +141,45 @@ class ReconfigureAIAgentViewTests(BloomerpDetailViewTestCase):
         self.assertNotIn(f"ai_agent_reconfigure_{self.agent.pk}", self.client.session)
         return True
 
+    def prepare_deepseek_discovery(self, scenario: RequestScenario) -> None:
+        """Reopen a DeepSeek agent whose encrypted key is already configured."""
+        self.client.force_login(self.user)
+        self.agent.provider = "deepseek"
+        self.agent.model_identifier = "deepseek-flash"
+        self.agent.base_url = None
+        self.agent.set_credentials({"api_key": "deepseek-secret"})
+        self.agent.save()
+        self.select_provider("deepseek")
+        self.enterContext(
+            patch(
+                "bloomerp.agents.providers.builtins.common.httpx.get",
+                return_value=httpx.Response(
+                    200,
+                    request=httpx.Request("GET", "https://api.deepseek.com/models"),
+                    json={
+                        "data": [
+                            {
+                                "id": "deepseek-flash",
+                                "input_modalities": ["text", "image"],
+                                "output_modalities": ["text"],
+                            }
+                        ]
+                    },
+                ),
+            )
+        )
+        scenario.data = self.details(base_url="", discover_modalities="on")
+
+    def deepseek_modalities_persist(self, response: HttpResponse) -> bool:
+        """Verify the catalog mapping is saved without re-entering the API key."""
+        self.agent.refresh_from_db()
+        self.assertEqual(
+            self.agent.modalities, {"input": ["text", "image"], "output": ["text"]}
+        )
+        return True
+
     def get_test_scenarios(self) -> list[RequestScenario]:
-        """Declare preserved blank credentials, HTMX completion and denied access."""
+        """Cover credential preservation, HTMX completion, and capability discovery."""
         return [
             RequestScenario(
                 name="Blank credentials preserve settings",
@@ -163,6 +203,16 @@ class ReconfigureAIAgentViewTests(BloomerpDetailViewTestCase):
                 name="Ungranted editor is denied",
                 user=self.other,
                 expected=ExpectedResult(status_code=403),
+            ),
+            RequestScenario(
+                name="DeepSeek discovery persists on reconfiguration",
+                method="POST",
+                user=self.user,
+                prepare=self.prepare_deepseek_discovery,
+                expected=ExpectedResult(
+                    status_code=302,
+                    response_validators=self.deepseek_modalities_persist,
+                ),
             ),
         ]
 

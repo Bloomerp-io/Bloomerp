@@ -3,19 +3,18 @@ import BaseComponent from '../BaseComponent';
 export type ArtifactChoice = {token: string; key: string; title: string; summary: string; type: string; icon: string};
 type ArtifactCategory = {key: string; label: string; icon: string; upload: boolean};
 
-/** Share one keyboard-accessible attachment menu between slash input and the plus button. */
+/** Select and upload attachments from the chat's plus menu. */
 export default class ArtifactPicker extends BaseComponent {
     private lifecycle = new AbortController();
     private request: AbortController | null = null;
     private menu: HTMLElement | null = null;
-    private input: HTMLTextAreaElement | null = null;
+    private input: HTMLElement | null = null;
     private search: HTMLInputElement | null = null;
     private list: HTMLElement | null = null;
     private categories: ArtifactCategory[] = [];
     private category: ArtifactCategory | null = null;
     private choices: ArtifactChoice[] = [];
     private selected: ArtifactChoice[] = [];
-    private slash: {start: number; end: number} | null = null;
     private timer: number | null = null;
     private cursor: string | null = null;
     private index = 0;
@@ -32,7 +31,7 @@ export default class ArtifactPicker extends BaseComponent {
     public initialize(): void {
         if (!this.element) return;
         this.menu = this.element.querySelector('[data-artifact-menu]');
-        this.input = this.element.querySelector('[data-agent-input]');
+        this.input = this.element.querySelector('[data-agent-composer] [contenteditable]');
         this.search = this.element.querySelector('[data-artifact-search]');
         this.list = this.element.querySelector('[data-artifact-options]');
         const signal = this.lifecycle.signal;
@@ -47,12 +46,13 @@ export default class ArtifactPicker extends BaseComponent {
     /** Translate menu status labels from server-rendered attributes. */
     private label(key: string): string { return this.element?.getAttribute(`data-picker-${key}`) ?? key; }
 
-    /** Toggle the shared menu and load registered attachment categories. */
-    private open(fromSlash: boolean): void {
+    /** Open the attachment picker and load its categories. */
+    private open(): void {
         if (!this.menu || this.element?.dataset.attachmentsDisabled === 'true') return;
         this.menu.hidden = false;
         this.element?.querySelector('[data-artifact-plus]')?.setAttribute('aria-expanded', 'true');
-        if (!fromSlash) { this.slash = null; this.category = null; if (this.search) this.search.value = ''; this.search?.focus(); }
+        this.category = null;
+        if (this.search) { this.search.value = ''; this.search.focus(); }
         void this.load(false);
     }
 
@@ -137,14 +137,10 @@ export default class ArtifactPicker extends BaseComponent {
     /** Read currently visible menu options in keyboard order. */
     private options(): HTMLButtonElement[] { return [...this.list?.querySelectorAll<HTMLButtonElement>('[data-artifact-option]') ?? []]; }
 
-    /** Select a candidate once, consume the slash query, and publish draft metadata. */
+    /** Select a candidate once and publish draft metadata. */
     private select(choice: ArtifactChoice): void {
         if (this.selected.length >= 20) { this.status(this.label('limit')); return; }
         if (!this.selected.some(this.matchesChoice.bind(this, choice))) this.selected.push(choice);
-        if (this.slash && this.input) {
-            this.input.setRangeText('', this.slash.start, this.slash.end, 'end');
-            this.slash = null;
-        }
         this.close(); this.publish(); this.input?.focus();
     }
 
@@ -170,7 +166,7 @@ export default class ArtifactPicker extends BaseComponent {
     private onClick = (event: MouseEvent): void => {
         const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>('button') : null;
         if (!button || this.element?.dataset.attachmentsDisabled === 'true') return;
-        if (button.hasAttribute('data-artifact-plus')) { if (this.menu?.hidden) this.open(false); else this.close(); }
+        if (button.hasAttribute('data-artifact-plus')) { if (this.menu?.hidden) this.open(); else this.close(); }
         if (button.hasAttribute('data-artifact-back')) { this.category = null; if (this.search) this.search.value = ''; void this.load(false); }
         if (button.hasAttribute('data-artifact-more')) void this.load(true);
         if (button.dataset.artifactRemove !== undefined) { this.selected.splice(Number(button.dataset.artifactRemove), 1); this.publish(); }
@@ -186,17 +182,9 @@ export default class ArtifactPicker extends BaseComponent {
     /** Match the registry's stable category key. */
     private matchesCategory(key: string, category: ArtifactCategory): boolean { return category.key === key; }
 
-    /** Detect slash commands only at a word boundary, leaving URLs and ordinary slashes alone. */
+    /** Debounce queries typed into the attachment search field. */
     private onInput = (event: Event): void => {
-        if (event.target === this.input && this.input) {
-            const prefix = this.input.value.slice(0, this.input.selectionStart);
-            const match = /(^|\s)\/([^\n/]*)$/.exec(prefix);
-            if (!match) { if (this.slash) { this.slash = null; this.close(); } return; }
-            this.slash = {start: match.index + match[1].length, end: this.input.selectionStart};
-            this.category = null;
-            if (this.search) this.search.value = match[2];
-            this.open(true);
-        } else if (event.target === this.search) {
+        if (event.target === this.search) {
             if (this.timer !== null) window.clearTimeout(this.timer);
             this.timer = window.setTimeout(this.refresh, 200);
         }
@@ -210,7 +198,7 @@ export default class ArtifactPicker extends BaseComponent {
         if (this.menu?.hidden || event.isComposing) return;
         if (['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key)) {
             event.preventDefault(); event.stopPropagation();
-            if (event.key === 'Escape') { this.close(); this.slash = null; this.input?.focus(); return; }
+            if (event.key === 'Escape') { this.close(); this.input?.focus(); return; }
             const options = this.options();
             if (event.key === 'Enter') {
                 const target = event.target;
@@ -222,30 +210,50 @@ export default class ArtifactPicker extends BaseComponent {
         }
     };
 
-    /** Dismiss when clicking outside this composer. */
-    private onOutside = (event: PointerEvent): void => { if (event.target instanceof Node && !this.element?.contains(event.target)) this.close(); };
+    /** Dismiss when clicking outside the picker or back into the editor. */
+    private onOutside = (event: PointerEvent): void => {
+        if (event.target instanceof Node && (!this.element?.contains(event.target) || this.input?.contains(event.target))) this.close();
+    };
 
-    /** Upload one file through its registered handler without discarding a draft on failure. */
-    private onFile = async (event: Event): Promise<void> => {
+    /** Send a native file-picker selection through the existing artifact endpoint. */
+    private onFile = (event: Event): void => {
         const input = event.target;
         if (!(input instanceof HTMLInputElement) || !input.matches('[data-artifact-file]') || !input.files?.[0] || !this.category) return;
+        void this.uploadFile(input.files[0], this.category.key);
+        input.value = '';
+    };
+
+    /** Upload one selected file and ignore results for a replaced draft. */
+    private async uploadFile(file: File, type: string): Promise<void> {
         const endpoint = this.element?.getAttribute('data-artifact-upload-url');
-        if (!endpoint || this.uploading || this.selected.length >= 20) { this.status(this.label('limit')); input.value = ''; return; }
+        const status = this.element?.querySelector<HTMLElement>('[data-artifact-upload-status]');
+        if (!endpoint || !status || this.uploading) return;
+        if (this.selected.length >= 20) { status.textContent = this.label('limit'); return; }
         const revision = this.revision;
-        const form = new FormData(); form.set('type', this.category.key); form.set('file', input.files[0]);
         const csrf = this.element?.querySelector<HTMLInputElement>('[name=csrfmiddlewaretoken]')?.value ?? '';
-        this.uploading = true; this.status(this.label('uploading')); this.publish();
+        this.uploading = true; status.textContent = this.label('uploading'); this.publish();
         try {
+            const form = new FormData(); form.set('type', type); form.set('file', file);
             const response = await fetch(endpoint, {method: 'POST', body: form, headers: {'X-CSRFToken': csrf}, credentials: 'same-origin', signal: this.lifecycle.signal});
             const data = await response.json();
             if (!response.ok) throw new Error(data.error ?? this.label('error'));
-            if (revision === this.revision) this.select(data);
-        } catch (error) { if (!this.lifecycle.signal.aborted) this.status(error instanceof Error ? error.message : this.label('error')); }
-        finally { this.uploading = false; input.value = ''; this.publish(); }
-    };
+            if (revision === this.revision) {
+                this.select(data);
+                status.textContent = '';
+            }
+        } catch (error) {
+            if (revision === this.revision && !this.lifecycle.signal.aborted) status.textContent = error instanceof Error ? error.message : this.label('error');
+        } finally { this.uploading = false; this.publish(); }
+    }
 
     /** Clear the draft when sent or switched, ignoring uploads for an older draft. */
-    private clear = (): void => { this.revision++; this.selected = []; this.slash = null; this.close(); this.publish(); };
+    private clear = (): void => {
+        this.revision++;
+        this.selected = [];
+        const status = this.element?.querySelector('[data-artifact-upload-status]');
+        if (status) status.textContent = '';
+        this.close(); this.publish();
+    };
 
     /** Abort requests and timers when the form leaves the document. */
     public override destroy(): void { this.lifecycle.abort(); this.request?.abort(); if (this.timer !== null) window.clearTimeout(this.timer); super.destroy(); }

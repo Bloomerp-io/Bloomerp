@@ -1,5 +1,5 @@
 {% load i18n %}
-<button{{ button_attributes }}>
-    {% if action.icon %}<i class="{{ action.icon }}" aria-hidden="true"></i>{% endif %}
+<{{ action_tag }}{{ button_attributes }}>
+    {% if action.icon %}<span aria-hidden="true"><i class="{{ action.icon }}"></i></span>{% endif %}
     {% if action.label %}<span>{% translate action.label %}</span>{% endif %}
-</button>
+</{{ action_tag }}>

@@ -41,7 +41,7 @@
                 <div class="grid gap-3 sm:grid-cols-2">
                     {% for field in form.visible_fields %}
                         {% if field.name != "file_type" %}
-                        <label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 {% if field.field.disabled %}opacity-80{% else %}hover:border-primary hover:bg-primary-50/40{% endif %}">
+                        <label class="flex items-start gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 {% if field.field.disabled %}opacity-80{% else %}hover:border-primary hover:bg-primary-50/40{% endif %}">
                             <span class="pt-0.5">{{ field }}</span>
                             <span class="min-w-0">
                                 <span class="block text-sm font-medium text-slate-900">

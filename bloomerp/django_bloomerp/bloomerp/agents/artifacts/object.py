@@ -1,7 +1,13 @@
 """Searchable object references and adapters for tool-created records."""
 
+import json
+from datetime import date, time, timedelta
+from decimal import Decimal
 from uuid import UUID
 
+from django.apps import apps
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import models
 from django.http import HttpRequest
 from pydantic import Field
 
@@ -16,6 +22,9 @@ from bloomerp.agents.definition import (
     AIArtifactToolResultAdapter,
     AIArtifactTypeDefinition,
 )
+from bloomerp.models.definition import get_model_config
+from bloomerp.permissions.definition import BloomerpPermission
+from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.services.search_services import SearchManager
 
 
@@ -26,7 +35,55 @@ class ObjectArtifactPayload(AIArtifactPayload):
         pattern=r"^[a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*$"
     )
     object_id: str = Field(min_length=1, max_length=255)
-    object_name:str = Field(min_length=1, max_length=500)
+    object_name: str | None = Field(default=None, min_length=1, max_length=500)
+
+
+def object_prompt_context(payload: ObjectArtifactPayload, request: HttpRequest) -> str:
+    """Resolve current readable scalar fields for an object explicitly attached to a prompt."""
+    from bloomerp.views.mcp.authoring_references import sensitive_name
+
+    permissions = UserPolicyManager(request.user)
+    obj = _readable_object(payload, permissions)
+    readable = set(
+        permissions.get_accessible_fields_for_object(
+            obj, BloomerpPermission.VIEW
+        ).values_list("field", flat=True)
+    )
+    config = get_model_config(obj)
+    settings = config.detail_view_settings if config else None
+    layout = settings.get_default_layout() if settings else None
+    if layout:
+        readable.intersection_update(
+            item.id for row in layout.rows for item in row.items if item.is_visible
+        )
+
+    fields: dict[str, str] = {}
+    for field in obj._meta.concrete_fields:
+        if (
+            field.name not in readable
+            or not field.editable
+            or field.is_relation
+            or field.primary_key
+            or sensitive_name(field.name)
+            or field.name in getattr(obj, "SECRET_FIELDS", ())
+        ):
+            continue
+        value = field.value_from_object(obj)
+        if (
+            isinstance(
+                value, (str, bool, int, float, Decimal, date, time, timedelta, UUID)
+            )
+            and value != ""
+        ):
+            fields[field.name] = str(value)[:320]
+        if len(fields) == 10:
+            break
+
+    live_payload = payload.model_copy(
+        update={"object_name": str(obj)[:500] or str(obj.pk)}
+    )
+    description = describe_object(live_payload)
+    return f"{description.title}. {description.summary}\nReadable record data: {json.dumps(fields, ensure_ascii=False)}"
 
 
 def describe_object(payload: ObjectArtifactPayload) -> AIArtifactDescription:
@@ -48,28 +105,34 @@ def describe_object(payload: ObjectArtifactPayload) -> AIArtifactDescription:
             "API availability does not grant user, row, or field permissions."
         )
     return AIArtifactDescription(
-        title=f"{payload.object_name} | {payload.model_label}",
+        title=f"{payload.object_name or payload.object_id} | {payload.model_label}",
         summary=f"Reference to a record with id '{payload.object_id}'. {availability}",
     )
 
 
-def authorize_object(payload: ObjectArtifactPayload, request: HttpRequest) -> None:
-    """Recheck the shared row-level view permission without exposing display fields."""
-    from django.apps import apps
-    from django.core.exceptions import PermissionDenied
-
-    from bloomerp.permissions.definition import BloomerpPermission
-    from bloomerp.permissions.manager import UserPolicyManager
-
+def _readable_object(
+    payload: ObjectArtifactPayload, permissions: UserPolicyManager
+) -> models.Model:
+    """Load an object through the existing view permission queryset."""
     model = apps.get_model(payload.model_label)
-    if (
-        model is None
-        or not UserPolicyManager(request.user)
-        .get_accessible_queryset(model, BloomerpPermission.VIEW)
-        .filter(pk=payload.object_id)
-        .exists()
+    try:
+        obj = (
+            permissions.get_accessible_queryset(model, BloomerpPermission.VIEW)
+            .filter(pk=payload.object_id)
+            .first()
+        )
+    except (ValidationError, ValueError, TypeError, OverflowError) as error:
+        raise PermissionDenied("Object unavailable") from error
+    if obj is None or not permissions.has_global_permission(
+        model, BloomerpPermission.VIEW
     ):
         raise PermissionDenied("Object unavailable")
+    return obj
+
+
+def authorize_object(payload: ObjectArtifactPayload, request: HttpRequest) -> None:
+    """Recheck view access before signing, attaching, or rendering a record."""
+    _readable_object(payload, UserPolicyManager(request.user))
 
 
 class ObjectArtifactRenderer(AIArtifactRenderer[ObjectArtifactPayload]):

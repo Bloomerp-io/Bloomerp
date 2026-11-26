@@ -159,14 +159,15 @@ export class DetailViewCell extends BaseSectionedLayoutItem {
         this.element.focus();
     }
 
+    /** Find a visible, enabled control in the field's preferred focus order. */
     private getFirstFocusableElement(selectors: string[]): HTMLElement | null {
         const body = this.getBodyElement();
         if (!body) return null;
 
         for (const selector of selectors) {
-            const element = body.querySelector<HTMLElement>(selector);
-            if (element) {
-                return element;
+            for (const element of body.querySelectorAll<HTMLElement>(selector)) {
+                if (element.closest('[inert], [aria-disabled="true"]') || element.matches(":disabled")) continue;
+                if (element.getClientRects().length && getComputedStyle(element).visibility === "visible") return element;
             }
         }
 
@@ -606,11 +607,14 @@ export class DetailViewCell extends BaseSectionedLayoutItem {
         };
     }
 
+    /** Read the serialized field for opted-in composite editors, or the native controls. */
     private getNativeFields(): Array<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement> {
         if (!this.element) return [];
 
         const body = this.getBodyElement();
         if (!body) return [];
+        const output = body.querySelector<HTMLInputElement>('input[type="hidden"][data-track-form-value]');
+        if (output) return [output];
 
         const fields = Array.from(
             body.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(

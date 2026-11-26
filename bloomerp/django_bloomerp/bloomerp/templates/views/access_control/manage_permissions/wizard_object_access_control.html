@@ -13,7 +13,7 @@
     <div class="mb-4">
         <div class="flex flex-wrap gap-2">
             {% for permission in permissions %}
-                <span class="px-3 py-1 text-xs rounded-md border border-base bg-white text-gray-700">
+                <span class="px-3 py-1 text-xs rounded-md border border-gray-200 bg-white text-gray-700">
                     {{ permission.name }}
                 </span>
             {% empty %}
@@ -32,7 +32,7 @@
         <div class="flex flex-wrap gap-2">
             {% for field in application_fields %}
                 <span
-                    class="px-3 py-1 text-xs border rounded-xl transition-all cursor-move border-base bg-white text-gray-700 hover:bg-base hover:shadow-md"
+                    class="px-3 py-1 text-xs border rounded-xl transition-all cursor-move border-gray-200 bg-white text-gray-700 hover:bg-base hover:shadow-md"
                     draggable="true"
                     data-field-draggable
                     data-field-id="{{ field.id }}"
@@ -45,7 +45,7 @@
                 </span>
             {% endfor %}
             <span
-                class="px-3 py-1 text-xs border rounded-xl bg-light transition-all cursor-move border-base bg-white text-gray-700 hover:bg-base hover:shadow-md"
+                class="px-3 py-1 text-xs border rounded-xl bg-light transition-all cursor-move border-gray-200 bg-white text-gray-700 hover:bg-base hover:shadow-md"
                 draggable="true"
                 data-field-draggable
                 data-field-id="__all__"
@@ -159,7 +159,7 @@
             <div id="field-policy-alert" class="mb-4"></div>
 
             <c-ui.text.muted>
-                Field policies provide granular control over which actions users can perform on specific fields.
+                {% blocktrans %}Field policies provide granular control over which actions users can perform on specific fields.{% endblocktrans %}
             </c-ui.text.muted>
 
             <div class="my-2">

@@ -31,6 +31,7 @@ class CalendarDataView(BaseDataview):
     """A declarative calendar dataview."""
 
     view_type: Literal["calendar"] = "calendar"
+    dataview_component_id: str | None = "calendar"
     start_field: str | None = None
     end_field: str | None = None
     start_date_field: str | None = None

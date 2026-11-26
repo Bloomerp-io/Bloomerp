@@ -1,17 +1,23 @@
 import json
 from collections.abc import Mapping
+from datetime import timedelta
+from html import unescape
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import FieldDoesNotExist
+from django.core.exceptions import FieldDoesNotExist, PermissionDenied, ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.db.models import Model
 from django.forms import widgets
 from django.urls import reverse
+from django.utils import timezone
+from django.utils.html import strip_tags
 
 if TYPE_CHECKING:
+    from django.contrib.auth.base_user import AbstractBaseUser
+
     from bloomerp.models import ApplicationField
 
 SKIPPED_FIELD_NAMES = {
@@ -29,9 +35,12 @@ class OneToManyFieldWidget(widgets.Widget):
     related_model: Model = None
     parent_model: Model = None
     fields: list = []
+    insertion_user: "AbstractBaseUser | None" = None
 
-    def __init__(self, attrs=None):
+    def __init__(self, attrs: dict[str, Any] | None = None) -> None:
+        """Configure the inline table and its parent relation."""
         attrs = (attrs or {}).copy()
+        self.application_field = attrs.pop("application_field", None)
         self.layout_config = attrs.pop('layout_config', {}) or {}
         self.related_model = attrs.pop('related_model', None)
         self.parent_model = attrs.pop('parent_model', None)
@@ -280,7 +289,103 @@ class OneToManyFieldWidget(widgets.Widget):
         except (TypeError, ValueError):
             return json.dumps(str(value))
     
-    def get_context(self, name, value, attrs):
+    def _get_insert_context_id(self, columns: list["ApplicationField"]) -> str:
+        """Issue a fixed-layout foreign-field picker for the editable relation."""
+        from bloomerp.dataviews.table.config import TableDataView
+        from bloomerp.filters.definition import Filter, FilterCondition
+        from bloomerp.filters.parser import serialize_filter_query_params
+        from bloomerp.form_fields.one_to_many_field import OneToManyField
+        from bloomerp.middleware import current_request
+        from bloomerp.permissions.definition import BloomerpPermission
+        from bloomerp.permissions.manager import UserPolicyManager
+        from bloomerp.tokens import DataviewToken, RequestToken, get_token, issue_token
+
+        user = self.insertion_user
+        field = self.application_field
+        request = current_request()
+        if not request or user is None or request.user != user or field is None or self.related_model is None:
+            return ""
+        relation = OneToManyField.get_insert_relation(field)
+        if relation is None:
+            return ""
+        manager = UserPolicyManager(user)
+        if not manager.has_global_permission(self.related_model, BloomerpPermission.CHANGE):
+            return ""
+        filters = [Filter(connector="AND", conditions=[
+            FilterCondition(field_path=relation.name, lookup_id="is_null", value=True),
+        ])]
+        try:
+            manager.validate_filters(self.related_model, filters)
+        except PermissionDenied:
+            return ""
+        layout = DataviewToken(
+            model=self.related_model,
+            user=user,
+            expiry=timezone.now() + timedelta(hours=1),
+            dataview=TableDataView(
+                display_fields=[column.field for column in columns],
+                default_filters=serialize_filter_query_params(filters),
+            ),
+            object_actions=[],
+            dataview_actions=["filter"],
+        )
+        parent_context = get_token(request)
+        rule = parent_context.policies.get(self.related_model) if parent_context is not None else None
+        token = RequestToken(
+            expiry=min(layout.expiry, parent_context.expiry) if parent_context is not None else layout.expiry,
+            dataviews={self.related_model: layout},
+            policies={self.related_model: rule} if rule is not None else {},
+        )
+        return issue_token(token, request)
+
+    def _get_pending_insertions(
+        self, rows: list[Any], columns: list["ApplicationField"],
+    ) -> dict[str, Model]:
+        """Restore eligible staged rows after validation without trusting submitted labels."""
+        from bloomerp.form_fields.one_to_many_field import (
+            ROW_INSERT_KEY,
+            OneToManyField,
+        )
+        from bloomerp.permissions.definition import BloomerpPermission
+        from bloomerp.permissions.manager import UserPolicyManager
+
+        if self.application_field is None or self.insertion_user is None:
+            return {}
+        ids = []
+        for row in rows:
+            if not isinstance(row, dict) or not OneToManyField._is_truthy(row.get(ROW_INSERT_KEY)):
+                continue
+            try:
+                ids.append(self.related_model._meta.pk.to_python(row.get("id")))
+            except (ValidationError, TypeError, ValueError):
+                continue
+        if not ids:
+            return {}
+        queryset = OneToManyField.get_insertable_queryset(self.application_field, self.insertion_user)
+        if queryset is None:
+            return {}
+        visible_rows = UserPolicyManager(self.insertion_user).annotate_field_permissions(
+            queryset.filter(pk__in=ids), columns, BloomerpPermission.VIEW,
+        )
+        return {str(row.pk): row for row in visible_rows}
+
+    @staticmethod
+    def _pending_cell_value(row: Model, column: "ApplicationField") -> str:
+        """Display only authorized field data in a pending, read-only row."""
+        from bloomerp.permissions.manager import field_access_annotation_name
+
+        if not getattr(row, field_access_annotation_name(column), False):
+            return ""
+        value = column.get_field_type().resolved_render_value(column, row)
+        return unescape(strip_tags(str(value))) if value is not None else ""
+
+    def get_context(self, name: str, value: Any, attrs: dict[str, Any] | None) -> dict[str, Any]:
+        """Render editable rows, pending links, and the picker configuration."""
+        from bloomerp.form_fields.one_to_many_field import (
+            ROW_INSERT_KEY,
+            OneToManyField,
+        )
+
         context = super().get_context(name, value, attrs)
         attrs = attrs or {}
         context['widget']['attrs']['name'] = name
@@ -309,8 +414,25 @@ class OneToManyFieldWidget(widgets.Widget):
             )
 
         related_objects = self._get_related_objects(value)
+        pending_insertions = self._get_pending_insertions(related_objects, columns)
         rows = []
         for row_index, obj in enumerate(related_objects):
+            if isinstance(obj, dict) and OneToManyField._is_truthy(obj.get(ROW_INSERT_KEY)):
+                pending = pending_insertions.get(str(obj.get("id")))
+                if pending is not None:
+                    rows.append({
+                        "id": pending.pk,
+                        "detail_url": self._get_row_detail_url(pending),
+                        "id_input": self._render_row_id_input(name=name, obj=pending, row_index=row_index),
+                        "insert_input": widgets.HiddenInput().render(
+                            f"{name}__{row_index}__{ROW_INSERT_KEY}", "1",
+                        ),
+                        "cells": [
+                            {"column": column, "pending_text": self._pending_cell_value(pending, column)}
+                            for column in columns
+                        ],
+                    })
+                continue
             rows.append(
                 {
                     "object": obj,
@@ -345,6 +467,9 @@ class OneToManyFieldWidget(widgets.Widget):
             ),
         }
         context['can_edit'] = not attrs.get("disabled")
+        context["insert_token"] = (
+            self._get_insert_context_id(columns) if context["can_edit"] and not attrs.get("readonly") else ""
+        )
         context['show_totals'] = bool(self.layout_config.get("show_totals"))
         context['page_size'] = self.page_size
         

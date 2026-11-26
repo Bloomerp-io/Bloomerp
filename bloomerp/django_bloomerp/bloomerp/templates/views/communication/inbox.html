@@ -1,6 +1,7 @@
 {% load i18n %}
 {% load crispy_forms_tags %}
 
+<div class="contents" data-preference-refresh="inbox" data-preference-refresh-url="{% url 'inbox' %}">
 {% if inbox %}
 {% include "components/communication/inbox.html" %}
 {% else %}
@@ -29,3 +30,4 @@
 
 <c-ui.modal id="create-custom-inbox-modal" />
 <div id="inbox-message-target"></div>
+</div>

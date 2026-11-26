@@ -1,0 +1,294 @@
+schema_version: 1
+tutorial:
+  source_key: welcome-to-bloomerp
+  name: Welcome to BloomERP
+  description: '<p class="text-md mb-2 last:mb-0" dir="ltr"><span style="white-space:
+    pre-wrap;">Welcome to BloomERP. This short tour starts on Home and shows you how
+    to find your way around. You’ll learn to search for pages and records, review
+    your Inbox, and open Pages, BloomAI Agent, and Chat from the workspace toolbar.</span></p>'
+  is_active: true
+  available_to_all: true
+  user_filter: []
+  topics: []
+  revisions:
+  - number: 1
+    trigger_route: bloomerp_home_view
+    auto_start: false
+    published_at: null
+    steps:
+    - sequence: 1
+      key: 93f9eca2bc2441bdaf9719190e4d2191
+      name: Welcome!
+      text: '<p class="text-md mb-2 last:mb-0" dir="ltr"><span style="white-space:
+        pre-wrap;">Welcome to BloomERP, the </span><b><strong style="white-space:
+        pre-wrap;">AI-native platform</strong></b><span style="white-space: pre-wrap;">
+        to help you manage your business efficiently. This tutorial will guide you
+        through the basics of how to navigate your way through BloomERP.</span></p>'
+      size: medium
+      destination_route: bloomerp_home_view
+      destination_kwargs: {}
+      interaction:
+        highlights: []
+        tooltip_highlight_id: ''
+        advance_highlight_id: ''
+        before: []
+        after: []
+      show_as_tooltip: false
+      include_backdrop: true
+      advance_mode: manual
+      advance_delay_ms: 0
+      advance_url_pattern: ''
+      hide_next_button: false
+      is_optional: false
+    - sequence: 2
+      key: 7ddc2a8c7b274b54ae82f4f3de2e80ce
+      name: Layout
+      text: '<p class="text-md mb-2 last:mb-0" dir="ltr"><span style="white-space:
+        pre-wrap;">Let''s start by taking a look at the layout of your app.</span></p><p
+        class="text-md mb-2 last:mb-0"><br></p>'
+      size: small
+      destination_route: bloomerp_home_view
+      destination_kwargs: {}
+      interaction:
+        highlights: []
+        tooltip_highlight_id: ''
+        advance_highlight_id: ''
+        before: []
+        after: []
+      show_as_tooltip: false
+      include_backdrop: true
+      advance_mode: manual
+      advance_delay_ms: 0
+      advance_url_pattern: ''
+      hide_next_button: false
+      is_optional: false
+    - sequence: 3
+      key: 7e8991441b4c4ce2a1f53c7cc30e7ca1
+      name: BloomERP Search Bar
+      text: '<p class="text-md mb-2 last:mb-0" dir="ltr"><span style="white-space:
+        pre-wrap;">Open </span><b><strong style="white-space: pre-wrap;">Search</strong></b><span
+        style="white-space: pre-wrap;"> in the sidebar, or press </span><b><strong
+        style="white-space: pre-wrap;">⌘K</strong></b><span style="white-space: pre-wrap;">
+        on Mac.</span></p><ul class="list-disc list-inside pl-4"><li value="1"><b><strong
+        style="white-space: pre-wrap;">Find a page.</strong></b><span style="white-space:
+        pre-wrap;"> Type </span><code style="white-space: pre-wrap;"><span>&gt;Tutorials</span></code><span
+        style="white-space: pre-wrap;">. Look under Routes for the Tutorials page.</span></li><li
+        value="2"><b><strong style="white-space: pre-wrap;">Find a record.</strong></b><span
+        style="white-space: pre-wrap;"> Type </span><i><em style="white-space: pre-wrap;">Welcome
+        to BloomERP</em></i><span style="white-space: pre-wrap;"> without the </span><code
+        style="white-space: pre-wrap;"><span>&gt;</span></code><span style="white-space:
+        pre-wrap;">. Matching records appear under their model. Choose the result
+        you want to open.</span></li></ul><p class="text-md mb-2 last:mb-0"><br></p>'
+      size: medium
+      destination_route: bloomerp_home_view
+      destination_kwargs: {}
+      interaction:
+        highlights:
+        - id: 08d12acc-5f30-4151-ae6a-ce42349d851d
+          label: Global Search
+          selector: '#global-search-btn'
+          allow_interaction: false
+        tooltip_highlight_id: 08d12acc-5f30-4151-ae6a-ce42349d851d
+        advance_highlight_id: 08d12acc-5f30-4151-ae6a-ce42349d851d
+        before: []
+        after: []
+      show_as_tooltip: true
+      include_backdrop: true
+      advance_mode: manual
+      advance_delay_ms: 0
+      advance_url_pattern: ''
+      hide_next_button: false
+      is_optional: false
+    - sequence: 4
+      key: 279ecf1e7c844b37aa90545a063c172b
+      name: BloomERP Inbox
+      text: '<p class="text-md mb-2 last:mb-0" dir="ltr"><b><strong style="white-space:
+        pre-wrap;">Inbox</strong></b><span style="white-space: pre-wrap;"> brings
+        together notifications, messages, and connected email. The sidebar badge shows
+        how many items are unread.</span></p><ul class="list-disc list-inside pl-4"><li
+        value="1"><b><strong style="white-space: pre-wrap;">Review.</strong></b><span
+        style="white-space: pre-wrap;"> Start in All, or switch to Notifications or
+        Messages. Rows show the sender, subject, and arrival time. Select a row to
+        read it.</span></li><li value="2"><b><strong style="white-space: pre-wrap;">Find
+        something.</strong></b><span style="white-space: pre-wrap;"> In Search inbox,
+        try a word from a subject, such as </span><i><em style="white-space: pre-wrap;">welcome</em></i><span
+        style="white-space: pre-wrap;">. Check the resulting list, or clear the search
+        to return to the folder.</span></li></ul><p class="text-md mb-2 last:mb-0"><br></p>'
+      size: medium
+      destination_route: bloomerp_home_view
+      destination_kwargs: {}
+      interaction:
+        highlights:
+        - id: 3ad61e8c-6949-4bc2-bbf5-c99a2b6e91fe
+          label: Inbox
+          selector: '#inbox-btn'
+          allow_interaction: false
+        tooltip_highlight_id: 3ad61e8c-6949-4bc2-bbf5-c99a2b6e91fe
+        advance_highlight_id: 3ad61e8c-6949-4bc2-bbf5-c99a2b6e91fe
+        before: []
+        after: []
+      show_as_tooltip: false
+      include_backdrop: true
+      advance_mode: manual
+      advance_delay_ms: 0
+      advance_url_pattern: ''
+      hide_next_button: false
+      is_optional: false
+    - sequence: 5
+      key: ee02f784e9754b9eac2f5c696773feb5
+      name: BloomERP Sidebar
+      text: '<p class="text-md mb-2 last:mb-0" dir="ltr"><span style="white-space:
+        pre-wrap;">Use the sidebar to open a favorite section. Select Home to return
+        to this workspace, where you can open any module available to you.</span></p><p
+        class="text-md mb-2 last:mb-0" dir="ltr"><span style="white-space: pre-wrap;">Everyone
+        in BloomERP can configure their own sidebar. You can add items to your sidebar
+        by dragging and dropping any link onto it, after which you can re-organize
+        when necessary.</span></p>'
+      size: medium
+      destination_route: bloomerp_home_view
+      destination_kwargs: {}
+      interaction:
+        highlights:
+        - id: 95dff859-543e-47b2-b92e-f856a53758e2
+          label: Home in the sidebar
+          selector: '#sidebar > div:nth-of-type(1) > div:nth-of-type(4) > div:nth-of-type(2)'
+          allow_interaction: false
+        tooltip_highlight_id: 95dff859-543e-47b2-b92e-f856a53758e2
+        advance_highlight_id: 95dff859-543e-47b2-b92e-f856a53758e2
+        before: []
+        after: []
+      show_as_tooltip: false
+      include_backdrop: true
+      advance_mode: manual
+      advance_delay_ms: 0
+      advance_url_pattern: ''
+      hide_next_button: false
+      is_optional: false
+    - sequence: 6
+      key: b87836628e7146319727d9b054c135ce
+      name: BloomERP Pages
+      text: '<p class="text-md mb-2 last:mb-0" dir="ltr"><b><strong style="white-space:
+        pre-wrap;">Pages</strong></b><span style="white-space: pre-wrap;"> is a scratchpad
+        for notes you want to keep while you work.</span></p><ul class="list-disc
+        list-inside pl-4"><li value="1"><b><strong style="white-space: pre-wrap;">Try
+        it.</strong></b><span style="white-space: pre-wrap;"> Open Pages, choose New
+        page, and jot down </span><i><em style="white-space: pre-wrap;">Ask the team
+        which report needs updating.</em></i></li><li value="2"><b><strong style="white-space:
+        pre-wrap;">What to expect.</strong></b><span style="white-space: pre-wrap;">
+        The new page opens in the scratchpad while Home stays in place. Use Page history
+        → Recents to find it again.</span></li></ul><p class="text-md mb-2 last:mb-0"><br></p>'
+      size: small
+      destination_route: bloomerp_home_view
+      destination_kwargs: {}
+      interaction:
+        highlights:
+        - id: 0f8ab33c-b7a0-4bb6-b89f-0bfdfd3ab147
+          label: Pages scratchpad
+          selector: '[data-tutorial-anchor="bloomerp-pages-panel-launcher"]'
+          allow_interaction: false
+        tooltip_highlight_id: 0f8ab33c-b7a0-4bb6-b89f-0bfdfd3ab147
+        advance_highlight_id: 0f8ab33c-b7a0-4bb6-b89f-0bfdfd3ab147
+        before: []
+        after: []
+      show_as_tooltip: false
+      include_backdrop: true
+      advance_mode: manual
+      advance_delay_ms: 0
+      advance_url_pattern: ''
+      hide_next_button: false
+      is_optional: false
+    - sequence: 7
+      key: 5b92afd1252c4930b5b03baec6ebac76
+      name: BloomERP Agents
+      text: '<p class="text-md mb-2 last:mb-0" dir="ltr"><b><strong style="white-space:
+        pre-wrap;">BloomAI Agent</strong></b><span style="white-space: pre-wrap;">
+        can answer questions or help with work using the access your account already
+        has.</span></p><ul class="list-disc list-inside pl-4"><li value="1"><b><strong
+        style="white-space: pre-wrap;">Try it.</strong></b><span style="white-space:
+        pre-wrap;"> Open Agent, choose an available agent, and enter </span><i><em
+        style="white-space: pre-wrap;">What can you help me do in BloomERP? Give me
+        two examples without changing any records.</em></i></li><li value="2"><b><strong
+        style="white-space: pre-wrap;">What to expect.</strong></b><span style="white-space:
+        pre-wrap;"> Read the response in the BloomAI panel. Ask a follow-up there
+        if you need more detail.</span></li></ul><p class="text-md mb-2 last:mb-0"><br></p>'
+      size: medium
+      destination_route: bloomerp_home_view
+      destination_kwargs: {}
+      interaction:
+        highlights:
+        - id: dffdcfcd-5818-4487-b623-60047fe51df0
+          label: BloomAI Agent
+          selector: '[data-tutorial-anchor="bloomerp-agent-panel-launcher"]'
+          allow_interaction: false
+        tooltip_highlight_id: dffdcfcd-5818-4487-b623-60047fe51df0
+        advance_highlight_id: dffdcfcd-5818-4487-b623-60047fe51df0
+        before: []
+        after: []
+      show_as_tooltip: false
+      include_backdrop: true
+      advance_mode: manual
+      advance_delay_ms: 0
+      advance_url_pattern: ''
+      hide_next_button: false
+      is_optional: false
+    - sequence: 8
+      key: 41299c489c024a7ba3f789b325a026f8
+      name: BloomERP Communication
+      text: '<p class="text-md mb-2 last:mb-0" dir="ltr"><span style="white-space:
+        pre-wrap;">Open </span><b><strong style="white-space: pre-wrap;">Chat</strong></b><span
+        style="white-space: pre-wrap;"> to see your messages and keep work conversations
+        in BloomERP.</span></p><ul class="list-disc list-inside pl-4"><li value="1"><b><strong
+        style="white-space: pre-wrap;">Resume.</strong></b><span style="white-space:
+        pre-wrap;"> Use Search messages and people to find a thread, then select it
+        to reopen the conversation. Use Unread only to focus on new messages.</span></li><li
+        value="2"><b><strong style="white-space: pre-wrap;">Start.</strong></b><span
+        style="white-space: pre-wrap;"> Choose New conversation, search for a teammate,
+        and select their name. A conversation opens where you can write your first
+        message.</span></li></ul><p class="text-md mb-2 last:mb-0"><br></p>'
+      size: medium
+      destination_route: bloomerp_home_view
+      destination_kwargs: {}
+      interaction:
+        highlights:
+        - id: 623f2256-b98a-42fe-85f9-f1af2b320176
+          label: Chat
+          selector: '[data-tutorial-anchor="im-messaging-panel-launcher"]'
+          allow_interaction: false
+        tooltip_highlight_id: 623f2256-b98a-42fe-85f9-f1af2b320176
+        advance_highlight_id: 623f2256-b98a-42fe-85f9-f1af2b320176
+        before: []
+        after: []
+      show_as_tooltip: false
+      include_backdrop: true
+      advance_mode: manual
+      advance_delay_ms: 0
+      advance_url_pattern: ''
+      hide_next_button: false
+      is_optional: false
+    - sequence: 9
+      key: 455ebb1b270a47c59a76db333138f45b
+      name: Languages, themes, account settings, other tutorials
+      text: '<p class="text-md mb-2 last:mb-0" dir="ltr"><span style="white-space:
+        pre-wrap;">For other items, like setting up a different language, account
+        settings, or viewing other tutorials, you can click here.</span></p><p class="text-md
+        mb-2 last:mb-0"><br></p>'
+      size: small
+      destination_route: bloomerp_home_view
+      destination_kwargs: {}
+      interaction:
+        highlights:
+        - id: 61160743-cd2b-4705-a685-550f041e5114
+          label: Account menu
+          selector: '#sidebar-account-trigger'
+          allow_interaction: false
+        tooltip_highlight_id: 61160743-cd2b-4705-a685-550f041e5114
+        advance_highlight_id: 61160743-cd2b-4705-a685-550f041e5114
+        before: []
+        after: []
+      show_as_tooltip: false
+      include_backdrop: true
+      advance_mode: manual
+      advance_delay_ms: 0
+      advance_url_pattern: ''
+      hide_next_button: false
+      is_optional: false

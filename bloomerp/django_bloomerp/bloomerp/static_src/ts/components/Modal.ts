@@ -1,6 +1,21 @@
 import htmx from 'htmx.org';
 import BaseComponent, { getComponent } from './BaseComponent';
+import type { MessageType } from './UiMessage';
 import { activateModal, buildModalShell, deactivateModal, getTopModal, MODAL_SIZE_CLASSES } from '../utils/modals';
+import showMessage from '../utils/messages';
+
+type ModalCloseResult = 'saved' | 'dismissed';
+
+interface ModalCloseRequest {
+    modalId?: string;
+    result?: ModalCloseResult;
+    messages?: { text: string; type: MessageType }[];
+}
+
+/** Recognize unprefixed padding utilities that affect the modal body directly. */
+function isPaddingClass(name: string): boolean {
+    return /^!?p(?:[trblxyse])?-.+$/.test(name);
+}
 
 /** Manage one dialog while shared utilities own its shell and open-modal stack. */
 export class Modal extends BaseComponent {
@@ -10,8 +25,11 @@ export class Modal extends BaseComponent {
     private closeAnimationTimeoutId: number | null = null;
     private openAnimationTimeoutId: number | null = null;
     private opener: HTMLElement | null = null;
+    private closeEventTarget: HTMLElement | null = null;
+    private closeResult: ModalCloseResult = 'dismissed';
     private parentModal: Modal | null = null;
-    private isFullscreen = false;
+    private fullscreenOverride: boolean | null = null;
+    private addedBodyClasses: string[] = [];
     private opened = false;
     private destroyed = false;
 
@@ -58,7 +76,7 @@ export class Modal extends BaseComponent {
         return true;
     }
 
-    /** Handle legacy attributes once, including triggers inserted by HTMX. */
+    /** Read presentation from the opener and handle triggers inserted by HTMX. */
     private handleTriggerClick = (event: MouseEvent): void => {
         if (!(event.target instanceof Element)) return;
         const trigger = event.target.closest<HTMLElement>(
@@ -74,7 +92,7 @@ export class Modal extends BaseComponent {
         }
         if (trigger.getAttribute('bloomerp-open-modal') === id) {
             this.setOpener(trigger);
-            this.open();
+            this.open(trigger.getAttribute('bloomerp-set-modal-body-class-to') ?? '');
         }
         if (trigger.getAttribute('bloomerp-close-modal') === id) this.close();
         if (trigger.getAttribute('bloomerp-full-screen-modal') === id) this.toggleFullscreen();
@@ -115,9 +133,25 @@ export class Modal extends BaseComponent {
         }
     };
 
-    /** Preserve the existing server-emitted close event contract. */
+    /** Route a close request by its explicit ID or by the submitting form's dialog. */
     private handleCloseEvent = (event: Event): void => {
-        if ((event as CustomEvent<{ modalId?: string }>).detail?.modalId === this.element.id) this.close();
+        const detail = (event as CustomEvent<ModalCloseRequest>).detail;
+        if (detail?.modalId) {
+            if (detail.modalId !== this.element.id) return;
+        } else if (!(event.target instanceof Element) ||
+            event.target.closest('[bloomerp-component="modal"]') !== this.element) {
+            return;
+        }
+
+        const result = detail?.result === 'saved' ? 'saved' : 'dismissed';
+        if (result === 'saved') {
+            for (const message of detail?.messages ?? []) showMessage(message.text, message.type, 10);
+            if (!this.opened && this.closeEventTarget?.isConnected) {
+                this.notifyClosure(this.closeEventTarget, result);
+                return;
+            }
+        }
+        this.close(result);
     };
 
     /** Dispose initialized descendants before HTMX removes their DOM. */
@@ -145,14 +179,20 @@ export class Modal extends BaseComponent {
             : null;
     }
 
+    /** Direct the optional close event to a stable caller even if its opening control is replaced. */
+    public setCloseEventTarget(target: HTMLElement): void {
+        this.closeEventTarget = target;
+    }
+
     /** Focus the dialog without scrolling its preserved form contents. */
     public focus(): void {
         this.containerElement?.focus({ preventScroll: true });
     }
 
-    /** Open this instance without replacing any other dialog's contents. */
-    public open(): void {
+    /** Open with optional body classes without replacing another dialog's contents. */
+    public open(bodyClass: string = ''): void {
         if (this.destroyed || !this.element.isConnected) return;
+        this.applyBodyClass(bodyClass);
         if (this.closeAnimationTimeoutId !== null) {
             window.clearTimeout(this.closeAnimationTimeoutId);
             this.closeAnimationTimeoutId = null;
@@ -180,8 +220,13 @@ export class Modal extends BaseComponent {
     };
 
     /** Close this dialog and its owned children, preserving any surviving parent. */
-    public close(): void {
-        if (!this.opened || this.closeAnimationTimeoutId !== null) return;
+    public close(result: ModalCloseResult = 'dismissed'): void {
+        if (!this.opened) return;
+        if (this.closeAnimationTimeoutId !== null) {
+            if (result === 'saved') this.closeResult = result;
+            return;
+        }
+        this.closeResult = result;
         this.closeChildren();
         this.containerElement.classList.remove('scale-100', 'opacity-100');
         this.containerElement.classList.add('scale-95', 'opacity-0');
@@ -191,6 +236,8 @@ export class Modal extends BaseComponent {
     /** Complete closure before notifying owners and disposing temporary form content. */
     private finishClosing = (): void => {
         this.closeAnimationTimeoutId = null;
+        const target = this.closeEventTarget ?? this.opener;
+        const result = this.closeResult;
         this.opened = false;
         this.element.classList.remove('flex');
         this.element.classList.add('hidden');
@@ -198,13 +245,21 @@ export class Modal extends BaseComponent {
         this.element.setAttribute('aria-hidden', 'true');
         deactivateModal(this);
         this.opener = null;
-        this.element.dispatchEvent(new CustomEvent('bloomerp:modal-closed', {
-            bubbles: true, detail: { modalId: this.element.id },
-        }));
+        this.notifyClosure(target, result);
         if (this.element.dataset.modalDisposable === 'true') this.destroy();
         const callback = this.element.dataset.onClose;
         if (callback) new Function(callback)();
     };
+
+    /** Notify existing modal listeners and send the configured event to this opening's caller. */
+    private notifyClosure(target: HTMLElement | null, result: ModalCloseResult): void {
+        const detail = { modalId: this.element.id, result };
+        this.element.dispatchEvent(new CustomEvent('bloomerp:modal-closed', { bubbles: true, detail }));
+        const eventName = this.element.dataset.modalOnCloseEvent;
+        if (eventName && target?.isConnected) {
+            target.dispatchEvent(new CustomEvent(eventName, { bubbles: true, detail }));
+        }
+    }
 
     /** Dispose child dialogs when their owning form is no longer available. */
     private closeChildren(): void {
@@ -254,22 +309,33 @@ export class Modal extends BaseComponent {
         this.applySize();
     }
 
+    /** Resolve fullscreen from the user's toggle and the configured size. */
+    private get isFullscreen(): boolean {
+        return this.fullscreenOverride ?? (this.element.dataset.modalSize === 'full');
+    }
+
     /** Apply either fullscreen geometry or the configured declaration size. */
     private applySize(): void {
         if (!this.containerElement || !this.modalBodyElement) return;
-        const size = this.isFullscreen ? 'full' : this.element.dataset.modalSize || 'md';
+        const preferredSize = this.element.dataset.modalSize || 'md';
+        const windowedSize = preferredSize === 'full' ? 'md' : preferredSize;
+        const size = this.isFullscreen ? 'full' : windowedSize;
+        const isLarge = size === 'lg' || size === 'xl';
+        const fillBody = size === 'full' || isLarge;
         this.containerElement.classList.remove(...Object.values(MODAL_SIZE_CLASSES));
         this.containerElement.classList.add(MODAL_SIZE_CLASSES[size]);
         this.containerElement.classList.toggle('h-full', size === 'full');
-        this.containerElement.classList.toggle('h-[60vh]', size === 'lg');
+        this.containerElement.classList.toggle('max-h-full', !isLarge);
+        this.containerElement.classList.toggle('max-h-[min(75dvh,100%)]', isLarge);
         this.containerElement.classList.toggle('rounded-none', size === 'full');
-        this.modalBodyElement.classList.toggle('flex-1', size === 'full' || size === 'lg');
-        this.modalBodyElement.classList.toggle('max-h-96', size !== 'full' && size !== 'lg');
+        this.modalBodyElement.classList.toggle('flex-1', fillBody);
+        this.modalBodyElement.classList.toggle('max-h-96', !fillBody);
     }
 
     /** Toggle fullscreen while retaining the configured size and body padding. */
     public toggleFullscreen(): void {
-        this.isFullscreen = !this.isFullscreen;
+        const fullscreen = !this.isFullscreen;
+        this.fullscreenOverride = fullscreen === (this.element.dataset.modalSize === 'full') ? null : fullscreen;
         this.applySize();
     }
 
@@ -282,16 +348,31 @@ export class Modal extends BaseComponent {
     public setPadding(padding: string): void {
         if (!this.modalBodyElement) return;
         for (const className of Array.from(this.modalBodyElement.classList)) {
-            if (/^!?p(?:[trblxyse])?-.+$/.test(className)) this.modalBodyElement.classList.remove(className);
+            if (isPaddingClass(className)) this.modalBodyElement.classList.remove(className);
         }
         const normalized = padding.trim() || this.element.dataset.defaultModalPadding || 'p-3';
         this.element.dataset.modalPadding = normalized;
         this.modalBodyElement.classList.add(...normalized.split(/\s+/));
     }
 
+    /** Replace opener styling and let an explicit padding class override configured padding. */
+    private applyBodyClass(bodyClass: string): void {
+        const body = this.modalBodyElement;
+        if (!body) return;
+        body.classList.remove(...this.addedBodyClasses);
+        const classes = bodyClass.match(/\S+/g) ?? [];
+        const padding = (this.element.dataset.modalPadding || 'p-3').split(/\s+/);
+        const overridesPadding = classes.some(isPaddingClass);
+        if (overridesPadding) body.classList.remove(...padding);
+        else body.classList.add(...padding);
+        this.addedBodyClasses = classes.filter((name: string): boolean => !body.classList.contains(name));
+        body.classList.add(...this.addedBodyClasses);
+    }
+
     /** Restore declaration defaults for legacy callers that reuse one modal. */
     public resetToDefaults(): void {
-        this.isFullscreen = false;
+        this.applyBodyClass('');
+        this.fullscreenOverride = null;
         this.setSize(this.element.dataset.defaultModalSize || 'md');
         this.setPadding(this.element.dataset.defaultModalPadding || 'p-3');
         this.setBackdrop(this.element.dataset.defaultBackdropClickClose !== 'false');

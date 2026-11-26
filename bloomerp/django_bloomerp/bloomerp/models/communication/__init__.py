@@ -70,15 +70,15 @@ __all__ += [
 ]
 
 from .calendar import (
-    CalendarBooking,
-    CalendarBookingSubmission,
+    BookingLink,
+    BookingLinkSubmission,
     CalendarEvent,
     CalendarEventParticipant,
 )
 
 __all__ += [
-    "CalendarBooking",
-    "CalendarBookingSubmission",
+    "BookingLink",
+    "BookingLinkSubmission",
     "CalendarEvent",
     "CalendarEventParticipant",
 ]

@@ -7,8 +7,8 @@ from zoneinfo import ZoneInfo
 from django.contrib.auth import get_user_model
 
 from bloomerp.models.communication.calendar import (
-    CalendarBooking,
-    CalendarBookingSubmission,
+    BookingLink,
+    BookingLinkSubmission,
 )
 from bloomerp.models.communication.inbox.inbox import Inbox
 
@@ -21,8 +21,8 @@ class CalendarFixtures:
         self.user = get_user_model().objects.create_user(username="calendar-user")
         self.inbox = Inbox.objects.create(user=self.user, name="Personal calendar")
         self.team_inbox = Inbox.objects.create(user=self.user, name="Team calendar")
-        self.booking = CalendarBooking.objects.create(**self.booking_args())
-        self.submission = CalendarBookingSubmission.objects.create(
+        self.booking = BookingLink.objects.create(**self.booking_args())
+        self.submission = BookingLinkSubmission.objects.create(
             **self.submission_args()
         )
 
@@ -52,7 +52,7 @@ class CalendarFixtures:
     def submission_args(self, **overrides: Any) -> dict[str, Any]:
         """Build visitor details independently of the resulting event's time."""
         return {
-            "calendar_booking": self.booking,
+            "booking_link": self.booking,
             "name": "Visitor",
             "email": "visitor@example.com",
             **overrides,

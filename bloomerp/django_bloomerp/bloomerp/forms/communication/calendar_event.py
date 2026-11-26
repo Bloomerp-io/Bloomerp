@@ -27,7 +27,6 @@ from bloomerp.models.communication.calendar import (
 )
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.models.communication.inbox.inbox import Inbox
-from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.services.email_composer_services import accessible_email_accounts
@@ -307,6 +306,10 @@ class CalendarEventCreateForm(forms.Form):
 
     def clean(self) -> dict[str, Any]:
         """Validate one temporal pair and convert inclusive all-day UI dates to exclusive storage."""
+        from bloomerp.communication.calendar.outgoing import (
+            calendar_sender_matches_inbox,
+        )
+
         data = super().clean()
         if self.errors:
             return data
@@ -351,9 +354,9 @@ class CalendarEventCreateForm(forms.Form):
             sender = data.get("sender")
             if (
                 sender is None
-                or not InboxFolder.objects.filter(
-                    inbox=data["inbox"], type="email", related_object_id=str(sender.pk)
-                ).exists()
+                or not calendar_sender_matches_inbox(
+                    sender, data["inbox"].pk, event=self.original,
+                )
             ):
                 self.add_error(
                     "sender",
@@ -475,12 +478,7 @@ class CalendarEventCreateForm(forms.Form):
                 else:
                     removed.delete()
             if self.cleaned_data.get("create_conference"):
-                from bloomerp.services.calendar_conferencing import (
-                    reserve_calendar_conference,
-                )
-
-                link = reserve_calendar_conference(
-                    self.instance,
+                link = self.instance.reserve_conference(
                     self.user,
                     self.internal_attendees,
                     self.meeting_base_url,

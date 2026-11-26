@@ -1,5 +1,7 @@
 import createDOMPurify, { type DOMPurify, type WindowLike } from 'dompurify';
 import { Marked, type Tokens } from 'marked';
+import Turndown from 'turndown';
+import { gfm } from 'turndown-plugin-gfm';
 
 /** Preserve model-supplied HTML as visible text rather than active markup. */
 function escapeHtml(text: string): string {
@@ -19,10 +21,39 @@ function renderImage(token: Tokens.Image): string {
 
 const markdown = new Marked({async: false, gfm: true, renderer: {html: renderHtml, image: renderImage}});
 const sanitizers = new WeakMap<Document, DOMPurify>();
+const formatter = new Turndown({headingStyle: 'atx', codeBlockStyle: 'fenced'}).use(gfm);
 
-/** Render assistant Markdown safely while keeping user messages literal plain text. */
-export function renderAgentMessage(target: HTMLElement, content: string, user: boolean): void {
-    if (user) {
+/** Convert saved editor HTML to chat Markdown while keeping images in the attachment flow. */
+export function formatAgentPrompt(html: string, document: Document): string {
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    for (const element of template.content.querySelectorAll('img, script, style')) element.remove();
+    // Lexical's export can wrap a semantic mark in a second equivalent element.
+    for (const mark of template.content.querySelectorAll(':is(b, strong) :is(b, strong), :is(i, em) :is(i, em), :is(s, strike, del) :is(s, strike, del), code code')) {
+        mark.replaceWith(...mark.childNodes);
+    }
+    for (const table of template.content.querySelectorAll('table')) {
+        const firstRow = table.rows[0];
+        if (!firstRow?.cells.length) {
+            table.remove();
+        } else if (Array.from(firstRow.cells).some(isDataCell)) {
+            const row = table.createTHead().insertRow(0);
+            for (const cell of firstRow.cells) {
+                const heading = document.createElement('th');
+                heading.colSpan = cell.colSpan;
+                row.append(heading);
+            }
+        }
+    }
+    return formatter.turndown(template.content);
+}
+
+/** Identify the first row of a table that needs an empty Markdown heading. */
+function isDataCell(cell: HTMLTableCellElement): boolean { return cell.tagName === 'TD'; }
+
+/** Render formatted messages safely and display plain text literally. */
+export function renderAgentMessage(target: HTMLElement, content: string, user: boolean, markdownForm: boolean = !user): void {
+    if (!markdownForm) {
         target.textContent = content;
         return;
     }

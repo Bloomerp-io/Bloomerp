@@ -22,20 +22,6 @@ update-internal-sdk() {
     )
 }
 
-update-field-types() {
-    local script_dir
-    local django_root
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    django_root="$script_dir/bloomerp/django_bloomerp"
-
-    (
-        cd "$django_root"
-        uv run manage.py export_field_types \
-            "$django_root/bloomerp/static_src/ts/modules/fieldTypes.ts" \
-            --skip-checks "$@"
-    )
-}
-
 reset-test-data() {
   local script_dir
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -550,10 +536,6 @@ case "${1:-}" in
         shift
         update-internal-sdk "$@"
         ;;
-    update-field-types)
-        shift
-        update-field-types "$@"
-        ;;
     sync-cli-config-settings)
         shift
         sync-cli-config-settings "$@"
@@ -575,7 +557,6 @@ case "${1:-}" in
         echo
         echo "Commands:"
         echo "  update-internal-sdk [create_sdk options]"
-        echo "  update-field-types"
         echo "  sync-cli-config-settings [--check] [--no-backup]"
         echo "  reset-test-data"
         echo "  document-cotton-components"
@@ -584,7 +565,7 @@ case "${1:-}" in
   *)
     echo "Unknown command: $1" >&2
     echo "Usage: ./scripts.sh <command>" >&2
-                                echo "Commands: update-internal-sdk, update-field-types, sync-cli-config-settings, reset-test-data, document-cotton-components, autoCreateTests" >&2
+                                echo "Commands: update-internal-sdk, sync-cli-config-settings, reset-test-data, document-cotton-components, autoCreateTests" >&2
     exit 1
     ;;
 esac

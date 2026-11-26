@@ -8,7 +8,7 @@ from django.views.decorators.http import require_POST
 from django.utils.translation import gettext as _
 from bloomerp.router import router
 from bloomerp.communication.builtins.voip.controller import VoIPController
-
+# SHOULD_API
 
 @router.register(
     path="components/communication/voip/conversation/<uuid:conversation_id>/call/",

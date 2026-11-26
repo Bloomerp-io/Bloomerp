@@ -8,16 +8,16 @@ from urllib.parse import parse_qs, urlsplit
 import httpx
 from bloomerp.filters.definition import FilterCondition
 from bloomerp.forms.agents.mcp_integration import MCPIntegrationForm
+from bloomerp.mcp.oauth import seal, unseal
 from bloomerp.models.agents import MCPConnection, MCPIntegration
 from bloomerp.permissions.definition import RowPolicyRuleContent
 from bloomerp.permissions.manager import PolicyManager
-from bloomerp.services.mcp.oauth import seal, unseal
 from bloomerp.tests.base import (
     BloomerpModelViewTestCase,
     ExpectedResult,
     RequestScenario,
 )
-from bloomerp.tests.services.mcp.test_oauth import ENDPOINT, ISSUER, protocol_response
+from bloomerp.tests.mcp.test_remote_oauth import ENDPOINT, ISSUER, protocol_response
 from bloomerp.views.agents.create_mcp_integration import CreateMCPIntegrationView
 from django.http import HttpResponse
 from django.test import override_settings
@@ -50,7 +50,7 @@ class TestCreateMCPIntegrationView(BloomerpModelViewTestCase):
         if scenario.user is not None:
             scenario.user.refresh_from_db()
         self.remote_patch = patch(
-            "bloomerp.services.mcp.oauth.remote_request", side_effect=protocol_response
+            "bloomerp.mcp.oauth.remote_request", side_effect=protocol_response
         )
         self.remote = self.remote_patch.start()
         self.client.force_login(scenario.user or self.admin_user)

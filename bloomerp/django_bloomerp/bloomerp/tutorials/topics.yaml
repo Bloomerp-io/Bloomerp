@@ -1,0 +1,6 @@
+schema_version: 1
+topics:
+  - source_key: getting-started
+    name: Getting started
+    description: Learn your way around BloomERP.
+    sequence: 10

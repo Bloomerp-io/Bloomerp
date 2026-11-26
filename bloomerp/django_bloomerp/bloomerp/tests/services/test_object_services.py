@@ -1,5 +1,5 @@
 from bloomerp.models.definition import BloomerpModelConfig, StringSearchSettings
-from bloomerp.services.object_services import string_search_on_queryset
+from bloomerp.services.search_services import string_search_on_queryset
 from bloomerp.tests.base import BaseBloomerpTestCaseWithModels
 
 

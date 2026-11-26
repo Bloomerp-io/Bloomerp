@@ -1,16 +1,28 @@
-{% extends "views/base.html" %}
-
-{% block body %}
-<body class="bg-base min-h-screen" id="bloomerpBody" x-data>
+{% if request.user.is_authenticated and request.user.is_staff %}
+    {% include "views/403.html" %}
+{% else %}
+{% load bloomerp i18n static %}
+<!DOCTYPE html>
+<html lang="{% get_current_language as language_code %}{{ language_code }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title|default:_("Access denied") }} | Bloomerp</title>
+    <link href="{% static 'bloomerp/img/bloomerp-touch-icon.png' %}" rel="icon">
+    <link href="{% static 'bloomerp/vendor/fontawesome/css/all.min.css' %}" rel="stylesheet">
+    {% if DEBUG and BLOOMERP_VITE_DEV_SERVER_URL %}
+        <link rel="stylesheet" href="{{ BLOOMERP_VITE_DEV_SERVER_URL }}/src/styles.css?direct">
+    {% else %}
+        {% bloomerp_asset_version as asset_version %}
+        <link href="{% static 'bloomerp/css/dist/styles.css' %}?v={{ asset_version|urlencode }}" rel="stylesheet">
+    {% endif %}
+</head>
+<body class="bg-base min-h-screen">
     <main class="flex min-h-screen items-center justify-center px-6 py-10">
         <div class="w-full max-w-3xl">
-            {% include 'snippets/403.html' %}
+            {% include "snippets/403.html" %}
         </div>
     </main>
-
-    {% include 'snippets/vite_bundle.html' %}
-
-    {% block scripts %}
-    {% endblock scripts %}
 </body>
-{% endblock body %}
+</html>
+{% endif %}

@@ -10,6 +10,7 @@ from django import forms
 from django.conf import settings
 from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db.models import Count, DateTimeField, Q
+from django.db.models.fields.reverse_related import ForeignObjectRel
 from django.utils import timezone
 
 from bloomerp.lookups.definition import (
@@ -27,11 +28,14 @@ if TYPE_CHECKING:
 
 
 def coerce_field_value(application_field: ApplicationField, value: Any) -> Any:
-    """Use the concrete Django field to normalize a serialized lookup value."""
+    """Normalize lookup values for concrete fields and let Django prepare reverse joins."""
 
     try:
         model_field = application_field._get_model_field()
     except FieldDoesNotExist:
+        return value
+
+    if isinstance(model_field, ForeignObjectRel):
         return value
 
     try:

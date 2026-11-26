@@ -202,13 +202,13 @@ class AgentMcpClient(LocalMcpClient):
     def catalog(self) -> dict[str, dict[str, Any]]:
         """Discover selected integrations afresh; unavailable accounts produce actionable failures."""
         from bloomerp.agents.external_mcp import resolve_remote_binding
-        from bloomerp.models.agents import AIAgent
-        from bloomerp.services.mcp.client import (
+        from bloomerp.mcp.client import (
             MAX_RESPONSE_BYTES,
             MAX_SESSION_SECONDS,
             MAX_TOOLS,
             MCPUnavailableError,
         )
+        from bloomerp.models.agents import AIAgent
 
         tools = super().catalog()
         if self.agent_id is None:
@@ -262,7 +262,7 @@ class AgentMcpClient(LocalMcpClient):
             redact_secrets,
             resolve_remote_binding,
         )
-        from bloomerp.services.mcp.client import MCPUnavailableError
+        from bloomerp.mcp.client import MCPUnavailableError
 
         integration_id = external_integration_id(proposal.tool_identifier)
         if integration_id is None:

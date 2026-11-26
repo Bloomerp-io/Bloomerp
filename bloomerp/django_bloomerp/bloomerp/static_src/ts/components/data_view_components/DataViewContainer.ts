@@ -1,25 +1,24 @@
-import htmx from "htmx.org";
+import htmx, { type HtmxAjaxHelperContext } from "htmx.org";
 import { Drawer } from "../Drawer";
-import BaseComponent, { getComponent, componentIdentifier, initComponents } from "../BaseComponent";
+import BaseComponent, { getComponent, componentIdentifier } from "../BaseComponent";
 import { BaseDataViewComponent } from "./BaseDataViewComponent";
 import { BaseDataViewCell } from "./BaseDataViewCell";
 import { DataViewDisplayOptions } from "./DisplayOptions";
 import ObjectCRUDViewContainer from "../detail_view_components/ObjectCRUDViewContainer";
-import { getModal } from "@/utils/modals";
 import { insertSkeleton } from "@/utils/animations";
 import { RenderedFilters } from '../filters/RenderedFilters';
-import showMessage from '@/utils/messages';
-import { MessageType } from '../UiMessage';
 
-interface DataViewCreatedDetail {
-    data_view_create_id: string;
-    messages?: { text: string; type: MessageType }[];
-}
-
+export const DATAVIEW_ROOT = '[data-base-url][data-content-type-id]';
+const DATAVIEW_RECORD = '[data-dataview-record]';
+const RECORD_CHECKBOX = 'input[data-bulk-checkbox]';
+const ITEM_CHECKBOX = `${RECORD_CHECKBOX}[data-object-id]`;
+const SELECTION_PRESENTATION_PARAMS = [
+    'page', 'calendar_page', 'calendar_view_mode', 'calendar_unit', 'calendar_unit_offset',
+    'gant_page', 'gant_unscheduled_page', 'kanban_page', 'kanban_column', 'kanban_loaded_ids',
+];
 
 export class DataViewContainer extends BaseComponent {
     private renderedFilters?: RenderedFilters;
-    private initialQueryKeys: string[] = [];
 
     private unifiedFilterHandler = (event: Event): void => {
         const detail = (event as CustomEvent).detail;
@@ -27,28 +26,6 @@ export class DataViewContainer extends BaseComponent {
         event.stopPropagation();
         this.renderedFilters?.setFilters(detail.filters, detail);
         this.filter({ filter: JSON.stringify(detail.filters) }, false);
-    };
-
-    /** Attach the current checkbox selection to configured toolbar requests. */
-    private configureActionRequest = (event: Event): void => {
-        const detail = (event as CustomEvent).detail;
-        const source = detail?.elt as HTMLElement | undefined;
-        if (!source?.closest('[data-dataview-action]')) return;
-        if (source.closest('[data-base-url][data-content-type-id]') !== this.element) return;
-        detail.parameters.selected_ids = Array.from(this.selectedObjectIds);
-        if (detail.path && this.fullPath) {
-            const actionUrl = new URL(detail.path, window.location.origin);
-            const currentUrl = new URL(this.fullPath, window.location.origin);
-            for (const key of this.initialQueryKeys) {
-                if (key !== '_permission_token') actionUrl.searchParams.delete(key);
-            }
-            for (const key of new Set(currentUrl.searchParams.keys())) {
-                if (key === 'page' || key === 'selected_ids' || key === '_permission_token') continue;
-                actionUrl.searchParams.delete(key);
-                for (const value of currentUrl.searchParams.getAll(key)) actionUrl.searchParams.append(key, value);
-            }
-            detail.path = `${actionUrl.pathname}${actionUrl.search}`;
-        }
     };
 
     private target:HTMLElement|null = null;
@@ -64,37 +41,15 @@ export class DataViewContainer extends BaseComponent {
 
     private afterSwapHandler: ((event: Event) => void) | null = null;
     private splitViewPaneShortcutHandler: ((event: KeyboardEvent) => void) | null = null;
-    private bulkCheckboxChangeHandler: ((event: Event) => void) | null = null;
-    private bulkAllClickHandler: ((event: Event) => void) | null = null;
-    private bulkSelectionClickHandler: ((event: Event) => void) | null = null;
-    private bulkActionCompleteHandler: ((event: Event) => void) | null = null;
-    private addButtonClickHandler: ((event: MouseEvent) => void) | null = null;
-    private selectedObjectIds: Set<string> = new Set();
-    private createRequestId: string | null = null;
-    private createModalId: string | null = null;
-    private createFormUrl: string | null = null;
+    private readonly selectedObjectIds = new Set<string>();
+    private selectionContentType: string | null = null;
 
-    /** Show save feedback immediately, close the owning dialog, and refresh its list. */
-    private handleObjectCreated = (event: Event): void => {
-        const detail = (event as CustomEvent<DataViewCreatedDetail>).detail;
-        if (!this.createRequestId || detail?.data_view_create_id !== this.createRequestId) return;
-        this.createRequestId = null;
-        if (this.createModalId) getModal(this.createModalId)?.close();
-        for (const message of detail.messages ?? []) {
-            showMessage(message.text, message.type, 10);
-        }
-        this.refresh();
-    };
-
-    /** Bind data-view controls without stealing focus when loaded inside a workspace tile. */
+    /** Bind data-view controls without stealing focus from an owning tile or detail tab. */
     public initialize(): void {
         this.element?.addEventListener('bloomerp:filters-apply', this.unifiedFilterHandler);
-        this.element?.addEventListener('htmx:configRequest', this.configureActionRequest);
+        this.element?.addEventListener('htmx:beforeCleanupElement', this.handleCleanup);
         this.baseUrl = this.element?.dataset.baseUrl;
         this.fullPath = this.element?.dataset.url;
-        this.initialQueryKeys = this.fullPath
-            ? Array.from(new URL(this.fullPath, window.location.origin).searchParams.keys())
-            : [];
         this.contentTypeId = this.element?.dataset.contentTypeId ?? null;
         const renderedRoot = this.element?.querySelector<HTMLElement>('[data-rendered-filters]');
         if (renderedRoot) {
@@ -111,7 +66,10 @@ export class DataViewContainer extends BaseComponent {
         // Setup target
         this.setDataviewTarget();
 
-        if (!this.element?.closest(`[${componentIdentifier}="workspace-tile"]`)) {
+        const detail = this.element?.closest('[data-detail-view-grid]');
+        const focusedTabStrip = document.activeElement?.closest('[data-tab-strip]');
+        if (!this.element?.closest(`[${componentIdentifier}="workspace-tile"]`)
+            && !(focusedTabStrip && detail?.contains(focusedTabStrip))) {
             this.focusSearchInput();
         }
 
@@ -134,24 +92,17 @@ export class DataViewContainer extends BaseComponent {
 
         this.bindDisplayOptionsCallback();
 
-        this.setupAddButton();
-
-        document.body.addEventListener('bloomerp:data-view-object-created', this.handleObjectCreated);
-
-        // Setup bulk checkbox listeners
-        this.addBulkListeners();
-
-        this.bulkActionCompleteHandler = (event: Event) => this.handleBulkActionComplete(event);
-        document.body.addEventListener('bloomerp:bulk-action-complete', this.bulkActionCompleteHandler);
+        this.element.addEventListener('change', this.handleRecordCheckboxChange);
+        document.body.addEventListener('bloomerp:dataview-refresh', this.handleRefreshRequest);
+        document.body.addEventListener('bloomerp:dataview-record-refresh', this.handleRecordRefreshRequest);
+        this.syncRecordSelection();
     }
 
     /**
      * FILTERING, SEARCHING, AND REFRESHING
      */
 
-    /**
-     * Filter's the current data view
-     */
+    /** Filter the view while retaining its signed layout and permissions when resetting the query. */
     public filter(
         args: Record<string, string | string[] | number | boolean | null | undefined> = {},
         resetParameters: boolean = false,
@@ -165,6 +116,7 @@ export class DataViewContainer extends BaseComponent {
         if (!resetParameters && this.fullPath) {
             const currentUrl = new URL(this.fullPath, window.location.origin);
             currentUrl.searchParams.forEach((value, key) => baseUrl.searchParams.set(key, value));
+
         }
 
         Object.entries(args).forEach(([key, value]) => {
@@ -195,14 +147,12 @@ export class DataViewContainer extends BaseComponent {
         this.applyUrl(baseUrl, pushHistory);
     }
 
-    /**
-     * Refreshes the current data view, keeping the existing query parameters intact.
-     */
-    public refresh(): void {
+    /** Reload the current results, optionally retaining the browser URL exactly as it is. */
+    public refresh(updateHistory: boolean = true): void {
         const url = this.getCurrentUrl();
         if (!url) return;
 
-        this.applyUrl(url, false);
+        this.applyUrl(url, false, updateHistory);
     }
 
     public override onHistoryRestore(): void {
@@ -224,18 +174,23 @@ export class DataViewContainer extends BaseComponent {
     }
 
     /** Request the updated list section with the appropriate browser history update. */
-    private applyUrl(url: URL, pushHistory: boolean = true): void {
+    /** Request results with an HTMX request queue owned by this view. */
+    private applyUrl(url: URL, pushHistory: boolean = true, updateHistory: boolean = true): void {
+        if (!this.target) return;
+        this.resetSelectionOnQueryChange(url);
         this.fullPath = url.toString();
         if (this.element) this.element.dataset.url = this.fullPath;
-        const historyUpdate = this.getHistoryUpdate(url, pushHistory);
+        const historyUpdate = updateHistory ? this.getHistoryUpdate(url, pushHistory) : { push: 'false', replace: 'false' };
         htmx.ajax('get', this.fullPath, {
+            source: this.element,
             target: this.target,
             swap: 'innerHTML',
             ...historyUpdate,
         });
     }
 
-    private getHistoryUpdate(url: URL, pushHistory: boolean): Pick<HtmxAjaxOptions, "push" | "replace"> {
+    /** Choose the HTMX history update for a data view request. */
+    private getHistoryUpdate(url: URL, pushHistory: boolean): Pick<HtmxAjaxHelperContext, "push" | "replace"> {
         if (!this.syncUrl) return {};
 
         const browserUrl = new URL(window.location.href);
@@ -250,21 +205,24 @@ export class DataViewContainer extends BaseComponent {
         return { replace: nextUrl };
     }
 
+    /** Track the results URL for this view when its main data section is replaced. */
     private handleAfterSwap(event: Event): void {
         if (!(event instanceof CustomEvent)) return;
 
         const target = event.detail?.target as HTMLElement | null | undefined;
-        if (!target || target.id !== 'data-view-data-section') return;
+        if (!target || target !== this.target) return;
 
         const responseUrl = event.detail?.xhr?.responseURL;
         if (!responseUrl) return;
 
-        this.fullPath = new URL(responseUrl, window.location.origin).toString();
+        const url = new URL(responseUrl, window.location.origin);
+        this.resetSelectionOnQueryChange(url);
+        this.fullPath = url.toString();
         if (this.element) this.element.dataset.url = this.fullPath;
 
         this.installCellClickOverrides();
         this.setupSplitViewFocusTargets();
-        this.syncBulkCheckboxes();
+        this.syncRecordSelection();
     }
 
 
@@ -283,81 +241,9 @@ export class DataViewContainer extends BaseComponent {
         }
     }
     
-    protected onAdd(_event: MouseEvent): boolean {
-        return false;
-    }
-
-    private setupAddButton(): void {
-        const addButton = this.element?.querySelector<HTMLElement>('[data-dataview-create-button="true"]');
-        if (!addButton) return;
-
-        if (this.addButtonClickHandler) {
-            addButton.removeEventListener('click', this.addButtonClickHandler);
-        }
-
-        this.addButtonClickHandler = (event: MouseEvent) => this.handleAddButtonClick(event);
-        addButton.addEventListener('click', this.addButtonClickHandler);
-    }
-
-    /** Reuse this list's unfinished form or load a fresh form after successful creation. */
-    private handleAddButtonClick(event: MouseEvent): void {
-        event.preventDefault();
-
-        if (this.onAdd(event)) return;
-        this.openCreateForm({}, event.currentTarget as HTMLElement | null);
-    }
-
-    /** Report whether this dataview exposes an authorized model create endpoint. */
-    public get canCreate(): boolean {
-        return Boolean(this.element?.dataset.createUrl);
-    }
-
-    /** Open the shared create modal with field defaults while retaining its save-and-refresh lifecycle. */
-    public openCreateForm(initialValues: Record<string, string> = {}, opener: HTMLElement | null = null): boolean {
-        if (!this.canCreate) return false;
-        const modalId = opener?.dataset.modalId ?? this.element?.dataset.modalId;
-        const baseUrl = opener?.dataset.createUrl ?? this.element?.dataset.createUrl;
-        const targetSelector = opener?.dataset.target ?? this.element?.dataset.target;
-        const target = targetSelector ? document.querySelector<HTMLElement>(targetSelector) : null;
-        const modal = modalId ? getModal(modalId) : null;
-        if (!baseUrl || !target || !modal) return false;
-        const requestUrl = new URL(baseUrl, window.location.origin);
-        for (const [field, value] of Object.entries(initialValues)) requestUrl.searchParams.set(field, value);
-        const createUrl = requestUrl.toString();
-
-        if (opener) modal.setOpener(opener);
-        modal.open();
-
-        const existingRequestId = target.querySelector<HTMLInputElement>('[name="data_view_create_id"]')?.value;
-        if (this.createRequestId && existingRequestId === this.createRequestId && this.createFormUrl === createUrl) return true;
-
-        this.createRequestId = crypto.randomUUID();
-        this.createModalId = modalId ?? null;
-        this.createFormUrl = createUrl;
-        requestUrl.searchParams.set('data_view_create_id', this.createRequestId);
-
-        insertSkeleton(target);
-
-        void htmx.ajax('get', requestUrl.toString(), {
-            target,
-            swap: 'innerHTML',
-        }).catch((error) => {
-            console.error('Failed to load create object modal:', error);
-        });
-        return true;
-    }
-
     protected onCellClick(_cell: BaseDataViewCell): boolean {
         this.splitViewFocusOnListPane = false;
         return false;
-    }
-
-    protected navigateTo(url: string, target: string | HTMLElement = '#main-content', pushUrl: boolean = true): void {
-        htmx.ajax('get', url, {
-            target,
-            swap: 'innerHTML',
-            push: pushUrl ? 'true' : 'false',
-        });
     }
 
     private getCurrentUrl(): URL | null {
@@ -433,136 +319,177 @@ export class DataViewContainer extends BaseComponent {
         this.filter({ q: query }, false, false);
     }
 
-    /**
-     * BUTTON CONTROLS
-     */
-    public showButton(key:string) {
-        this.element?.querySelector<HTMLElement>(`[data-data-view-button="${key}"]`)?.classList.remove('hidden');
+    /** Find elements owned by this view, excluding elements in nested DataViews. */
+    private getOwnedElements<T extends HTMLElement>(selector: string): T[] {
+        return Array.from(this.element.querySelectorAll<T>(selector))
+            .filter((control: T): boolean => control.closest(DATAVIEW_ROOT) === this.element);
     }
 
-    public hideButton(key:string) {
-        this.element?.querySelector<HTMLElement>(`[data-data-view-button="${key}"]`)?.classList.add('hidden');
-    }
-
-
-    /**
-     * BULK CONTROLS
-     */
-    private getBulkCheckboxes(): NodeListOf<HTMLInputElement> {
-        return this.element?.querySelectorAll<HTMLInputElement>('input[data-bulk-checkbox]') ?? document.querySelectorAll<HTMLInputElement>('input[data-bulk-checkbox]:not(*)');
-    }
-
-    private addBulkListeners() : void {
-        const openModalForAllBtn = this.element?.querySelector<HTMLElement>('#bulk-actions-all-btn');
-        const openModalForSelectionBtn = this.element?.querySelector<HTMLElement>('#bulk-actions-selection-btn');
-
-        if (openModalForAllBtn) {
-            this.bulkAllClickHandler = () => this.openBulkActionsModal(false);
-            openModalForAllBtn.addEventListener('click', this.bulkAllClickHandler);
+    /** Reset checked records when the collection changes and retain them across presentation changes. */
+    private resetSelectionOnQueryChange(next: URL): void {
+        const current = this.getCurrentUrl();
+        if (!current || this.selectedObjectIds.size === 0) return;
+        const currentQuery = current.searchParams;
+        const nextQuery = new URLSearchParams(next.search);
+        for (const key of SELECTION_PRESENTATION_PARAMS) {
+            currentQuery.delete(key);
+            nextQuery.delete(key);
         }
+        currentQuery.sort();
+        nextQuery.sort();
+        if (current.pathname === next.pathname && currentQuery.toString() === nextQuery.toString()) return;
+        this.selectedObjectIds.clear();
+        this.syncRecordSelection();
+    }
 
-        if (openModalForSelectionBtn) {
-            this.bulkSelectionClickHandler = () => this.openBulkActionsModal(true);
-            openModalForSelectionBtn.addEventListener('click', this.bulkSelectionClickHandler);
+    /** Identify selectable records only when an available action targets their model. */
+    private getRenderedRecordType(): string | null {
+        if (!this.element.hasAttribute('data-dataview-selection-enabled')) return null;
+        if (this.target?.firstElementChild?.hasAttribute('data-record-selection-disabled')) return null;
+        const recordType = this.getDisplayedContentType();
+        return recordType === this.contentTypeId ? recordType : null;
+    }
+
+    /** Read the represented model when a renderer displays a different type from its host. */
+    private getDisplayedContentType(): string | null {
+        const [override] = this.getOwnedElements<HTMLElement>('[data-dataview-record-type]');
+        return override?.dataset.dataviewRecordType || this.contentTypeId;
+    }
+
+    /** Return selected IDs only when the action targets the same model as the checkboxes. */
+    public getActionSelection(): string[] {
+        return this.contentTypeId && this.getRenderedRecordType() === this.contentTypeId
+            ? Array.from(this.selectedObjectIds)
+            : [];
+    }
+
+    /** Apply the same checked state to one record or all records shown in the view. */
+    private setRecordsChecked(checkboxes: HTMLInputElement[], checked: boolean): void {
+        for (const checkbox of checkboxes) {
+            const id = checkbox.dataset.objectId;
+            if (!id) continue;
+            if (checked) this.selectedObjectIds.add(id);
+            else this.selectedObjectIds.delete(id);
         }
-
-        this.bulkCheckboxChangeHandler = (event: Event) => this.handleBulkCheckboxChange(event);
-        this.element?.addEventListener('change', this.bulkCheckboxChangeHandler);
-        this.syncBulkCheckboxes();
+        this.syncRecordSelection();
     }
 
-    private getBulkRowCheckboxes(): HTMLInputElement[] {
-        return Array.from(this.getBulkCheckboxes()).filter((checkbox) => checkbox.dataset.all !== 'true');
+    /** Translate individual and select-all checkbox changes into record selection. */
+    private handleRecordCheckboxChange = (event: Event): void => {
+        const checkbox = event.target;
+        if (!(checkbox instanceof HTMLInputElement) || !checkbox.matches(RECORD_CHECKBOX)) return;
+        if (checkbox.closest(DATAVIEW_ROOT) !== this.element || !this.getRenderedRecordType()) return;
+        const records = checkbox.hasAttribute('data-all')
+            ? this.getOwnedElements<HTMLInputElement>(ITEM_CHECKBOX)
+            : [checkbox];
+        this.setRecordsChecked(records, checkbox.checked);
+    };
+
+    /** Restore checkboxes, duplicate renderings, and toolbar controls from the owning view's state. */
+    private syncRecordSelection(): void {
+        const recordType = this.getRenderedRecordType();
+        if (recordType !== this.selectionContentType) {
+            this.selectedObjectIds.clear();
+            this.selectionContentType = recordType;
+        }
+        const checkboxes = this.getOwnedElements<HTMLInputElement>(RECORD_CHECKBOX);
+        let shown = 0;
+        let checked = 0;
+        for (const checkbox of checkboxes) {
+            checkbox.hidden = !recordType;
+            const id = checkbox.dataset.objectId;
+            if (!id) continue;
+            const selected = Boolean(recordType && this.selectedObjectIds.has(id));
+            checkbox.checked = selected;
+            checkbox.closest('[data-dataview-record]')?.toggleAttribute('data-dataview-record-selected', selected);
+            shown++;
+            if (selected) checked++;
+        }
+        const allChecked = shown > 0 && checked === shown;
+        for (const checkbox of checkboxes) {
+            if (!checkbox.hasAttribute('data-all')) continue;
+            checkbox.checked = allChecked;
+            checkbox.indeterminate = checked > 0 && !allChecked;
+            checkbox.disabled = shown === 0;
+        }
+        const count = recordType ? this.selectedObjectIds.size : 0;
+        const [status] = this.getOwnedElements<HTMLElement>('[data-selection-count]');
+        const [bar] = this.getOwnedElements<HTMLElement>('[data-dataview-selection-bar]');
+        const [actions] = this.getOwnedElements<HTMLElement>('[data-dataview-selection-actions]');
+        if (bar) bar.hidden = count === 0;
+        if (actions) actions.hidden = count === 0 || recordType !== this.contentTypeId;
+        if (status) {
+            const label = count ? status.dataset.label?.replace('%(count)s', String(count)) ?? '' : '';
+            if (status.textContent !== label) status.textContent = label;
+        }
     }
 
-    private handleBulkCheckboxChange(event: Event): void {
-        const checkbox = event.target as HTMLInputElement | null;
-        if (!checkbox?.matches('input[data-bulk-checkbox]')) return;
-
-        if (checkbox.dataset.all === 'true') {
-            this.getBulkRowCheckboxes().forEach((rowCheckbox) => {
-                rowCheckbox.checked = checkbox.checked;
-                const objectId = rowCheckbox.dataset.objectId;
-                if (!objectId) return;
-                if (checkbox.checked) {
-                    this.selectedObjectIds.add(objectId);
-                } else {
-                    this.selectedObjectIds.delete(objectId);
-                }
-            });
-            this.syncBulkCheckboxes();
+    /** Reload the current results for model changes and view-scoped refresh requests. */
+    private handleRefreshRequest = (event: Event): void => {
+        const { renderId, result, contentTypeId, originOnly } = (event as CustomEvent<{
+            renderId?: string;
+            result?: string;
+            contentTypeId?: number | string;
+            originOnly?: boolean;
+        }>).detail ?? {};
+        if (renderId) {
+            if (renderId !== this.element.dataset.renderId) return;
+            if (this.getRenderedRecordType() === this.contentTypeId) this.selectedObjectIds.clear();
+            this.syncRecordSelection();
+        } else if (contentTypeId != null && !originOnly) {
+            const typeId = String(contentTypeId);
+            if (typeId !== this.contentTypeId && typeId !== this.getDisplayedContentType()) return;
+        } else if ((!originOnly && result !== 'saved') || !(event.target instanceof Element) ||
+            event.target.closest(DATAVIEW_ROOT) !== this.element) {
             return;
         }
+        this.refresh(false);
+    };
 
-        const objectId = checkbox.dataset.objectId;
-        if (objectId) {
-            if (checkbox.checked) {
-                this.selectedObjectIds.add(objectId);
-            } else {
-                this.selectedObjectIds.delete(objectId);
+    /** Replace each matching occurrence with a fragment from its own DataView. */
+    private handleRecordRefreshRequest = (event: Event): void => {
+        const { contentTypeId, objectId, originOnly } = (event as CustomEvent<{
+            contentTypeId?: number | string;
+            objectId?: number | string;
+            originOnly?: boolean;
+        }>).detail ?? {};
+        if (contentTypeId == null || objectId == null) return;
+        const source = event.target instanceof Element ? event.target : null;
+        const isOrigin = source?.closest(DATAVIEW_ROOT) === this.element;
+        if (originOnly && !isOrigin) return;
+        const sourceRecord = isOrigin ? source?.closest<HTMLElement>(DATAVIEW_RECORD) : null;
+        const displayedType = this.getDisplayedContentType();
+        const typeId = String(contentTypeId);
+        const recordId = String(objectId);
+        const targets = new Map<HTMLElement, string>();
+        for (const record of this.getOwnedElements<HTMLElement>(DATAVIEW_RECORD)) {
+            const matches = record.dataset.objectId === recordId &&
+                (record.dataset.dataviewRecordContentTypeId || displayedType) === typeId;
+            const fromAction = originOnly && record === sourceRecord;
+            if (!matches && !fromAction) continue;
+            const url = record.dataset.dataviewItemUrl;
+            if (!url) {
+                this.refresh(false);
+                return;
             }
+            targets.set(record, url);
         }
-
-        this.syncBulkCheckboxes();
-    }
-
-    private syncBulkCheckboxes(): void {
-        const rowCheckboxes = this.getBulkRowCheckboxes();
-        rowCheckboxes.forEach((checkbox) => {
-            const objectId = checkbox.dataset.objectId;
-            checkbox.checked = Boolean(objectId && this.selectedObjectIds.has(objectId));
-        });
-
-        const masterCheckbox = this.element?.querySelector<HTMLInputElement>('input[data-bulk-checkbox][data-all="true"]');
-        const allChecked = rowCheckboxes.length > 0 && rowCheckboxes.every((checkbox) => checkbox.checked);
-        const anyChecked = rowCheckboxes.some((checkbox) => checkbox.checked);
-        if (masterCheckbox) {
-            masterCheckbox.checked = allChecked;
-            masterCheckbox.indeterminate = !allChecked && anyChecked;
+        if (originOnly && !targets.size) {
+            this.refresh(false);
+            return;
         }
-    }
-
-    private buildBulkActionsUrl(useSelection: boolean): string | null {
-        if (!this.contentTypeId) return null;
-
-        const currentUrl = this.getCurrentUrl();
-        const url = new URL(`/components/dataview/${this.contentTypeId}/bulk_actions/`, window.location.origin);
-        url.searchParams.set('selection', useSelection ? 'selected' : 'filtered');
-        currentUrl?.searchParams.forEach((value, key) => {
-            if (key === 'page') return;
-            if (key === 'selection') return;
-            url.searchParams.append(key, value);
-        });
-
-        if (useSelection) {
-            this.selectedObjectIds.forEach((objectId) => {
-                url.searchParams.append('object_ids', objectId);
+        for (const [record, url] of targets) {
+            void htmx.ajax('get', url, {
+                source: record,
+                target: record,
+                swap: 'outerHTML',
+                headers: {
+                    'X-Bloomerp-Dataview-Item-Index': record.dataset.dataviewItemIndex || '0',
+                    'X-Bloomerp-Dataview-Item-Placement': record.dataset.dataviewItemPlacement || '',
+                },
             });
         }
-
-        return url.toString();
-    }
-
-    private openBulkActionsModal(useSelection: boolean): void {
-        const url = this.buildBulkActionsUrl(useSelection);
-        const modal = getModal('bulk-actions-modal');
-        if (!url || !modal) return;
-
-        htmx.ajax('get', url, {
-            target: '#bulk-actions-modal-body',
-            swap: 'innerHTML',
-        });
-
-        modal.open();
-    }
-
-    private handleBulkActionComplete(event: Event): void {
-        const customEvent = event as CustomEvent<{ contentTypeId?: string }>;
-        if (customEvent.detail?.contentTypeId !== this.contentTypeId) return;
-
-        this.selectedObjectIds.clear();
-        this.refresh();
-    }
+    };
 
 
 
@@ -638,20 +565,6 @@ export class DataViewContainer extends BaseComponent {
         return getComponent(el) as ObjectCRUDViewContainer | null;
     }
 
-    /**
-     * Hides the filtered badge from the applied filter section.
-     * 
-     * If all filters are removed, the clear all button will also be hidden. This is done by checking if there are any visible badges left after hiding the specified one, and if not, hiding the clear all button as well.
-     * 
-     * @param key The key of the filter to hide
-     */
-    public hideFilter(key:string): void {
-        const badge = this.element?.querySelector(`[data-filter-key="${key}"]`) as HTMLElement | null;
-        if (badge) {
-            badge.style.display = 'none';
-        }
-    }
-
     /** Refresh list presentation after the selected display preference changes. */
     private bindDisplayOptionsCallback(): void {
         const displayOptionsElement = this.element?.querySelector<HTMLElement>(
@@ -680,33 +593,36 @@ export class DataViewContainer extends BaseComponent {
         const displayOptionsComponent = getComponent(displayOptionsElement) as DataViewDisplayOptions | null;
         if (!displayOptionsComponent) return;
 
-        displayOptionsComponent.setOptionChangedCallback(() => {
-            this.bindDisplayOptionsCallback();
-                this.refresh();
-        });
+        displayOptionsComponent.setOptionChangedCallback(this.refreshAfterDisplayOptions);
     }
 
-    private replaceDisplayOptions(html: string): void {
-        const displayOptionsElement = this.element?.querySelector<HTMLElement>(
-            '[bloomerp-component="dataview-display-options"]'
-        );
-        if (!displayOptionsElement || !displayOptionsElement.parentElement) return;
+    /** Reload the container when the new layout selects a different controller. */
+    private refreshAfterDisplayOptions = (): void => {
+        const element = this.element;
+        const url = this.getCurrentUrl();
+        const nextComponentId = element?.querySelector<HTMLElement>('[data-dataview-component-id]')
+            ?.dataset.dataviewComponentId;
+        if (element && url && nextComponentId && nextComponentId !== element.getAttribute(componentIdentifier)) {
+            void htmx.ajax('get', url.toString(), {
+                source: element,
+                target: element,
+                swap: 'outerHTML',
+                push: 'false',
+                headers: { 'X-Bloomerp-Sync-Url': String(this.syncUrl) },
+            });
+            return;
+        }
 
-        const template = document.createElement("template");
-        template.innerHTML = html.trim();
-        const replacement = template.content.firstElementChild as HTMLElement | null;
-        if (!replacement) return;
-
-        const parent = displayOptionsElement.parentElement;
-        displayOptionsElement.replaceWith(replacement);
-        initComponents(parent);
         this.bindDisplayOptionsCallback();
-    }
+        this.refresh();
+    };
 
-    public onAfterSwap(): void {
+    /** Refresh controls after pagination, renderer changes, or an individual record swap. */
+    public override onAfterSwap(): void {
         this.setDataviewTarget();
-        this.setupAddButton();
         this.bindDisplayOptionsCallback();
+        this.installCellClickOverrides();
+        this.syncRecordSelection();
     }
 
     /**
@@ -716,37 +632,25 @@ export class DataViewContainer extends BaseComponent {
         this.target = this.element?.querySelector<HTMLElement>('#data-view-data-section') ?? null;
     }
 
+    /** Release the old data view when a preference switch replaces its root. */
+    private handleCleanup = (event: Event): void => {
+        if (event.target === this.element) this.destroy();
+    };
+
     /** Release the list controls and listeners owned by this container. */
     public destroy(): void {
-        document.body.removeEventListener('bloomerp:data-view-object-created', this.handleObjectCreated);
-        this.createRequestId = null;
         this.renderedFilters?.destroy();
         this.renderedFilters = undefined;
         this.element?.removeEventListener('bloomerp:filters-apply', this.unifiedFilterHandler);
-        this.element?.removeEventListener('htmx:configRequest', this.configureActionRequest);
+        this.element?.removeEventListener('htmx:beforeCleanupElement', this.handleCleanup);
         if (this.afterSwapHandler) {
             this.element?.removeEventListener('htmx:afterSwap', this.afterSwapHandler);
         }
         if (this.splitViewPaneShortcutHandler) {
             this.element?.removeEventListener('keydown', this.splitViewPaneShortcutHandler);
         }
-        if (this.bulkCheckboxChangeHandler) {
-            this.element?.removeEventListener('change', this.bulkCheckboxChangeHandler);
-        }
-        if (this.bulkActionCompleteHandler) {
-            document.body.removeEventListener('bloomerp:bulk-action-complete', this.bulkActionCompleteHandler);
-        }
-        const addButton = this.element?.querySelector<HTMLElement>('[data-dataview-create-button="true"]');
-        if (addButton && this.addButtonClickHandler) {
-            addButton.removeEventListener('click', this.addButtonClickHandler);
-        }
-        const openModalForAllBtn = this.element?.querySelector<HTMLElement>('#bulk-actions-all-btn');
-        const openModalForSelectionBtn = this.element?.querySelector<HTMLElement>('#bulk-actions-selection-btn');
-        if (openModalForAllBtn && this.bulkAllClickHandler) {
-            openModalForAllBtn.removeEventListener('click', this.bulkAllClickHandler);
-        }
-        if (openModalForSelectionBtn && this.bulkSelectionClickHandler) {
-            openModalForSelectionBtn.removeEventListener('click', this.bulkSelectionClickHandler);
-        }
+        this.element?.removeEventListener('change', this.handleRecordCheckboxChange);
+        document.body.removeEventListener('bloomerp:dataview-refresh', this.handleRefreshRequest);
+        document.body.removeEventListener('bloomerp:dataview-record-refresh', this.handleRecordRefreshRequest);
     }    
 }

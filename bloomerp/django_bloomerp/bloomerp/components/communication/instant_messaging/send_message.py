@@ -1,4 +1,5 @@
 """Authenticated, CSRF-protected message submission from the shared text editor."""
+# SHOULD_API
 
 from uuid import UUID
 

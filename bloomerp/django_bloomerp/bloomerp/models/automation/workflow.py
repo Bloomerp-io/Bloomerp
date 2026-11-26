@@ -66,6 +66,7 @@ class Workflow(
                         LayoutItem(id="active"),
                         LayoutItem(id="run_asynchronously"),
                         LayoutItem(id="enable_logging"),
+                        LayoutItem(id="notify_on_completion"),
                     ]
                 ),
                 ]
@@ -234,6 +235,11 @@ class Workflow(
         default=False,
         help_text=_("Whether to enable logging for this workflow. Disabling logging may improve performance but will result in no detailed execution history being stored."),
         verbose_name=_("Enable Logging")
+    )
+    notify_on_completion = models.BooleanField(
+        default=False,
+        help_text=_("Send the workflow creator an inbox notification when a run succeeds or fails."),
+        verbose_name=_("Notify on completion"),
     )
     
     def get_trigger(self) -> "WorkflowNode |None":

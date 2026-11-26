@@ -32,5 +32,5 @@ class CalendarEventDeleteView(BloomerpDeleteView):
         self.object = self.get_object()
         context = self.get_context_data(object=self.object)
         if context["calendar_cancellation_required"]:
-            return self.render_to_response(context, status=409)
+            return self.handle_conflict_response(context)
         return super().post(request, *args, **kwargs)

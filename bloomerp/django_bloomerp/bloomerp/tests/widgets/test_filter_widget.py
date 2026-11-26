@@ -2,19 +2,19 @@ import json
 from unittest.mock import patch
 
 from bs4 import BeautifulSoup
-from django.contrib.auth.models import AnonymousUser
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AnonymousUser
 from django.contrib.contenttypes.models import ContentType
 from django.template.loader import render_to_string
 from django.test import RequestFactory
 from django.urls import reverse
 
-from bloomerp.widgets.filter_widget import FilterWidget
 from bloomerp.tests.base import (
     BloomerpWidgetTestCase,
-    WidgetScenario,
     WidgetOperation,
+    WidgetScenario,
 )
+from bloomerp.widgets.filter_widget import FilterWidget
 
 
 class TestFilterWidget(BloomerpWidgetTestCase):
@@ -45,12 +45,12 @@ class TestFilterWidget(BloomerpWidgetTestCase):
                 )],
             ),
             WidgetScenario(
-                name="request-aware filters retain their permission token",
+                name="request-aware filters keep clean endpoints",
                 constructor_kwargs={"content_type": content_type},
                 operations=[WidgetOperation(
                     name="render with request capability",
                     execute=self.render_with_request,
-                    result_validators=self.has_token_filter_endpoints,
+                    result_validators=self.has_plain_filter_endpoints,
                 )],
             ),
             WidgetScenario(
@@ -159,16 +159,11 @@ class TestFilterWidget(BloomerpWidgetTestCase):
         request.user = AnonymousUser()
         context = widget.get_context("filters", [], {})
         context["request"] = request
-        with patch("bloomerp.permissions.access_tokens.request_permission_token", return_value="test-capability"):
-            return render_to_string(widget.template_name, context)
+        return render_to_string(widget.template_name, context)
 
     def has_plain_filter_endpoints(self, html: str) -> bool:
         """Verify all editor endpoints remain usable without a request capability."""
         return self.has_filter_endpoints(html, "")
-
-    def has_token_filter_endpoints(self, html: str) -> bool:
-        """Verify each editor endpoint propagates the request's capability."""
-        return self.has_filter_endpoints(html, "?_permission_token=test-capability")
 
     def has_filter_endpoints(self, html: str, suffix: str) -> bool:
         """Check all five filter URLs in the rendered component markup."""

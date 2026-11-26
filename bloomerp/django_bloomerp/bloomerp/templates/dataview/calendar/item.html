@@ -1,0 +1,7 @@
+{% if variant == "segment" %}
+    {% include "dataview/calendar/segment.html" %}
+{% elif variant == "unscheduled" %}
+    {% include "dataview/calendar/unscheduled_item.html" %}
+{% else %}
+    {% include "dataview/calendar/event.html" %}
+{% endif %}

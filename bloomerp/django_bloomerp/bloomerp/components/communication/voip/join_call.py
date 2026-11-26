@@ -9,6 +9,7 @@ from django.views.decorators.http import require_POST
 
 from bloomerp.communication.builtins.voip.im_calling import join
 from bloomerp.router import router
+# SHOULD_API
 
 
 @router.register(

@@ -4,11 +4,12 @@ from typing import Any, Callable, Literal
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.db import transaction
 from django.db.models import Model
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
+from django.test import RequestFactory
 from django.urls import reverse
 
 from bloomerp.modules.definition import ModuleConfig
-
+from bloomerp.tokens import REQUEST_TOKEN_HEADER, RequestToken, issue_token
 
 ResponseValidator = Callable[[HttpResponse], bool]
 RequestPreparation = Callable[["RequestScenario"], None]
@@ -137,6 +138,18 @@ class RequestTestCaseMixin:
                 finally:
                     self.client.logout()
                     transaction.set_rollback(True)
+
+    def request_context_headers(self, token: RequestToken, user: AbstractBaseUser) -> dict[str, str]:
+        """Issue a context using the same authenticated session as the scenario client."""
+        return {REQUEST_TOKEN_HEADER: issue_token(token, self.authenticated_context_request(user))}
+
+    def authenticated_context_request(self, user: AbstractBaseUser) -> HttpRequest:
+        """Build a rendering request bound to the scenario client's authenticated session."""
+        self.client.force_login(user)
+        request = RequestFactory().get("/")
+        request.session = self.client.session
+        request.user = user
+        return request
 
     def _get_request_kwargs(
         self, setup: RequestScenario, view_name: str

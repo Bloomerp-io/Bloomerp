@@ -39,8 +39,10 @@ export function buildModalShell(element: HTMLElement): void {
         if (element.dataset.modalClosable !== 'false') {
             const controls = document.createElement('div');
             controls.className = 'flex space-x-2';
+            const fullscreen = buildModalButton(element.id, 'bloomerp-full-screen-modal', t('Toggle fullscreen'), 'fa-expand', 'mod+shift+space', 'bottom');
+            fullscreen.setAttribute('data-shortcut-capture', '');
             controls.append(
-                buildModalButton(element.id, 'bloomerp-full-screen-modal', t('Toggle fullscreen'), 'fa-expand', 'mod+shift+space', 'bottom'),
+                fullscreen,
                 buildModalButton(element.id, 'bloomerp-close-modal', t('Close'), 'fa-times', 'mod+shift+,'),
             );
             header.appendChild(controls);
@@ -76,12 +78,12 @@ function buildModalButton(id: string, attribute: string, label: string, icon: st
     wrapper.dataset.text = label;
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'hover:cursor-pointer';
+    button.className = 'icon-button';
     button.title = label;
     button.setAttribute('aria-label', label);
     button.setAttribute(attribute, id);
     const glyph = document.createElement('i');
-    glyph.className = `fas ${icon} text-primary-900 font-medium`;
+    glyph.className = `fas ${icon}`;
     glyph.setAttribute('aria-hidden', 'true');
     button.appendChild(glyph);
     wrapper.appendChild(button);
@@ -127,8 +129,18 @@ function syncModalStack(): void {
     });
 }
 
-/** Create an empty, disposable instance using a declaration's visual options. */
-export function createModalInstance(declarationId: string, opener: HTMLElement): Modal {
+interface ModalInstanceOptions {
+    disposable?: boolean;
+    onCloseEvent?: string;
+    closeEventTarget?: HTMLElement;
+}
+
+/** Create an empty instance with optional close routing and draft retention. */
+export function createModalInstance(
+    declarationId: string,
+    opener: HTMLElement,
+    options: ModalInstanceOptions = {},
+): Modal {
     const declaration = document.getElementById(declarationId);
     if (!declaration) throw new Error(`Modal declaration not found: ${declarationId}`);
     const element = document.createElement('div');
@@ -140,11 +152,13 @@ export function createModalInstance(declarationId: string, opener: HTMLElement):
         }
     }
     element.dataset.modalInstanceOf = declarationId;
-    element.dataset.modalDisposable = 'true';
+    element.dataset.modalDisposable = String(options.disposable ?? true);
+    if (options.onCloseEvent) element.dataset.modalOnCloseEvent = options.onCloseEvent;
     element.setAttribute('bloomerp-component', 'modal');
     document.body.appendChild(element);
     const modal = getComponent(element) as Modal;
     modal.setOpener(opener);
+    if (options.closeEventTarget) modal.setCloseEventTarget(options.closeEventTarget);
     return modal;
 }
 

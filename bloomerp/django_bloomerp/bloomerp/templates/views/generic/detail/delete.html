@@ -55,6 +55,10 @@
         <form
             method="post"
             action="{{ delete_submit_url }}"
+            {% if delete_submit_target %}
+            hx-post="{{ delete_submit_url }}"
+            hx-target="{{ delete_submit_target }}"
+            {% endif %}
         >
             {% csrf_token %}
             <button type="submit" class="btn btn-danger">

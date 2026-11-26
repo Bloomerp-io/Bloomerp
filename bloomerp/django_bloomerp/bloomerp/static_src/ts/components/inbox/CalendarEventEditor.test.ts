@@ -39,17 +39,16 @@ const chunk = output.output.find((item: OutputAsset | OutputChunk): boolean => i
 assert(chunk?.type === "chunk");
 const code = chunk.code;
 interface ComposerWindow extends DOMWindow { ComposerFixture: { initComponents(element: HTMLElement): void; getComponent(element: HTMLElement): { setSelection(selection: { users: string[]; day: string; timezone: string; startTime: string; endTime: string; endDate: string; allDay: boolean }): void } } }
-interface Fixture { dom: JSDOM; w: ComposerWindow; requests: URL[]; form: HTMLFormElement }
+interface Fixture { dom: JSDOM; w: ComposerWindow; requests: URL[]; requestHeaders: Headers[]; form: HTMLFormElement }
 
 /** Initialize a composer with real chip controls and a fake network boundary. */
 function fixture(noEmail: boolean = false, modal: boolean = false): Fixture {
-    const dom = new JSDOM(`<!doctype html><form id="calendar-event-create-form" bloomerp-component="calendar-event-editor" data-recipient-search-url="/recipients/?calendar_users=1">
+    const dom = new JSDOM(`<!doctype html><form id="calendar-event-create-form" bloomerp-component="calendar-event-editor" data-recipient-search-url="/recipients/?calendar_users=1" data-request-context-id="scoped-calendar-context">
         <div data-layout-root><div data-layout-row data-row-columns="1"><div data-layout-grid><div bloomerp-component="detail-view-value" data-layout-item-id="attendees" data-colspan="1" data-required="False"><div data-layout-item-body>
         <input name="attendees" value="person@example.com"><input name="attendee_users" value='["u1"]' data-identities='{"person@example.com":"u1"}'>
         <input name="start_date" value="2026-10-15"><input name="end_date" value="2026-10-15">
         <input name="start_time" value="10:00"><input name="end_time" value="11:00">
         <input name="all_day" type="checkbox"><select name="event_timezone"><option>Europe/Brussels</option></select>
-        <input type="hidden" name="_permission_token" value="scoped-calendar-token">
         </div></div></div></div></div>
         <div bloomerp-component="calendar-availability" data-url="/components/calendar/availability/"><span data-availability-date></span><div data-availability-grid></div></div>
         <div id="object-crud-container-buttons" class="hidden"><button type="submit" id="object-crud-container-save-button"><i class="fa fa-save"></i><span data-calendar-submit-label>Save</span></button></div></form>`,
@@ -69,9 +68,11 @@ function fixture(noEmail: boolean = false, modal: boolean = false): Fixture {
         w.document.head.append(style);
     }
     const requests: URL[] = [];
+    const requestHeaders: Headers[] = [];
     /** Capture requests while returning readable and unavailable attendee calendars. */
-    w.fetch = async function fetchFixture(input: RequestInfo | URL): Promise<Response> {
+    w.fetch = async function fetchFixture(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
         requests.push(new URL(String(input)));
+        requestHeaders.push(new Headers(init?.headers));
         return new Response(JSON.stringify({ users: [
             { id: "u1", label: "Person", available: true, busy: [{ start: "2026-10-15T08:00:00Z", end: "2026-10-15T09:00:00Z" }] },
             { id: "u2", label: "Private user", available: false, busy: [] },
@@ -90,7 +91,7 @@ function fixture(noEmail: boolean = false, modal: boolean = false): Fixture {
     }
     w.eval(code);
     w.ComposerFixture.initComponents(w.document.body);
-    return { dom, w, requests, form: w.document.querySelector("form")! };
+    return { dom, w, requests, requestHeaders, form: w.document.querySelector("form")! };
 }
 
 /** Let initialization settle without relying on a network server. */
@@ -208,7 +209,8 @@ async function participantRefresh(): Promise<void> {
         await new Promise<void>(function waitForDebounce(resolve: () => void): void { setTimeout(resolve, 220); });
         const last = f.requests.at(-1)!;
         assert.deepEqual(last.searchParams.getAll("users"), ["u1", "u2"]);
-        assert.equal(last.searchParams.get("_permission_token"), "scoped-calendar-token");
+        assert.equal(last.searchParams.has("_permission_token"), false);
+        assert.equal(f.requestHeaders.at(-1)?.get("X-Bloomerp-Context"), "scoped-calendar-context");
         assert.equal(f.form.querySelectorAll("thead th").length, 3);
     } finally { f.dom.window.close(); }
 }
@@ -292,9 +294,10 @@ test('availability sidebar works independently of an event form', standaloneAvai
 async function userSuggestions(): Promise<void> {
     const f = fixture();
     try {
-        f.w.fetch = async function searchUsers(input: RequestInfo | URL): Promise<Response> {
+        f.w.fetch = async function searchUsers(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
             const url = new URL(String(input));
             f.requests.push(url);
+            f.requestHeaders.push(new Headers(init?.headers));
             return new Response(JSON.stringify(url.pathname === "/recipients/" ? {
                 suggestions: [{ email: "john@example.com", label: "Users", user_id: "john", display_name: "John Doe" }],
             } : { users: [] }), { headers: { "Content-Type": "application/json" } });
@@ -309,7 +312,8 @@ async function userSuggestions(): Promise<void> {
         assert.equal(request.origin, "https://app.example");
         assert.equal(request.searchParams.get("q"), "John");
         assert.equal(request.searchParams.get("calendar_users"), "1");
-        assert.equal(request.searchParams.get("_permission_token"), "scoped-calendar-token");
+        assert.equal(request.searchParams.has("_permission_token"), false);
+        assert.equal(f.requestHeaders[f.requests.indexOf(request)].get("X-Bloomerp-Context"), "scoped-calendar-context");
         const option = f.form.querySelector<HTMLElement>('[role="option"][data-user-id="john"]');
         assert.ok(option);
         assert.match(option.textContent!, /John Doe/);

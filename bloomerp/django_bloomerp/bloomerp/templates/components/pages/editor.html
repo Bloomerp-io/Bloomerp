@@ -1,5 +1,9 @@
 {% load i18n %}
 {% translate "Press / for commands or @ for mentions" as editor_placeholder %}
+{% translate "Share" as share_label %}
+{% if not compact_page_editor %}
+    {% translate "Share" as share_text %}
+{% endif %}
 <div bloomerp-component="bloomerp:page-editor" data-page-id="{{ page.pk|default:'' }}"
      data-version="{{ page_version }}" data-page-owner="{{ page.owner_id|default:request.user.pk }}"
      data-can-manage="{{ can_manage_page|yesno:'true,false' }}"
@@ -7,13 +11,15 @@
      class="relative" data-websocket-url="{% if page %}/ws/pages/{{ page.pk }}/{% endif %}">
     <div data-page-controls class="page-editor-controls flex min-h-9 flex-wrap items-center justify-end gap-2 px-6 pt-4">
         {% if can_manage_page %}
-            <button type="button" data-page-delete {% if not page %}hidden{% endif %} aria-label="{% translate 'Delete' %}" class="btn btn-secondary btn-sm">
-                <i class="fa-regular fa-trash-can" aria-hidden="true"></i><span>{% translate 'Delete' %}</span>
+            <button type="button" data-page-delete {% if not page %}hidden{% endif %} aria-label="{% translate 'Delete' %}"
+                    class="{% if compact_page_editor %}icon-button{% else %}btn btn-secondary btn-sm{% endif %}">
+                <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
+                {% if not compact_page_editor %}<span>{% translate 'Delete' %}</span>{% endif %}
             </button>
         {% endif %}
         {% if can_manage_page %}
             <div data-page-share>
-                <c-ui.dropdown.body trigger_text="{% translate 'Share' %}" trigger_aria_label="{% translate 'Share' %}" trigger_icon_class="fa-solid fa-share-nodes"
+                <c-ui.dropdown.body trigger_text="{{ share_text }}" :trigger_aria_label="share_label" trigger_icon_class="fa-solid fa-share-nodes" :icon_button="compact_page_editor"
                     trigger_button_class="btn-secondary" size="sm" width="w-80" :fixed="True" position="right">
                     <form data-page-sharing class="space-y-4 p-4">
                         <p class="text-sm font-semibold">{% translate 'Share page' %}</p>
@@ -38,7 +44,7 @@
         <form data-page-form>
             {% csrf_token %}
             <input type="text" name="title" value="{{ page_title }}" maxlength="255"
-                   data-floating-panel-focus aria-label="{% translate 'Page title' %}" placeholder="{% translate 'Untitled' %}"
+                   aria-label="{% translate 'Page title' %}" placeholder="{% translate 'Untitled' %}"
                    class="mb-4 block w-full border-0 bg-transparent p-0 text-4xl font-bold tracking-tight text-inherit placeholder:text-gray-400 focus:outline-none focus:ring-0" />
             <c-ui.inputs.text_editor name="content" :value="page_content" :placeholder="editor_placeholder" />
         </form>

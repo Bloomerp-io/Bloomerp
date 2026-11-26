@@ -1,22 +1,23 @@
-from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotAllowed, StreamingHttpResponse
-from django.shortcuts import get_object_or_404
-from django.utils.translation import gettext
-
-from bloomerp.components.objects.dataviews.dataview import (
-    build_dataview_action_context,
-    build_execution_dataview_state,
+from django.http import (
+    Http404,
+    HttpRequest,
+    HttpResponse,
+    HttpResponseNotAllowed,
+    StreamingHttpResponse,
 )
-from bloomerp.models.definition import ObjectAction, ObjectActionContext, get_object_actions
+from django.shortcuts import get_object_or_404
+
+from bloomerp.models.actions.object.resolution import get_object_actions
+from bloomerp.models.definition import ObjectAction, ObjectActionContext
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
 from bloomerp.services.action_services import (
-    ACTION_DATAVIEW_PREFERENCE_PARAM,
     action_is_visible,
     find_executable_action,
+    render_action_success,
 )
 from bloomerp.utils.models import get_model_and_content_type_or_404
-from bloomerp.utils.requests import render_message
 
 
 @router.register(
@@ -42,25 +43,16 @@ def actions_execute(
     if request.method != action.method:
         return HttpResponseNotAllowed([action.method])
 
-    dataview = None
-    if ACTION_DATAVIEW_PREFERENCE_PARAM in request.GET:
-        state = build_execution_dataview_state(request, content_type_id)
-        if isinstance(state, HttpResponse):
-            return state
-        dataview = build_dataview_action_context(request, state)
-        queryset = dataview.queryset
-    else:
-        queryset = UserPolicyManager(request.user).get_accessible_queryset(
-            model, BloomerpPermission.VIEW,
-        )
+    queryset = UserPolicyManager(request.user).get_accessible_queryset(
+        model, BloomerpPermission.VIEW,
+    )
     obj = get_object_or_404(queryset, pk=object_id)
     context = ObjectActionContext(
         request=request,
         model=model,
         content_type=content_type,
         object=obj,
-        surface="dataview_item" if dataview is not None else "detail",
-        dataview=dataview,
+        surface="detail",
     )
     if not all(action_is_visible(item, context) for item in (*groups, action)):
         return HttpResponse(status=403)
@@ -68,6 +60,6 @@ def actions_execute(
     response = action.execution_func(context)
     if response is not None:
         return response
-    return render_message(
-        request, gettext(action.success_message or "Action executed successfully"), "success",
+    return render_action_success(
+        request, action, content_type_id=content_type_id, object_id=str(object_id),
     )

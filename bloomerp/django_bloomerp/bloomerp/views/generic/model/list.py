@@ -30,3 +30,5 @@ class BloomerpListView(BaseBloomerpView, BloomerpModelContextMixin, TemplateView
             self.model,
             BloomerpPermission.VIEW
         )
+
+    

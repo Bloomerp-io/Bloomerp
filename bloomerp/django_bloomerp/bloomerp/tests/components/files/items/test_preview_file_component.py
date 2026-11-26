@@ -1,13 +1,22 @@
+from io import BytesIO
 from unittest.mock import patch
 
 from asgiref.sync import async_to_sync
 from bs4 import BeautifulSoup
+from django.contrib.contenttypes.models import ContentType
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse, StreamingHttpResponse
 from django.test import AsyncRequestFactory, RequestFactory
+from PIL import Image
+from pillow_heif import from_pillow
 
-from bloomerp.components.files.items.preview import MAX_TEXT_BYTES, _media_response, preview_file
+from bloomerp.components.files.items.preview import (
+    MAX_TEXT_BYTES,
+    _media_response,
+    preview_file,
+)
+from bloomerp.models.definition import ObjectActionContext
 from bloomerp.models.files.file_node import FileNode, _can_view_file_node
 from bloomerp.models.files.file_reference import FileReference
 from bloomerp.permissions.definition import RowPolicyRuleContent
@@ -25,7 +34,7 @@ class TestPreviewFileComponent(BloomerpComponentTestCase):
     view_name = "components_preview_file"
 
     def get_test_scenarios(self) -> list[RequestScenario]:
-        """Check the widget's GET preview route accepts a file identifier."""
+        """Exercise preview rendering, media responses, downloads, and access by file ID."""
         file = FileNode.objects.create(
             content=SimpleUploadedFile("widget.png", b"image"), kind="FILE", name="widget.png"
         )
@@ -104,6 +113,62 @@ class TestPreviewFileComponent(BloomerpComponentTestCase):
                 ),
             )
         )
+        with Image.new("RGB", (16, 8), "red") as image, BytesIO() as heic:
+            from_pillow(image).save(heic)
+            self.heic_bytes = heic.getvalue()
+        photo = FileNode.objects.create(
+            name="Photo.HEIC", kind="FILE",
+            content=SimpleUploadedFile("photo.HEIC", self.heic_bytes),
+        )
+        unreadable_photo = FileNode.objects.create(
+            name="Corrupt.heic", kind="FILE",
+            content=SimpleUploadedFile("corrupt.heic", b"invalid image"),
+        )
+        scenarios.extend([
+            RequestScenario(
+                name="HEIC uses the interactive image preview",
+                user=self.admin_user,
+                view_kwargs={"file_id": str(photo.pk)},
+                expected=ExpectedResult(response_validators=[
+                    self.contains_text('bloomerp-component="image-preview"'),
+                    self.contains_text("?raw=1"),
+                ]),
+            ),
+            RequestScenario(
+                name="HEIC preview serves a decodable WebP image",
+                user=self.admin_user,
+                view_kwargs={"file_id": str(photo.pk)},
+                query_params={"raw": "1"},
+                expected=ExpectedResult(response_validators=[
+                    self.header_equals("Content-Type", "image/webp"),
+                    self.validate_heic_preview,
+                ]),
+            ),
+            RequestScenario(
+                name="HEIC download preserves the original file",
+                user=self.admin_user,
+                view_kwargs={"file_id": str(photo.pk)},
+                query_params={"download": "1"},
+                expected=ExpectedResult(response_validators=[
+                    self.header_equals("Content-Disposition", 'attachment; filename="Photo.HEIC"'),
+                    self.validate_heic_download,
+                ]),
+            ),
+            RequestScenario(
+                name="HEIC conversion requires permission to read the file",
+                user=self.normal_user,
+                view_kwargs={"file_id": str(photo.pk)},
+                query_params={"raw": "1"},
+                expected=ExpectedResult(status_code=403),
+            ),
+            RequestScenario(
+                name="Corrupt HEIC data returns a preview error",
+                user=self.admin_user,
+                view_kwargs={"file_id": str(unreadable_photo.pk)},
+                query_params={"raw": "1"},
+                expected=ExpectedResult(status_code=422),
+            ),
+        ])
         pdf = FileNode.objects.create(
             content=SimpleUploadedFile("range.pdf", b"0123456789"), kind="FILE", name="range.pdf"
         )
@@ -208,6 +273,18 @@ class TestPreviewFileComponent(BloomerpComponentTestCase):
         ))
         return scenarios
 
+    def validate_heic_preview(self, response: HttpResponse) -> bool:
+        """Verify the converted image decodes and has the original small fixture's dimensions."""
+        with Image.open(BytesIO(response.content)) as image:
+            image.load()
+            self.assertEqual(image.format, "WEBP")
+            self.assertEqual(image.size, (16, 8))
+        return True
+
+    def validate_heic_download(self, response: StreamingHttpResponse) -> bool:
+        """Verify the downloaded bytes match the original HEIC upload."""
+        return b"".join(response.streaming_content) == self.heic_bytes
+
     def prepare_markdown(self, scenario: RequestScenario) -> None:
         """Create an owned local Markdown file with formatting and hostile content."""
         source = (
@@ -270,14 +347,18 @@ class TestPreviewFileComponent(BloomerpComponentTestCase):
             name="Renamed", kind="FILE", content=SimpleUploadedFile("original.pdf", b"0123456789")
         )
         request = RequestFactory().get("/?raw=1", HTTP_RANGE="bytes=2-5")
+        context = ObjectActionContext(
+            request=request, object=file, model=FileNode, surface="detail",
+            content_type=ContentType.objects.get_for_model(FileNode),
+        )
         request.user = self.admin_user
-        self.assertTrue(_can_view_file_node(request, file))
+        self.assertTrue(_can_view_file_node(context))
         with patch.object(file.content.storage, "size", side_effect=AssertionError("Unexpected stat")):
             response = preview_file(request, file)
             self.assertEqual(response["Content-Type"], "application/pdf")
             self.assertEqual(b"".join(response.streaming_content), b"2345")
         request.user = self.normal_user
-        self.assertFalse(_can_view_file_node(request, file))
+        self.assertFalse(_can_view_file_node(context))
 
     def test_pdf_preview_does_not_read_storage(self) -> None:
         """
@@ -285,7 +366,9 @@ class TestPreviewFileComponent(BloomerpComponentTestCase):
         Expected result: Rendering its iframe never reads or Base64-encodes its contents.
         """
         # 1. Make every attempted storage read fail while rendering the preview.
-        file = FileNode(content=ContentFile(b"pdf", name="large.pdf"), name="Large PDF", kind="FILE")
+        file = FileNode.objects.create(
+            content=SimpleUploadedFile("large.pdf", b"pdf"), name="Large PDF", kind="FILE",
+        )
         request = RequestFactory().get("/")
         request.user = self.admin_user
         with patch.object(

@@ -78,6 +78,10 @@ def _change_data_view_options(
             for key, value in form.cleaned_data.items()
             if value != ""
         }
+        existing_options = options.get(view_type) or {}
+        for key in ("container_component_id", "dataview_component_id", "item_click_action_id"):
+            if key in existing_options:
+                cleaned_options[key] = existing_options[key]
         options[view_type] = option_model.model_validate(
             cleaned_options
         ).dump_options()
@@ -126,6 +130,9 @@ def _render_display_options(
         "cotton/features/dataviews/display_options.html",
         {
             "content_type_id": content_type_id,
+            "container_component_id": request.GET.get("_component_id") or getattr(
+                state.options, "container_component_id", None,
+            ),
             "view_types": [vt for vt in DATAVIEW_REGISTRY.values()],
             "preference": preference,
             "fields": state.fields,

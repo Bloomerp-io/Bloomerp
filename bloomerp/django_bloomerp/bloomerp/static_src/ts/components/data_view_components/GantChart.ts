@@ -1,3 +1,4 @@
+import { requestContextHeaders } from "../../utils/requestContext";
 import { componentIdentifier, getComponent } from "../BaseComponent";
 import { MessageType } from "../UiMessage";
 import { getCsrfToken } from "../../utils/cookies";
@@ -76,9 +77,14 @@ export class GantChartSidebarItem extends GantPreviewCell {
         this.element.addEventListener('keydown', this.onKeyDown);
     }
 
-    /** Open this record without invoking the parent chart's selected-bar handler. */
+    /** Activate the focused sidebar record without invoking the timeline's selected bar. */
     private onKeyDown = (event: KeyboardEvent): void => {
-        if (event.key !== 'Enter' || event.target !== this.element) return;
+        if (event.target !== this.element) return;
+        if (this.handleRecordSelectionShortcut(event)) {
+            event.stopPropagation();
+            return;
+        }
+        if (event.key !== 'Enter') return;
         event.preventDefault();
         event.stopPropagation();
         this.click();
@@ -93,6 +99,7 @@ export class GantChartSidebarItem extends GantPreviewCell {
 
 export class GantChart extends BaseDataViewComponent {
     protected cellClass = GantChartItem;
+    private timeline!: HTMLElement;
     private resizeObserver: ResizeObserver | null = null;
     private sidebarResizeObserver: ResizeObserver | null = null;
     private drawFrame: number | null = null;
@@ -104,13 +111,14 @@ export class GantChart extends BaseDataViewComponent {
     private dataEnd = 0;
     private sidebarWidth = DEFAULT_SIDEBAR_WIDTH;
     private extendingTimeline = false;
-    private mutationInFlight = false;
     private activeGestureController: AbortController | null = null;
 
+    /** Bind timeline scrolling and let records be dragged from the adjacent panel. */
     public initialize(): void {
         if (!this.element) return;
 
         super.initialize();
+        this.timeline = this.element.querySelector<HTMLElement>('[data-gant-scroll]') ?? this.element;
         this.dataStart = Number(this.element.dataset.gantStart);
         this.dataEnd = Number(this.element.dataset.gantEnd);
         if (!Number.isFinite(this.dataStart) || !Number.isFinite(this.dataEnd)) return;
@@ -141,11 +149,11 @@ export class GantChart extends BaseDataViewComponent {
             () => this.focusTimestamp(Date.now()),
             { signal: abortController.signal },
         );
-        this.element.addEventListener('scroll', this.handleScroll, {
+        this.timeline.addEventListener('scroll', this.handleScroll, {
             signal: abortController.signal,
             passive: true,
         });
-        this.element.addEventListener('htmx:afterSwap', this.handleHtmxSwap, {
+        this.timeline.addEventListener('htmx:afterSwap', this.handleHtmxSwap, {
             signal: abortController.signal,
         });
         this.element.addEventListener('pointerdown', this.onBarPointerDown, {
@@ -169,7 +177,7 @@ export class GantChart extends BaseDataViewComponent {
         window.addEventListener('resize', this.onResize, { signal: abortController.signal });
 
         this.resizeObserver = new ResizeObserver(this.onResize);
-        this.resizeObserver.observe(this.element);
+        this.resizeObserver.observe(this.timeline);
         if (sidebar) {
             this.sidebarResizeObserver = new ResizeObserver(this.onSidebarResize);
             this.sidebarResizeObserver.observe(sidebar);
@@ -308,6 +316,7 @@ export class GantChart extends BaseDataViewComponent {
         this.scrollToTimestamp(center);
     }
 
+    /** Size the timeline grid and redraw its bars and dependency overlays. */
     private updateTimelineGeometry(): void {
         if (!this.element) return;
         const zoom = ZOOM_LEVELS[this.zoomIndex];
@@ -323,9 +332,6 @@ export class GantChart extends BaseDataViewComponent {
             grid.style.width = `${this.canvasWidth}px`;
         }
 
-        const unscheduledTray = this.element.querySelector<HTMLElement>('[data-gant-unscheduled-tray]');
-        if (unscheduledTray) unscheduledTray.style.width = `${this.element.clientWidth}px`;
-
         for (const item of this.element.querySelectorAll<HTMLElement>('[data-gant-item]')) {
             this.positionItem(item);
         }
@@ -336,7 +342,7 @@ export class GantChart extends BaseDataViewComponent {
         this.scheduleDependencyDraw();
     }
 
-    /** Collapse only the records sidebar, keeping the unscheduled tray interactive. */
+    /** Sync the left records sidebar and extend its handle down the timeline rows. */
     private syncSidebarChrome(): void {
         if (!this.element) return;
 
@@ -353,7 +359,7 @@ export class GantChart extends BaseDataViewComponent {
             else cell.removeAttribute('aria-hidden');
         }
 
-        const handle = this.element.querySelector<HTMLElement>('[data-resizable-div-handle]');
+        const handle = this.timeline.querySelector<HTMLElement>('[data-resizable-div-handle]');
         const rows = this.element.querySelector<HTMLElement>('[data-gant-rows]');
         if (!handle || !rows) return;
 
@@ -496,11 +502,12 @@ export class GantChart extends BaseDataViewComponent {
         item.style.width = `${width}px`;
     }
 
+    /** Center the scrollable timeline on the given timestamp. */
     private scrollToTimestamp(timestamp: number): void {
         if (!this.element) return;
         const position = this.positionForTimestamp(timestamp);
         const viewportWidth = this.getTimelineViewportWidth();
-        this.element.scrollLeft = Math.max(0, position - viewportWidth / 2);
+        this.timeline.scrollLeft = Math.max(0, position - viewportWidth / 2);
         this.updateVisibleRange();
     }
 
@@ -516,25 +523,28 @@ export class GantChart extends BaseDataViewComponent {
         this.scrollToTimestamp(timestamp);
     }
 
+    /** Measure the schedule viewport after accounting for the left records sidebar. */
     private getTimelineViewportWidth(): number {
         if (!this.element) return 640;
-        return Math.max(this.element.clientWidth - this.sidebarWidth, 320);
+        return Math.max(this.timeline.clientWidth - this.sidebarWidth, 1);
     }
 
+    /** Find the timestamp at the center of the visible schedule. */
     private getViewportCenterTimestamp(): number {
         if (!this.element || this.canvasWidth <= 0) return (this.dataStart + this.dataEnd) / 2;
-        const canvasCenter = this.element.scrollLeft + this.getTimelineViewportWidth() / 2;
+        const canvasCenter = this.timeline.scrollLeft + this.getTimelineViewportWidth() / 2;
         return this.rangeStart + (canvasCenter / this.canvasWidth) * (this.rangeEnd - this.rangeStart);
     }
 
+    /** Display the date range visible within the scrolled timeline. */
     private updateVisibleRange = (): void => {
         if (!this.element || this.canvasWidth <= 0) return;
         const viewportWidth = this.getTimelineViewportWidth();
         const visibleStart = this.rangeStart + (
-            Math.max(this.element.scrollLeft, 0) / this.canvasWidth
+            Math.max(this.timeline.scrollLeft, 0) / this.canvasWidth
         ) * (this.rangeEnd - this.rangeStart);
         const visibleEnd = this.rangeStart + (
-            Math.min(this.element.scrollLeft + viewportWidth, this.canvasWidth) / this.canvasWidth
+            Math.min(this.timeline.scrollLeft + viewportWidth, this.canvasWidth) / this.canvasWidth
         ) * (this.rangeEnd - this.rangeStart);
         const label = this.element.querySelector<HTMLElement>('[data-gant-visible-range]');
         if (!label) return;
@@ -551,12 +561,13 @@ export class GantChart extends BaseDataViewComponent {
         this.syncSidebarChrome();
     };
 
+    /** Extend the schedule near either horizontal edge while preserving scroll position. */
     private extendTimelineNearEdge(): void {
         if (!this.element || this.extendingTimeline) return;
         const viewportWidth = this.getTimelineViewportWidth();
         const threshold = viewportWidth * 0.75;
-        const nearStart = this.element.scrollLeft < threshold;
-        const nearEnd = this.element.scrollLeft + viewportWidth > this.canvasWidth - threshold;
+        const nearStart = this.timeline.scrollLeft < threshold;
+        const nearEnd = this.timeline.scrollLeft + viewportWidth > this.canvasWidth - threshold;
         if (!nearStart && !nearEnd) return;
 
         this.extendingTimeline = true;
@@ -565,7 +576,7 @@ export class GantChart extends BaseDataViewComponent {
             viewportWidth * 2 / zoom.pixelsPerMs,
             this.tickDuration(zoom.tickUnit) * 8,
         );
-        const previousScrollLeft = this.element.scrollLeft;
+        const previousScrollLeft = this.timeline.scrollLeft;
         let prependedWidth = 0;
         if (nearStart) {
             this.rangeStart -= extensionMs;
@@ -574,7 +585,7 @@ export class GantChart extends BaseDataViewComponent {
         if (nearEnd) this.rangeEnd += extensionMs;
 
         this.updateTimelineGeometry();
-        this.element.scrollLeft = previousScrollLeft + prependedWidth;
+        this.timeline.scrollLeft = previousScrollLeft + prependedWidth;
         window.requestAnimationFrame(() => {
             this.extendingTimeline = false;
             this.updateVisibleRange();
@@ -727,6 +738,7 @@ export class GantChart extends BaseDataViewComponent {
                 credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
+                    ...requestContextHeaders(this.element, url),
                     ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
                 },
                 body: JSON.stringify({ updates }),
@@ -767,6 +779,7 @@ export class GantChart extends BaseDataViewComponent {
         this.updateTimelineGeometry();
     }
 
+    /** Start moving or resizing a bar, with the sidebar as an optional move target. */
     private onBarPointerDown = (event: PointerEvent): void => {
         if (!this.element || event.button !== 0 || this.mutationInFlight) return;
         const target = event.target as HTMLElement | null;
@@ -780,7 +793,11 @@ export class GantChart extends BaseDataViewComponent {
         if (mode === 'start' && item.dataset.gantCanEditStart !== 'true') return;
         if (mode === 'end' && item.dataset.gantCanEditEnd !== 'true') return;
         const fieldType = mode === 'start' ? this.startFieldType : this.endFieldType;
-        if (!this.canUseCurrentGranularity(mode === 'move' ? undefined : fieldType)) {
+        const canMoveDates = this.canUseCurrentGranularity(mode === 'move' ? undefined : fieldType);
+        const sidebar = mode === 'move' ? this.element.querySelector<HTMLElement>('[data-unschedule-url]') : null;
+        const objectId = item.dataset.objectId;
+        const canUnschedule = item.dataset.gantCanUnschedule === 'true' && Boolean(objectId);
+        if (!canMoveDates && !(sidebar && canUnschedule && !sidebar.hasAttribute('inert'))) {
             showMessage('Hour-level dragging requires a DateTime field.', MessageType.INFO);
             return;
         }
@@ -814,7 +831,21 @@ export class GantChart extends BaseDataViewComponent {
         const gestureController = new AbortController();
         this.activeGestureController = gestureController;
 
-        window.addEventListener('pointermove', (moveEvent: PointerEvent) => {
+        /** Detect a sidebar drop independently of the timeline's horizontal movement. */
+        const sidebarAt = (pointer: PointerEvent): HTMLElement | null => {
+            if (!sidebar) return null;
+            return this.getUnscheduledDropzone(document.elementFromPoint(pointer.clientX, pointer.clientY));
+        };
+
+        /** Preview timeline movement or highlight the sidebar when it can accept the bar. */
+        const moveGesture = (moveEvent: PointerEvent): void => {
+            const overSidebar = sidebarAt(moveEvent) !== null;
+            this.highlightUnscheduledDropzone(overSidebar && canUnschedule);
+            if (overSidebar || !canMoveDates) {
+                if (units !== 0) this.restoreDates(originals);
+                units = 0;
+                return;
+            }
             const nextUnits = Math.round((moveEvent.clientX - startX) / stepWidth);
             if (nextUnits === units) return;
             moveEvent.preventDefault();
@@ -822,11 +853,25 @@ export class GantChart extends BaseDataViewComponent {
             const updates = this.buildDragUpdates(dragItems, originals, mode, units);
             this.restoreDates(originals);
             this.previewUpdates(updates);
-        }, { signal: gestureController.signal });
+        };
+        window.addEventListener('pointermove', moveGesture, { signal: gestureController.signal });
 
-        window.addEventListener('pointerup', () => {
+        /** Remove pointer listeners and clear the sidebar highlight for this gesture. */
+        const endGesture = (): void => {
             gestureController.abort();
             if (this.activeGestureController === gestureController) this.activeGestureController = null;
+            this.highlightUnscheduledDropzone(false);
+        };
+
+        /** Commit either a sidebar drop or the previewed timeline dates. */
+        const commitGesture = (upEvent: PointerEvent): void => {
+            endGesture();
+            const dropzone = sidebarAt(upEvent);
+            if (dropzone) {
+                this.restoreDates(originals);
+                if (canUnschedule && objectId) void this.unscheduleRecord(dropzone, objectId);
+                return;
+            }
             if (units === 0) return;
             const updates = this.buildDragUpdates(dragItems, originals, mode, units);
             if (updates.length === 0) {
@@ -837,13 +882,15 @@ export class GantChart extends BaseDataViewComponent {
                 if (response) this.applyResponseUpdates(response);
                 else this.restoreDates(originals);
             });
-        }, { signal: gestureController.signal, once: true });
+        };
+        window.addEventListener('pointerup', commitGesture, { signal: gestureController.signal, once: true });
 
-        window.addEventListener('pointercancel', () => {
-            gestureController.abort();
-            if (this.activeGestureController === gestureController) this.activeGestureController = null;
+        /** Restore the original dates when the pointer gesture is interrupted. */
+        const cancelGesture = (): void => {
+            endGesture();
             this.restoreDates(originals);
-        }, { signal: gestureController.signal, once: true });
+        };
+        window.addEventListener('pointercancel', cancelGesture, { signal: gestureController.signal, once: true });
     };
 
     private buildDragUpdates(
@@ -904,6 +951,7 @@ export class GantChart extends BaseDataViewComponent {
         dropzone.classList.remove('ring-2', 'ring-primary');
     };
 
+    /** Schedule a sidebar record using the drop location on the scrollable timeline. */
     private onTimelineDrop = (event: DragEvent): void => {
         if (!this.element || !event.dataTransfer || this.mutationInFlight) return;
         const dropzone = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-gant-dropzone]');
@@ -918,8 +966,8 @@ export class GantChart extends BaseDataViewComponent {
             || event.dataTransfer.getData('text/plain');
         if (!objectId) return;
 
-        const rootRect = this.element.getBoundingClientRect();
-        const canvasX = event.clientX - rootRect.left + this.element.scrollLeft - this.sidebarWidth;
+        const timelineRect = this.timeline.getBoundingClientRect();
+        const canvasX = event.clientX - timelineRect.left + this.timeline.scrollLeft - this.sidebarWidth;
         const rawTimestamp = this.rangeStart + (
             Math.max(0, Math.min(canvasX, this.canvasWidth)) / this.canvasWidth
         ) * (this.rangeEnd - this.rangeStart);
@@ -958,6 +1006,7 @@ export class GantChart extends BaseDataViewComponent {
         });
     };
 
+    /** Draw dependency arrows in the same coordinate system as the timeline rows. */
     private drawDependencies(): void {
         if (!this.element) return;
 
@@ -967,7 +1016,7 @@ export class GantChart extends BaseDataViewComponent {
 
         const rows = this.element.querySelector<HTMLElement>('[data-gant-rows]');
         const width = this.sidebarWidth + this.canvasWidth;
-        const height = rows ? rows.offsetTop + rows.scrollHeight : this.element.clientHeight;
+        const height = rows ? rows.offsetTop + rows.scrollHeight : this.timeline.clientHeight;
         svg.setAttribute('width', String(width));
         svg.setAttribute('height', String(height));
         svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
@@ -995,6 +1044,7 @@ export class GantChart extends BaseDataViewComponent {
         }
     }
 
+    /** Position one dependency arrow relative to the scrolled timeline. */
     private appendDependency(
         lineGroup: SVGGElement,
         source: HTMLElement | undefined,
@@ -1005,13 +1055,13 @@ export class GantChart extends BaseDataViewComponent {
         if (!this.element || !source || !target || drawn.has(key)) return;
         drawn.add(key);
 
-        const rootRect = this.element.getBoundingClientRect();
+        const timelineRect = this.timeline.getBoundingClientRect();
         const sourceRect = source.getBoundingClientRect();
         const targetRect = target.getBoundingClientRect();
-        const startX = sourceRect.right - rootRect.left + this.element.scrollLeft;
-        const startY = sourceRect.top + sourceRect.height / 2 - rootRect.top + this.element.scrollTop;
-        const endX = targetRect.left - rootRect.left + this.element.scrollLeft;
-        const endY = targetRect.top + targetRect.height / 2 - rootRect.top + this.element.scrollTop;
+        const startX = sourceRect.right - timelineRect.left + this.timeline.scrollLeft;
+        const startY = sourceRect.top + sourceRect.height / 2 - timelineRect.top + this.timeline.scrollTop;
+        const endX = targetRect.left - timelineRect.left + this.timeline.scrollLeft;
+        const endY = targetRect.top + targetRect.height / 2 - timelineRect.top + this.timeline.scrollTop;
         const curve = Math.max(24, Math.abs(endX - startX) / 2);
 
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');

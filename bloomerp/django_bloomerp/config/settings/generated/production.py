@@ -56,6 +56,15 @@ CHANNEL_LAYERS = {
 }
 
 
+
+CACHES = {
+    "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+    "request_tokens": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": os.environ.get("REQUEST_TOKEN_REDIS_URL", CHANNEL_LAYERS_REDIS_URL),
+    },
+}
+
 def boolean_environment(name: str, default: bool = False) -> bool:
     value = os.environ.get(name)
     if value is None:

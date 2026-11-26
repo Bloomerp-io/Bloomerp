@@ -2,26 +2,73 @@ import { BaseDataViewCell } from "./BaseDataViewCell";
 import { bindForeignValuePreviews } from "../../utils/foreignValuePreviews";
 import BaseComponent, { componentIdentifier, getComponent } from "../BaseComponent";
 import { getContextMenu, type ContextMenuItem } from "../../utils/contextMenu";
-import type { DataViewContainer } from "./DataViewContainer";
+import { getCsrfToken } from "../../utils/cookies";
+import { requestContextHeaders } from "../../utils/requestContext";
+import showMessage from "../../utils/messages";
+import { MessageType } from "../UiMessage";
+import { DATAVIEW_ROOT, type DataViewContainer } from "./DataViewContainer";
 
 export abstract class BaseDataViewComponent extends BaseComponent {
     protected abortController: AbortController | null = null;
+    protected mutationInFlight = false;
     private foreignPreviewCleanup: (() => void) | null = null;
 
     // Get the corresponding dataview (lazy-loaded)
     private _dataViewContainer: DataViewContainer | null = null;
     
+    /** Use this renderer's own container when the page embeds the model more than once. */
     public get dataViewContainer(): DataViewContainer | null {
         if (this._dataViewContainer) return this._dataViewContainer;
         
         if (!this.element) return null;
         
         const contentTypeId = this.element.getAttribute('data-content-type-id');
-        const element = document.getElementById(`data-view-${contentTypeId}`);
+        const element = this.element.closest<HTMLElement>(DATAVIEW_ROOT)
+            ?? document.getElementById(`data-view-${contentTypeId}`);
         if (!element) return null;
         
         this._dataViewContainer = getComponent(element) as DataViewContainer;
         return this._dataViewContainer;
+    }
+
+    /** Find the open unscheduled sidebar belonging to this view. */
+    protected getUnscheduledDropzone(target: EventTarget | null): HTMLElement | null {
+        const panel = target instanceof Element ? target.closest<HTMLElement>("[data-unschedule-url]:not([inert])") : null;
+        return panel && this.element?.contains(panel) ? panel : null;
+    }
+
+    /** Mark the sidebar while it can accept the dragged record. */
+    protected highlightUnscheduledDropzone(active: boolean): void {
+        const panel = this.element?.querySelector<HTMLElement>("[data-unschedule-url]");
+        if (active) panel?.classList.add("ring-2", "ring-inset", "ring-primary");
+        else panel?.classList.remove("ring-2", "ring-inset", "ring-primary");
+    }
+
+    /** Clear the dropped record's scheduling dates, then reload its placement. */
+    protected async unscheduleRecord(panel: HTMLElement, objectId: string): Promise<void> {
+        const url = panel.dataset.unscheduleUrl;
+        if (!url || this.mutationInFlight) return;
+        this.mutationInFlight = true;
+        const csrfToken = getCsrfToken();
+        try {
+            const response = await fetch(url, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: { ...requestContextHeaders(panel, url), ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}) },
+                body: new URLSearchParams({ object_id: objectId }),
+            });
+            if (response.ok) {
+                this.dataViewContainer?.refresh();
+                return;
+            }
+            showMessage(response.status === 403
+                ? "You do not have permission to change these dates."
+                : "This record could not be unscheduled.", MessageType.ERROR);
+        } catch {
+            showMessage("Unable to unschedule the record.", MessageType.ERROR);
+        } finally {
+            this.mutationInFlight = false;
+        }
     }
 
     // Selected cell is the current cell
@@ -330,7 +377,8 @@ export abstract class BaseDataViewComponent extends BaseComponent {
         this.selectionAnchor = null;
     }
     
-    eventListeners(abortController: AbortController) {
+    /** Bind the data view's context menu and cell navigation handlers. */
+    eventListeners(abortController: AbortController): void {
         // Right-click: delegate to the dataview to build & show a menu.
         this.element.addEventListener(
             'contextmenu',
@@ -370,7 +418,10 @@ export abstract class BaseDataViewComponent extends BaseComponent {
 
         this.element.addEventListener(
             'keydown',
-            (event: KeyboardEvent) => {
+            /** Route grid shortcuts while preserving keyboard activation of native controls. */
+            (event: KeyboardEvent): void => {
+                if (event.target instanceof HTMLInputElement && event.target.name === "unscheduled_q") return;
+
                 // Normal key press
                 if (!event.metaKey && !event.shiftKey && !event.altKey) {
                     switch (event.key) {
@@ -417,10 +468,20 @@ export abstract class BaseDataViewComponent extends BaseComponent {
                             this.collapseSelectionToActive();
                             return;
 
-                        case 'Enter':
+                        case ' ':
+                        case 'Enter': {
+                            const target = event.target;
+                            if (!this.currentCell || (target instanceof Element && target.closest('button, a[href], input, select, textarea'))) return;
+                            if (event.key === ' ') {
+                                if (!(target instanceof HTMLElement && target.isContentEditable)) {
+                                    this.currentCell.handleRecordSelectionShortcut(event);
+                                }
+                                return;
+                            }
                             event.preventDefault();
                             this.currentCell.click();
-                            return
+                            return;
+                        }
                     }
                 }
 

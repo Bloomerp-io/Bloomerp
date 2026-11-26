@@ -2,7 +2,6 @@ import json
 from typing import Any
 
 from django.http import HttpRequest
-from django.urls import NoReverseMatch, reverse
 from django.utils.translation import gettext_lazy as _
 
 from bloomerp.forms.workspaces import DEFAULT_TILE_ICON, TileMetadataForm
@@ -74,30 +73,6 @@ def _build_link_folder_options(
         options.extend(_build_link_folder_options(link.children, path, depth + 1))
     return options
 
-
-def _get_link_route_suggestions() -> list[dict[str, str]]:
-    """Return navigable application routes for the editable URL datalist."""
-    suggestions: list[dict[str, str]] = []
-    seen_urls: set[str] = set()
-    for route in router.get_routes():
-        path = route.path or ""
-        if path.lstrip("/").startswith(("api/", "components/")) or route.nr_of_args() > 0:
-            continue
-        try:
-            url = reverse(route.url_name)
-        except NoReverseMatch:
-            continue
-        if url in seen_urls:
-            continue
-        seen_urls.add(url)
-        suggestions.append(
-            {
-                "url": url,
-                "name": route.localized_name or url,
-                "description": " ".join(route.localized_description.split()),
-            }
-        )
-    return sorted(suggestions, key=lambda suggestion: (suggestion["name"].lower(), suggestion["url"]))
 
 @router.register(
     path="components/preview_workspace_tile/",
@@ -319,7 +294,7 @@ class PreviewWorkspaceTile(TemplateView):
             case "LINKS_TILE":
                 extra_context["link_builder_items"] = _build_link_builder_items(config.links)
                 extra_context["link_folder_options"] = _build_link_folder_options(config.links)
-                extra_context["link_route_suggestions"] = _get_link_route_suggestions()
+                extra_context["link_route_suggestions"] = router.get_link_route_suggestions()
                 extra_context["add_link_icon_picker"] = _render_link_icon_picker("add_link_icon")
                 extra_context["add_folder_icon_picker"] = _render_link_icon_picker("add_folder_icon")
             

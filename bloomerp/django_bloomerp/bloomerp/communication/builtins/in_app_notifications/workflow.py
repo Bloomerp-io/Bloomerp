@@ -19,6 +19,7 @@ from bloomerp.utils.labels import safe_object_label
 
 if TYPE_CHECKING:
     from bloomerp.models.automation.workflow_run import WorkflowRun
+    from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
     from bloomerp.models.communication.inbox.inbox_item import InboxItem
 
 
@@ -282,17 +283,19 @@ class WorkflowSystemMessage(BaseSystemMessageType):
 def resolve_workflow_notification_folders(
     *,
     workflow_run_id: str,
-    **kwargs,
-) -> QuerySet:
+    **kwargs: object,
+) -> QuerySet[InboxFolder]:
+    """Find the creator's notification folders when run results are enabled."""
     from bloomerp.communication.registry import INBOX_FOLDER_REGISTRY
     from bloomerp.models.automation.workflow_run import WorkflowRun
     from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
 
-    workflow_run = WorkflowRun.objects.select_related("workflow__created_by").get(
+    workflow_run = WorkflowRun.objects.select_related("workflow").get(
         pk=workflow_run_id
     )
-    recipient_id = workflow_run.workflow.created_by_id
-    if recipient_id is None:
+    workflow = workflow_run.workflow
+    recipient_id = workflow.created_by_id
+    if not workflow.notify_on_completion or recipient_id is None:
         return InboxFolder.objects.none()
 
     return InboxFolder.objects.filter(

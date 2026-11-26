@@ -48,6 +48,8 @@ from bloomerp.field_types.registry import (
 from bloomerp.field_types.builtins.display import standard_display_options
 from bloomerp.field_types.lookups import TEXT_LOOKUPS
 
+DEFAULT_TEXT_ROWS = 8
+
 
 def choice_colors_option(application_field: ApplicationField) -> forms.Field:
     """Build editable mappings restricted to the field's current choice values."""
@@ -175,6 +177,49 @@ def char_widget(context: FieldContext) -> forms.Widget:
     return result
 
 
+def text_rows_option(application_field: ApplicationField) -> forms.IntegerField:
+    """Accept a positive number of visible editor rows."""
+    return forms.IntegerField(min_value=1)
+
+
+def include_toolbar_option(application_field: ApplicationField) -> forms.BooleanField:
+    """Let layout editors show or hide the formatting toolbar."""
+    return forms.BooleanField()
+
+
+def text_display_options(
+    application_field: ApplicationField,
+) -> tuple[FieldDisplayOption, ...]:
+    """Add height and toolbar settings to the common text field options."""
+    return (
+        *standard_display_options(application_field),
+        FieldDisplayOption(
+            id="rows",
+            label=_("Height (rows)"),
+            form_factory=text_rows_option,
+            default=DEFAULT_TEXT_ROWS,
+        ),
+        FieldDisplayOption(
+            id="include_toolbar",
+            label=_("Include toolbar"),
+            form_factory=include_toolbar_option,
+            default=True,
+        ),
+    )
+
+
+def text_widget(context: FieldContext) -> forms.Widget:
+    """Apply saved TextField display settings to the rich-text editor."""
+    try:
+        rows = int(str(context.layout_config.get("rows", DEFAULT_TEXT_ROWS)))
+    except ValueError:
+        rows = DEFAULT_TEXT_ROWS
+    attrs = {**context.attrs, "editor_rows": rows if rows > 0 else DEFAULT_TEXT_ROWS}
+    if "include_toolbar" in context.layout_config:
+        attrs["include_toolbar"] = context.layout_config["include_toolbar"]
+    return BloomerpTextEditorWidget(attrs=attrs)
+
+
 def render_choice_value(
     application_field: ApplicationField, instance: models.Model
 ) -> Any:
@@ -233,8 +278,8 @@ TEXT_FIELD = FieldTypeDefinition(
     label="Text Field",
     lookups=tuple(TEXT_LOOKUPS),
     construction=FieldConstruction(options=COMMON_FIELD_OPTIONS),
-    widget_factory=widget(BloomerpTextEditorWidget, attrs={}),
-    display_options=standard_display_options,
+    widget_factory=text_widget,
+    display_options=text_display_options,
 )
 EMAIL_FIELD = FieldTypeDefinition(
     id="EmailField",

@@ -12,7 +12,7 @@ from bloomerp.filters.parser import deserialize_filters
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
-from bloomerp.services.object_services import string_search_on_queryset
+from bloomerp.services.search_services import string_search_on_queryset
 
 
 def _get_detail_url(obj: Model) -> str:

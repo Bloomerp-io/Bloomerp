@@ -202,10 +202,6 @@ msgstr "Een rij in een collectie is vereist."
 msgid "A company or organization name."
 msgstr "Een bedrijfs- of organisatienaam."
 
-#: models/files/file_extraction.py:323
-msgid "A completed extraction needs a manifest."
-msgstr "Voor een voltooide extractie is een manifest nodig."
-
 # | msgid "Ready connections require credentials."
 #: models/communication/instant_messaging/im_identity.py:72
 msgid "A configured connection is required for this identity."
@@ -1834,13 +1830,13 @@ msgstr "Geannuleerd"
 #: bloomerp.aiapproval.status bloomerp.airun.status bloomerp.airunattempt.status
 #: bloomerp.aitoolcall.status bloomerp.calendarevent.cancelled
 #: bloomerp.conferenceparticipant.invitation_status bloomerp.conferencesession.status
-#: bloomerp.fileextraction.status bloomerp.signatureevent.event_type bloomerp.signaturerequest.status
+#: bloomerp.signatureevent.event_type bloomerp.signaturerequest.status
 #: bloomerp.todo.status bloomerp.workflowrun.status bloomerp.workflowrunstep.status
 #: models/automation/workflow_run.py:115 models/automation/workflow_run_step.py:10
 #: models/communication/conferencing/conference_participant.py:22
 #: models/communication/conferencing/conference_session.py:25
 #: models/document_signing/signature_event.py:26 models/document_signing/signature_request.py:188
-#: models/files/file_extraction.py:177 models/project_management/todo.py:55
+#: models/project_management/todo.py:55
 msgid "Cancelled"
 msgstr "Geannuleerd"
 
@@ -2332,7 +2328,7 @@ msgstr "Omleiding naar opmerkingdetails"
 #: bloomerp.conferencesession.comments bloomerp.conferencewebhookreceipt.comments
 #: bloomerp.documenttemplate.comments bloomerp.documenttemplateheader.comments
 #: bloomerp.documenttemplatestyling.comments bloomerp.emailaccount.comments
-#: bloomerp.emaildraft.comments bloomerp.fileextraction.comments bloomerp.filenode.comments
+#: bloomerp.emaildraft.comments bloomerp.filenode.comments
 #: bloomerp.filereference.comments bloomerp.form.comments bloomerp.formsubmission.comments
 #: bloomerp.imauthorization.comments bloomerp.imconnection.comments bloomerp.imconversation.comments
 #: bloomerp.imconversationactivity.comments bloomerp.imconversationparticipant.comments
@@ -3079,7 +3075,7 @@ msgstr "Maken"
 #: bloomerp.conferencesession.created_by bloomerp.conferencewebhookreceipt.created_by
 #: bloomerp.documenttemplate.created_by bloomerp.documenttemplateheader.created_by
 #: bloomerp.documenttemplatestyling.created_by bloomerp.emailaccount.created_by
-#: bloomerp.emaildraft.created_by bloomerp.fileextraction.created_by bloomerp.filenode.created_by
+#: bloomerp.emaildraft.created_by bloomerp.filenode.created_by
 #: bloomerp.filereference.created_by bloomerp.form.created_by bloomerp.formsubmission.created_by
 #: bloomerp.imauthorization.created_by bloomerp.imconnection.created_by
 #: bloomerp.imconversation.created_by bloomerp.imconversationactivity.created_by
@@ -3248,7 +3244,7 @@ msgstr "Datum/tijdveld"
 #: bloomerp.conferencesession.datetime_created bloomerp.conferencewebhookreceipt.datetime_created
 #: bloomerp.documenttemplate.datetime_created bloomerp.documenttemplateheader.datetime_created
 #: bloomerp.documenttemplatestyling.datetime_created bloomerp.emailaccount.datetime_created
-#: bloomerp.emaildraft.datetime_created bloomerp.fileextraction.datetime_created
+#: bloomerp.emaildraft.datetime_created
 #: bloomerp.filenode.datetime_created bloomerp.filereference.datetime_created
 #: bloomerp.form.datetime_created bloomerp.formsubmission.datetime_created
 #: bloomerp.imauthorization.datetime_created bloomerp.imconnection.datetime_created
@@ -3296,7 +3292,7 @@ msgstr "Datum/tijd ontvangen"
 #: bloomerp.conferencesession.datetime_updated bloomerp.conferencewebhookreceipt.datetime_updated
 #: bloomerp.documenttemplate.datetime_updated bloomerp.documenttemplateheader.datetime_updated
 #: bloomerp.documenttemplatestyling.datetime_updated bloomerp.emailaccount.datetime_updated
-#: bloomerp.emaildraft.datetime_updated bloomerp.fileextraction.datetime_updated
+#: bloomerp.emaildraft.datetime_updated
 #: bloomerp.filenode.datetime_updated bloomerp.filereference.datetime_updated
 #: bloomerp.form.datetime_updated bloomerp.formsubmission.datetime_updated
 #: bloomerp.imauthorization.datetime_updated bloomerp.imconnection.datetime_updated
@@ -4401,11 +4397,6 @@ msgstr "Initiële gegevens"
 msgid "Error"
 msgstr "Fout"
 
-# | msgid "Error"
-#: bloomerp.fileextraction.error_code models/files/file_extraction.py:205
-msgid "Error Code"
-msgstr "Foutcode"
-
 # | msgid "Event Type"
 # | msgid "Event ID"
 #: bloomerp.calendareventparticipant.event
@@ -4532,18 +4523,18 @@ msgid "Expected an attachment or rich-text field."
 msgstr "Een bijlage- of rich-textveld verwacht."
 
 # | msgid "Expires At"
-#: bloomerp.aiapproval.status bloomerp.fileextraction.status bloomerp.mcpconnection.status
+#: bloomerp.aiapproval.status bloomerp.mcpconnection.status
 #: bloomerp.signatureevent.event_type bloomerp.signaturerequest.status
 #: models/agents/mcp_connection.py:47 models/document_signing/signature_event.py:27
-#: models/document_signing/signature_request.py:189 models/files/file_extraction.py:176
+#: models/document_signing/signature_request.py:189
 msgid "Expired"
 msgstr "Verlopen"
 
 #: bloomerp.aiapproval.expires_at bloomerp.aiconversationmemory.expires_at bloomerp.apikey.expires_at
-#: bloomerp.emailauthorizationrequest.expires_at bloomerp.fileextraction.expires_at
+#: bloomerp.emailauthorizationrequest.expires_at
 #: bloomerp.imauthorization.expires_at bloomerp.mcpconnection.expires_at
 #: bloomerp.oauthaccesstoken.expires_at bloomerp.oauthauthorizationcode.expires_at
-#: models/api/api_key.py:139 models/files/file_extraction.py:202
+#: models/api/api_key.py:139
 msgid "Expires At"
 msgstr "Vervalt op"
 
@@ -4613,12 +4604,11 @@ msgstr "Veld extraheren"
 
 #: bloomerp.airun.status bloomerp.airunattempt.status bloomerp.aitoolcall.status
 #: bloomerp.conferencesession.status bloomerp.conferencewebhookreceipt.status
-#: bloomerp.fileextraction.status bloomerp.immessage.status bloomerp.phonecall.status
+#: bloomerp.immessage.status bloomerp.phonecall.status
 #: bloomerp.workflowrun.status bloomerp.workflowrunstep.status models/automation/workflow_run.py:114
 #: models/automation/workflow_run_step.py:9 models/communication/conferencing/conference_session.py:26
 #: models/communication/conferencing/conference_webhook_receipt.py:16
 #: models/communication/instant_messaging/im_message.py:54 models/communication/voip/phone_call.py:69
-#: models/files/file_extraction.py:174
 msgid "Failed"
 msgstr "Mislukt"
 
@@ -4785,17 +4775,6 @@ msgstr "Bestand"
 msgid "File Browser"
 msgstr "Bestandsbrowser"
 
-# | msgctxt "bloomerp:route:name"
-# | msgid "Review Submission"
-#: bloomerp.fileextraction models/files/file_extraction.py:219
-msgid "File Extraction"
-msgstr "Bestandsextractie"
-
-# | msgid "Column actions"
-#: bloomerp.fileextraction models/files/file_extraction.py:220
-msgid "File Extractions"
-msgstr "Bestandsextracties"
-
 #: bloomerp.applicationfield.field_type
 msgid "File Field"
 msgstr "Bestandsveld"
@@ -4864,7 +4843,7 @@ msgstr "Bestandsnaam"
 #: bloomerp.conferenceparticipant.files bloomerp.conferenceroom.files bloomerp.conferencesession.files
 #: bloomerp.conferencewebhookreceipt.files bloomerp.documenttemplate.files
 #: bloomerp.documenttemplateheader.files bloomerp.documenttemplatestyling.files
-#: bloomerp.emailaccount.files bloomerp.emaildraft.files bloomerp.fileextraction.files
+#: bloomerp.emailaccount.files bloomerp.emaildraft.files
 #: bloomerp.filenode.files bloomerp.filereference.files bloomerp.form.files
 #: bloomerp.formsubmission.files bloomerp.imauthorization.files bloomerp.imconnection.files
 #: bloomerp.imconversation.files bloomerp.imconversationactivity.files
@@ -4938,8 +4917,8 @@ msgstr "Zoek toegankelijke records met filters en kopieer één waarde of vul ri
 
 # | msgid "Finished"
 #: bloomerp.airun.finished_at bloomerp.airunattempt.finished_at bloomerp.aitoolcall.finished_at
-#: bloomerp.fileextraction.finished_at bloomerp.workflowrun.finished_at
-#: models/automation/workflow_run.py:432 models/files/file_extraction.py:197
+#: bloomerp.workflowrun.finished_at
+#: models/automation/workflow_run.py:432
 msgid "Finished At"
 msgstr "Voltooid op"
 
@@ -5392,7 +5371,7 @@ msgstr "Ik ga ermee akkoord dit document elektronisch te ondertekenen."
 #: bloomerp.conferenceattendance.id bloomerp.conferenceparticipant.id bloomerp.conferenceroom.id
 #: bloomerp.conferencesession.id bloomerp.conferencewebhookreceipt.id bloomerp.documenttemplate.id
 #: bloomerp.documenttemplateheader.id bloomerp.documenttemplatestyling.id bloomerp.emailaccount.id
-#: bloomerp.emaildraft.id bloomerp.fieldpolicy.id bloomerp.fileextraction.id bloomerp.filenode.id
+#: bloomerp.emaildraft.id bloomerp.fieldpolicy.id bloomerp.filenode.id
 #: bloomerp.filereference.id bloomerp.form.id bloomerp.formsubmission.id bloomerp.imauthorization.id
 #: bloomerp.imconnection.id bloomerp.imconversation.id bloomerp.imconversationactivity.id
 #: bloomerp.imconversationparticipant.id bloomerp.imendpoint.id bloomerp.imidentity.id
@@ -5796,7 +5775,6 @@ msgstr "Ongeldig verzoek voor gedragsuitvoering."
 msgid "Invalid calendar selection."
 msgstr "Ongeldige agendaselectie."
 
-# | msgid "Invalid file extraction manifest."
 #: form_behaviors/execution.py:228
 msgid "Invalid collection row columns."
 msgstr "Ongeldige kolommen voor collectierij."
@@ -5851,10 +5829,6 @@ msgstr "Ongeldig e-mailsjabloon: %(error)s"
 #: views/access_control/create_policy.py:290
 msgid "Invalid field policy"
 msgstr "Ongeldig veldbeleid"
-
-#: models/files/file_extraction.py:116
-msgid "Invalid file extraction manifest."
-msgstr "Ongeldig manifest voor bestandsextractie."
 
 # | msgid "Invalid row policy field"
 #: models/filters/filter.py:16
@@ -6605,10 +6579,6 @@ msgstr "Beheer je agents en houd het tokengebruik en de uitvoeringen bij."
 msgctxt "bloomerp:module:description"
 msgid "Manage your files."
 msgstr "Beheer je bestanden."
-
-#: bloomerp.fileextraction.manifest models/files/file_extraction.py:213
-msgid "Manifest"
-msgstr "Manifest"
 
 #: bloomerp.applicationfield.field_type
 msgid "Many To Many Field"
@@ -7530,7 +7500,7 @@ msgstr "Object-ID"
 #: bloomerp.conferencewebhookreceipt.object_labels bloomerp.documenttemplate.object_labels
 #: bloomerp.documenttemplateheader.object_labels bloomerp.documenttemplatestyling.object_labels
 #: bloomerp.emailaccount.object_labels bloomerp.emaildraft.object_labels
-#: bloomerp.fileextraction.object_labels bloomerp.filenode.object_labels
+#: bloomerp.filenode.object_labels
 #: bloomerp.filereference.object_labels bloomerp.form.object_labels
 #: bloomerp.formsubmission.object_labels bloomerp.imauthorization.object_labels
 #: bloomerp.imconnection.object_labels bloomerp.imconversation.object_labels
@@ -8248,7 +8218,7 @@ msgstr "Draaitabel"
 #: bloomerp.conferencesession.pk bloomerp.conferencewebhookreceipt.pk bloomerp.documenttemplate.pk
 #: bloomerp.documenttemplateheader.pk bloomerp.documenttemplatestyling.pk bloomerp.emailaccount.pk
 #: bloomerp.emailauthorizationrequest.pk bloomerp.emaildraft.pk bloomerp.fieldpolicy.pk
-#: bloomerp.fileextraction.pk bloomerp.filenode.pk bloomerp.filereference.pk bloomerp.form.pk
+#: bloomerp.filenode.pk bloomerp.filereference.pk bloomerp.form.pk
 #: bloomerp.formsubmission.pk bloomerp.imauthorization.pk bloomerp.imconnection.pk
 #: bloomerp.imconversation.pk bloomerp.imconversationactivity.pk bloomerp.imconversationparticipant.pk
 #: bloomerp.imendpoint.pk bloomerp.imidentity.pk bloomerp.imidentitysource.pk bloomerp.immessage.pk
@@ -8785,9 +8755,9 @@ msgctxt "bloomerp:route:description"
 msgid "Query your data using SQL"
 msgstr "Doorzoek uw gegevens met SQL"
 
-#: bloomerp.airun.status bloomerp.fileextraction.status bloomerp.phonecall.status
+#: bloomerp.airun.status bloomerp.phonecall.status
 #: bloomerp.workflowrun.status models/automation/workflow_run.py:110
-#: models/communication/voip/phone_call.py:62 models/files/file_extraction.py:171
+#: models/communication/voip/phone_call.py:62
 #: templates/cotton/features/agent/body.html:14
 msgid "Queued"
 msgstr "In de wachtrij"
@@ -9126,7 +9096,7 @@ msgstr "Time-out van verzoek (seconden)"
 msgid "Request title"
 msgstr "Titel van gebeurtenis"
 
-#: bloomerp.fileextraction.requested_by bloomerp.todo.requested_by models/files/file_extraction.py:188
+#: bloomerp.todo.requested_by
 #: models/project_management/todo.py:357
 msgid "Requested By"
 msgstr "Aangevraagd door"
@@ -9232,7 +9202,7 @@ msgstr "Antwoord gestopt."
 msgid "Restore"
 msgstr "Herstellen"
 
-#: bloomerp.aitoolcall.result bloomerp.fileextraction.result models/files/file_extraction.py:211
+#: bloomerp.aitoolcall.result
 msgid "Result"
 msgstr "Resultaat"
 
@@ -9482,8 +9452,8 @@ msgid "Run workflow"
 msgstr "Workflow uitvoeren"
 
 #: bloomerp.airun.status bloomerp.airunattempt.status bloomerp.aitoolcall.status
-#: bloomerp.fileextraction.status bloomerp.workflowrun.status models/automation/workflow_run.py:111
-#: models/files/file_extraction.py:172 templates/cotton/features/agent/body.html:13
+#: bloomerp.workflowrun.status models/automation/workflow_run.py:111
+#: templates/cotton/features/agent/body.html:13
 msgid "Running"
 msgstr "Wordt uitgevoerd"
 
@@ -10812,11 +10782,6 @@ msgstr "Bronagenda"
 msgid "Source Content Type"
 msgstr "Broninhoudstype"
 
-# | msgid "Source"
-#: bloomerp.fileextraction.source_file models/files/file_extraction.py:183
-msgid "Source File"
-msgstr "Bronbestand"
-
 #: bloomerp.inboxitem.source_model
 msgid "Source Model"
 msgstr "Bronmodel"
@@ -10953,11 +10918,6 @@ msgid "Start Date"
 msgstr "Startdatum"
 
 # | msgid "Start Date"
-#: bloomerp.fileextraction.start_deadline models/files/file_extraction.py:199
-msgid "Start Deadline"
-msgstr "Startdeadline"
-
-# | msgid "Start Date"
 #: bloomerp.workflowrun.start_node models/automation/workflow_run.py:441
 msgid "Start Node"
 msgstr "Startknooppunt"
@@ -11034,9 +10994,8 @@ msgid "Start writing…"
 msgstr "Vergadering starten"
 
 # | msgid "Start Date"
-#: bloomerp.airunattempt.started_at bloomerp.aitoolcall.started_at bloomerp.fileextraction.started_at
+#: bloomerp.airunattempt.started_at bloomerp.aitoolcall.started_at
 #: bloomerp.workflowrun.started_at models/automation/workflow_run.py:426
-#: models/files/file_extraction.py:196
 msgid "Started At"
 msgstr "Gestart op"
 
@@ -11070,7 +11029,7 @@ msgstr "Status"
 #: bloomerp.aiapproval.status bloomerp.aiconversation.status bloomerp.aimessage.status
 #: bloomerp.airun.status bloomerp.airunattempt.status bloomerp.aitoolcall.status
 #: bloomerp.conferenceadmission.status bloomerp.conferencesession.status bloomerp.emailaccount.status
-#: bloomerp.fileextraction.status bloomerp.imconnection.status bloomerp.imconversation.status
+#: bloomerp.imconnection.status bloomerp.imconversation.status
 #: bloomerp.immessage.status bloomerp.initiative.status bloomerp.mcpconnection.status
 #: bloomerp.phonecall.status bloomerp.phonecallevent.status bloomerp.signaturerecipient.status
 #: bloomerp.signaturerequest.status bloomerp.todo.status bloomerp.voipconnection.status
@@ -11079,7 +11038,7 @@ msgstr "Status"
 #: models/communication/email_account.py:158 models/communication/voip/phone_call.py:57
 #: models/communication/voip/phone_call_event.py:22 models/communication/voip/voip_connection.py:125
 #: models/document_signing/signature_recipient.py:52 models/document_signing/signature_request.py:207
-#: models/files/file_extraction.py:194 models/project_management/initiative.py:159
+#: models/project_management/initiative.py:159
 #: models/project_management/todo.py:405
 msgid "Status"
 msgstr "Status"
@@ -11179,8 +11138,7 @@ msgstr "Een nieuw formulier indienen"
 msgid "Submitted at"
 msgstr "Ingediend op"
 
-#: bloomerp.fileextraction.status bloomerp.workflowrun.status models/automation/workflow_run.py:113
-#: models/files/file_extraction.py:173
+#: bloomerp.workflowrun.status models/automation/workflow_run.py:113
 msgid "Succeeded"
 msgstr "Geslaagd"
 
@@ -12646,11 +12604,6 @@ msgstr "Unaire operatoren kunnen niet worden toegepast op een datum of datum/tij
 msgid "Unassigned"
 msgstr "Niet toegewezen"
 
-# | msgid "Free Variables"
-#: bloomerp.fileextraction.status models/files/file_extraction.py:175
-msgid "Unavailable"
-msgstr "Niet beschikbaar"
-
 # | msgctxt "bloomerp:route:description"
 # | msgid "Available Modules"
 # | msgid "Unavailable tool: %(name)s"
@@ -12814,7 +12767,7 @@ msgstr "Deze tegel bijwerken"
 #: bloomerp.conferencesession.updated_by bloomerp.conferencewebhookreceipt.updated_by
 #: bloomerp.documenttemplate.updated_by bloomerp.documenttemplateheader.updated_by
 #: bloomerp.documenttemplatestyling.updated_by bloomerp.emailaccount.updated_by
-#: bloomerp.emaildraft.updated_by bloomerp.fileextraction.updated_by bloomerp.filenode.updated_by
+#: bloomerp.emaildraft.updated_by bloomerp.filenode.updated_by
 #: bloomerp.filereference.updated_by bloomerp.form.updated_by bloomerp.formsubmission.updated_by
 #: bloomerp.imauthorization.updated_by bloomerp.imconnection.updated_by
 #: bloomerp.imconversation.updated_by bloomerp.imconversationactivity.updated_by

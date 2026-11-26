@@ -1,0 +1,19 @@
+{% load bloomerp %}
+
+<tr data-file-id="{{ file.pk }}" {% dataview_record_attrs file dataview_action_context row_index %}>
+    <td data-dataview-selection-column><c-features.dataviews.checkbox object_id="{{ file.pk }}" :label="file.name" /></td>
+    <td><i class="fa fa-file mr-2" aria-hidden="true"></i>{{ file.name }}</td>
+    <td>{% for owner in file.browser_owners %}
+        {% if not forloop.first %}, {% endif %}
+        {% if owner.url %}<a href="{{ owner.url }}" hx-get="{{ owner.url }}"
+            hx-target="{{ HTMX_MAIN_CONTENT_DIV_ID|default:'#main-content' }}" hx-swap="innerHTML" hx-push-url="true"
+            data-preview-object-id="{{ owner.object_id }}" data-preview-content-type-id="{{ owner.content_type_id }}"
+            class="link">{{ owner.label }}{% if owner.field_label %} ({{ owner.field_label }}){% endif %}</a>
+        {% else %}{{ owner.label }}{% endif %}
+    {% endfor %}</td>
+    <td>{% if file.meta.size != None %}{{ file.meta.size|filesizeformat }}{% else %}—{% endif %}</td>
+    <td>{{ file.datetime_created }}</td>
+    <td>{% for action in file_actions %}
+        {% render_object_action action=action object=file request=request content_type_id=file_content_type_id dataview=dataview_action_context %}
+    {% endfor %}</td>
+</tr>

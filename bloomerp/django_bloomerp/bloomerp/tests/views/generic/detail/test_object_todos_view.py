@@ -14,10 +14,10 @@ class TestObjectTodosView(BloomerpDetailViewTestCase):
     model = None
 
     def has_related_todo_filters(self, response: HttpResponse) -> bool:
-        """Check that the dataview uses valid filters for this customer."""
-        return response.context["filters"] == {
+        """Check that the loader retains both related-record query values."""
+        return response.context["dataview_query_params"] == {
             "object_id": str(self.customer.pk),
-            "content_type": ContentType.objects.get_for_model(self.CustomerModel).pk,
+            "content_type": str(ContentType.objects.get_for_model(self.CustomerModel).pk),
         }
 
     def get_test_scenarios(self) -> list[RequestScenario]:

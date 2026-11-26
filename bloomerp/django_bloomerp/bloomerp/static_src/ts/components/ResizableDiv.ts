@@ -21,6 +21,7 @@ function parseWidth(value: string | undefined): string {
 
 export default class ResizableDiv extends BaseComponent {
     private handle: HTMLElement | null = null;
+    private toggleButton: HTMLButtonElement | null = null;
     private unregisterShortcut: (() => void) | null = null;
     private shortcutHint: HTMLElement | null = null;
     private expandedWidth = "";
@@ -38,10 +39,17 @@ export default class ResizableDiv extends BaseComponent {
     private readonly cleanupHandler = (event: Event): void => {
         if (event.target === this.element) this.destroy();
     };
+    /** Turn off width transitions after an explicit toggle has settled. */
+    private readonly onWidthTransitionEnd = (event: TransitionEvent): void => {
+        if (event.target === this.element && event.propertyName === "width") {
+            this.element?.removeAttribute("data-animate-width");
+        }
+    };
 
     /** Restore configured sizing and persistence, then bind this panel's resize interaction. */
     public initialize(): void {
         if (!this.element) return;
+        this.element.removeAttribute("data-animate-width");
 
         const id = this.element.dataset.id?.trim() || this.element.id || "default";
         this.resizeFrom = this.element.dataset.resizeFrom === "right" ? "right" : "left";
@@ -51,16 +59,18 @@ export default class ResizableDiv extends BaseComponent {
         const storedWidth = this.element.dataset.storage === "local"
             ? localWidth !== null && Number.isFinite(localWidth) ? `${localWidth}px` : undefined
             : getCookie(this.storageKey);
-        this.currentWidth = parseWidth(storedWidth || this.element.dataset.startWidth);
+        const defaultWidth = this.element.dataset.defaultClosed === "true" ? "0px" : this.element.dataset.startWidth;
+        this.currentWidth = parseWidth(storedWidth || defaultWidth);
         if (this.element.dataset.forceOpen === "true" && Number.parseFloat(this.currentWidth) === 0) {
             this.currentWidth = parseWidth(this.element.dataset.startWidth);
             this.saveWidth(this.currentWidth);
         }
         if (this.element.dataset.forceClose === "true" && this.element.dataset.forceOpen !== "true") {
-            this.expandedWidth = this.currentWidth;
+            if (Number.parseFloat(this.currentWidth) > MIN_WIDTH) this.expandedWidth = this.currentWidth;
             this.currentWidth = "0px";
         }
 
+        this.bindToggleButton();
         this.applyWidth(this.currentWidth);
         this.element.style.minWidth = `${this.numberOption("minWidth", MIN_WIDTH)}px`;
 
@@ -82,6 +92,11 @@ export default class ResizableDiv extends BaseComponent {
             event.stopPropagation();
             const startX = event.clientX;
             const startWidthPx = this.element.getBoundingClientRect().width;
+            const previousExpandedWidth = this.expandedWidth;
+            if (this.element.hasAttribute("data-animate-width")) {
+                this.element.removeAttribute("data-animate-width");
+                this.applyWidth(`${startWidthPx}px`);
+            }
 
             /** Follow the pointer using the configured resize edge and sizing limits. */
             const onMove = (moveEvent: PointerEvent): void => {
@@ -97,7 +112,9 @@ export default class ResizableDiv extends BaseComponent {
             /** Persist the final width and release all drag resources. */
             const onUp = (): void => {
                 if (this.element) {
-                    const width = `${Math.round(this.clampWidth(this.element.getBoundingClientRect().width))}px`;
+                    const widthPx = Math.round(this.clampWidth(this.element.getBoundingClientRect().width));
+                    const width = `${widthPx}px`;
+                    if (widthPx === MIN_WIDTH) this.expandedWidth = previousExpandedWidth;
                     this.applyWidth(width);
                     this.saveWidth(width);
                 }
@@ -119,13 +136,17 @@ export default class ResizableDiv extends BaseComponent {
         };
 
         this.element.addEventListener("pointerdown", this.pointerDownHandler);
+        this.element.addEventListener("transitionend", this.onWidthTransitionEnd);
         this.element.addEventListener("htmx:beforeCleanupElement", this.cleanupHandler);
         document.body.addEventListener("htmx:afterSettle", this.settleHandler);
     }
 
-    /** Release resize listeners and the optional panel toggle shortcut. */
+    /** Release resize listeners and the optional toggle controls. */
     public destroy(): void {
         this.dragCleanup?.();
+        this.toggleButton?.removeEventListener("click", this.toggleCollapsedWidth);
+        this.toggleButton = null;
+        this.element?.removeEventListener("transitionend", this.onWidthTransitionEnd);
         this.element?.removeEventListener("htmx:beforeCleanupElement", this.cleanupHandler);
         document.body.removeEventListener("htmx:afterSettle", this.settleHandler);
         this.unregisterShortcut?.();
@@ -158,6 +179,7 @@ export default class ResizableDiv extends BaseComponent {
 
     /** Reconcile layout when the panel or its descendants have changed. */
     public onAfterSwap(): void {
+        this.bindToggleButton();
         this.reapplyAfterLayout();
     }
 
@@ -172,6 +194,7 @@ export default class ResizableDiv extends BaseComponent {
             this.element.style.width = "";
             this.element.style.flexBasis = "";
             this.element.style.maxWidth = "";
+            this.updateToggleButton(true, false);
             return;
         }
 
@@ -186,6 +209,40 @@ export default class ResizableDiv extends BaseComponent {
         this.element.style.width = nextWidth;
         this.element.style.flexBasis = nextWidth;
         this.element.style.maxWidth = nextWidth;
+        this.updateToggleButton(
+            Number.parseFloat(nextWidth) !== MIN_WIDTH,
+            this.numberOption("minWidth", MIN_WIDTH) === MIN_WIDTH,
+        );
+    }
+
+    /** Bind the external panel toggle, including after an HTMX swap. */
+    private bindToggleButton(): void {
+        if (!this.element?.id) return;
+
+        const button = this.getResizeContainer()?.querySelector<HTMLButtonElement>(
+            `[data-resizable-div-toggle][aria-controls="${CSS.escape(this.element.id)}"]`,
+        ) ?? null;
+        if (button === this.toggleButton) return;
+
+        this.toggleButton?.removeEventListener("click", this.toggleCollapsedWidth);
+        this.toggleButton = button;
+        button?.addEventListener("click", this.toggleCollapsedWidth);
+    }
+
+    /** Sync the toolbar toggle and keep collapsed content out of keyboard navigation. */
+    private updateToggleButton(expanded: boolean, canToggle: boolean): void {
+        const button = this.toggleButton;
+        if (!button) return;
+
+        button.hidden = !canToggle;
+        button.setAttribute("aria-expanded", String(expanded));
+        const label = expanded ? button.dataset.collapseLabel : button.dataset.expandLabel;
+        if (label) button.setAttribute("aria-label", label);
+        const panel = this.element?.querySelector<HTMLElement>(PANEL_SELECTOR);
+        if (!expanded && panel?.contains(document.activeElement)) {
+            button.focus({ preventScroll: true });
+        }
+        panel?.toggleAttribute("inert", !expanded);
     }
 
     private reapplyAfterLayout(): void {
@@ -204,6 +261,7 @@ export default class ResizableDiv extends BaseComponent {
         const containerWidth = container?.getBoundingClientRect().width || window.innerWidth;
         const minWidth = this.numberOption("minWidth", MIN_WIDTH);
         const maxWidth = Math.max(minWidth, Math.min(
+            this.numberOption("maxWidth", Infinity),
             containerWidth * this.numberOption("maxWidthRatio", MAX_WIDTH_RATIO),
             containerWidth - this.numberOption("minRemainingWidth", 0),
         ));
@@ -294,19 +352,24 @@ export default class ResizableDiv extends BaseComponent {
         return this.element?.dataset.fitToMainBottom === "true";
     }
 
-    /** Collapse an eligible panel or restore its most recent expanded width. */
-    private toggleCollapsedWidth(): void {
+    /** Switch between zero width and the last expanded width and animate toolbar-controlled panels. */
+    private readonly toggleCollapsedWidth = (): void => {
         if (!this.element) return;
 
         if (!this.isResizableLayout() || this.numberOption("minWidth", MIN_WIDTH) > 0) return;
-        const currentWidthPx = this.clampWidth(this.element.getBoundingClientRect().width);
-        const nextWidth = Math.round(currentWidthPx) <= MIN_WIDTH
+        const width = this.toggleButton
+            ? Number.parseFloat(this.currentWidth)
+            : Math.round(this.clampWidth(this.element.getBoundingClientRect().width));
+        const nextWidth = width <= MIN_WIDTH
             ? this.expandedWidth || parseWidth(this.element.dataset.startWidth)
             : `${MIN_WIDTH}px`;
 
+        if (this.toggleButton && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+            this.element.setAttribute("data-animate-width", "");
+        }
         this.applyWidth(nextWidth);
         this.saveWidth(nextWidth);
-    }
+    };
 
     /** Register a scoped toggle and advertise it on the panel's resize handle. */
     private setupToggleShortcut(): void {
@@ -327,7 +390,7 @@ export default class ResizableDiv extends BaseComponent {
             shortcut,
             showHint: this.showShortcutHint,
             hideHint: this.hideShortcutHint,
-            performAction: this.toggleCollapsedWidth.bind(this),
+            performAction: this.toggleCollapsedWidth,
         });
     }
 
