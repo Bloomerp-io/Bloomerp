@@ -1,4 +1,5 @@
 """Host-only admission decisions shared by all conference origins."""
+# SHOULD_API
 
 from uuid import UUID
 

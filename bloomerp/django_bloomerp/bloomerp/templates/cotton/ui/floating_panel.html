@@ -1,13 +1,16 @@
 {% load i18n %}
 {% comment %}
 Shared chat shell. Page mode places the sidebar slot in a persistent ResizableDiv;
-floating mode displays it inline and supplies the footer launcher and window controls.
+floating mode displays it inline and supplies the footer launcher, its shortcut, and window controls.
 {% endcomment %}
-<c-vars panel_id="" title="" logo="" launcher_label="" close_label="" storage_key="" page_mode="" />
+<c-vars panel_id="" title="" logo="" launcher_label="" launcher_shortcut="" close_label="" storage_key="" page_mode="" />
 {% if not page_mode %}
-<button type="button" data-floating-panel-action="toggle" data-floating-panel-launcher
-    aria-controls="{{ panel_id }}" aria-expanded="false" aria-label="{{ launcher_label }}"
-    class="workspace-tool rounded-lg">{{ launcher }}</button>
+<c-ui.shortcut_tooltip :shortcut="launcher_shortcut">
+    <button type="button" data-floating-panel-action="toggle" data-floating-panel-launcher
+        data-tutorial-anchor="{{ panel_id }}-launcher"
+        aria-controls="{{ panel_id }}" aria-expanded="false" aria-label="{{ launcher_label }}"
+        class="workspace-tool rounded-lg">{{ launcher }}</button>
+</c-ui.shortcut_tooltip>
 {% endif %}
 <section id="{{ panel_id }}" data-floating-panel data-launcher-storage-key="{{ storage_key }}" {% if not page_mode %}hidden{% endif %} aria-label="{{ title }}"
     class="{% if page_mode %}chat-workspace{% else %}workspace-tool-panel fixed top-3 right-3 z-[85] flex w-[calc(100%-1.5rem)] max-w-[420px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-zinc-700 dark:bg-zinc-900{% endif %} {{ class }}" {{ attrs }}>
@@ -29,9 +32,9 @@ floating mode displays it inline and supplies the footer launcher and window con
             {{ header_controls }}
             {% if not page_mode %}
             <button type="button" data-floating-panel-action="fullscreen" aria-label="{% translate 'Open fullscreen' %}" title="{% translate 'Open fullscreen' %}"
-                class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-expand" aria-hidden="true"></i></button>
+                class="icon-button"><i class="fa-solid fa-expand" aria-hidden="true"></i></button>
             <button type="button" data-floating-panel-action="close" aria-label="{{ close_label }}"
-                class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                class="icon-button"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
             {% endif %}
         </div>
     </header>

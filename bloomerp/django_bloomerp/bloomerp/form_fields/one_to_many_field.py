@@ -6,14 +6,18 @@ from dataclasses import field as dataclass_field
 from typing import TYPE_CHECKING, Any
 
 from django import forms
-from django.core.exceptions import ValidationError
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.core.files.uploadedfile import UploadedFile
-from django.db import models
+from django.db import models, transaction
+from django.utils.translation import gettext as _
 
 from bloomerp.form_fields.structured_value import (
     StructuredFormValue,
     serialize_form_value,
 )
+from bloomerp.permissions.definition import BloomerpPermission
+from bloomerp.permissions.manager import UserPolicyManager, field_access_annotation_name
 
 if TYPE_CHECKING:
     from bloomerp.models.application_field import ApplicationField
@@ -21,6 +25,7 @@ if TYPE_CHECKING:
 
 ROW_ID_KEY = "id"
 ROW_DELETE_KEY = "DELETE"
+ROW_INSERT_KEY = "INSERT"
 
 
 @dataclass
@@ -30,13 +35,17 @@ class OneToManyCleanedData(StructuredFormValue):
     application_field: ApplicationField
     to_save: list[models.Model] = dataclass_field(default_factory=list)
     to_delete: list[models.Model] = dataclass_field(default_factory=list)
+    to_insert: list[models.Model] = dataclass_field(default_factory=list)
+    insertion_user: AbstractBaseUser | None = dataclass_field(default=None, repr=False)
     _forms: list[forms.ModelForm] = dataclass_field(default_factory=list, repr=False)
     _saved: bool = dataclass_field(default=False, init=False, repr=False)
 
-    def save(self, parent: models.Model, *, user=None) -> None:
+    def save(self, parent: models.Model, *, user: AbstractBaseUser | None = None) -> None:
         """Persist the validated changes after the parent object has been saved."""
         if self._saved:
             return
+        if self.to_insert:
+            self._save_insertions(parent)
         for instance in self.to_delete:
             instance.delete()
 
@@ -47,7 +56,31 @@ class OneToManyCleanedData(StructuredFormValue):
             child_form.save_m2m()
         self._saved = True
 
+    def _save_insertions(self, parent: models.Model) -> None:
+        """Link authorized rows while rejecting records claimed since validation."""
+        relation = OneToManyField.get_insert_relation(self.application_field)
+        queryset = OneToManyField.get_insertable_queryset(self.application_field, self.insertion_user)
+        manager = UserPolicyManager(self.insertion_user)
+        if relation is None or queryset is None:
+            raise ValidationError(_("Existing records cannot be inserted here."))
+        with transaction.atomic():
+            available = queryset.filter(pk__in=[child.pk for child in self.to_insert])
+            children = list(
+                queryset.model._base_manager.filter(
+                    pk__in=available.values("pk"), **{f"{relation.name}__isnull": True},
+                ).order_by("pk").select_for_update()
+            )
+            if len(children) != len(self.to_insert):
+                raise ValidationError(_("A selected record is no longer available."))
+            for child in children:
+                setattr(child, relation.name, parent)
+                relation.clean(getattr(child, relation.attname), child)
+                if not manager.candidate_matches_row_policies(child, BloomerpPermission.CHANGE):
+                    raise ValidationError(_("You cannot link a selected record to this object."))
+                child.save(update_fields=[relation.name])
+
     def serialize(self) -> list[dict[str, Any]]:
+        """Serialize pending inserts alongside edited, created, and deleted rows."""
         rows = []
         for child_form, instance in zip(self._forms, self.to_save):
             row = {
@@ -67,6 +100,7 @@ class OneToManyCleanedData(StructuredFormValue):
             }
             for instance in self.to_delete
         )
+        rows.extend({ROW_ID_KEY: str(instance.pk), ROW_INSERT_KEY: True} for instance in self.to_insert)
         return rows
 
 class OneToManyField(forms.Field):
@@ -86,9 +120,58 @@ class OneToManyField(forms.Field):
         self.parent_model = application_field.get_model()
         self.parent_instance: models.Model | None = None
         self.parent_field_name = self._resolve_parent_field_name()
+        self.insertion_user: AbstractBaseUser | None = None
 
     def bind_parent(self, instance: models.Model | None) -> None:
+        """Bind ordinary inline edits to the owning record."""
         self.parent_instance = instance
+
+    def enable_existing_insertion(self, user: AbstractBaseUser) -> None:
+        """Enable insertion for an authenticated model CRUD form and its widget."""
+        if user.is_authenticated:
+            self.insertion_user = user
+            self.widget.insertion_user = user
+
+    @staticmethod
+    def get_insert_relation(application_field: ApplicationField) -> models.ForeignKey | None:
+        """Resolve the editable nullable foreign key behind an inline relation."""
+        try:
+            reverse_relation = application_field._get_model_field()
+        except (AttributeError, FieldDoesNotExist):
+            return None
+        relation = getattr(reverse_relation, "field", None)
+        if (
+            isinstance(reverse_relation, models.ManyToOneRel)
+            and isinstance(relation, models.ForeignKey)
+            and relation.null
+            and relation.editable
+        ):
+            return relation
+        return None
+
+    @classmethod
+    def get_insertable_queryset(
+        cls, application_field: ApplicationField, user: AbstractBaseUser | None,
+    ) -> models.QuerySet | None:
+        """Scope insertion to unassigned rows the viewer can read and relink."""
+        from bloomerp.models.application_field import ApplicationField
+
+        relation = cls.get_insert_relation(application_field)
+        if relation is None or user is None or not user.is_authenticated:
+            return None
+        child_model = relation.model
+        link_field = ApplicationField.get_by_field(child_model, relation.name)
+        if link_field is None:
+            return None
+        manager = UserPolicyManager(user)
+        visible = manager.get_queryset(child_model, BloomerpPermission.VIEW)
+        changeable = manager.get_queryset(child_model, BloomerpPermission.CHANGE).filter(
+            pk__in=visible.values("pk"),
+            **{f"{relation.name}__isnull": True},
+        )
+        return manager.annotate_field_permissions(
+            changeable, [link_field], BloomerpPermission.CHANGE,
+        ).filter(**{field_access_annotation_name(link_field): True})
 
     def clean(self, value: Any) -> OneToManyCleanedData:
         """Validate inline rows with repeated selections and separate child-form uploads."""
@@ -103,7 +186,10 @@ class OneToManyField(forms.Field):
             self.related_model,
             fields=child_fields,
         )
-        result = OneToManyCleanedData(application_field=self.application_field)
+        result = OneToManyCleanedData(
+            application_field=self.application_field, insertion_user=self.insertion_user,
+        )
+        inserted_ids: set[object] = set()
         errors: list[ValidationError] = []
 
         for row_number, row in enumerate(rows, start=1):
@@ -111,6 +197,18 @@ class OneToManyField(forms.Field):
                 errors.append(ValidationError(f"Row {row_number}: invalid row data."))
                 continue
             if self._is_blank_row(row):
+                continue
+
+            if self._is_truthy(row.get(ROW_INSERT_KEY)):
+                try:
+                    instance = self._get_insertable_instance(row)
+                    if instance.pk in inserted_ids:
+                        raise ValidationError(_("This record is already in the form."))
+                except ValidationError as exc:
+                    errors.append(ValidationError(f"Row {row_number}: {exc.message}"))
+                    continue
+                inserted_ids.add(instance.pk)
+                result.to_insert.append(instance)
                 continue
 
             try:
@@ -147,6 +245,16 @@ class OneToManyField(forms.Field):
         if errors:
             raise ValidationError(errors)
         return result
+
+    def _get_insertable_instance(self, row: dict[str, Any]) -> models.Model:
+        """Reject forged or stale insertions without applying any submitted child values."""
+        queryset = self.get_insertable_queryset(self.application_field, self.insertion_user)
+        if queryset is None or self._is_truthy(row.get(ROW_DELETE_KEY)):
+            raise ValidationError(_("Existing records cannot be inserted here."))
+        try:
+            return queryset.get(pk=row.get(ROW_ID_KEY))
+        except (queryset.model.DoesNotExist, ValidationError, ValueError, TypeError):
+            raise ValidationError(_("A selected record is no longer available."))
 
     @staticmethod
     def _row_form_data(

@@ -347,12 +347,25 @@ endpoint. Its URL includes `preference_id`, so embedded and shared dataviews do
 not accidentally dispatch through the viewer's globally selected preference.
 Shared preferences are resolved through the viewer's available preferences and
 do not grant permission to manage the source preference. Explicitly embedded
-preferences receive a short-lived, user-bound signed operation context so a
-shared container can keep operating without separately sharing its preference.
-The signed context grants no model, row, or field permissions. Return the
+preferences are authorized in the short-lived, session-bound request context
+supplied by the container. `X-Bloomerp-Context` carries its ID on subsequent
+requests and authorizes use of the preference for renderer operations. Return the
 superclass response for unknown actions. Mutation actions must validate the
 HTTP method and check change permission for every affected object; receiving a
 permission-filtered view queryset does not itself grant write access.
+
+### Request context for embedded dataviews
+
+Override `DataviewMixin.get_dataview_request_token()` to supply an embedded
+view's context. In `RequestToken`, use model classes as keys for `policies`,
+`dataviews`, `detail_views`, and `create_views`. Use `DataviewToken` to provide
+either `preference_id` or an inline `dataview`. The request context owns the
+session binding and expiry for all of these settings. A view that uses the
+default hook inherits the active context.
+
+For component requests, pass the originating element to
+`fetchFromComponent(element, url, options)` or `getSdkForComponent(element)`.
+HTMX controls inherit the context from their rendered container.
 
 ## Availability and display fields
 

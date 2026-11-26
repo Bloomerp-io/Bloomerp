@@ -16,7 +16,7 @@ from bloomerp.models.communication.calendar import CalendarEvent
 from bloomerp.models.communication.inbox.inbox import Inbox
 from bloomerp.models.definition import (
     BloomerpModelConfig, DataviewAction, DataviewActionContext,
-    DataviewHTMLAction, DataviewModalAction, ModelViewSettings,
+    DataviewActionGrouping, DataviewDrawerAction, DataviewHTMLAction, DataviewModalAction, ModelViewSettings,
     get_dataview_actions,
 )
 from bloomerp.tests.base import (
@@ -45,6 +45,40 @@ class TestConfiguredDataviewActionComponent(BloomerpComponentTestCase):
                 expected=ExpectedResult(response_validators=self.receives_filtered_selection),
             ),
             RequestScenario(
+                name="A successful action can request a refresh of its originating view",
+                method="POST", user=self.admin_user, prepare=self.prepare_refresh_action,
+                expected=ExpectedResult(response_validators=self.sends_refresh_event),
+            ),
+            RequestScenario(
+                name="Selection-only actions render in the floating action bar",
+                view_name="components_dataview", user=self.admin_user,
+                prepare=self.prepare_selection_toolbar,
+                expected=ExpectedResult(response_validators=self.renders_selection_toolbar),
+            ),
+            RequestScenario(
+                name="A view without a selection action omits selection controls",
+                view_name="components_dataview", user=self.admin_user,
+                prepare=self.prepare_toolbar,
+                expected=ExpectedResult(response_validators=self.selection_unavailable),
+            ),
+            RequestScenario(
+                name="An unavailable selection action does not enable selection",
+                view_name="components_dataview", user=self.admin_user,
+                prepare=self.prepare_unavailable_selection_toolbar,
+                expected=ExpectedResult(response_validators=self.selection_unavailable),
+            ),
+            RequestScenario(
+                name="Default bulk actions do not enable selection for a read-only viewer",
+                view_name="components_dataview", user=self.normal_user,
+                prepare=self.prepare_read_only_toolbar,
+                expected=ExpectedResult(response_validators=self.selection_unavailable),
+            ),
+            RequestScenario(
+                name="Selection-only actions require an accessible selected record",
+                method="POST", user=self.admin_user, prepare=self.prepare_empty_selection_action,
+                expected=ExpectedResult(status_code=400),
+            ),
+            RequestScenario(
                 name="A user without row policies cannot pass selected IDs to actions",
                 method="POST", user=self.normal_user, prepare=self.prepare_denied_selection,
                 expected=ExpectedResult(response_validators=self.receives_no_rows),
@@ -55,12 +89,18 @@ class TestConfiguredDataviewActionComponent(BloomerpComponentTestCase):
                 expected=ExpectedResult(response_validators=self.json_key_equals("selected_ids", [])),
             ),
             RequestScenario(
-                name="HTML actions receive custom context and modal labels become titles",
+                name="HTML actions receive custom context and overlay actions render their targets",
                 view_name="components_dataview", user=self.admin_user,
                 prepare=self.prepare_html_toolbar,
                 expected=ExpectedResult(response_validators=[
                     self.contains_text("Custom context: 1 selected"),
                     self.contains_text('bloomerp-set-modal-title-to="Review selection"'),
+                    self.contains_text('bloomerp-set-modal-body-class-to="p-2"'),
+                    self.contains_text('hx-target="#selection-drawer-body"'),
+                    self.contains_text('bloomerp-open-drawer="selection-drawer"'),
+                    self.contains_text('bloomerp-set-drawer-title-to="Selection details"'),
+                    self.contains_text('bloomerp-set-drawer-size-to="4xl"'),
+                    self.contains_text('bloomerp-set-drawer-body-class-to="p-4"'),
                 ]),
             ),
             RequestScenario(
@@ -222,6 +262,83 @@ class TestConfiguredDataviewActionComponent(BloomerpComponentTestCase):
         scenario.data = {}
         self.CustomerModel.bloomerp_config.model_view_settings.dataview_actions[0].method = "GET"
 
+    def prepare_refresh_action(self, scenario: RequestScenario) -> None:
+        """Configure a callback whose default success response refreshes the collection."""
+        self.prepare_context_action(scenario)
+        self.CustomerModel.bloomerp_config.model_view_settings.dataview_actions = [
+            DataviewAction(
+                id="context", execution_func=self.successful_action, refresh_on_success="dataview",
+            ),
+        ]
+
+    @staticmethod
+    def successful_action(context: DataviewActionContext) -> None:
+        """Finish using the framework's default success response."""
+        return None
+
+    def sends_refresh_event(self, response: HttpResponse) -> bool:
+        """Verify that the action requests a refresh scoped to its own DataView."""
+        return json.loads(response["HX-Trigger-After-Swap"]) == {
+            "bloomerp:dataview-refresh": {
+                "contentTypeId": ContentType.objects.get_for_model(self.CustomerModel).pk,
+                "originOnly": True,
+            },
+        }
+
+    def prepare_toolbar(self, scenario: RequestScenario) -> None:
+        """Render the collection with its ordinary toolbar action."""
+        self.prepare_context_action(scenario)
+        scenario.view_kwargs.pop("action_id")
+        scenario.data = {}
+
+    def prepare_selection_toolbar(self, scenario: RequestScenario) -> None:
+        """Render an ordinary collection with a configured selection-only action."""
+        self.prepare_toolbar(scenario)
+        self.CustomerModel.bloomerp_config.model_view_settings.dataview_actions[0].requires_selection = True
+
+    def prepare_unavailable_selection_toolbar(self, scenario: RequestScenario) -> None:
+        """Configure a selection action hidden by its visibility predicate."""
+        self.prepare_selection_toolbar(scenario)
+        action = self.CustomerModel.bloomerp_config.model_view_settings.dataview_actions[0]
+        action.should_render_func = self.unavailable_action
+
+    def prepare_read_only_toolbar(self, scenario: RequestScenario) -> None:
+        """Grant view access with the standard toolbar and no bulk permissions."""
+        content_type = ContentType.objects.get_for_model(self.CustomerModel)
+        scenario.view_kwargs = {"content_type_id": content_type.pk}
+        self.normal_user.user_permissions.add(Permission.objects.get(
+            content_type=content_type, codename="view_customer",
+        ))
+        config = BloomerpModelConfig(model_view_settings=ModelViewSettings())
+        self.enterContext(patch.object(self.CustomerModel, "bloomerp_config", config, create=True))
+
+    @staticmethod
+    def unavailable_action(context: DataviewActionContext) -> bool:
+        """Model a selection action that is unavailable in this view."""
+        return False
+
+    @staticmethod
+    def selection_unavailable(response: HttpResponse) -> bool:
+        """Check that no selectable scope or floating controls reach the browser."""
+        markup = response.content.decode()
+        return "data-dataview-selection-enabled" not in markup and "data-dataview-selection-bar" not in markup
+
+    def renders_selection_toolbar(self, response: HttpResponse) -> bool:
+        """Check that selecting records is the only way to reveal the configured action."""
+        marker = 'data-data-view-button="context"'
+        return (
+            not any(marker in markup for markup in response.context["rendered_dataview_actions"])
+            and any(marker in markup for markup in response.context["rendered_selection_actions"])
+            and 'data-dataview-selection-enabled' in response.content.decode()
+            and 'data-dataview-selection-bar hidden' in response.content.decode()
+        )
+
+    def prepare_empty_selection_action(self, scenario: RequestScenario) -> None:
+        """Submit only an excluded record to a selection-only action."""
+        self.prepare_context_action(scenario)
+        self.CustomerModel.bloomerp_config.model_view_settings.dataview_actions[0].requires_selection = True
+        scenario.data = {"selected_ids": [str(self.excluded.pk)]}
+
     def prepare_denied_selection(self, scenario: RequestScenario) -> None:
         """Keep attempted selections while removing filters that require field grants."""
         self.prepare_context_action(scenario)
@@ -260,14 +377,22 @@ class TestConfiguredDataviewActionComponent(BloomerpComponentTestCase):
         return "/review/"
 
     def prepare_html_toolbar(self, scenario: RequestScenario) -> None:
-        """Render real HTML/modal actions with a temporary custom action template."""
+        """Render HTML actions and per-opening overlay classes with a temporary template."""
         self.prepare_context_action(scenario)
         scenario.view_kwargs.pop("action_id")
         scenario.data = {}
         scenario.query_params["selected_ids"] = [str(self.selected.pk)]
         actions = [
             DataviewHTMLAction(id="summary", template_name="action_context.html", context_func=self.html_context),
-            DataviewModalAction(id="review", label="Review selection", endpoint=self.modal_endpoint),
+            DataviewModalAction(
+                id="review", label="Review selection", endpoint=self.modal_endpoint, body_class="p-2",
+            ),
+            DataviewActionGrouping(id="selection_tools", label="Selection tools", actions=[
+                DataviewDrawerAction(
+                    id="selection_details", label="Selection details", endpoint="/selection/",
+                    drawer_id="selection-drawer", size="4xl", body_class="p-4",
+                ),
+            ]),
         ]
         self.CustomerModel.bloomerp_config.model_view_settings.dataview_actions = actions
         directory = self.enterContext(TemporaryDirectory())

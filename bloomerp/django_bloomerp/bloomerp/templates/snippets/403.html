@@ -1,3 +1,4 @@
+{% load i18n %}
 <div class="mx-auto flex max-w-xl flex-col items-center justify-center gap-4 rounded-xl border border-gray-200 bg-white px-8 py-12 text-center shadow-sm">
     <div class="flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
         <i class="fa-solid fa-user-shield text-2xl"></i>
@@ -8,19 +9,36 @@
             {{ message|default:"You don't have permission to access this page." }}
         </p>
     </div>
-    {% if is_authenticated %}
+    {% if request.impersonator %}
+        <form method="post" action="{% url 'components_view_as_user' %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="stop">
+            <button type="submit" class="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800">
+                {% translate "Stop viewing as this user" %}
+            </button>
+        </form>
+    {% elif request.user.is_authenticated and request.user.is_staff %}
         <a
-            href="{{ logout_url|default:'/logout/' }}"
+            href="{% url 'bloomerp_home_view' %}"
             class="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
         >
-            Sign out
+            {% translate "Go to home" %}
         </a>
+    {% elif request.user.is_authenticated %}
+        {% url 'logout' as default_logout_url %}
+        <form method="post" action="{{ logout_url|default:default_logout_url }}">
+            {% csrf_token %}
+            <button type="submit" class="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800">
+                {% translate "Sign out" %}
+            </button>
+        </form>
     {% else %}
+        {% url 'login' as default_login_url %}
         <a
-            href="{{ login_url|default:'/login/' }}"
+            href="{{ login_url|default:default_login_url }}"
             class="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
         >
-            Go to login
+            {% translate "Go to login" %}
         </a>
     {% endif %}
 </div>

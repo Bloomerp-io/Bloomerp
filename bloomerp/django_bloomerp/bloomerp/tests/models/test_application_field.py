@@ -1138,6 +1138,42 @@ class TestApplicationField(BaseBloomerpTestCaseWithModels):
         self.assertFalse(form.is_valid())
         self.assertIn("Invalid related object", form.errors["lines"].as_text())
 
+    def test_pending_insertion_rechecks_assignment_when_saving(self) -> None:
+        """Reject a pending link if another parent claimed the record after validation."""
+        customer = self.create_customer("Target", "Parent", 40)
+        other_customer = self.create_customer("Other", "Parent", 41)
+        relation = self.CustomerRelationModel.objects.create()
+        form_class = bloomerp_modelform_factory(self.CustomerModel, fields=["nullable_relations"])
+        form = form_class(
+            data={"nullable_relations__0__id": str(relation.pk), "nullable_relations__0__INSERT": "1"},
+            instance=customer,
+        )
+        field = form.fields["nullable_relations"]
+        field.enable_existing_insertion(self.admin_user)
+        self.assertTrue(form.is_valid(), form.errors)
+
+        relation.customer = other_customer
+        relation.save(update_fields=["customer"])
+        with self.assertRaisesMessage(ValidationError, "A selected record is no longer available."):
+            form.save()
+        relation.refresh_from_db()
+        self.assertEqual(relation.customer_id, other_customer.pk)
+
+    def test_pending_insertion_requires_permission_to_link(self) -> None:
+        """Reject a submitted link when the user cannot change the child's foreign key."""
+        customer = self.create_customer("Target", "Parent", 40)
+        relation = self.CustomerRelationModel.objects.create()
+        form_class = bloomerp_modelform_factory(self.CustomerModel, fields=["nullable_relations"])
+        form = form_class(
+            data={"nullable_relations__0__id": str(relation.pk), "nullable_relations__0__INSERT": "1"},
+            instance=customer,
+        )
+        form.fields["nullable_relations"].enable_existing_insertion(self.normal_user)
+        self.assertFalse(form.is_valid())
+        self.assertIn("A selected record is no longer available.", form.errors["nullable_relations"].as_text())
+        relation.refresh_from_db()
+        self.assertIsNone(relation.customer_id)
+
     def test_form_submission_includes_one_to_many_layout_rows(self):
         parent_content_type = ContentType.objects.get_for_model(self.CustomerModel)
         relation_field = ApplicationField.objects.get(

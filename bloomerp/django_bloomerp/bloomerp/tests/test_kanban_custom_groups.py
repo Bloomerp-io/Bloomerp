@@ -221,8 +221,9 @@ class TestKanbanCustomGroups(BaseBloomerpTestCaseWithModels):
         )
         # 2. Render the board with the generated lane metadata.
         html = render_to_string(
-            "cotton/features/dataviews/kanban.html",
+            KanbanDataviewRenderer.template_name,
             {
+                "dataview_item_template": KanbanDataviewRenderer.item_template_name,
                 "kanban_groups": groups,
                 "content_type_id": ContentType.objects.get_for_model(Todo).pk,
                 "preference": SimpleNamespace(pk=1, split_view_enabled=False),
@@ -262,8 +263,9 @@ class TestKanbanCustomGroups(BaseBloomerpTestCaseWithModels):
         self.assertEqual(cards["scoped"].kanban_header_foreground, "#000000")
         # 3. Verify actual headers and movement categories receive these colours.
         html = render_to_string(
-            "cotton/features/dataviews/kanban.html",
+            KanbanDataviewRenderer.template_name,
             {
+                "dataview_item_template": KanbanDataviewRenderer.item_template_name,
                 "kanban_groups": groups,
                 "content_type_id": 27,
                 "fields": [],

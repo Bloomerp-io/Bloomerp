@@ -1,0 +1,45 @@
+{% load static bloomerp %}
+
+<!-- Apply the persisted theme before styles and application JavaScript load. -->
+<script>
+    (() => {
+        const storageKey = 'bloomerp_theme_preference';
+        const allowedPreferences = ['light', 'dark', 'auto'];
+        let preference = 'auto';
+
+        try {
+            const storedPreference = window.localStorage.getItem(storageKey);
+            if (allowedPreferences.includes(storedPreference)) {
+                preference = storedPreference;
+            }
+        } catch (_error) {
+            // Storage can be unavailable in privacy-restricted browser contexts.
+        }
+
+        const isDark = preference === 'dark'
+            || (preference === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', isDark);
+        document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+        document.documentElement.dataset.themePreference = preference;
+        document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+    })();
+</script>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+
+<!--Main CSS file-->
+{% if DEBUG and BLOOMERP_VITE_DEV_SERVER_URL %}
+
+    <link rel="stylesheet" href="{{ BLOOMERP_VITE_DEV_SERVER_URL }}/src/styles.css?direct" />
+
+{% else %}
+    <!-- Production mode: Built bundle -->
+    {% bloomerp_asset_version as asset_version %}
+    <link href="{% static 'bloomerp/js/dist/main.css' %}?v={{ asset_version|urlencode }}" rel="stylesheet" />
+    <link href="{% static 'bloomerp/css/dist/styles.css' %}?v={{ asset_version|urlencode }}" rel="stylesheet" />
+{% endif %}

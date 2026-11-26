@@ -1,8 +1,9 @@
 import re
+from functools import partial
 
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
-from playwright.sync_api import Route, expect
+from playwright.sync_api import Locator, Route, expect
 
 from bloomerp.communication.builtins.instant_messaging.controller import IMController
 from bloomerp.models.application_field import ApplicationField
@@ -53,10 +54,27 @@ class TestDetailViewE2E(e2e_test_cases.BloomerpE2ETestCase):
         self.assertEqual(todo.content_object, self.todo_owner)
 
     def get_test_scenarios(self) -> list[E2ERequestScenario]:
-        """Cover overview editing, fragment focus, and embedded tab navigation."""
+        """Cover overview editing, detail focus, sidebar controls, and embedded navigation."""
         todo = Todo.objects.create(title="Hello world")
 
         return [
+            E2ERequestScenario(
+                name="Use Page keys and arrow keys on the full-page object detail",
+                user=self.admin_user,
+                url=todo.get_absolute_url(),
+                actions=[
+                    E2EAction(name="Move from the page to fields and tabs", execute=self.use_detail_keyboard),
+                    E2EAction(name="Keep an open dialog in charge of its Page keys", execute=self.check_dialog_keyboard_scope),
+                ],
+            ),
+            E2ERequestScenario(
+                name="Toggle the detail sidebar from the tab strip",
+                user=self.admin_user,
+                url=todo.get_absolute_url(),
+                actions=[
+                    E2EAction(name="Collapse and restore the sidebar", execute=self.toggle_detail_sidebar),
+                ],
+            ),
             E2ERequestScenario(
                 name="Field fragment focuses the matching input",
                 user=self.admin_user,
@@ -112,6 +130,17 @@ class TestDetailViewE2E(e2e_test_cases.BloomerpE2ETestCase):
                 ],
             ),
             E2ERequestScenario(
+                name="Use Page keys and folder tabs in the active split detail",
+                user=self.admin_user,
+                prepare=self.prepare_split_view,
+                url=reverse(get_list_view_url(Todo)),
+                actions=[
+                    E2EAction(name="Open an object in split view", execute=self.open_split_view_object),
+                    E2EAction(name="Use Page keys only in the active split pane", execute=self.use_split_detail_keyboard),
+                    E2EAction(name="Activate a folder tab from the keyboard", execute=self.open_split_view_files_with_keyboard),
+                ],
+            ),
+            E2ERequestScenario(
                 name="Split view navigates folder tabs and saves without leaving the list",
                 user=self.admin_user,
                 prepare=self.prepare_split_view,
@@ -145,6 +174,130 @@ class TestDetailViewE2E(e2e_test_cases.BloomerpE2ETestCase):
                 actions=[E2EAction(name="Send with the shared keyboard shortcut", execute=self.send_shared_chat_message)],
             ),
         ]
+
+    def enter_detail_fields(self, frame: Locator) -> None:
+        """Check that opening a detail leaves entry to its first field to Page Down."""
+        title = frame.locator('#id_title')
+        expect(title).to_be_visible()
+        expect(frame.locator('[bloomerp-component="detail-view-value"]:focus-within')).to_have_count(0)
+        self.page.keyboard.press('PageDown')
+        expect(title).to_be_focused()
+
+    def use_detail_keyboard(self) -> None:
+        """Move among fields and activate tabs while the object stays in keyboard reach."""
+        frame = self.page.locator('[data-detail-view-grid]')
+        strip = frame.locator('[data-tab-strip]')
+        title = frame.locator('#id_title')
+        status = frame.locator('#id_status')
+        details = strip.get_by_role('tab', name='Details', exact=True)
+        self.page.wait_for_load_state('networkidle')
+        self.enter_detail_fields(frame)
+
+        self.page.keyboard.press('Control+Alt+ArrowRight')
+        expect(status).to_be_focused()
+        self.page.keyboard.press('PageDown')
+        expect(status).to_be_focused()
+        self.page.keyboard.press('PageUp')
+        expect(status).to_be_focused()
+
+        title.focus()
+        self.page.keyboard.press('PageUp')
+        expect(details).to_be_focused()
+        next_tab = strip.get_by_role('tab').nth(1)
+        self.page.keyboard.press('ArrowRight')
+        expect(next_tab).to_be_focused()
+        expect(details).to_have_attribute('aria-selected', 'true')
+        with self.expect_response_for(next_tab.get_attribute('href'), method='GET') as files_response:
+            self.page.keyboard.press('Enter')
+        self.assertEqual(files_response.value.status, 200)
+        expect(frame.locator('[data-detail-view-content] [bloomerp-component="dataview-container"]')).to_be_visible()
+        self.page.wait_for_load_state('networkidle')
+        expect(next_tab).to_have_attribute('aria-selected', 'true')
+        expect(next_tab).to_be_focused()
+        self.page.keyboard.press('ArrowLeft')
+        expect(details).to_be_focused()
+        with self.expect_response_for(details.get_attribute('href'), method='GET') as detail_response:
+            self.page.keyboard.press('Space')
+        self.assertEqual(detail_response.value.status, 200)
+        expect(details).to_have_attribute('aria-selected', 'true')
+        expect(details).to_be_focused()
+        self.enter_detail_fields(frame)
+
+    def check_dialog_keyboard_scope(self) -> None:
+        """Keep Page keys within the active global search dialog over an object detail."""
+        self.page.keyboard.press('ControlOrMeta+k')
+        search = self.page.locator('#global-search-modal-input')
+        expect(search).to_be_focused()
+        shell = self.page.locator('#global-search-modal-container')
+        shell.focus()
+        self.page.keyboard.press('PageDown')
+        self.page.keyboard.press('PageUp')
+        expect(shell).to_be_focused()
+        self.page.keyboard.press('Escape')
+        expect(search).to_be_hidden()
+
+    def toggle_detail_sidebar(self) -> None:
+        """Verify toolbar styling, tooltip text, and sidebar controls."""
+        self.page.set_viewport_size({"width": 1440, "height": 900})
+        frame = self.page.locator("[data-detail-view-grid]")
+        sidebar = frame.locator("#resizable-div-detail-aside")
+        toggle = frame.locator("[data-resizable-div-toggle]")
+        selected_icon = toggle.locator("svg").last
+        preference = frame.get_by_role("button", name="Select tabs preference")
+        expect(sidebar).to_have_attribute("data-component-initialized", "true")
+        expect(toggle).to_have_accessible_name("Close detail sidebar")
+        expect(selected_icon).to_have_css("opacity", "1")
+        for property_name in ("width", "height", "background-color", "border-radius", "color", "padding"):
+            expected = preference.evaluate(
+                "(button, property) => getComputedStyle(button).getPropertyValue(property)",
+                property_name,
+            )
+            expect(toggle).to_have_css(property_name, expected)
+        expanded_width = sidebar.evaluate("panel => getComputedStyle(panel).width")
+
+        divider_color = frame.locator("[data-tab-strip]").evaluate(
+            "strip => getComputedStyle(strip).borderBottomColor"
+        )
+        expect(toggle).to_have_css("border-left-color", divider_color)
+        expect(toggle).to_have_css("border-width", "0px 0px 0px 1px")
+
+        tooltip = frame.locator("[data-shortcut-tooltip]").filter(has_text="Toggle detail sidebar")
+        expect(toggle).to_have_attribute("aria-keyshortcuts", re.compile(r"^(Meta|Control)\+Shift\+Y$"))
+        expect(tooltip).to_be_hidden()
+        toggle.hover()
+        expect(tooltip).to_be_visible()
+        expect(tooltip).to_contain_text(re.compile(r"⌘⇧Y|Ctrl\+Shift\+Y"))
+        toggle.click()
+        expect(sidebar).to_have_css("width", "0px")
+        expect(toggle).to_have_accessible_name("Open detail sidebar")
+        expect(toggle).to_have_attribute("aria-expanded", "false")
+        expect(selected_icon).to_have_css("opacity", "0")
+        toggle.press("Enter")
+        expect(sidebar).to_have_css("width", expanded_width)
+        expect(toggle).to_be_focused()
+        expect(toggle).to_have_accessible_name("Close detail sidebar")
+        expect(toggle).to_have_attribute("aria-expanded", "true")
+        expect(selected_icon).to_have_css("opacity", "1")
+
+        self.page.keyboard.press("ControlOrMeta+Shift+Y")
+        expect(sidebar).to_have_css("width", "0px")
+        expect(toggle).to_have_accessible_name("Open detail sidebar")
+        toggle.click()
+        expect(sidebar).to_have_css("width", expanded_width)
+
+        handle = sidebar.locator("[data-resizable-div-handle]").bounding_box()
+        assert handle is not None
+        x = handle["x"] + handle["width"] / 2
+        y = handle["y"] + 80
+        self.page.mouse.move(x, y)
+        self.page.mouse.down()
+        self.page.mouse.move(x + float(expanded_width.removesuffix("px")), y, steps=8)
+        self.page.mouse.up()
+        expect(sidebar).to_have_css("width", "0px")
+        expect(toggle).to_have_accessible_name("Open detail sidebar")
+        toggle.click()
+        expect(sidebar).to_have_css("width", expanded_width)
+        expect(toggle).to_have_accessible_name("Close detail sidebar")
 
     def test_detail_drawer(self) -> None:
         """Run the drawer journey with an independent authenticated browser session."""
@@ -197,6 +350,9 @@ class TestDetailViewE2E(e2e_test_cases.BloomerpE2ETestCase):
         self.assertLessEqual(drawer.locator(':scope > [data-drawer-panel]').bounding_box()['width'], 1025)
         expect(pane.locator('[data-tab-strip]')).to_be_visible()
         expect(pane.locator('#resizable-div-detail-aside')).to_be_visible()
+        self.enter_detail_fields(pane.locator('[data-detail-view-grid]'))
+        self.page.keyboard.press('PageUp')
+        expect(pane.get_by_role('tab', name='Details', exact=True)).to_be_focused()
         self.page.wait_for_load_state('networkidle')
         pane.get_by_role('button', name='Documents', exact=True).click()
         files = pane.locator('[data-folder-tab-item]').filter(has_text='Files')
@@ -290,7 +446,7 @@ class TestDetailViewE2E(e2e_test_cases.BloomerpE2ETestCase):
         tabs = manager.get_or_create_selected(
             UserDetailViewTabsPreference, scope={"content_type_id": content_type.pk},
         )
-        folder = UserDetailViewTabItem.objects.create(
+        folder, _created = UserDetailViewTabItem.objects.get_or_create(
             preference=tabs, name="Documents", url=None, position=100,
         )
         files_tab = tabs.items.get(name="Files")
@@ -309,6 +465,21 @@ class TestDetailViewE2E(e2e_test_cases.BloomerpE2ETestCase):
             cell.dblclick()
         self.assertEqual(response.value.status, 200)
         expect(self.page.locator('[data-split-view-detail-pane] [data-tab-strip]')).to_be_visible()
+
+    def use_split_detail_keyboard(self) -> None:
+        """Scope Page keys to the embedded detail while focus is in that pane."""
+        pane = self.page.locator('[data-split-view-detail-pane]')
+        frame = pane.locator('[data-detail-view-grid]')
+        expect(pane).to_be_focused()
+        self.enter_detail_fields(frame)
+        self.page.keyboard.press('PageUp')
+        expect(frame.get_by_role('tab', name='Details', exact=True)).to_be_focused()
+
+        listing = self.page.locator('[data-split-view-list-pane]')
+        listing.focus()
+        self.page.keyboard.press('PageDown')
+        self.page.keyboard.press('PageUp')
+        expect(listing).to_be_focused()
 
     def use_split_view_sidebar(self) -> None:
         """Post a comment and switch back to Activity without replacing the detail frame."""
@@ -364,6 +535,32 @@ class TestDetailViewE2E(e2e_test_cases.BloomerpE2ETestCase):
         expect(pane).to_have_css('border-bottom-width', '1px')
         expect(self.page.locator('[data-split-view-list-pane]')).to_have_css('border-top-width', '0px')
         expect(self.page.locator('[data-split-view-list-pane]')).to_have_css('border-bottom-width', '0px')
+
+    def open_split_view_files_with_keyboard(self) -> None:
+        """Use the keyboard to open a folder tab without leaving the list route."""
+        pane = self.page.locator('[data-split-view-detail-pane]')
+        folder = pane.get_by_role('button', name='Documents', exact=True)
+        pane.get_by_role('tab', name='Details', exact=True).focus()
+        self.page.keyboard.press('ArrowLeft')
+        expect(folder).to_be_focused()
+        self.page.keyboard.press('Enter')
+        link = pane.locator('[data-folder-tab-item]').filter(has_text='Files')
+        expect(link).to_be_focused()
+        self.page.keyboard.press('Escape')
+        expect(folder).to_be_focused()
+        expect(folder).to_have_attribute('aria-expanded', 'false')
+        self.page.keyboard.press('ArrowDown')
+        expect(link).to_be_focused()
+        path = link.get_attribute('href')
+        with self.expect_response_for(path, method="GET"):
+            self.page.keyboard.press('Enter')
+        expect(pane.locator('#split-view-detail-content [bloomerp-component="dataview-container"]')).to_be_visible()
+        expect(folder).to_be_focused()
+        pane.locator('[data-detail-view-grid]').focus()
+        self.page.keyboard.press('PageUp')
+        expect(folder).to_be_focused()
+        self.assertEqual(self.page.url, self.split_list_url)
+        self.assertEqual(self.page.locator('#htmx-addendum').inner_text(), self.split_breadcrumbs)
 
     def open_split_view_files(self) -> None:
         """Load a folder's Files tab without updating the browser's list route."""
@@ -580,6 +777,61 @@ class TestDetailViewE2E(e2e_test_cases.BloomerpE2ETestCase):
         box = pane.bounding_box()
         self.assertIsNotNone(box)
         self.assertAlmostEqual(box['width'], self.split_list_width, delta=1)
+
+
+class TestEmbeddedDataViewSaveE2E(e2e_test_cases.BloomerpE2ETestCase):
+    def get_test_scenarios(self) -> list[E2ERequestScenario]:
+        """Verify result refresh for both embedded editors in a real browser."""
+        return [
+            E2ERequestScenario(
+                name=f"Saving in {mode} mode updates the list in place",
+                user=self.admin_user,
+                prepare=partial(self.prepare_table, mode),
+                url=reverse(get_list_view_url(Todo)),
+                actions=[E2EAction(name="Save and observe the updated row", execute=partial(self.save_and_check_list, mode))],
+            )
+            for mode in ("drawer", "split")
+        ]
+
+    def prepare_table(self, mode: str) -> None:
+        """Provide an editable Todo and enable the requested table presentation."""
+        self.page.set_viewport_size({"width": 1920, "height": 1080})
+        self.todo = Todo.objects.create(title="Before embedded save")
+        preference = PreferenceManager(self.admin_user).get_or_create_selected(
+            UserListViewPreference, scope={"content_type_id": ContentType.objects.get_for_model(Todo).pk},
+        )
+        preference.view_type = "table"
+        preference.view_mode = mode
+        preference.display_fields = {"table": [ApplicationField.get_by_field(Todo, "title").pk]}
+        preference.save()
+
+    def save_and_check_list(self, mode: str) -> None:
+        """Verify that saving reloads the row and leaves the editor open at the same URL."""
+        root = self.page.locator('[data-model-list-page] > [bloomerp-component]')
+        expect(root).to_have_attribute('data-view-mode', mode)
+        cell = root.locator(f'td[data-object-id="{self.todo.pk}"][data-application-field-name="title"]')
+        list_url = self.page.url
+        with self.expect_response_for(self.todo.get_absolute_url(), method="GET") as opened:
+            cell.dblclick()
+        self.assertEqual(opened.value.status, 200, opened.value.headers.get("location"))
+
+        pane_selector = {
+            "drawer": "[data-drawer-detail-pane]",
+            "split": "[data-split-view-detail-pane]",
+        }[mode]
+        pane = self.page.locator(pane_selector)
+        title = pane.locator('#id_title')
+        expect(title).to_have_value("Before embedded save")
+        title.fill("After embedded save")
+        with self.expect_response_for(self.todo.get_absolute_url(), method="POST") as saved:
+            pane.get_by_role('button', name='Save', exact=True).click()
+        self.assertEqual(saved.value.status, 200, saved.value.headers.get("location"))
+        self.assertIn("bloomerp:dataview-refresh", saved.value.headers.get("hx-trigger-after-swap", ""))
+
+        expect(cell).to_have_text("After embedded save")
+        expect(title).to_be_visible()
+        expect(title).to_have_value("After embedded save")
+        self.assertEqual(self.page.url, list_url)
 
 
 class TestOverviewSaveFeedbackE2E(e2e_test_cases.BloomerpE2ETestCase):

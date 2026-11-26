@@ -18,7 +18,7 @@ import json
 import logging
 import traceback
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import suppress
 from dataclasses import dataclass, field
 from time import monotonic
@@ -37,6 +37,7 @@ from pydantic import (
     SecretStr,
     model_validator,
 )
+from pydantic.json_schema import SkipJsonSchema
 
 from bloomerp.agents.definition import (
     AgentConfigSnapshot,
@@ -75,7 +76,9 @@ class AgentRuntimeConfig(AgentConfigSnapshot):
     def fingerprint(self) -> str:
         """Identify the exact resolved configuration when checking checkpoint reuse."""
         encoded = json.dumps(
-            self.model_dump(mode="json"),
+            self.model_dump(
+                mode="json", exclude={"modalities"} if self.modalities is None else None
+            ),
             sort_keys=True,
             separators=(",", ":"),
             ensure_ascii=False,
@@ -106,15 +109,15 @@ class AgentRuntimeContext(AgentRuntimePayload):
 class AgentRuntimeArtifactInput(AgentRuntimePayload):
     """Carry an authorized artifact revision resolved by the context builder.
 
-    Content contains model-readable structured data or extracted text. File URI
-    is optional for supported multimodal providers and must be refreshed when
-    expired. User documents remain input data, never trusted system instructions.
+    Content contains model-readable data. A protected file reference can be opened
+    through the request's attachment reader when the transport supports it.
     """
 
     type: Literal["artifact"] = "artifact"
     artifact_id: UUID
     media_type: str | None = None
     file_uri: str | None = None
+    file_id: UUID | None = None
     content: dict[str, JsonValue] = Field(default_factory=dict)
 
 
@@ -204,6 +207,10 @@ class AgentRuntimeRunRequest(AgentRuntimePayload):
     tools: tuple[AgentRuntimeToolDefinition, ...] = ()
     budgets: RunBudgets = Field(default_factory=RunBudgets)
     usage: RunUsage = Field(default_factory=RunUsage)
+    attachment_reader: SkipJsonSchema[
+        Callable[[UUID, str, int], Awaitable[bytes | None]] | None
+    ] = Field(default=None, exclude=True, repr=False)
+    attachment_byte_limit: int = Field(default=0, ge=0, exclude=True)
 
     @model_validator(mode="after")
     def validate_catalog_and_order(self) -> Self:

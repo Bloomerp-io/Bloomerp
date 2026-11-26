@@ -21,6 +21,8 @@ from bloomerp.communication.inbox_sources import (
     synchronize_job_schedules,
 )
 from bloomerp.communication.registry import INBOX_FOLDER_REGISTRY
+from bloomerp.models.automation.workflow import Workflow
+from bloomerp.models.automation.workflow_run import WorkflowRun, WorkflowRunStatus
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.models.communication.inbox.inbox import Inbox
 from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
@@ -62,6 +64,39 @@ class InboxSourceRegistryTests(TestCase):
         )
         self.assertEqual(task.args, '["email.sync.dispatch"]')
         self.assertEqual(task.crontab.minute, "*/2")
+
+    @patch("bloomerp.communication.inbox_sources.send_user_inbox_message")
+    def test_workflow_results_require_completion_notification_opt_in(
+        self, send_user_inbox_message: MagicMock,
+    ) -> None:
+        """Deliver success and failure notifications only after the creator opts in."""
+        creator = get_user_model().objects.create_user(username="workflow-creator")
+        inbox = Inbox.objects.create(user=creator, name="Workflow inbox")
+        folder = InboxFolder.objects.create(
+            inbox=inbox, type=INBOX_FOLDER_REGISTRY.IN_APP_NOTIFICATIONS.key,
+        )
+        workflow = Workflow.objects.create(name="Inbox results", created_by=creator)
+        self.assertFalse(workflow.notify_on_completion)
+
+        for enabled in (False, True):
+            if enabled:
+                workflow.notify_on_completion = True
+                workflow.save(update_fields=["notify_on_completion"])
+            for run_status, event_status in (
+                (WorkflowRunStatus.SUCCEEDED, "successful"),
+                (WorkflowRunStatus.FAILED, "failed"),
+            ):
+                with self.subTest(enabled=enabled, status=run_status):
+                    run = WorkflowRun.objects.create(workflow=workflow, status=run_status)
+                    send_user_inbox_message.reset_mock()
+
+                    publish_event(
+                        "workflow.result", workflow_run_id=str(run.pk), status=event_status,
+                    )
+
+                    items = InboxItem.objects.filter(folder=folder, related_item_id=str(run.pk))
+                    self.assertEqual(items.count(), int(enabled))
+                    self.assertEqual(send_user_inbox_message.call_count, int(enabled))
 
 
 class EmailInboxSourceTests(TestCase):

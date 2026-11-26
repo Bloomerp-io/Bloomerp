@@ -7,34 +7,25 @@ from io import BytesIO, StringIO
 from uuid import UUID
 
 import openpyxl
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db.models import Model, QuerySet
 from django.db.models.fields.files import FieldFile
 
 from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.permissions.manager import UserPolicyManager
-from bloomerp.services.object_services import string_search_on_queryset
+from bloomerp.services.search_services import string_search_on_queryset
 from bloomerp.filters.manager import ModelFilterManager
 
 MULTI_VALUE_SEPARATOR = ";"
 
 
 class ExportService:
-    def __init__(self, model: type[Model], user, *, permission_str: str):
+    def __init__(self, model: type[Model], user: AbstractBloomerpUser | None, *, permission_str: str) -> None:
+        """Prepare exports using the caller's permissions for the given model."""
         self.model = model
-        self.user = user
         self.permission_str = permission_str
-        self.content_type = ContentType.objects.get_for_model(model)
         self.permission_manager = UserPolicyManager(user)
-
-    @classmethod
-    def from_content_type_id(cls, content_type_id: int, user, *, permission_str: str) -> "ExportService":
-        content_type = ContentType.objects.get(id=content_type_id)
-        model = content_type.model_class()
-        if model is None:
-            raise ValidationError("Invalid content type.")
-        return cls(model=model, user=user, permission_str=permission_str)
 
     def create_export_bytes(
         self,

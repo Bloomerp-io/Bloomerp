@@ -1,0 +1,11 @@
+{% extends "views/base.html" %}
+{% load bloomerp %}
+
+{% block body %}
+    {% selected_sidebar request.user as sidebar %}
+    {{ block.super }}
+{% endblock body %}
+
+{% block main %}
+    {% include "views/htmx_addendum.html" with template_name="snippets/403.html" htmx_include_addendum_padding=True %}
+{% endblock main %}

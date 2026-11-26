@@ -5,7 +5,6 @@ from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db import transaction
 from django.http import HttpRequest
 
-from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.form_fields.files_relation_field import FilesCleanedData
 from bloomerp.forms.model_form import BloomerpModelForm, bloomerp_modelform_factory
 from bloomerp.models import ApplicationField
@@ -87,66 +86,6 @@ class FormManager:
         payload = self.form.initial_payload
         return dict(payload) if isinstance(payload, dict) else {}
 
-    def get_initial_model_payload(self, initial_payload: dict | None = None) -> dict:
-        """Return initial payload values that are direct model fields."""
-        payload = initial_payload if isinstance(initial_payload, dict) else self.get_initial_payload()
-        layout_only_field_names = {
-            "files",
-            *self.layout_one_to_many_field_names(),
-        }
-        return {
-            field_name: value
-            for field_name, value in payload.items()
-            if field_name not in layout_only_field_names
-        }
-
-    def apply_one_to_many_initial_payload(
-        self,
-        *,
-        initial_payload: dict,
-        submitted_one_to_many_data: dict[str, list[dict]],
-    ) -> dict[str, list[dict]]:
-        one_to_many_data: dict[str, list[dict]] = {}
-        one_to_many_field_names = self.layout_one_to_many_field_names()
-        for field_name, value in initial_payload.items():
-            if field_name not in one_to_many_field_names:
-                continue
-            config = self.normalize_one_to_many_initial_payload(value)
-            submitted_rows = submitted_one_to_many_data.get(field_name)
-            rows = submitted_rows if submitted_rows is not None else config["initial_rows"]
-            if rows:
-                one_to_many_data[field_name] = [
-                    {
-                        **config["row_defaults"],
-                        **row,
-                    }
-                    for row in rows
-                ]
-
-        for field_name, rows in submitted_one_to_many_data.items():
-            one_to_many_data.setdefault(field_name, rows)
-        return one_to_many_data
-
-
-    def normalize_one_to_many_initial_payload(self, value) -> dict:
-        if isinstance(value, dict):
-            initial_rows = value.get("initial_rows", [])
-            row_defaults = value.get("row_defaults", {})
-            return {
-                "initial_rows": initial_rows if isinstance(initial_rows, list) else [],
-                "row_defaults": row_defaults if isinstance(row_defaults, dict) else {},
-            }
-        if isinstance(value, list) and all(isinstance(item, dict) for item in value):
-            return {"initial_rows": value, "row_defaults": {}}
-        return {"initial_rows": [], "row_defaults": {}}
-
-    def layout_one_to_many_field_names(self) -> set[str]:
-        return {
-            field.field
-            for field in self.layout_application_fields()
-            if field.get_field_type().id == FIELD_TYPE_REGISTRY.ONE_TO_MANY_FIELD.id
-        }
-
     def get_initial_form_data(self) -> dict:
         """Return initial payload values for fields present in the visible form."""
         visible_field_names = set(self.layout_model_form_field_names())
@@ -194,19 +133,6 @@ class FormManager:
             seen.add(application_field.field)
 
         return application_fields
-
-    def layout_field_names(self, extra_fields: list[str] | None = None) -> list[str]:
-        """Return target field names represented by this form's layout."""
-        field_names = [field.field for field in self.layout_application_fields()]
-        seen = set(field_names)
-
-        if extra_fields and isinstance(extra_fields, list):
-            for field_name in extra_fields:
-                if field_name and field_name not in seen:
-                    field_names.append(field_name)
-                    seen.add(field_name)
-
-        return field_names
 
     def layout_model_form_field_names(self, extra_fields: list[str] | None = None) -> list[str]:
         """Return layout fields that can be passed to a target model ModelForm."""

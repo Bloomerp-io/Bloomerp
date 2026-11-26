@@ -7,13 +7,13 @@
         {% csrf_token %}
         <header data-call-panel-header>
             <h2 class="flex items-center gap-2 font-semibold text-sm"><i class="fa-solid fa-headset text-primary-600" aria-hidden="true"></i>{% translate 'Calls' %}</h2>
-            <button type="button" class="im-icon-button" data-call-panel-toggle aria-label="{% translate 'Minimize call controls' %}" title="{% translate 'Minimize call controls' %}"><i class="fa-solid fa-minus" aria-hidden="true"></i></button>
+            <button type="button" class="icon-button" data-call-panel-toggle aria-label="{% translate 'Minimize call controls' %}" title="{% translate 'Minimize call controls' %}"><i class="fa-solid fa-minus" aria-hidden="true"></i></button>
         </header>
         <div class="call-preferences border-b border-gray-200 dark:border-zinc-700">
             <button type="button" data-call-action="availability" role="switch" aria-checked="false" class="call-availability-switch"><i class="fa-solid fa-phone" aria-hidden="true"></i><span>{% translate 'Receive incoming calls' %}</span><span data-call-switch-indicator aria-hidden="true"></span></button>
             <div class="flex items-center justify-between gap-2 mt-2">
                 <p data-call-availability role="status" class="text-xs text-gray-500">{% translate 'Offline' %}</p>
-                <button type="button" data-call-action="ringtone" aria-pressed="false" class="im-icon-button" title="{% translate 'Mute ringtone' %}" aria-label="{% translate 'Mute ringtone' %}"><i data-call-ringtone-icon class="fa-solid fa-bell" aria-hidden="true"></i></button>
+                <button type="button" data-call-action="ringtone" aria-pressed="false" class="icon-button" title="{% translate 'Mute ringtone' %}" aria-label="{% translate 'Mute ringtone' %}"><i data-call-ringtone-icon class="fa-solid fa-bell" aria-hidden="true"></i></button>
             </div>
             <button type="button" data-call-action="ringtone-test" class="mt-2 text-xs text-primary-600" hidden><i class="fa-solid fa-volume-high mr-1" aria-hidden="true"></i>{% translate 'Test incoming ringtone' %}</button>
             <button type="button" data-call-action="retry" class="mt-2 text-xs text-primary-600" hidden>{% translate 'Reconnect incoming calls' %}</button>

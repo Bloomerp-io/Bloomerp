@@ -9,7 +9,7 @@ from bloomerp.router import router
 from bloomerp.communication.builtins.voip.access import VoIPAccessManager
 from bloomerp.communication.builtins.voip.controller import adapter_for
 from bloomerp.communication.builtins.voip.registry import VOIP_PROVIDER_REGISTRY
-
+# SHOULD_API
 
 @router.register(
     path="components/communication/voip/<uuid:connection_id>/token/",

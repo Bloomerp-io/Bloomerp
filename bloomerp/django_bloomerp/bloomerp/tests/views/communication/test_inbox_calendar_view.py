@@ -2,18 +2,38 @@
 """Inbox calendar navigation uses effective shared preferences without selecting new views."""
 
 import json
-import re
+from urllib.parse import parse_qs, urlsplit, urlunsplit
 
+from bs4 import BeautifulSoup
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpResponse
+from django.test import Client
 from django.urls import reverse
 
-from bloomerp.models.communication.calendar import CalendarEvent
+from bloomerp.filters.definition import FilterCondition
+from bloomerp.filters.parser import deserialize_filters
+from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.communication.calendar import (
+    BookingLink,
+    BookingLinkSubmission,
+    CalendarEvent,
+)
+from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.models.communication.inbox.inbox import Inbox
+from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
+from bloomerp.permissions.definition import RowPolicyRuleContent
+from bloomerp.permissions.manager import PolicyManager, UserPolicyManager
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.tests.base import BloomerpViewTestCase, ExpectedResult, RequestScenario
 from bloomerp.tests.communication.inbox_calendar_fixtures import InboxCalendarFixtures
+from bloomerp.tokens import (
+    REQUEST_TOKEN_HEADER,
+    REQUEST_TOKEN_QUERY_KEYS,
+    get_token,
+)
+from bloomerp.workspaces.dataview_tile.model import DataViewTileConfig
+from bloomerp.workspaces.dataview_tile.render import DataViewTileRenderer
 
 
 class TestInboxCalendarView(InboxCalendarFixtures, BloomerpViewTestCase):
@@ -62,16 +82,495 @@ class TestInboxCalendarView(InboxCalendarFixtures, BloomerpViewTestCase):
                 expected=ExpectedResult(status_code=200),
             ),
             RequestScenario(
+                name="Signed calendar uses Week until the viewer saves a period",
+                user=self.owner,
+                view_kwargs=kwargs,
+                expected=ExpectedResult(response_validators=self.period_saved),
+            ),
+            RequestScenario(
+                name="Signed calendar saves the period locally when a shared preference is selected",
+                user=self.owner,
+                view_kwargs=kwargs,
+                prepare=self.prepare_shared_calendar_preference,
+                expected=ExpectedResult(response_validators=self.period_saved),
+            ),
+            RequestScenario(
                 name="Shared selection opens effective calendar and preserves preferences",
                 user=self.actor,
                 view_kwargs={"inbox_id": self.reference.pk},
                 expected=ExpectedResult(response_validators=self.correct_navigation),
             ),
+            RequestScenario(
+                name="The bookings drawer lists the effective inbox's links and offers prefilled creation",
+                user=self.actor,
+                view_kwargs={"inbox_id": self.reference.pk},
+                prepare=self.prepare_bookings,
+                expected=ExpectedResult(response_validators=self.bookings_rendered),
+            ),
+            RequestScenario(
+                name="Inbox owners without model access create and view links for the selected inbox",
+                user=self.owner,
+                view_kwargs=kwargs,
+                prepare=self.prepare_bookings,
+                expected=ExpectedResult(response_validators=self.owner_booking_creation_is_scoped),
+            ),
+            RequestScenario(
+                name="Booking links respect field access and hide creation from a shared reader",
+                user=self.outsider,
+                view_kwargs=kwargs,
+                prepare=self.prepare_booking_reader,
+                expected=ExpectedResult(response_validators=self.readable_bookings_rendered),
+            ),
+            RequestScenario(
+                name="Inbox owners without model access can edit booking settings from the drawer",
+                user=self.owner,
+                view_kwargs=kwargs,
+                prepare=self.prepare_bookings,
+                expected=ExpectedResult(response_validators=self.owner_booking_editing_is_scoped),
+            ),
+            RequestScenario(
+                name="Two booking drawers for the same model use independent contexts",
+                user=self.owner,
+                view_kwargs=kwargs,
+                prepare=self.prepare_bookings,
+                expected=ExpectedResult(response_validators=self.booking_drawers_keep_separate_contexts),
+            ),
+            RequestScenario(
+                name="Two workspace tiles for one model retain their own header-based layouts",
+                user=self.actor,
+                view_kwargs={"inbox_id": self.reference.pk},
+                prepare=self.prepare_bookings,
+                expected=ExpectedResult(response_validators=self.workspace_tiles_keep_separate_layouts),
+            ),
+            RequestScenario(
+                name="The booking drawer's signed tabs retain the inbox scope and use submission permissions",
+                user=self.owner,
+                view_kwargs=kwargs,
+                prepare=self.prepare_bookings,
+                expected=ExpectedResult(response_validators=self.booking_submissions_tab_is_scoped),
+            ),
+            RequestScenario(
+                name="An inbox owner configures booking email from their available senders",
+                user=self.owner,
+                view_kwargs=kwargs,
+                prepare=self.prepare_bookings,
+                expected=ExpectedResult(response_validators=self.owner_booking_email_settings),
+            ),
         ]
+
+    def prepare_bookings(self, _scenario: RequestScenario) -> None:
+        """Create an active organized booking with draft and unrelated bookings."""
+        for name, inbox in (
+            ("Organized consultation", self.source),
+            ("Destination consultation", self.other_inbox),
+            ("Unrelated consultation", self.other_inbox),
+        ):
+            booking = BookingLink.objects.create(
+                title=name, organizing_inbox=inbox, meeting_duration_minutes=30, timezone="UTC",
+                active=name == "Organized consultation",
+            )
+            if name != "Unrelated consultation":
+                booking.target_inboxes.add(self.source)
+
+    def prepare_booking_reader(self, scenario: RequestScenario) -> None:
+        """Grant booking reads through organizing inboxes while keeping destination fields private."""
+        self.prepare_bookings(scenario)
+        self.source.shared_with_users.add(self.outsider)
+        PolicyManager.create_policy(
+            BookingLink,
+            global_permissions=["view"],
+            field_permissions={"organizing_inbox": ["view"]},
+            row_permissions=[RowPolicyRuleContent(permissions=["view"], conditions=[])],
+        ).assign_user(self.outsider)
+
+    def booking_drawer(self, response: HttpResponse) -> HttpResponse:
+        """Follow the calendar's drawer action and verify its generic presentation options."""
+        loader = BeautifulSoup(response.content, "html.parser").select_one('[hx-trigger="load"]')
+        self.assertFalse(REQUEST_TOKEN_QUERY_KEYS.intersection(parse_qs(urlsplit(loader["hx-get"]).query)))
+        calendar = self.client.get(loader["hx-get"], headers=json.loads(loader["hx-headers"]))
+        action = BeautifulSoup(calendar.content, "html.parser").select_one(
+            '[data-data-view-button="bookings"] [bloomerp-open-drawer="bloomerp-general-use-drawer"]',
+        )
+        self.assertIsNotNone(action)
+        self.assertEqual(action["hx-target"], "#bloomerp-general-use-drawer-body")
+        self.assertEqual(action["hx-push-url"], "false")
+        self.assertEqual(action["bloomerp-set-drawer-body-class-to"], "p-4")
+        self.assertEqual(action["bloomerp-set-drawer-size-to"], "4xl")
+        url = action["hx-get"]
+        content_type = ContentType.objects.get_for_model(BookingLink)
+        self.assertEqual(urlsplit(url).path, reverse("components_dataview", args=[content_type.pk]))
+        query = parse_qs(urlsplit(url).query)
+        self.assertFalse(REQUEST_TOKEN_QUERY_KEYS.intersection(query))
+        headers = json.loads(action["hx-headers"])
+        drawer = self.client.get(
+            url, headers=headers, HTTP_HX_REQUEST="true", HTTP_HX_TARGET="bloomerp-general-use-drawer-body",
+        )
+        self.assertEqual(self.booking_context_headers(drawer), headers)
+        self.assertEqual(drawer.status_code, 200)
+        return drawer
+
+    def bookings_rendered(self, response: HttpResponse) -> bool:
+        """Check signed row details, rendered actions, and the generic prefilled form."""
+        drawer = self.booking_drawer(response)
+        self.assertEqual([booking.title for booking in drawer.context["queryset"]], [
+            "Destination consultation", "Organized consultation",
+        ])
+        markup = BeautifulSoup(drawer.content, "html.parser")
+        buttons = markup.select('tr button[data-object-action-id="share_booking_link"]')
+        self.assertEqual(len(buttons), 1)
+        button = buttons[0]
+        self.assertIn("Organized consultation", button.find_parent("tr").get_text())
+        self.assertEqual(button.get_text(strip=True), "Copy booking link")
+        self.assertEqual(button["@click"], "copyToClipboard($el.dataset.bookingUrl)")
+        self.assertFalse(button.has_attr("hx-get"))
+        booking = BookingLink.objects.get(title="Organized consultation")
+        self.assertEqual(
+            button["data-booking-url"],
+            drawer.wsgi_request.build_absolute_uri(booking.get_public_url()),
+        )
+        self.assertNotContains(drawer, str(booking.public_token))
+        token = get_token(drawer.wsgi_request).dataviews[BookingLink]
+        self.assertEqual(token.object_actions, ["share_booking_link"])
+        self.assertEqual(token.dataview_actions, ["add"])
+        self.assertContains(drawer, "data-dataview-create-button")
+        create_url = drawer.context["create_component_url"]
+        url = urlsplit(create_url)
+        content_type = ContentType.objects.get_for_model(BookingLink)
+        detail = self.client.get(
+            self.booking_row_detail_url(drawer, booking),
+            headers=self.booking_context_headers(drawer),
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET=f"drawer-detail-pane-{content_type.pk}",
+        )
+        self.assertEqual(detail.status_code, 200)
+        self.assertFalse(detail.context["can_change"])
+        self.assertFalse(detail.context["show_layout_preferences"])
+        self.assertNotContains(detail, "data-layout-edit-toggle")
+        editor = BeautifulSoup(detail.content, "html.parser").select_one('form:has([name="title"])')
+        self.assertIsNotNone(editor)
+        self.assertFalse(editor.select_one('[name="title"]').has_attr("disabled"))
+        self.assertIsNotNone(editor.select_one('[data-field-name="target_inboxes"]'))
+        self.assertEqual(url.path, reverse("components_create_object", args=[content_type.pk]))
+        self.assertEqual(parse_qs(url.query)["organizing_inbox"], [str(self.source.pk)])
+        self.assertFalse(REQUEST_TOKEN_QUERY_KEYS.intersection(parse_qs(url.query)))
+        headers = self.booking_context_headers(drawer)
+        form = self.client.get(create_url, headers=headers, HTTP_HX_REQUEST="true")
+        self.assertEqual(form.context["form_request_context_id"], headers[REQUEST_TOKEN_HEADER])
+        self.assertEqual(form.status_code, 200)
+        self.assertContains(form, 'name="organizing_inbox"')
+        return True
+
+    def booking_context_headers(self, drawer: HttpResponse) -> dict[str, str]:
+        """Read the context carried by the drawer's shared HTMX container."""
+        container = BeautifulSoup(drawer.content, "html.parser").select_one(
+            '[data-content-type-id][hx-headers]',
+        )
+        self.assertIsNotNone(container)
+        return json.loads(container["hx-headers"])
+
+    def booking_row_detail_url(self, drawer: HttpResponse, booking: BookingLink) -> str:
+        """Read the ordinary detail URL used by the drawer's double-click handler."""
+        markup = BeautifulSoup(drawer.content, "html.parser")
+        cell = markup.select_one(f'[data-object-id="{booking.pk}"][data-detail-url]')
+        self.assertIsNotNone(cell)
+        self.assertFalse(urlsplit(cell["data-detail-url"]).query)
+        return cell["data-detail-url"]
+
+    def owner_booking_creation_is_scoped(self, response: HttpResponse) -> bool:
+        """Limit listing and creation to links organized by the selected inbox."""
+        manager = UserPolicyManager(self.owner, use_request_token=False)
+        self.assertFalse(manager.has_global_permission(BookingLink, "view"))
+        self.assertFalse(manager.has_global_permission(BookingLink, "add"))
+        drawer = self.booking_drawer(response)
+        self.assertEqual(
+            [booking.title for booking in drawer.context["queryset"]],
+            ["Organized consultation"],
+        )
+        self.assertContains(drawer, "Organized consultation")
+        self.assertContains(drawer, "data-dataview-create-button")
+        url = drawer.context["create_component_url"]
+        query = parse_qs(urlsplit(url).query)
+        self.assertFalse(REQUEST_TOKEN_QUERY_KEYS.intersection(query))
+        context_headers = self.booking_context_headers(drawer)
+        self.assertEqual(self.client.get(url).status_code, 403)
+        form = self.client.get(url, headers=context_headers, HTTP_HX_REQUEST="true")
+        self.assertEqual(form.context["form_request_context_id"], context_headers[REQUEST_TOKEN_HEADER])
+        self.assertEqual(form.status_code, 200)
+        self.assertFalse(form.context["can_change"])
+        self.assertContains(form, 'name="organizing_inbox" value="' + str(self.source.pk) + '"')
+        self.assertContains(form, 'name="auto_approve"')
+        self.assertNotContains(form, 'name="target_inboxes"')
+
+        data = {
+            "title": "Owner consultation",
+            "meeting_duration_minutes": 30,
+            "timezone": "UTC",
+            "active": "on",
+            "auto_approve": "on",
+        }
+        headers = {"headers": context_headers, "HTTP_HX_REQUEST": "true", "HTTP_X_BLOOMERP_MODAL_CREATE": "true"}
+        forged = self.client.post(url, {**data, "organizing_inbox": self.other_inbox.pk}, **headers)
+        self.assertContains(forged, "You do not have permission to create an object with these values.")
+        forged_destination = self.client.post(url, {
+            **data, "organizing_inbox": self.source.pk, "target_inboxes": self.other_inbox.pk,
+        }, **headers)
+        self.assertContains(forged_destination, "Permission denied for fields: target_inboxes")
+        self.assertFalse(BookingLink.objects.filter(title=data["title"]).exists())
+        saved = self.client.post(url, {**data, "organizing_inbox": self.source.pk}, **headers)
+        self.assertEqual(saved.status_code, 204)
+        booking = BookingLink.objects.get(title=data["title"])
+        self.assertEqual(booking.organizing_inbox_id, self.source.pk)
+        self.assertTrue(booking.auto_approve)
+
+        drawer = self.client.get(
+            drawer.context["data_view_url"],
+            headers=self.booking_context_headers(drawer),
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET="data-view-data-section",
+        )
+        self.assertEqual(drawer.status_code, 200)
+        self.assertEqual(
+            [link.title for link in drawer.context["queryset"]],
+            ["Organized consultation", data["title"]],
+        )
+        self.assertContains(drawer, data["title"])
+        self.assertContains(drawer, booking.get_public_url())
+        return True
+
+    def owner_booking_editing_is_scoped(self, response: HttpResponse) -> bool:
+        """Use the drawer's tokens to edit one inbox's booking settings."""
+        manager = UserPolicyManager(self.owner, use_request_token=False)
+        self.assertFalse(manager.has_global_permission(BookingLink, "change"))
+        booking = BookingLink.objects.get(title="Organized consultation")
+        other_booking = BookingLink.objects.get(title="Destination consultation")
+        drawer = self.booking_drawer(response)
+        detail_url = self.booking_row_detail_url(drawer, booking)
+
+        content_type = ContentType.objects.get_for_model(BookingLink)
+        form = self.client.get(
+            detail_url,
+            headers=self.booking_context_headers(drawer),
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET=f"drawer-detail-pane-{content_type.pk}",
+        )
+        self.assertEqual(form.status_code, 200)
+        editor = BeautifulSoup(form.content, "html.parser").select_one('form:has([name="title"])')
+        self.assertIsNotNone(editor)
+        self.assertFalse(editor.select_one('[name="title"]').has_attr("disabled"))
+        self.assertIsNotNone(editor.select_one('[name="location__meeting"]'))
+        self.assertIsNone(editor.select_one('[data-field-name="target_inboxes"]'))
+        self.assertEqual(editor["hx-post"], detail_url)
+        self.assertEqual(editor["hx-target"], f"#drawer-detail-content-{content_type.pk}")
+
+        headers = {
+            "headers": self.booking_context_headers(drawer),
+            "HTTP_HX_REQUEST": "true", "HTTP_HX_TARGET": editor["hx-target"].lstrip("#"),
+        }
+        data = {
+            "title": "Updated consultation",
+            "description": "Updated booking instructions",
+            "location": "Room 14",
+            "meeting_duration_minutes": 45,
+            "timezone": "UTC",
+            "auto_approve": "on",
+        }
+        parts = urlsplit(detail_url)
+        out_of_scope = urlunsplit(parts._replace(path=other_booking.get_absolute_url()))
+        self.assertEqual(self.client.post(out_of_scope, data, headers=self.booking_context_headers(drawer)).status_code, 403)
+        self.assertEqual(self.client.post(parts.path, data).status_code, 403)
+        other_booking.refresh_from_db()
+        self.assertEqual(other_booking.title, "Destination consultation")
+
+        forged = self.client.post(detail_url, {
+            **data,
+            "organizing_inbox": self.other_inbox.pk,
+            "target_inboxes": self.other_inbox.pk,
+        }, **headers)
+        self.assertContains(forged, "Permission denied for fields: organizing_inbox, target_inboxes")
+        booking.refresh_from_db()
+        self.assertEqual(booking.title, "Organized consultation")
+
+        saved = self.client.post(detail_url, data, **headers)
+        self.assertContains(saved, data["title"])
+        booking.refresh_from_db()
+        self.assertEqual(booking.title, data["title"])
+        self.assertEqual(booking.description, data["description"])
+        self.assertEqual(booking.location, data["location"])
+        self.assertEqual(booking.meeting_duration_minutes, 45)
+        self.assertFalse(booking.active)
+        self.assertEqual(booking.organizing_inbox_id, self.source.pk)
+        self.assertEqual(list(booking.target_inboxes.all()), [self.source])
+        return True
+
+    def owner_booking_email_settings(self, response: HttpResponse) -> bool:
+        """Scope the sender choices and require a message when saving the form."""
+        account = EmailAccount.objects.create(email_address="booking-sender@example.com")
+        hidden_account = EmailAccount.objects.create(email_address="private-sender@example.com")
+        folder = InboxFolder.objects.create(
+            inbox=self.source, type="email", related_object_id=str(account.pk),
+        )
+        booking = BookingLink.objects.get(title="Organized consultation")
+        drawer = self.booking_drawer(response)
+        url = self.booking_row_detail_url(drawer, booking)
+        form = self.client.get(url, headers=self.booking_context_headers(drawer), HTTP_HX_REQUEST="true")
+        self.assertContains(form, account.email_address)
+        self.assertNotContains(form, hidden_account.email_address)
+        self.assertContains(form, 'name="email_message"')
+
+        headers = {"headers": self.booking_context_headers(drawer), "HTTP_HX_REQUEST": "true"}
+        data = {"active": "on", "auto_approve": "on"}
+        incomplete = self.client.post(url, {**data, "email_account": account.pk}, **headers)
+        self.assertContains(incomplete, "Enter an email message when an email account is selected.")
+        forged = self.client.post(
+            url, {**data, "email_account": hidden_account.pk, "email_message": "Hello"}, **headers
+        )
+        self.assertContains(forged, "Select a valid choice.")
+        self.assertNotContains(forged, hidden_account.email_address)
+        booking.refresh_from_db()
+        self.assertIsNone(booking.email_account_id)
+
+        message = "See you at your appointment."
+        saved = self.client.post(
+            url, {**data, "email_account": account.pk, "email_message": message}, **headers
+        )
+        self.assertContains(saved, message)
+        booking.refresh_from_db()
+        self.assertEqual(booking.email_account_id, account.pk)
+        self.assertEqual(booking.email_message, message)
+
+        folder.delete()
+        form = self.client.get(url, **headers)
+        self.assertContains(form, "Unavailable email account")
+        self.assertNotContains(form, account.email_address)
+        self.assertContains(
+            self.client.post(url, {**data, "title": "Retained sender"}, **headers),
+            "Retained sender",
+        )
+        booking.refresh_from_db()
+        self.assertEqual(booking.title, "Retained sender")
+        self.assertEqual(booking.email_account_id, account.pk)
+        return True
+
+    def booking_submissions_tab_is_scoped(self, response: HttpResponse) -> bool:
+        """Use the relationship filter and scoped permissions with the same drawer header."""
+        booking = BookingLink.objects.get(title="Organized consultation")
+        other_booking = BookingLink.objects.get(title="Destination consultation")
+        same_inbox = BookingLink.objects.create(
+            title="Another booking in this inbox", organizing_inbox=self.source,
+            meeting_duration_minutes=30,
+        )
+        for link, name in (
+            (booking, "Matching visitor"),
+            (other_booking, "Other visitor"),
+            (same_inbox, "Other link in this inbox"),
+        ):
+            BookingLinkSubmission.objects.create(
+                booking_link=link, name=name, email="visitor@example.com",
+            )
+
+        drawer = self.booking_drawer(response)
+        headers = self.booking_context_headers(drawer)
+        url = self.booking_row_detail_url(drawer, booking)
+        content_type = ContentType.objects.get_for_model(BookingLink)
+        detail = self.client.get(
+            url, headers=headers,
+            HTTP_HX_REQUEST="true", HTTP_HX_TARGET=f"drawer-detail-pane-{content_type.pk}",
+        )
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual([tab["name"] for tab in detail.context["tabs"]], ["Details", "Submissions"])
+        self.assertIsNone(detail.context["detail_tabs_preference"])
+        document = BeautifulSoup(detail.content, "html.parser")
+        self.assertEqual(json.loads(document.select_one("[data-detail-view-grid]")["hx-headers"]), headers)
+        details_tab, submissions_tab = document.select("[data-tab-link]")
+        self.assertEqual(details_tab["aria-selected"], "true")
+        submissions_url = submissions_tab["hx-get"]
+        self.assertFalse(urlsplit(submissions_url).query)
+        route = "booking_links_detail_submissions_relationship"
+        self.assertEqual(submissions_url, reverse(route, args=[booking.pk]))
+        self.assertEqual(self.client.get(reverse(route, args=[other_booking.pk]), headers=headers).status_code, 403)
+
+        submissions = self.client.get(
+            submissions_url, headers=headers, HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET=submissions_tab["hx-target"].lstrip("#"),
+        )
+        self.assertEqual(submissions.status_code, 200)
+        self.assertTrue(submissions.context["tabs"][1]["is_active"])
+        loader = BeautifulSoup(submissions.content, "html.parser").select_one('[hx-trigger="load"]')
+        table_url = loader["hx-get"]
+        self.assertEqual(json.loads(loader["hx-headers"]), headers)
+        self.assertEqual(parse_qs(urlsplit(table_url).query)["booking_link"], [str(booking.pk)])
+        self.assertEqual(self.client.get(table_url).status_code, 403)
+        rendered = self.client.get(table_url, headers=headers)
+        self.assertContains(rendered, "Matching visitor")
+        self.assertNotContains(rendered, "Other visitor")
+        self.assertNotContains(rendered, "Other link in this inbox")
+        out_of_scope = self.client.get(
+            urlsplit(table_url).path, {"booking_link": str(other_booking.pk)}, headers=headers,
+        )
+        self.assertEqual(out_of_scope.status_code, 403)
+        self.source.user = self.outsider
+        self.source.save(update_fields=["user"])
+        self.assertEqual(self.client.get(table_url, headers=headers).status_code, 403)
+        unfiltered = self.client.get(urlsplit(table_url).path, headers=headers)
+        self.assertNotContains(unfiltered, "Matching visitor")
+        return True
+
+    def booking_drawers_keep_separate_contexts(self, response: HttpResponse) -> bool:
+        """Keep two same-model contexts independent and bound to the issuing session."""
+        first = self.booking_drawer(response)
+        another_calendar = self.client.get(reverse("inbox_calendar", args=[self.other_inbox.pk]))
+        second = self.booking_drawer(another_calendar)
+        first_headers = self.booking_context_headers(first)
+        second_headers = self.booking_context_headers(second)
+        self.assertNotEqual(first_headers[REQUEST_TOKEN_HEADER], second_headers[REQUEST_TOKEN_HEADER])
+        table_url = urlsplit(first.wsgi_request.get_full_path()).path
+        self.assertContains(self.client.get(table_url, headers=first_headers), "Organized consultation")
+        other = self.client.get(table_url, headers=second_headers)
+        self.assertContains(other, "Destination consultation")
+        self.assertNotContains(other, "Organized consultation")
+        new_session = Client()
+        new_session.force_login(self.owner)
+        return new_session.get(table_url, headers=first_headers).status_code == 403
+
+    def workspace_tiles_keep_separate_layouts(self, response: HttpResponse) -> bool:
+        """Load the same endpoint twice with two distinct tile layouts and context IDs."""
+        content_type = ContentType.objects.get_for_model(BookingLink)
+        table_url = reverse("components_dataview", args=[content_type.pk])
+        context_ids = set()
+        for field in ("title", "meeting_duration_minutes"):
+            preference = UserListViewPreference.objects.create(
+                content_type=content_type, user=self.actor, view_type="table",
+            )
+            application_field = ApplicationField.get_for_model(BookingLink).get(field=field)
+            preference.set_visible_field_ids("table", [application_field.pk])
+            preference.save(update_fields=["display_fields"])
+            markup = DataViewTileRenderer.render(DataViewTileConfig(
+                content_type_id=content_type.pk, list_view_preference_id=preference.pk,
+            ), response.wsgi_request)
+            container = BeautifulSoup(markup, "html.parser").select_one("[data-base-url][hx-headers]")
+            self.assertIsNotNone(container)
+            headers = json.loads(container["hx-headers"])
+            context_ids.add(headers[REQUEST_TOKEN_HEADER])
+            self.assertNotIn("_dataview_token", container["data-url"])
+            result = self.client.get(table_url, headers=headers)
+            self.assertEqual(result.status_code, 200)
+            self.assertEqual([item.field for item in result.context["dataview_render_fields"]], [field])
+        return len(context_ids) == 2
+
+    def readable_bookings_rendered(self, response: HttpResponse) -> bool:
+        """Show only bookings with an inbox association the reader can see."""
+        drawer = self.booking_drawer(response)
+        self.assertEqual([booking.title for booking in drawer.context["queryset"]], ["Organized consultation"])
+        self.assertNotContains(drawer, "data-dataview-create-button")
+        self.assertNotContains(drawer, "Copy booking link")
+        booking = BookingLink.objects.get(title="Organized consultation")
+        self.assertNotContains(drawer, booking.get_public_url())
+        return True
 
     def correct_navigation(self, response: HttpResponse) -> bool:
         """Confirm shared dataview loading, hidden Inbox scope, and unchanged preferences."""
         body = response.content.decode()
+        filters = deserialize_filters(response.context["dataview_query_params"]["filter"])
         self.reference.refresh_from_db()
         content_type = ContentType.objects.get_for_model(CalendarEvent)
         return (
@@ -81,13 +580,64 @@ class TestInboxCalendarView(InboxCalendarFixtures, BloomerpViewTestCase):
             )
             in body
             and f"calendar_color_values={self.source.pk}" in body
-            and "_arg_hide_filters=inboxes%2Cinboxes__in%2Ccancelled" in body
-            and "cancelled=false" in body
+            and "_arg_hide_filters=true" in body
+            and "X-Bloomerp-Context" in body
+            and "_dataview_token=" not in body
+            and FilterCondition(field_path="cancelled", lookup_id="equals", value=False) in filters[0].conditions
             and '<header class="mb-4 flex flex-wrap items-center justify-between gap-3">'
             not in body
             and self.reference.selected
             and UserListViewPreference.objects.count() == self.preference_count
         )
+
+    def prepare_shared_calendar_preference(self, _scenario: RequestScenario) -> None:
+        """Select a shared table and give its owner a different calendar period."""
+        content_type = ContentType.objects.get_for_model(CalendarEvent)
+        shared = UserListViewPreference.objects.create(
+            content_type=content_type,
+            user=self.actor,
+            view_type="table",
+            options={"calendar": {"calendar_view_mode": "year"}},
+        )
+        shared.shared_with_users.add(self.owner)
+        PreferenceManager(self.owner).select(shared)
+
+    def period_saved(self, response: HttpResponse) -> bool:
+        """Follow the real loader, save Month, and reload the same signed layout."""
+        content_type = ContentType.objects.get_for_model(CalendarEvent)
+        selected = UserListViewPreference.objects.filter(
+            user=self.owner, content_type=content_type, selected=True,
+        )
+        previous = selected.first()
+        loader = BeautifulSoup(response.content, "html.parser").select_one('[hx-trigger="load"]')
+        layout_url = loader["hx-get"]
+        context_headers = json.loads(loader["hx-headers"])
+        calendar = self.client.get(layout_url, headers=context_headers)
+        self.assertEqual(calendar.status_code, 200)
+        self.assertContains(calendar, 'data-calendar-view-mode="week"')
+        self.assertContains(calendar, self.timed.title)
+        self.assertNotContains(calendar, self.cancelled.title)
+        self.assertEqual(selected.first(), previous)
+
+        grid = BeautifulSoup(calendar.content, "html.parser").select_one("[data-calendar-mode-url]")
+        unsigned = self.client.post(
+            urlsplit(grid["data-calendar-mode-url"]).path, {"view_mode": "month"},
+            content_type="application/json",
+        )
+        self.assertEqual(unsigned.status_code, 404)
+        save = self.client.post(
+            grid["data-calendar-mode-url"], {"view_mode": "month"},
+            content_type="application/json", headers=context_headers,
+        )
+        self.assertEqual(save.status_code, 200)
+        self.assertEqual(save.json(), {"view_mode": "month"})
+        preference = selected.get()
+        self.assertEqual(preference.options["calendar"]["calendar_view_mode"], "month")
+        if previous is not None:
+            self.assertEqual(preference.pk, previous.pk)
+            self.assertEqual(preference.source_object.options["calendar"]["calendar_view_mode"], "year")
+        self.assertContains(self.client.get(layout_url, headers=context_headers), 'data-calendar-view-mode="month"')
+        return True
 
     def prepare_overlay(self, scenario: RequestScenario) -> None:
         """Use the real shared calendar renderer and filter pipeline with two accessible inboxes."""
@@ -162,7 +712,7 @@ class TestInboxCalendarView(InboxCalendarFixtures, BloomerpViewTestCase):
         from bloomerp.dataviews.calendar.grouping import calendar_group_color
 
         body = response.content.decode()
-        self.assertEqual(self.calendar_button_count(body, str(self.timed.pk)), 1)
+        self.assertEqual(self.calendar_event_count(body, str(self.timed.pk)), 1)
         self.assertIn(self.unplaced.title, body)
         self.assertIn("data-calendar-group-memberships", body)
         self.assertIn("inbox-calendar-overlay", body)
@@ -178,16 +728,13 @@ class TestInboxCalendarView(InboxCalendarFixtures, BloomerpViewTestCase):
         return (
             self.unplaced.title not in body
             and "data-calendar-group-memberships" not in body
-            and self.calendar_button_count(body, str(self.timed.pk)) == 1
+            and self.calendar_event_count(body, str(self.timed.pk)) == 1
         )
 
-    def calendar_button_count(self, body: str, object_id: str) -> int:
-        """Count event buttons separately from nested field cells that repeat the object's ID."""
+    def calendar_event_count(self, body: str, object_id: str) -> int:
+        """Count only events, including timed bars and month cards."""
         return len(
-            re.findall(
-                r'<button\b[^>]*\bdata-calendar-event\b[^>]*\bdata-object-id="'
-                + re.escape(object_id)
-                + r'"',
-                body,
+            BeautifulSoup(body, "html.parser").select(
+                f'[data-calendar-event][data-object-id="{object_id}"]',
             )
         )

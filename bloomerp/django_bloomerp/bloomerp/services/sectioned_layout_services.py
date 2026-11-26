@@ -105,11 +105,6 @@ def dump_layout_json(layout: FieldLayout | dict[str, Any] | None) -> str:
     return json.dumps(serialize_layout(layout))
 
 
-def layout_has_items(layout: FieldLayout | dict[str, Any] | None) -> bool:
-    normalized = normalize_layout_payload(layout)
-    return any(row.items for row in normalized.rows)
-
-
 def get_model_field_layout(model: Type[Model]) -> FieldLayout | None:
     bloomerp_config = getattr(model, "bloomerp_config", None)
     detail_view_settings = (

@@ -382,8 +382,12 @@ by those tests.
   dispatch, even if the coordinator finds an existing result.
 - There is also a 50-model-request safety limit per attempt.
 - Monetary budgets and currency are outside version one.
-- Artifacts currently need extracted content in user messages. A `file_uri` alone
-  is not sufficient; native PDF/image transfer is not implemented here.
+- Agents save provider-neutral input and output modalities. Admins can enter them
+  in agent setup or discover them when the provider exposes a catalog. Existing
+  agents default to text input and output.
+- The runtime sends authorized file bytes when both the configured model input
+  modalities and the SDK transport support the media type. Checkpoints retain
+  references, and each model request rechecks permission before reading the file.
 - Rich artifact presentation and input resolution remain separate integration work.
 - The dependency uses `pydantic-ai-slim` with OpenAI/Anthropic extras and a
   compatible Anthropic SDK. Checkpoints record both adapter and SDK versions.

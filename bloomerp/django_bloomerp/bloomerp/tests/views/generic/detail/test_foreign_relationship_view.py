@@ -2,6 +2,7 @@ from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models.fields.reverse_related import ManyToOneRel
+from django.http import HttpResponse
 from django.test import override_settings
 from django.urls import clear_url_caches, path
 
@@ -113,11 +114,12 @@ class TestForeignRelationshipView(RequestTestCaseMixin, BaseBloomerpTestCaseWith
                 defaults={"name": f"Can {action} {model._meta.verbose_name}"},
             )
 
-    def relationship_context_is_configured(self, response):
+    def relationship_context_is_configured(self, response: HttpResponse) -> bool:
+        """Check the related model, equality filter, and filter-display argument."""
         return (
-            response.context["filters"] == {"customer": str(self.customer.pk)}
-            and response.context["args"] == {"hide_filters": "customer"}
-            and response.context["foreign_content_type_id"]
+            response.context["dataview_query_params"] == {"customer": str(self.customer.pk)}
+            and response.context["dataview_args"] == {"hide_filters": "customer"}
+            and response.context["dataview_content_type_id"]
             == ContentType.objects.get_for_model(self.NoteModel).pk
         )
 

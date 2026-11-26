@@ -1,10 +1,13 @@
 """Browser contract for compact file groups and permission-aware attachment actions."""
 
+from unittest.mock import patch
+
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
 from playwright.sync_api import Response, expect
 
 from bloomerp.models import FileNode, FileReference, Label, ObjectLabel
+from bloomerp.models.definition import get_object_actions
 from bloomerp.permissions.definition import BloomerpPermission, RowPolicyRuleContent
 from bloomerp.permissions.manager import PolicyManager
 from bloomerp.tests.base import E2EAction, E2ERequestScenario
@@ -68,7 +71,36 @@ class TestGroupedFileAttachments(BloomerpE2ETestCase):
                 url=self.single_file_customer.get_absolute_url(),
                 actions=[E2EAction(name="Remove and restore the last file", execute=self.remove_last_file)],
             ),
+            E2ERequestScenario(
+                name="The file object action opens a titled drawer at the configured width",
+                user=self.admin_user,
+                url=self.files[1].get_absolute_url(),
+                prepare=self.use_large_preview_drawer,
+                actions=[E2EAction(name="Open the file preview action", execute=self.open_file_preview_action)],
+            ),
         ]
+
+    def use_large_preview_drawer(self) -> None:
+        """Set a preview width different from the shared drawer's default."""
+        actions = get_object_actions(FileNode, surface="detail")
+        actions = [
+            action.model_copy(update={"size": "lg"}) if action.id == "view_file" else action
+            for action in actions
+        ]
+        self.enterContext(patch.object(FileNode.bloomerp_config, "object_actions", actions))
+
+    def open_file_preview_action(self) -> None:
+        """Load the existing preview fragment into a drawer without navigating."""
+        url = self.page.url
+        self.page.locator('[data-object-action-id="view_file"]').click()
+        drawer = self.page.locator("#bloomerp-general-use-drawer")
+        expect(drawer.get_by_role("heading", name="File preview")).to_be_visible()
+        expect(drawer.locator("[data-drawer-panel]")).to_contain_class("max-w-lg")
+        expect(drawer.locator("[data-drawer-panel]")).not_to_contain_class("max-w-xl")
+        expect(drawer.locator("#bloomerp-general-use-drawer-body")).to_contain_text("Preview contents")
+        expect(self.page).to_have_url(url)
+        drawer.get_by_role("button", name="Close", exact=True).click()
+        expect(drawer).to_be_hidden()
 
     def manage_files(self) -> None:
         """Remove one file, undo it, persist its removal, and open another file preview."""

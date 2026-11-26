@@ -2,25 +2,48 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
-from typing import Any, Literal
+import mimetypes
+from collections.abc import Sequence
+from os import PathLike
+from typing import Any, BinaryIO, Literal, cast, overload
+from uuid import uuid4
 
+import httpx
+from asgiref.sync import async_to_sync, sync_to_async
 from cryptography.fernet import Fernet, InvalidToken
+from django import forms
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.files import File
 from django.db import models
 from django.utils.crypto import salted_hmac
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import gettext_noop
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic import ValidationError as SchemaValidationError
+from pydantic_ai import Agent
+from pydantic_ai.messages import BinaryContent
+from pydantic_ai.models import Model
+from pydantic_ai.settings import ModelSettings
+from pydantic_ai.usage import UsageLimits
 
-from bloomerp.agents.definition import RunBudgets
+from bloomerp.agents.definition import ModelModalities, ModelModality, RunBudgets
 from bloomerp.agents.providers.definition import AIProviderCredentialsSchema
 from bloomerp.agents.providers.registry import AI_PROVIDER_REGISTRY, provider_choices
-from bloomerp.agents.runtime import AgentRuntimeConfig, AgentRuntimeCredentials
+from bloomerp.agents.runtime import (
+    AgentRuntimeConfig,
+    AgentRuntimeContext,
+    AgentRuntimeCredentials,
+    AgentRuntimeRunRequest,
+)
+from bloomerp.agents.runtimes.pydantic_ai import create_model, supports_attachment
 from bloomerp.dataviews.table.config import TableDataView
+from bloomerp.field_types.registry import FieldContext
+from bloomerp.field_types.utils.widget_factories import widget
+from bloomerp.form_fields.mapping_field import MappingField
 from bloomerp.models.base_bloomerp_model import BloomerpModel
 from bloomerp.models.definition import (
     ActivityLogSettings,
@@ -30,13 +53,70 @@ from bloomerp.models.definition import (
     DetailTabsConfiguration,
     DetailViewSettings,
     FieldLayout,
+    FieldSettings,
     LayoutItem,
     LayoutRow,
     ModelViewSettings,
 )
 from bloomerp.modules.bloomai import BloomAIModule
+from bloomerp.widgets.mapping_widget import MappingWidget
 
 from .base import agent_search_settings
+
+type InvocationFile = str | PathLike[str] | BinaryIO | File
+
+_MODALITY_DIRECTIONS = [("input", _("Input")), ("output", _("Output"))]
+_MODALITY_CHOICES = [(modality.value, modality.value) for modality in ModelModality]
+_MODALITY_DEFAULTS = ModelModalities().model_dump(mode="json")
+
+
+def _model_modalities_widget(context: FieldContext) -> MappingWidget:
+    """Build fixed Input and Output rows with a multi-select for each direction."""
+    return MappingWidget(
+        attrs=dict(context.attrs),
+        left=_MODALITY_DIRECTIONS,
+        left_widget=forms.HiddenInput(),
+        right_widget=forms.SelectMultiple(choices=_MODALITY_CHOICES),
+        allow_adding_groups=False,
+        fixed_initial_values=_MODALITY_DEFAULTS,
+    )
+
+
+class _ModelModalitiesField(MappingField):
+    """Compare each direction's selections independently of checkbox order."""
+
+    def has_changed(self, initial: Any, data: Any) -> bool:
+        """Compare effective capabilities, including defaults for omitted directions."""
+        if self.disabled:
+            return False
+        try:
+            before = self.to_python(initial)
+            after = self.to_python(data)
+        except ValidationError:
+            return True
+        return any(
+            set(before.get(key, defaults)) != set(after.get(key, defaults))
+            for key, defaults in _MODALITY_DEFAULTS.items()
+        )
+
+
+def model_modalities_form_field(
+    context: FieldContext,
+    default: forms.Field | None,
+) -> MappingField:
+    """Clean indexed rows and legacy JSON into the agent's modality mapping."""
+    return _ModelModalitiesField(
+        left=_MODALITY_DIRECTIONS,
+        right_field=forms.MultipleChoiceField(
+            choices=_MODALITY_CHOICES, required=False
+        ),
+        keep_empty_fixed_values=True,
+        widget=_model_modalities_widget(context),
+        required=default.required if default else False,
+        label=default.label if default else _("Model modalities"),
+        initial=default.initial if default else None,
+        help_text=_("Select the supported input and output modalities."),
+    )
 
 
 class EncryptedCredentialsEnvelope(BaseModel):
@@ -86,17 +166,6 @@ class AIAgent(BloomerpModel):
                                 ),
                             ],
                         ),
-                        LayoutRow(
-                            columns=3,
-                            title="Tools",
-                            items=[
-                                LayoutItem(id="internal_tool_mode", colspan=1),
-                                LayoutItem(id="internal_tools", colspan=2),
-                                LayoutItem(id="internal_resource_mode", colspan=1),
-                                LayoutItem(id="internal_resources", colspan=2),
-                                LayoutItem(id="mcp_integrations", colspan=3),
-                            ],
-                        ),
                     ]
                 )
             ],
@@ -122,6 +191,17 @@ class AIAgent(BloomerpModel):
             allow_global_search=True,
             include_search_routes=True,
         ),
+        field_settings=[
+            FieldSettings(
+                field="default_instructions",
+                widget_factory=widget(forms.Textarea, attrs={"rows": 4}),
+            ),
+            FieldSettings(
+                field="modalities",
+                form_factory=model_modalities_form_field,
+                widget_factory=_model_modalities_widget,
+            ),
+        ],
     )
 
     avatar = None
@@ -228,6 +308,14 @@ class AIAgent(BloomerpModel):
         verbose_name=_("Provider Parameters"),
         help_text=_(
             "Provider-validated model controls. A max_tokens parameter limits output per response, separate from the total run token budget."
+        ),
+    )
+    modalities = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name=_("Model modalities"),
+        help_text=_(
+            "Supported model inputs and outputs. Defaults to text in both directions."
         ),
     )
     base_url = models.URLField(
@@ -347,6 +435,9 @@ class AIAgent(BloomerpModel):
             base_url=self.base_url or None,
             request_timeout_seconds=self.request_timeout_seconds,
             parameters=parameters,
+            modalities=ModelModalities.model_validate(self.modalities)
+            if self.modalities != {}
+            else None,
         )
 
     def run_budgets(self) -> RunBudgets:
@@ -390,3 +481,140 @@ class AIAgent(BloomerpModel):
         """Validate configured providers, parameters, and budgets on ordinary ORM writes."""
         self.full_clean()
         super().save(*args, **kwargs)
+
+    @overload
+    def invoke(
+        self,
+        input_text: str,
+        *,
+        files: Sequence[InvocationFile] = (),
+        output_schema: None = None,
+    ) -> str:
+        """Return the model's plain-text response to a prompt and optional files."""
+
+    @overload
+    def invoke[OutputT: BaseModel](
+        self,
+        input_text: str,
+        *,
+        files: Sequence[InvocationFile] = (),
+        output_schema: type[OutputT],
+    ) -> OutputT:
+        """Return a response validated against the supplied Pydantic model class."""
+
+    def invoke[OutputT: BaseModel](
+        self,
+        input_text: str,
+        *,
+        files: Sequence[InvocationFile] = (),
+        output_schema: type[OutputT] | None = None,
+    ) -> str | OutputT:
+        """Run a stateless prompt synchronously with the configured PydanticAI provider.
+
+        This model-only call uses an ephemeral system context for trusted
+        server-side callers. Pass authorized filesystem paths or open, seekable
+        binary files with a filename or content type. Files are sent as model
+        inputs. Pass a Pydantic model class to get a validated instance.
+        """
+        if not self.enabled:
+            raise ValidationError(_("This AI agent is disabled."))
+
+        config = self.runtime_config()
+        if config.runtime != "pydantic_ai":
+            raise ValidationError(
+                _("Direct invocation requires a PydanticAI provider.")
+            )
+
+        credentials = self.runtime_credentials(config.provider)
+        request = AgentRuntimeRunRequest(
+            run_id=uuid4(),
+            attempt_id=uuid4(),
+            config=config,
+            context=AgentRuntimeContext(user_id="system", conversation_id=uuid4()),
+            budgets=self.run_budgets(),
+        )
+
+        def build_file_prompt(model: Model) -> list[str | BinaryContent]:
+            """Read bounded, supported files while preserving each stream's position."""
+            modalities = config.modalities or ModelModalities()
+            remaining = getattr(
+                settings, "BLOOMERP_AGENT_UPLOAD_MAX_BYTES", 20 * 1024 * 1024
+            )
+            prompt: list[str | BinaryContent] = [input_text] if input_text else []
+            for file in files:
+                path = file if isinstance(file, (str, PathLike)) else None
+                name = path if path is not None else getattr(file, "name", None)
+                media_type = (
+                    (getattr(file, "content_type", None) or "")
+                    .split(";", 1)[0]
+                    .strip()
+                    .lower()
+                )
+                if not media_type or media_type == "application/octet-stream":
+                    media_type = (
+                        mimetypes.guess_type(name)[0]
+                        if isinstance(name, (str, PathLike))
+                        else None
+                    )
+                if (
+                    not media_type
+                    or not modalities.accepts_attachment(media_type)
+                    or not supports_attachment(model, media_type)
+                ):
+                    raise ValidationError(
+                        _("This AI agent cannot accept %(type)s files.")
+                        % {
+                            "type": media_type or _("unknown"),
+                        }
+                    )
+                if isinstance(file, (str, PathLike)):
+                    with open(file, "rb") as source:
+                        data = source.read(remaining + 1)
+                else:
+                    position = file.tell()
+                    try:
+                        file.seek(0)
+                        data = file.read(remaining + 1)
+                    finally:
+                        file.seek(position)
+                if not isinstance(data, bytes) or not data:
+                    raise ValidationError(_("Pass a non-empty binary file."))
+                if len(data) > remaining:
+                    raise ValidationError(
+                        _("The files exceed the agent attachment size limit.")
+                    )
+                prompt.append(BinaryContent(data=data, media_type=media_type))
+                remaining -= len(data)
+            return prompt
+
+        async def run_prompt() -> str | OutputT:
+            """Run the prompt with a scoped HTTP client and the configured budgets."""
+            timeout = config.request_timeout_seconds
+            async with (
+                asyncio.timeout(request.budgets.max_duration_seconds),
+                httpx.AsyncClient(timeout=timeout) as client,
+            ):
+                model = create_model(request, credentials, client)
+                prompt = (
+                    await sync_to_async(build_file_prompt)(model)
+                    if files
+                    else input_text
+                )
+                agent: Agent[None, str | OutputT] = Agent(
+                    model,
+                    instructions=config.instructions,
+                    output_type=str if output_schema is None else output_schema,
+                    model_settings=cast(
+                        ModelSettings, {**config.parameters, "timeout": timeout}
+                    ),
+                    instrument=False,
+                )
+                result = await agent.run(
+                    prompt,
+                    usage_limits=UsageLimits(
+                        total_tokens_limit=request.budgets.max_tokens,
+                    ),
+                )
+                return result.output
+
+        return async_to_sync(run_prompt)()

@@ -9,8 +9,14 @@
 	</head>
 
 	
-	<body class="bg-base text-gray-900 dark:bg-zinc-950 dark:text-zinc-100" id="bloomerpBody" x-data
-		{% if request.user.is_authenticated %}data-bloomerp-agent="enabled"{% endif %}>
+	<body 
+		class="bg-base text-gray-900 dark:bg-zinc-950 dark:text-zinc-100" 
+		id="bloomerpBody" 
+		x-data
+		{% if request.user.is_authenticated %}data-bloomerp-agent="enabled"{% endif %}
+		
+		bloomerp-component="bloomerp:"
+		>
 		{% block body %}
 
 		<!-- Sidebar -->
@@ -18,8 +24,9 @@
 		<!-- End Sidebar-->		
 		 
 		<!--Main -->
-		<main id="main" class="workspace-main relative z-0 transition-all duration-300 ease-in-out m-3 bg-white dark:bg-zinc-900 rounded-xl overflow-y-auto border border-gray-200 dark:border-zinc-700">
-			<div id="main-content" hx-history-elt class="h-full overflow-y-auto">
+		<main id="main" data-tutorial-route="{{ request.resolver_match.view_name }}" data-tutorial-path="{{ request.path }}"
+			class="workspace-main no-scrollbar relative z-0 transition-[margin-left] duration-250 ease-out motion-reduce:transition-none m-3 bg-white dark:bg-zinc-900 rounded-xl overflow-y-auto border border-gray-200 dark:border-zinc-700">
+			<div id="main-content" hx-history-elt class="no-scrollbar h-full overflow-y-auto">
 				{% block main %}
 					{% if include_main_content %}
 						{% include include_main_content %}
@@ -56,12 +63,8 @@
 			</div>
 		</c-ui.modal>
 
-		<button id="sidebar-toggle-floating" type="button"
-			class="fixed top-5 left-5 z-[80] hidden rounded-full border border-gray-200 bg-white p-2 shadow-lg hover:bg-gray-50 hover:cursor-pointer">
-			<c-icons.lines_horizontal size="24"/>
-		</button>
-
 		{% if request.user.is_authenticated %}
+		{% include "components/tutorials/panel.html" %}
 		<div class="workspace-tools" role="group" aria-label="{% translate 'Workspace tools' %}">
 			{% include "components/pages/panel.html" %}
 			{% include "components/communication/calling/controls.html" %}
@@ -72,13 +75,15 @@
 
 		<!--Messages -->
 		<c-ui.modal id="bloomerp-general-use-modal"/>
+		<c-ui.modal id="bulk-actions-modal" title="{% translate "Bulk actions" %}"/>
 
 		<div id="object-actions-target"></div>
 
 		<c-ui.drawer id="bloomerp-general-use-drawer" size="xl">
 			<div class="flex h-full min-h-0 flex-col">
-				<div class="flex shrink-0 justify-end border-b border-gray-200 p-3">
-					<button type="button" class="btn btn-secondary btn-sm" bloomerp-close-drawer="bloomerp-general-use-drawer">{% translate "Close" %}</button>
+				<div class="flex shrink-0 items-center gap-3 border-b border-gray-200 p-3">
+					<h2 data-drawer-title class="min-w-0 truncate text font-semibold text-primary-900" hidden></h2>
+					<button type="button" class="btn btn-ghost btn-sm ml-auto" bloomerp-close-drawer="bloomerp-general-use-drawer">{% translate "Close" %}</button>
 				</div>
 				<div id="bloomerp-general-use-drawer-body" class="min-h-0 flex-1 overflow-auto"></div>
 			</div>

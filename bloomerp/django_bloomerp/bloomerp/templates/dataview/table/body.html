@@ -1,0 +1,84 @@
+{% comment %}
+table
+
+A table
+
+Parameters:
+- content_type_id (): 
+
+{% endcomment %}
+
+{% load bloomerp %}
+{% load i18n %}
+
+<c-features.dataviews.base_data_view 
+    component_name="{% if component_name %}{{ component_name }}{% else %}{{ dataview_component_id|default:'datatable' }}{% endif %}"
+    content_type_id="{{ content_type_id }}"
+    class="overflow-x-auto focus:outline-none focus:ring-0"
+    query_count="{{ count }}"
+    >
+    <table 
+        id="data-table-{{ content_type_id }}" 
+        class="table table-auto table-hover
+            [&_[data-dataview-cell-content]]:line-clamp-2
+            [&_[data-dataview-cell-content]]:wrap-anywhere
+            [&_[data-dataview-cell-content]>*]:my-0"
+        >
+        <thead>
+            <tr>
+                <th scope="col" class="w-10" data-dataview-selection-column>
+                    <c-features.dataviews.checkbox :all="True"/>
+                </th>
+                {% if avatar_field %}
+                <th scope="col" class="w-14">
+                    <span class="sr-only">{{ avatar_field.title }}</span>
+                </th>
+                {% endif %}
+                {% for field in fields %}
+                <th scope="col" class="whitespace-nowrap" {% if current_sort_field == field.field %}aria-sort="{% if current_sort_direction == 'desc' %}descending{% else %}ascending{% endif %}"{% endif %}>
+                    <button
+                        type="button"
+                        class="group flex w-full items-center gap-1.5 rounded-sm text-left hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 dark:hover:text-primary-300 dark:focus-visible:outline-primary-300"
+                        hx-get="{{ request.path }}{% if table_sort_querystring %}?{{ table_sort_querystring }}&sort={{ field.field }}&direction={% if current_sort_field == field.field and current_sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% else %}?sort={{ field.field }}&direction={% if current_sort_field == field.field and current_sort_direction == 'asc' %}desc{% else %}asc{% endif %}{% endif %}"
+                        hx-target="closest #data-view-data-section"
+                        hx-swap="innerHTML"
+                    >
+                        <span>{{ field.title }}</span>
+                        {% if current_sort_field == field.field %}
+                            {% if current_sort_direction == 'desc' %}
+                                <i class="fa-solid fa-arrow-down shrink-0 text-xs text-primary" aria-hidden="true"></i>
+                            {% else %}
+                                <i class="fa-solid fa-arrow-up shrink-0 text-xs text-primary" aria-hidden="true"></i>
+                            {% endif %}
+                        {% else %}
+                            <i class="fa-solid fa-sort shrink-0 text-xs opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden="true"></i>
+                        {% endif %}
+                    </button>
+                </th>
+                {% endfor %}
+                {% if object_actions %}
+                <th scope="col">
+                    <span class="sr-only">{% translate 'Actions' %}</span>
+                </th>
+                {% endif %}
+            </tr>
+        </thead>
+        <tbody id="data-table-body-{{ content_type_id }}">
+            {% if queryset %}
+                {% for object in queryset %}
+                    {% include dataview_item_template|default:"dataview/table/item.html" with row_index=forloop.counter0 %}
+                {% endfor %}
+            {% else %}
+                {% with avatar_column=avatar_field|yesno:"1,0" actions_column=object_actions|yesno:"1,0" %}
+                    <tr>
+                        <td colspan="{{ fields|length|add:1|add:avatar_column|add:actions_column }}" class="py-8 text-center text-gray-500 dark:text-zinc-400">
+                            {% blocktrans %}No records found.{% endblocktrans %}
+                        </td>
+                    </tr>
+                {% endwith %}
+            {% endif %}
+        </tbody>
+    </table>
+</c-features.dataviews.base_data_view>
+
+

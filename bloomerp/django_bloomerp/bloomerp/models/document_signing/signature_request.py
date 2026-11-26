@@ -122,8 +122,8 @@ class SignatureRequest(SigningModel):
                     "signature_requests_detail_assign", kwargs={"pk": context.object.pk}
                 ),
                 should_render_func=_can_assign_request,
-                modal_title=gettext_noop("Assign recipients"),
-                modal_size="lg",
+                title=gettext_noop("Assign recipients"),
+                size="lg",
             ),
             ObjectModalAction(
                 id="send",
@@ -133,8 +133,8 @@ class SignatureRequest(SigningModel):
                     "signature_requests_detail_send", kwargs={"pk": context.object.pk}
                 ),
                 should_render_func=_can_send_request,
-                modal_title=gettext_noop("Send signature request"),
-                modal_size="xl",
+                title=gettext_noop("Send signature request"),
+                size="xl",
             ),
             ObjectHTMLAction(
                 id="signing_links",
@@ -150,8 +150,8 @@ class SignatureRequest(SigningModel):
                     "signature_requests_detail_sign", kwargs={"pk": context.object.pk}
                 ),
                 should_render_func=_can_sign_request,
-                modal_title=gettext_noop("Sign document"),
-                modal_size="xl",
+                title=gettext_noop("Sign document"),
+                size="xl",
             ),
         ],
         model_view_settings=ModelViewSettings(),

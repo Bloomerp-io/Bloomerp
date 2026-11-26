@@ -19,6 +19,15 @@ from django.views.generic import TemplateView
 from django_htmx.http import HttpResponseClientRedirect
 
 from bloomerp.forms.agents.mcp_integration import MCPIntegrationForm
+from bloomerp.mcp.oauth import (
+    MCPAuthenticationError,
+    begin_authorization,
+    client_metadata,
+    exchange_code,
+    seal,
+    unseal,
+    verify_api_key,
+)
 from bloomerp.models import FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.agents import MCPConnection, MCPIntegration
 from bloomerp.permissions.compilers.base import BasePermissionCompiler
@@ -28,15 +37,6 @@ from bloomerp.permissions.compilers.python_permission_compiler import (
 from bloomerp.permissions.definition import PermissionMatch
 from bloomerp.permissions.manager import PolicyManager, UserPolicyManager
 from bloomerp.router import router
-from bloomerp.services.mcp.oauth import (
-    MCPAuthenticationError,
-    begin_authorization,
-    client_metadata,
-    exchange_code,
-    seal,
-    unseal,
-    verify_api_key,
-)
 from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.layout_form_mixin import LayoutFormMixin
 from bloomerp.views.mixins.wizard_mixin import WizardMixin, WizardStep

@@ -7,6 +7,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
+from bloomerp.agents.definition import ModelModalities
 from bloomerp.agents.runtime import AgentRuntime, AgentRuntimeConfig
 
 
@@ -41,6 +42,10 @@ class AIProviderDefinition(BaseModel):
     integration: Any = None
     model_identifier_factory: (
         Callable[[AIProviderCredentialsSchema, str | None], list[tuple[str, str]]]
+        | None
+    ) = None
+    model_modalities_factory: (
+        Callable[[str, AIProviderCredentialsSchema, str | None], ModelModalities | None]
         | None
     ) = None
 

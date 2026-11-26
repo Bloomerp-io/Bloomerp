@@ -5,34 +5,41 @@ from collections import defaultdict
 from collections.abc import Iterable
 from datetime import date, datetime, time, timedelta
 from functools import partial
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from django.core.exceptions import FieldDoesNotExist
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Model, Prefetch, Q, QuerySet
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.definition import get_model_config
 from bloomerp.permissions.definition import BloomerpPermission
-from bloomerp.permissions.manager import UserPolicyManager
+from bloomerp.permissions.manager import UserPolicyManager, field_access_annotation_name
 from bloomerp.services.preference_services import PreferenceManager
 
 from ..definition import BaseDataviewRenderer, DataviewState
 from ..gant.renderer import GanttDataviewRenderer
+from ..unscheduled import UnscheduledDataviewMixin
+
+if TYPE_CHECKING:
+    from bloomerp.models.definition import DataviewActionContext
+    from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 
 CALENDAR_PAGE_SIZE = 5
 CALENDAR_VIEW_MODES = {"day", "week", "month", "year", "list"}
 from .grouping import CALENDAR_COLORS, calendar_group_color, readable_calendar_groups
 
 
-class CalendarDataviewRenderer(BaseDataviewRenderer):
+class CalendarDataviewRenderer(UnscheduledDataviewMixin, BaseDataviewRenderer):
     """Render permission-filtered records in calendar periods and unit pages."""
 
-    template_name = "cotton/features/dataviews/calendar.html"
+    template_name = "dataview/calendar/body.html"
+    item_template_name = "dataview/calendar/item.html"
     reserved_query_params: ClassVar[set[str]] = {
         "calendar_page",
         "calendar_view_mode",
@@ -41,23 +48,120 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
         "calendar_color_field",
         "calendar_color_values",
         "calendar_color_preferred",
+        "calendar_unscheduled_page",
+        "unscheduled_q",
     }
 
     def get_context_data(self, pagination: Any) -> dict[str, Any]:
+        """Provide the grid and operation URLs for its saved or signed layout."""
         context = super().get_context_data(pagination)
         context.update(self.build_context())
+        context.update(self._unscheduled_context())
+        context.update({
+            "calendar_mode_url": self._operation_url("view-mode"),
+            "calendar_dates_url": self._operation_url("dates"),
+            "calendar_unit_url": self._operation_url("unit"),
+        })
         return context
 
-    def build_context(self) -> dict[str, Any]:
+    def _operation_url(self, action: str) -> str:
+        """Address saved layouts by preference ID and inline calendars by token."""
+        kwargs: dict[str, int | str] = {
+            "content_type_id": self.state.content_type_id,
+            "action": action,
+        }
+        if self.state.preference.pk is not None:
+            kwargs["preference_id"] = self.state.preference.pk
+        return reverse("components_dataview_renderer_operation", kwargs=kwargs)
+
+    @staticmethod
+    def _period_preferences(state: DataviewState) -> QuerySet[UserListViewPreference]:
+        """Find the viewer's own selection row, including their local share reference."""
+        from bloomerp.models.users.user_list_view_preference import (
+            UserListViewPreference,
+        )
+
+        return UserListViewPreference.objects.filter(
+            user=state.request.user, content_type=state.content_type, selected=True,
+        )
+
+    def _view_mode(self) -> str:
+        """Apply only the viewer's saved period over an inline calendar's default."""
+        if self.state.preference.pk is None:
+            options = self._period_preferences(self.state).values_list("options", flat=True).first() or {}
+            calendar = options.get("calendar") or {}
+            saved = calendar.get("calendar_view_mode", calendar.get("view_mode"))
+            if isinstance(saved, str) and saved in CALENDAR_VIEW_MODES:
+                return saved
+
+        configured = str(getattr(self.options, "calendar_view_mode", "week"))
+        return configured if configured in CALENDAR_VIEW_MODES else "week"
+
+    def get_item_context(
+        self,
+        obj: Model,
+        row_index: int,
+        action_context: DataviewActionContext,
+        *,
+        placement: str = "",
+    ) -> dict[str, Any] | None:
+        """Use the current period's positioning to render one calendar occurrence."""
+        calendar = self.build_context(paginate_events=False)
+        mode = calendar["view_mode"]
+        matches = []
+        start_field = self.get_start_field(self.state.fields, self.options)
+        if (
+            placement in ("", "unscheduled")
+            and start_field
+            and self._unscheduled_queryset(start_field).filter(pk=obj.pk).exists()
+        ):
+            event = self._unscheduled_event(obj, start_field, calendar["end_field"])
+            matches.append(("unscheduled", "", event))
+        if mode == "month":
+            segments = (
+                segment
+                for week in calendar["calendar_month_segments_by_week"].values()
+                for segment in week
+            )
+        else:
+            segments = iter(calendar["calendar_week_segments"])
+        matches.extend(
+            ("segment", "", segment) for segment in segments if segment["object"].pk == obj.pk
+        )
+        if mode != "month":
+            matches.extend(
+                ("event", unit, event)
+                for unit, group in calendar["calendar_events_by_unit"].items()
+                for event in group["events"]
+                if event["object"].pk == obj.pk and (mode != "week" or not event["all_day"])
+            )
+        if not matches or (placement and len(matches) != 1):
+            return None
+        variant, unit, event = matches[0]
+        expected = "unscheduled"
+        if variant == "segment":
+            expected = f"segment:{event['start_date'].isoformat()}:{event['start_column']}:{event['span']}:{event['lane']}"
+        elif variant == "event":
+            expected = f"event:{unit}:{event['start_ms']}:{event['end_ms']}"
+        if placement and placement != expected:
+            return None
+        context = super().get_item_context(obj, row_index, action_context, placement=placement)
+        if context is not None:
+            context.update({
+                "variant": variant,
+                "event": {**event, "object": obj},
+                "calendar_unit": unit,
+                "calendar_view_mode": mode,
+            })
+        return context
+
+    def build_context(self, *, paginate_events: bool = True) -> dict[str, Any]:
         """Build a shared period containing timed and independently configured date-only events."""
         date_start, date_end = self._date_fields()
         start_field = self.get_start_field(self.state.fields, self.options) or date_start
         end_field = self.get_end_field(self.state.fields, self.options) or date_end
         color_field = self._color_field()
-        configured_mode = str(getattr(self.options, "calendar_view_mode", "week"))
-        view_mode = configured_mode
-        if view_mode not in CALENDAR_VIEW_MODES:
-            view_mode = "week"
+        view_mode = self._view_mode()
 
         today = timezone.localdate()
         context: dict[str, Any] = {
@@ -81,7 +185,6 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
             "calendar_legend": [],
             "calendar_month_segments_by_week": {},
             "calendar_week_segments": [],
-            "calendar_unscheduled_events": [],
             "calendar_page_querystring": self.build_querystring(
                 self.state.request,
                 ("page", "calendar_view_mode", "calendar_unit", "calendar_unit_offset"),
@@ -139,12 +242,12 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
             start_date,
             end_date,
         )
-        events, legend = self._build_events(queryset, start_field, end_field, color_field)
+        events, legend = self._build_events(queryset, start_field, end_field, color_field, view_mode=view_mode)
         events_by_unit = self._group_events(events, view_mode, start_date, end_date)
         context["calendar_legend"] = legend
         context["calendar_events_by_unit"] = {
             key: {
-                "events": value[:CALENDAR_PAGE_SIZE],
+                "events": value[:CALENDAR_PAGE_SIZE] if paginate_events else value,
                 "total": len(value),
                 "has_more": len(value) > CALENDAR_PAGE_SIZE,
             }
@@ -160,12 +263,6 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
                 [event for event in events if event["all_day"]],
                 [[{"date": day} for day in calendar_days]],
             ).get(0, [])
-        # A date-only fallback cannot distinguish unscheduled rows from hidden timed ranges.
-        if self.get_start_field(self.state.fields, self.options):
-            context["calendar_unscheduled_events"] = self._build_unscheduled_events(
-                start_field,
-                end_field,
-            )
         return context
 
     @staticmethod
@@ -177,25 +274,28 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
 
     @classmethod
     def handle_action(cls, action: str, request: HttpRequest, state: DataviewState) -> HttpResponse:
-        """Dispatch calendar paging, date edits, and persisted period preference changes."""
+        """Dispatch calendar paging, scheduling changes, and period preferences."""
         if action == "view-mode":
             return cls._update_view_mode(request, state)
         if action == "dates":
             return cls._update_dates(request, state)
-        if action != "unit":
+        if action == "unscheduled" and request.method == "POST":
+            return cls(state).unschedule_record()
+        if action not in {"unit", "unscheduled"}:
             return super().handle_action(action, request, state)
         if request.method != "GET":
             return HttpResponse("Method not allowed", status=405)
 
         renderer = cls(state)
+        if action == "unscheduled":
+            return renderer.render_unscheduled(renderer._unscheduled_context())
+
         date_start, date_end = renderer._date_fields()
         start_field = cls.get_start_field(state.fields, state.options) or date_start
         end_field = cls.get_end_field(state.fields, state.options) or date_end
         color_field = renderer._color_field()
         unit = request.GET.get("calendar_unit", "")
-        view_mode = request.GET.get("calendar_view_mode") or str(
-            getattr(state.options, "calendar_view_mode", "week")
-        )
+        view_mode = request.GET.get("calendar_view_mode") or renderer._view_mode()
         try:
             offset = max(0, int(request.GET.get("calendar_unit_offset", CALENDAR_PAGE_SIZE)))
         except (TypeError, ValueError):
@@ -224,9 +324,12 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
         if group_period:
             events = renderer._group_events(events, view_mode, unit_day, last_day).get(unit, [])
         page = events[offset:offset + CALENDAR_PAGE_SIZE]
-        from bloomerp.components.objects.dataviews.dataview import build_dataview_action_context
+        from bloomerp.components.objects.dataviews.dataview import (
+            build_dataview_action_context,
+        )
 
-        return render(request, "components/objects/dataview_calendar_events.html", {
+        return render(request, "dataview/calendar/events.html", {
+            "dataview_item_template": renderer.item_template_name,
             "content_type_id": state.content_type.id,
             "events": page,
             "fields": state.render_fields,
@@ -238,6 +341,7 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
             "calendar_next_unit_offset": offset + len(page),
             "calendar_has_more": offset + len(page) < len(events),
             "calendar_view_mode": view_mode,
+            "calendar_unit_url": renderer._operation_url("unit"),
             "calendar_page_querystring": cls.build_querystring(
                 request,
                 ("page", "calendar_view_mode", "calendar_unit", "calendar_unit_offset"),
@@ -246,10 +350,11 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
 
     @classmethod
     def _update_view_mode(cls, request: HttpRequest, state: DataviewState) -> HttpResponse:
-        """Save a valid calendar period on a preference the current user may manage."""
+        """Save the period to the editable layout or the viewer's private preference."""
         if request.method != "POST":
             return HttpResponse("Method not allowed", status=405)
-        if not PreferenceManager(request.user).can_manage(state.preference):
+        preference = state.preference
+        if preference.pk is not None and not PreferenceManager(request.user).can_manage(preference):
             return HttpResponse("Forbidden", status=403)
         try:
             payload = json.loads(request.body)
@@ -258,13 +363,33 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
         mode = payload.get("view_mode") if isinstance(payload, dict) else None
         if not isinstance(mode, str) or mode not in CALENDAR_VIEW_MODES:
             return HttpResponse("Invalid calendar view mode", status=400)
-        options = dict(state.preference.options or {})
+        if preference.pk is None:
+            with transaction.atomic():
+                owned = cls._period_preferences(state).select_for_update()
+                preference = owned.first()
+                if preference is None:
+                    try:
+                        PreferenceManager(request.user).get_or_create_selected(
+                            type(state.preference), {"content_type_id": state.content_type_id},
+                        )
+                    except IntegrityError:
+                        if not owned.exists():
+                            raise
+                    preference = owned.get()
+                cls._save_view_mode(preference, mode)
+        else:
+            cls._save_view_mode(preference, mode)
+        return JsonResponse({"view_mode": mode})
+
+    @staticmethod
+    def _save_view_mode(preference: UserListViewPreference, mode: str) -> None:
+        """Update the calendar period while preserving the other preference options."""
+        options = dict(preference.options or {})
         calendar_options = dict(options.get("calendar", {}))
         calendar_options.pop("view_mode", None)
         options["calendar"] = {**calendar_options, "calendar_view_mode": mode}
-        state.preference.options = options
-        state.preference.save(update_fields=["options"])
-        return JsonResponse({"view_mode": mode})
+        preference.options = options
+        preference.save(update_fields=["options"])
 
     @classmethod
     def _update_dates(cls, request: HttpRequest, state: DataviewState) -> HttpResponse:
@@ -595,14 +720,14 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
 
     def _build_events(
         self,
-        objects: Iterable,
+        objects: Iterable[Model],
         start_field: ApplicationField,
         end_field: ApplicationField | None,
         color_field: ApplicationField | None,
         *,
         view_mode: str | None = None,
     ) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
-        """Render each record once with readable color memberships and inferred temporal ranges."""
+        """Build calendar items with readable color memberships and their configured times."""
         raw_events = []
         legend_groups: dict[str, dict[str, str]] = {}
         if isinstance(objects, QuerySet):
@@ -632,6 +757,7 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
             if not isinstance(start_value, (date, datetime)):
                 continue
             end_value = getattr(obj, event_end.field, None) if event_end else None
+            has_end_time = isinstance(end_value, datetime)
             if not isinstance(end_value, (date, datetime)):
                 end_value = start_value
             if exclusive:
@@ -643,10 +769,10 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
             groups = self._color_groups(obj, color_field)
             for group in groups:
                 legend_groups[group["value"]] = group
-            raw_events.append((obj, start_value, end_value, groups, event_start, event_end))
+            raw_events.append((obj, start_value, end_value, has_end_time, groups, event_start, event_end))
 
         events = []
-        for obj, start_value, end_value, groups, event_start, event_end in raw_events:
+        for obj, start_value, end_value, has_end_time, groups, event_start, event_end in raw_events:
             can_edit_start, can_edit_end = self._edit_permissions_for_object(
                 obj,
                 event_start,
@@ -671,7 +797,7 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
                 "start_date": self._as_date(start_value),
                 "end_date": self._as_date(end_value),
                 "start_time": start_value.time() if isinstance(start_value, datetime) else None,
-                "end_time": end_value.time() if isinstance(end_value, datetime) else None,
+                "end_time": end_value.time() if has_end_time else None,
                 "all_day": not isinstance(start_value, datetime),
                 "color_group": groups[0]["label"] if groups else "",
                 "color_classes": groups[0]["color_classes"] if groups else CALENDAR_COLORS[0],
@@ -684,6 +810,12 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
                 "can_edit_start": can_edit_start,
                 "can_edit_end": can_edit_end,
                 "can_move": can_edit_start and (event_end is None or can_edit_end),
+                "can_unschedule": (
+                    can_edit_start and (event_end is None or can_edit_end)
+                    and self.scheduling_dates_are_optional(
+                        *((event_start, event_end) if event_end else (event_start,)),
+                    )
+                ),
             })
         legend = list(legend_groups.values())
         if (view_mode or self.options.calendar_view_mode) in {"day", "week"}:
@@ -692,41 +824,52 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
 
     @staticmethod
     def _position_timed_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Allocate columns per daily overlap group, including each card's minimum visible height."""
+        """Allocate columns using the actual intervals of each day's event segments."""
         positioned = [dict(event) for event in events]
         by_day: defaultdict[date, list[dict[str, Any]]] = defaultdict(list)
         for event in positioned:
             if not event["all_day"]:
                 by_day[event["start_date"]].append(event)
 
-        def event_order(event: dict[str, Any]) -> tuple[int, int, str]:
+        def event_order(event: dict[str, Any]) -> tuple[float, float, str]:
             """Order simultaneous starts deterministically, placing longer ranges first."""
-            start = event["start_time"]
-            return start.hour * 60 + start.minute, -event["duration_minutes"], str(event["object"].pk)
+            return event["timed_start"], -event["timed_end"], str(event["object"].pk)
+
+        def leave_room_for_next_card(event: dict[str, Any], next_start: float) -> None:
+            """Shrink a card's display minimum when it would cover the next card."""
+            available = max(0, (next_start - event["timed_start"]) / 60)
+            if event["display_duration_minutes"] > available:
+                event["display_duration_minutes"] = event["duration_minutes"] or available
 
         for day_events in by_day.values():
-            lane_ends: list[int] = []
+            lanes: list[dict[str, Any]] = []
             cluster: list[dict[str, Any]] = []
-            cluster_end = 0
+            cluster_end = float("-inf")
             for event in sorted(day_events, key=event_order):
-                start = event["start_time"].hour * 60 + event["start_time"].minute
-                # The grid uses 5rem per hour and a minimum card height of 1.75rem.
-                end = start + max(21, event["duration_minutes"])
+                start, end = event["timed_start"], event["timed_end"]
+                # At 5rem per hour, the two-line card's 2.75rem height spans 33 minutes.
+                event["display_duration_minutes"] = max(33, event["duration_minutes"])
                 if cluster and start >= cluster_end:
                     for member in cluster:
-                        member["timed_columns"] = len(lane_ends)
-                    lane_ends = []
+                        member["timed_columns"] = len(lanes)
+                        leave_room_for_next_card(member, start)
+                    lanes = []
                     cluster = []
-                lane = next((index for index, occupied_until in enumerate(lane_ends) if occupied_until <= start), len(lane_ends))
-                if lane == len(lane_ends):
-                    lane_ends.append(end)
+                    cluster_end = end
+                lane = next(
+                    (index for index, previous in enumerate(lanes) if previous["timed_end"] <= start),
+                    len(lanes),
+                )
+                if lane == len(lanes):
+                    lanes.append(event)
                 else:
-                    lane_ends[lane] = end
+                    leave_room_for_next_card(lanes[lane], start)
+                    lanes[lane] = event
                 event["timed_column"] = lane
                 cluster.append(event)
-                cluster_end = max(lane_ends)
+                cluster_end = max(cluster_end, end)
             for member in cluster:
-                member["timed_columns"] = len(lane_ends)
+                member["timed_columns"] = len(lanes)
         return positioned
 
     @staticmethod
@@ -737,53 +880,87 @@ class CalendarDataviewRenderer(BaseDataviewRenderer):
             if event["all_day"]:
                 result.append(event)
                 continue
-            current = event["start"]
-            end = event["end"]
-            if not isinstance(end, datetime) or end <= current:
-                result.append(event)
+            current = GanttDataviewRenderer._as_datetime(event["start"])
+            end = GanttDataviewRenderer._as_datetime(event["end"])
+            if not isinstance(event["end"], datetime) or end.timestamp() <= current.timestamp():
+                result.append({
+                    **event,
+                    "timed_start": current.timestamp(),
+                    "timed_end": current.timestamp(),
+                    "duration_minutes": 0,
+                })
                 continue
-            while current < end:
-                following = timezone.make_aware(datetime.combine(current.date() + timedelta(days=1), time.min))
-                segment_end = min(end, following)
+            while current.timestamp() < end.timestamp():
+                following = datetime.combine(current.date() + timedelta(days=1), time.min, tzinfo=current.tzinfo)
+                segment_end = end if end.timestamp() <= following.timestamp() else following
+                duration = (segment_end - current).total_seconds() / 60
                 result.append({
                     **event,
                     "start_date": current.date(),
                     "end_date": (segment_end - timedelta(microseconds=1)).date(),
                     "start_time": current.time(),
-                    "start_minute": current.minute,
-                    "duration_minutes": max(15, int((segment_end - current).total_seconds() / 60)),
+                    "start_minute": current.minute + (current.second + current.microsecond / 1_000_000) / 60,
+                    "duration_minutes": max(0, duration),
+                    "timed_start": current.timestamp(),
+                    "timed_end": segment_end.timestamp(),
                 })
                 current = segment_end
         return result
 
-    def _build_unscheduled_events(
-        self,
-        start_field: ApplicationField,
-        end_field: ApplicationField | None,
-    ) -> list[dict[str, Any]]:
-        """Keep valid date-only events out of the unscheduled timed-event tray."""
+    def _unscheduled_queryset(self, start_field: ApplicationField) -> QuerySet:
+        """Find unscheduled records whose start field is visible to the viewer."""
         queryset = self.state.queryset.filter(**{f"{start_field.field}__isnull": True})
         date_start, date_end = self._date_fields()
         if date_start and date_end:
             queryset = queryset.filter(**{f"{date_start.field}__isnull": True})
-        objects = queryset[:25]
-        result = []
-        for obj in objects:
-            if not UserPolicyManager(self.state.request.user).has_access_to_object(
-                obj, BloomerpPermission.VIEW, fields=[start_field.field],
-            ):
-                continue
-            can_edit_start, can_edit_end = self._edit_permissions_for_object(
-                obj,
-                start_field,
-                end_field,
-            )
-            result.append({
-                "object": obj,
-                "can_edit_start": can_edit_start,
-                "can_edit_end": can_edit_end if end_field else True,
-            })
-        return result
+        manager = UserPolicyManager(self.state.request.user)
+        return manager.annotate_field_permissions(
+            queryset, [start_field], BloomerpPermission.VIEW,
+        ).filter(**{field_access_annotation_name(start_field): True})
+
+    def get_unschedule_fields(self, obj: Model) -> tuple[ApplicationField, ...]:
+        """Identify the record's active timed or all-day range for unscheduling."""
+        start_field = self.get_start_field(self.state.fields, self.options)
+        if start_field is None:
+            return ()
+        _, date_end = self._date_fields()
+        end_field = self.get_end_field(self.state.fields, self.options) or date_end
+        fields = self._event_fields(obj, start_field, end_field)
+        if fields is None:
+            return ()
+        event_start, event_end, _ = fields
+        return (event_start, event_end) if event_end else (event_start,)
+
+    def _unscheduled_context(self) -> dict[str, Any]:
+        """Search and page records that have no visible calendar placement."""
+        start_field = self.get_start_field(self.state.fields, self.options)
+        # A date-only fallback cannot distinguish unscheduled rows from hidden timed ranges.
+        if not start_field:
+            return {}
+        _, date_end = self._date_fields()
+        end_field = self.get_end_field(self.state.fields, self.options) or date_end
+        page = self.paginate_unscheduled(
+            self._unscheduled_queryset(start_field), 25, "calendar_unscheduled_page",
+        )
+        return self.unscheduled_context(
+            page,
+            [self._unscheduled_event(obj, start_field, end_field) for obj in page],
+            "calendar_unscheduled_page",
+        )
+
+    def _unscheduled_event(
+        self,
+        obj: Model,
+        start_field: ApplicationField,
+        end_field: ApplicationField | None,
+    ) -> dict[str, Any]:
+        """Preserve the record's date edit permissions in the sidebar item."""
+        can_edit_start, can_edit_end = self._edit_permissions_for_object(obj, start_field, end_field)
+        return {
+            "object": obj,
+            "can_edit_start": can_edit_start,
+            "can_edit_end": can_edit_end if end_field else True,
+        }
 
     def _edit_permissions_for_object(
         self,

@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from bs4 import BeautifulSoup
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpResponse
 
@@ -29,6 +30,7 @@ class TestFieldDisplayOptionsComponent(BloomerpComponentTestCase):
         super().setUp()
         self.status = ApplicationField.get_for_model(Todo).get(field="status")
         self.title_field = ApplicationField.get_for_model(Todo).get(field="title")
+        self.content_field = ApplicationField.get_for_model(Todo).get(field="content")
         layout = FieldLayout(
             rows=[
                 LayoutRow(
@@ -46,6 +48,7 @@ class TestFieldDisplayOptionsComponent(BloomerpComponentTestCase):
                             },
                         ),
                         LayoutItem(id=self.title_field.pk),
+                        LayoutItem(id=self.content_field.pk),
                     ],
                 )
             ]
@@ -87,6 +90,37 @@ class TestFieldDisplayOptionsComponent(BloomerpComponentTestCase):
             "choice_colors": {"completed": "#00ff00"},
             "unrelated": "preserved",
         }
+
+    def _default_text_options(self, response: HttpResponse) -> bool:
+        """Verify the layout editor initializes height and toolbar settings."""
+        markup = BeautifulSoup(response.content, "html.parser")
+        rows = markup.select_one('input[name="rows"]')
+        toolbar = markup.select_one('input[name="include_toolbar"]')
+        editor = self.content_field.get_widget().render("content", "")
+        return (
+            rows is not None
+            and rows.get("value") == "8"
+            and toolbar is not None
+            and toolbar.has_attr("checked")
+            and 'style="min-height: 8lh;"' in editor
+            and 'data-include-toolbar="true"' in editor
+        )
+
+    def _saved_text_options(self, response: HttpResponse) -> bool:
+        """Verify saved settings reach the editor with the toolbar disabled."""
+        self.preference.refresh_from_db()
+        config = next(
+            item.config for row in self.preference.layout_obj.rows for item in row.items
+            if str(item.id) == str(self.content_field.pk)
+        )
+        widget = self.content_field.get_widget(layout_config=config)
+        markup = widget.render("content", "Example text")
+        return (
+            config == {"rows": 5, "include_toolbar": False}
+            and 'style="min-height: 5lh;"' in markup
+            and 'data-include-toolbar="false"' in markup
+            and 'id="actions-toolbar-' not in markup
+        )
 
     def _cleared_colors(self, response: HttpResponse) -> bool:
         """Confirm an empty mapping clears colors but preserves other settings."""
@@ -174,6 +208,21 @@ class TestFieldDisplayOptionsComponent(BloomerpComponentTestCase):
             self.does_not_contain_text('value="retired"'),
         ]
         return [
+            RequestScenario(
+                name="Text field defaults to eight rows with its toolbar",
+                user=self.admin_user,
+                view_kwargs={"application_field_id": self.content_field.pk},
+                query_params=self._params(),
+                expected=ExpectedResult(response_validators=self._default_text_options),
+            ),
+            RequestScenario(
+                name="Text editor uses saved row count and unchecked toolbar option",
+                method="POST",
+                user=self.admin_user,
+                view_kwargs={"application_field_id": self.content_field.pk},
+                data={**self._params(), "rows": "5"},
+                expected=ExpectedResult(response_validators=self._saved_text_options),
+            ),
             *[
                 RequestScenario(
                     name=f"Missing field {method} conflicts without implicit creation",

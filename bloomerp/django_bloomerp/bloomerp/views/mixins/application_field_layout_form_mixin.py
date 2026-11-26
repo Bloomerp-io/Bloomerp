@@ -118,7 +118,7 @@ class ApplicationFieldLayoutFormMixin(LayoutFormMixin, ABC):
             "data-target-content-type-id": self.layout_content_type.pk,
         }
         owner = self.get_layout_object()
-        if isinstance(owner, (Form, UserObjectLayoutPreference)):
+        if isinstance(owner, (Form, UserObjectLayoutPreference)) and owner.pk is not None:
             attrs["data-behavior-url"] = reverse("components_form_behavior_execute")
             attrs["data-behavior-owner-key"] = (
                 "form_id" if isinstance(owner, Form) else "preference_id"

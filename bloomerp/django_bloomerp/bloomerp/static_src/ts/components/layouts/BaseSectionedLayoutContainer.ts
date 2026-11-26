@@ -146,6 +146,11 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         void item;
     }
 
+    /** Let a layout opt out of moving focus when its read view mounts. */
+    protected shouldFocusFirstItemOnMount(): boolean {
+        return true;
+    }
+
     /** Bind layout editing, navigation, and settings requests to this container. */
     public initialize(): void {
         if (!this.element) return;
@@ -211,7 +216,7 @@ export default abstract class BaseSectionedLayoutContainer<TItem extends BaseSec
         const initEditMode = this.parseBooleanDatasetValue(this.element.dataset.initEdit);
         if (initEditMode) {
             this.setEditMode(true);
-        } else if (this.items.length > 0) {
+        } else if (this.items.length > 0 && this.shouldFocusFirstItemOnMount()) {
             this.focusItemByIndex(0);
         }
     }

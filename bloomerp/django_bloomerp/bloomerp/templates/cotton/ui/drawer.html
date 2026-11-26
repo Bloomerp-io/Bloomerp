@@ -3,7 +3,7 @@ Drawer component.
 Parameters:
 - id : unique identifier for the drawer (required)
 - side : drawer side - "left", "right" (default: "right")
-- size : drawer size - "sm", "md", "lg", "xl", "full" (default: "md")
+- size : drawer size - "sm", "md", "lg", "xl", "2xl", "4xl", "6xl", "full" (default: "md")
 - backdrop : whether to show the modal-style backdrop (default: True)
 - backdrop_click_close : close drawer when clicking backdrop (default: True)
 - portal_to_body : render outside ancestor stacking contexts while open (default: False)
@@ -32,6 +32,7 @@ Parameters:
     style="{{ style }}"
     {{ attrs }}
     bloomerp-component="drawer"
+    data-drawer-size="{{ size }}"
     data-portal-to-body="{{ portal_to_body|default:False|lower }}"
     data-side="{{ side|default:'right' }}"
     data-backdrop="{{ backdrop|lower }}"
@@ -49,6 +50,12 @@ Parameters:
                 max-w-lg w-full
             {% elif size == 'xl' %}
                 max-w-xl w-full
+            {% elif size == '2xl' %}
+                max-w-2xl w-full
+            {% elif size == '4xl' %}
+                max-w-4xl w-full
+            {% elif size == '6xl' %}
+                max-w-6xl w-full
             {% elif size == 'full' %}
                 max-w-full w-full
             {% else %}

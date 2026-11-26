@@ -1,4 +1,5 @@
 """Participant-scoped decline of an incoming conference invitation."""
+# SHOULD_API
 
 from uuid import UUID
 

@@ -90,17 +90,16 @@ def labels_are_empty(actual: Any, expected: Any) -> bool:
 
 
 def render_labels(application_field: ApplicationField, instance: Model) -> str:
-    """Render escaped label names with their saved background and legible text colors."""
-    rows: list[tuple[str, str, str]] = []
+    """Render escaped label names in outlined badges with saved colors as dots."""
+    rows: list[tuple[str, str]] = []
     for label in getattr(instance, application_field.field):
         color = label.color if re.fullmatch(r"#[0-9a-fA-F]{6}", label.color) else "#64748b"
-        value = int(color[1:], 16)
-        brightness = ((value >> 16) * 299 + ((value >> 8) & 255) * 587 + (value & 255) * 114) / 1000
-        foreground = "#111827" if brightness >= 150 else "#ffffff"
-        rows.append((color, foreground, label.name))
+        rows.append((color, label.name))
     return format_html_join(
         " ",
-        '<span class="badge badge-secondary" style="background-color: {}; color: {}">{}</span>',
+        '<span class="badge badge-secondary bg-transparent gap-1.5">'
+        '<span class="size-2 shrink-0 rounded-full" style="background-color: {}" aria-hidden="true"></span>'
+        '{}</span>',
         rows,
     )
 

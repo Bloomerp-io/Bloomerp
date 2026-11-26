@@ -16,6 +16,7 @@ All existing modal options and body/footer slots remain supported.
     data-modal-header-class="{{ header_class }}"
     data-modal-body-class="{{ body_class }}"
     data-modal-footer-class="{{ footer_class }}"
+    {% if on_close_event %}data-modal-on-close-event="{{ on_close_event }}"{% endif %}
     data-on-close="{{ onclose }}"
 >
     <div data-modal-content>{{ slot }}</div>

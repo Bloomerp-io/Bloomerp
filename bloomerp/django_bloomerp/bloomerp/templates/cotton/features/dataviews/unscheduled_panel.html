@@ -1,0 +1,39 @@
+{% load i18n %}
+<c-vars panel_key="" />
+
+<c-ui.resizable_div
+    id="{{ panel_key }}-{{ render_id }}"
+    start_width="288px"
+    default_closed="true"
+    responsive="false"
+    storage="local"
+    storage_key="bloomerp-unscheduled-{{ panel_key }}-{{ content_type_id }}"
+    max_width="384"
+    max_width_ratio="0.4"
+    style="width: 0"
+    class="min-h-0 shrink-0 [&:has(>[inert])>[data-resizable-div-handle]]:hidden"
+    data-unscheduled-panel
+>
+    <aside class="flex h-full min-h-0 flex-col overflow-hidden bg-base" aria-label="{% translate 'Unscheduled records' %}" data-resizable-div-panel data-unschedule-url="{{ unscheduled_search_url }}" inert>
+        <div class="shrink-0 space-y-2 border-b border-gray-200 p-3">
+            <h3 class="truncate text-sm font-semibold text-dark">{% translate "Unscheduled records" %}</h3>
+            <input
+                type="search"
+                name="unscheduled_q"
+                value="{{ unscheduled_search }}"
+                class="input input-sm w-full"
+                placeholder="{% translate 'Search unscheduled records' %}"
+                aria-label="{% translate 'Search unscheduled records' %}"
+                hx-get="{{ unscheduled_search_url }}"
+                hx-trigger="input changed delay:250ms, search"
+                hx-target="#unscheduled-results-{{ panel_key }}-{{ render_id }}"
+                hx-sync="closest [data-unscheduled-panel]:replace"
+                hx-swap="innerHTML scroll:top"
+                hx-push-url="false"
+            >
+        </div>
+        <div id="unscheduled-results-{{ panel_key }}-{{ render_id }}" class="min-h-0 flex-1 divide-y divide-gray-200 overflow-y-auto overscroll-contain">
+            {% include "dataview/unscheduled_results.html" %}
+        </div>
+    </aside>
+</c-ui.resizable_div>

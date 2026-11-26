@@ -10,7 +10,7 @@ from django.views.decorators.http import require_POST
 from bloomerp.communication.builtins.voip.access import VoIPAccessManager
 from bloomerp.communication.builtins.voip.controller import VoIPController
 from bloomerp.router import router
-
+# SHOULD_API
 
 @router.register(
     path="components/communication/voip/calls/<uuid:call_id>/cancel/",

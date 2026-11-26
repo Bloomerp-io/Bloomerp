@@ -8,7 +8,6 @@ from bloomerp.communication.builtins.conferencing.controller import ConferenceCo
 from bloomerp.communication.builtins.conferencing.webhooks import reconcile_event
 from bloomerp.models.communication.calendar import CalendarEvent
 from bloomerp.models.communication.conferencing import ConferenceRoom, ConferenceSession
-from bloomerp.services.calendar_conferencing import reserve_calendar_conference
 from bloomerp.tests.base import (
     BloomerpModelViewTestCase,
     ExpectedResult,
@@ -127,7 +126,7 @@ class TestMeetingView(SharingFixtures, BloomerpModelViewTestCase):
             title="Reserved calendar meeting", organizer_email="host@example.com",
             start=start, end=start + timedelta(hours=1), event_timezone="UTC",
         )
-        reserve_calendar_conference(event, self.normal_user, [], "https://testserver/")
+        event.reserve_conference(self.normal_user, [], "https://testserver/")
         self.session = event.conference_session
         scenario.view_kwargs = {"token": self.session.share_token}
 

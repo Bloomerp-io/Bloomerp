@@ -1,9 +1,11 @@
 {% load i18n static %}
 <c-vars chat_page="" id_prefix="" initial_conversation="" initial_query="" />
+{% translate 'Message BloomAI' as composer_label %}
+{% translate 'Ask anything about your workspace…' as composer_placeholder %}
 {% if request.user.is_authenticated %}
 <div bloomerp-component="bloomerp:agent-chat" data-agent-user="{{ request.user.pk }}"
     class="{% if chat_page %}chat-workspace-host{% endif %}" data-chat-kind="agent" data-chat-page="{{ chat_page|yesno:'true,false' }}"
-    data-fullscreen-url="{% url 'bloomai_module_ai_chat' %}" data-initial-conversation="{{ initial_conversation }}" data-initial-query="{{ initial_query }}"
+    data-fullscreen-url="{% url 'bloomai_module_ai_chat' %}" data-initial-conversation="{{ initial_conversation }}" data-initial-query="{{ initial_query }}" data-restore-panel-draft="{{ request.GET.draft }}"
     data-artifact-url-template="{% url 'components_render_agent_artifact' artifact_id='00000000-0000-0000-0000-000000000000' %}"
     data-status-history-empty="{% trans 'No conversations yet.' %}"
     data-status-history-loading="{% trans 'Loading…' %}"
@@ -42,12 +44,12 @@
     data-status-failed="{% trans 'The response could not be completed. Please try again.' %}">
     {% static 'bloomerp/img/bloomai-logo.png' as agent_logo %}
     <c-ui.floating_panel panel_id="{{ id_prefix }}bloomerp-agent-panel" title="BloomAI" :logo="agent_logo"
-        launcher_label="{% trans 'Ask BloomAI' %}" close_label="{% trans 'Close assistant' %}"
+        launcher_label="{% trans 'Ask BloomAI' %}" launcher_shortcut="k then a" close_label="{% trans 'Close assistant' %}"
         storage_key="bloomerp_agent_launcher_{{ request.user.pk }}" :page_mode="chat_page" data-agent-panel>
         <c-slot name="launcher"><i class="fa-regular fa-paper-plane" aria-hidden="true"></i><span>{% trans 'Agent' %}</span></c-slot>
         <c-slot name="header_controls">
-                <button type="button" data-agent-action="history" aria-label="{% trans 'Conversation history' %}" title="{% trans 'Conversation history' %}" class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i><span data-agent-unread hidden class="h-2 w-2 rounded-full bg-primary-500"></span></button>
-                <button type="button" data-agent-action="reset" aria-label="{% trans 'New conversation' %}" title="{% trans 'New conversation' %}" class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
+                <button type="button" data-agent-action="history" aria-label="{% trans 'Conversation history' %}" title="{% trans 'Conversation history' %}" class="icon-button"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i><span data-agent-unread hidden class="h-2 w-2 rounded-full bg-primary-500"></span></button>
+                <button type="button" data-agent-action="reset" aria-label="{% trans 'New conversation' %}" title="{% trans 'New conversation' %}" class="icon-button"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
         </c-slot>
 
         <c-slot name="sidebar">
@@ -129,8 +131,13 @@
                 </div>
                 <input data-artifact-file type="file" hidden />
                 <div data-artifact-chips class="mb-2 flex flex-wrap gap-1.5"></div>
-                <label for="{{ id_prefix }}bloomerp-agent-input" class="sr-only">{% trans 'Message BloomAI' %}</label>
-                <textarea id="{{ id_prefix }}bloomerp-agent-input" data-agent-input data-floating-panel-focus rows="2" placeholder="{% trans 'Ask anything about your workspace…' %}" class="block max-h-36 w-full resize-none border-0 bg-transparent p-0 text-sm leading-6 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-0 dark:text-zinc-100"></textarea>
+                <p data-artifact-upload-status role="status" class="mb-2 text-xs text-gray-500 empty:hidden"></p>
+                <div data-agent-composer data-editor-label="{{ composer_label }}">
+                    {% with composer_name=id_prefix|add:"bloomerp-agent-input" %}
+                    <c-ui.inputs.text_editor :name="composer_name" :placeholder="composer_placeholder" height="auto"
+                        class="[&_.bloomerp-text-editor]:min-h-12 [&_.bloomerp-text-editor]:max-h-36 [&_.bloomerp-text-editor]:overflow-y-auto" />
+                    {% endwith %}
+                </div>
                 <div class="mt-2 flex items-center justify-between gap-2">
                     <div class="flex min-w-0 flex-1 items-center gap-1">
                         <button type="button" data-artifact-plus aria-label="{% trans 'Add files or modules' %}" aria-haspopup="listbox" aria-expanded="false" class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 dark:text-zinc-200 dark:hover:bg-zinc-700"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>

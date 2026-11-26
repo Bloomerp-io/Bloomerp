@@ -2,6 +2,7 @@
 <c-ui.dropdown.body
     trigger_text="{% if not icon_only %}{{ selected_preference_name|default:'Preference' }}{% endif %}"
     trigger_icon_class="{{ trigger_icon_class|default:'fa fa-bookmark' }}"
+    trigger_button_name="preference-menu"
     trigger_button_class="{{ trigger_button_class|default:'btn-secondary' }}"
     trigger_class="{{ trigger_class|default:'w-full justify-center gap-2 sm:w-auto' }}"
     trigger_aria_label="{{ trigger_aria_label }}"

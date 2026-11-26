@@ -1,4 +1,5 @@
 """Discover incoming browser registrations from capable IM provider definitions."""
+# SHOULD_API
 
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, JsonResponse

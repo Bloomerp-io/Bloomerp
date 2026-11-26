@@ -2,6 +2,7 @@
 
 <div 
     bloomerp-component="dataview-display-options"
+    data-dataview-component-id="{{ container_component_id|default:'dataview-container' }}"
     data-content-type-id="{{ content_type_id }}"
     data-preference-id="{{ preference.id }}"
     data-preference-url="{% url 'components_update_dataview_preference' content_type_id=content_type_id %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}"
@@ -76,7 +77,7 @@
                 data-field-id="{{ field.id }}"
                 data-field-visible="{{ is_visible|yesno:'true,false' }}"
                 aria-pressed="{{ is_visible|yesno:'true,false' }}"
-                class="px-3 py-1 text-xs border rounded-md transition-colors {% if is_visible %}bg-primary-100 border-primary-500 text-primary-700 hover:bg-primary-200{% else %}border-base bg-white text-gray-700 hover:bg-base{% endif %}"
+                class="px-3 py-1 text-xs border rounded-md transition-colors {% if is_visible %}bg-primary-100 border-primary-500 text-primary-700 hover:bg-primary-200{% else %}border-gray-200 bg-white text-gray-700 hover:bg-base{% endif %}"
             >
                 {% if is_visible %}
                 <span class="inline-flex items-center gap-1">

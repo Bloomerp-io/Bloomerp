@@ -1,3 +1,4 @@
+from django.urls import reverse
 from playwright.sync_api import Locator, expect
 
 from bloomerp.models import Sidebar, SidebarItem
@@ -10,7 +11,32 @@ class TestSidebarE2E(e2e.BloomerpE2ETestCase):
     browser_context_options = {"viewport": {"width": 1364, "height": 998}}
 
     def get_test_scenarios(self) -> list[e2e.E2ERequestScenario]:
+        """Cover workspace sidebar controls, persisted folders, and item actions."""
         return [
+            e2e.E2ERequestScenario(
+                name="Preview the collapsed sidebar with the mouse",
+                user=self.admin_user,
+                prepare=self.prepare_sidebar,
+                url="/",
+                actions=[
+                    e2e.E2EAction(
+                        name="Preview from the icon and edge and then pin the sidebar",
+                        execute=self.assert_hover_preview,
+                    ),
+                ],
+            ),
+            e2e.E2ERequestScenario(
+                name="The breadcrumb sidebar toggle survives navigation",
+                user=self.admin_user,
+                prepare=self.prepare_sidebar,
+                url="/",
+                actions=[
+                    e2e.E2EAction(
+                        name="Toggle the sidebar before and after navigating to Inbox",
+                        execute=self.assert_header_toggle_survives_navigation,
+                    ),
+                ],
+            ),
             e2e.E2ERequestScenario(
                 name="Folder expansion is stored independently and restored",
                 description=(
@@ -44,6 +70,76 @@ class TestSidebarE2E(e2e.BloomerpE2ETestCase):
                 ],
             ),
         ]
+
+    def assert_hover_preview(self) -> None:
+        """Verify the addendum aligns with the hover panel and the pinned logo."""
+        self.page.emulate_media(reduced_motion="reduce")
+        toggle = self.page.locator("#sidebar-toggle")
+        main = self.page.locator("#main")
+        sidebar = self.page.locator("#sidebar")
+        addendum = main.locator("#htmx-addendum")
+        expect(toggle).to_have_attribute("aria-expanded", "true")
+        toggle.click()
+        expect(toggle).to_have_attribute("aria-expanded", "false")
+
+        self.page.clock.install()
+        toggle.hover()
+        expect(toggle).to_have_attribute("aria-label", "Keep sidebar open")
+        expect(main).to_have_css("margin-left", "12px")
+        addendum_bottom = addendum.evaluate("header => header.getBoundingClientRect().bottom")
+        expect(sidebar).to_have_css("top", f"{addendum_bottom}px")
+        addendum.evaluate("header => header.style.paddingBottom = '16px'")
+        expect(sidebar).to_have_css("top", f"{addendum_bottom + 16}px")
+        self.page.mouse.move(80, 120)
+        self.page.clock.fast_forward(200)
+        expect(toggle).to_have_attribute("aria-expanded", "true")
+
+        self.page.mouse.move(900, 300)
+        expect(toggle).to_have_attribute("aria-expanded", "false")
+        self.assertEqual(
+            self.page.evaluate("localStorage.getItem('bloomerp_sidebar_state')"),
+            "false",
+        )
+
+        self.page.mouse.move(2, 300)
+        expect(toggle).to_have_attribute("aria-label", "Keep sidebar open")
+        toggle.click()
+        self.page.mouse.move(900, 300)
+        expect(toggle).to_have_attribute("aria-label", "Hide sidebar")
+        expect(main).to_have_css("margin-left", "256px")
+        expect(sidebar).to_have_css("top", "0px")
+        logo_box = sidebar.locator("[data-sidebar-brand] a span").bounding_box()
+        addendum_box = addendum.bounding_box()
+        assert logo_box is not None and addendum_box is not None
+        logo_center = logo_box["y"] + logo_box["height"] / 2
+        addendum_center = addendum_box["y"] + addendum_box["height"] / 2
+        self.assertAlmostEqual(logo_center, addendum_center, delta=0.5)
+
+    def assert_header_toggle_survives_navigation(self) -> None:
+        """Verify the toolbar button tracks state across HTMX swaps and reloads."""
+        toggle = self.page.locator("#htmx-addendum #sidebar-toggle")
+        sidebar = self.page.locator("#sidebar")
+        expect(toggle).to_have_attribute("aria-expanded", "true")
+        toggle.click()
+        expect(toggle).to_have_attribute("aria-expanded", "false")
+        expect(sidebar).to_have_attribute("inert", "")
+
+        self.page.keyboard.press("ControlOrMeta+Shift+B")
+        expect(toggle).to_have_attribute("aria-expanded", "true")
+
+        with self.expect_response_for(reverse("inbox"), method="GET"):
+            sidebar.locator("#inbox-btn").click()
+
+        inbox_toggle = self.page.locator(
+            '#htmx-addendum[data-tutorial-route="inbox"] #sidebar-toggle'
+        )
+        expect(inbox_toggle).to_have_attribute("aria-expanded", "true")
+        inbox_toggle.click()
+        expect(inbox_toggle).to_have_attribute("aria-expanded", "false")
+        self.page.reload(wait_until="domcontentloaded")
+        expect(sidebar).to_have_attribute("data-component-initialized", "true")
+        expect(inbox_toggle).to_have_attribute("aria-expanded", "false")
+        expect(sidebar).to_have_attribute("inert", "")
 
     def prepare_sidebar(self) -> None:
         scenario_number = getattr(self, "_scenario_number", 0) + 1
@@ -176,41 +272,34 @@ class TestMobileSidebarE2E(e2e.BloomerpE2ETestCase):
     }
 
     def get_test_scenarios(self) -> list[e2e.E2ERequestScenario]:
+        """Exercise the breadcrumb toggle and drawer dismiss control on touch screens."""
         return [
             e2e.E2ERequestScenario(
-                name="A regular phone tap does not reveal the sidebar button",
-                description=(
-                    "Touching a page control away from the activation corner must "
-                    "not reveal the floating sidebar control."
-                ),
+                name="Tap the breadcrumb toggle to open the mobile sidebar",
                 user=self.admin_user,
                 url="/",
                 actions=[
                     e2e.E2EAction(
-                        name="Tap a normal page control",
-                        execute=self.assert_regular_tap_keeps_sidebar_button_hidden,
+                        name="Open and dismiss the sidebar",
+                        execute=self.assert_mobile_sidebar_controls,
                     ),
                 ],
             ),
         ]
 
-    def assert_regular_tap_keeps_sidebar_button_hidden(self) -> None:
-        self.page.evaluate(
-            """
-            () => {
-                const button = document.createElement('button');
-                button.textContent = 'Phone action';
-                button.style.position = 'fixed';
-                button.style.left = '160px';
-                button.style.top = '300px';
-                button.addEventListener('click', () => button.dataset.clicked = 'true');
-                document.body.appendChild(button);
-            }
-            """
-        )
-        action_button = self.page.get_by_role("button", name="Phone action")
+    def assert_mobile_sidebar_controls(self) -> None:
+        """Verify the always-visible header control opens the overlay on the first tap."""
+        toggle = self.page.locator("#htmx-addendum #sidebar-toggle")
+        overlay = self.page.locator("#sidebar-overlay")
+        expect(toggle).to_be_visible()
+        expect(toggle).to_have_attribute("aria-expanded", "false")
+        expect(self.page.locator("#sidebar-toggle-floating")).to_have_count(0)
 
-        action_button.tap()
+        toggle.tap()
+        expect(toggle).to_have_attribute("aria-expanded", "true")
+        expect(overlay).to_be_visible()
 
-        expect(action_button).to_have_attribute("data-clicked", "true")
-        expect(self.page.locator("#sidebar-toggle-floating")).to_be_hidden()
+        self.page.locator("#sidebar [data-sidebar-close]").tap()
+        expect(overlay).to_be_hidden()
+        expect(toggle).to_have_attribute("aria-expanded", "false")
+        expect(toggle).to_be_focused()

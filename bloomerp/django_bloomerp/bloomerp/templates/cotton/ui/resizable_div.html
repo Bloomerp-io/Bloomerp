@@ -10,6 +10,7 @@ Parameters:
 - fit_to_main_bottom (bool, optional): If true, keep the div height aligned with the bottom of the main panel.
 - force_open (bool, optional): Expand a panel that was saved at zero width for a direct link.
 - force_close (bool, optional): Start collapsed without replacing the saved width; force_open takes priority.
+- default_closed (bool, optional): Start collapsed when no width has been saved.
 - toggle_shortcut (str, optional): Keyboard shortcut for collapsing and reopening the panel.
 - resize_from (str, optional): Edge used as the resize handle: "left" (default) or "right".
 - class (str, optional): Additional classes to add to the resizable div. Default is "".
@@ -19,6 +20,7 @@ Parameters:
 - min_width (number, optional): Minimum panel width in pixels. Default is 0.
 - min_remaining_width (number, optional): Reserve this many pixels for the neighboring pane.
 - max_width_ratio (number, optional): Maximum fraction of the container width. Default is 0.75.
+- max_width (number, optional): Maximum panel width in pixels.
 - responsive (bool, optional): Stack below the desktop breakpoint unless false.
 - storage (str, optional): Persist in "cookie" (default) or "local" storage.
 - storage_key (str, optional): Override the storage key, including an existing local-storage key.
@@ -27,12 +29,13 @@ Slots:
 - default: 
 {% endcomment %}
 
-<c-vars id="" start_width="" fit_to_main_bottom="false" force_open="" force_close="" toggle_shortcut="" resize_from="left" class="" style="" handle_class="" handle_line_class="" min_width="0" min_remaining_width="0" max_width_ratio="0.75" responsive="true" storage="cookie" storage_key="" />
+<c-vars id="" start_width="" fit_to_main_bottom="false" force_open="" force_close="" default_closed="" toggle_shortcut="" resize_from="left" class="" style="" handle_class="" handle_line_class="" min_width="0" min_remaining_width="0" max_width_ratio="0.75" max_width="" responsive="true" storage="cookie" storage_key="" />
 
 <div 
     bloomerp-component="resizable-div"
     data-force-open="{{ force_open|default:'' }}"
     data-force-close="{{ force_close|default:'' }}"
+    data-default-closed="{{ default_closed }}"
     data-id="{{ id }}"
     data-start-width="{{ start_width }}"
     data-fit-to-main-bottom="{{ fit_to_main_bottom|default:'false' }}"
@@ -41,6 +44,7 @@ Slots:
     data-min-width="{{ min_width }}"
     data-min-remaining-width="{{ min_remaining_width }}"
     data-max-width-ratio="{{ max_width_ratio }}"
+    {% if max_width %}data-max-width="{{ max_width }}"{% endif %}
     data-responsive="{{ responsive }}"
     data-storage="{{ storage }}"
     data-storage-key="{{ storage_key }}"

@@ -6,14 +6,14 @@
     {% if chat_page %}hx-vals='{"chat_page":"1"}'{% endif %}>
     {% static 'bloomerp/img/messaging-header-logo.png' as messaging_logo %}
     <c-ui.floating_panel panel_id="{{ im_prefix }}im-messaging-panel" title="{% translate 'Messages' %}" :logo="messaging_logo"
-        launcher_label="{% translate 'Open messages' %}" close_label="{% translate 'Close messages' %}"
+        launcher_label="{% translate 'Open messages' %}" launcher_shortcut="k then c" close_label="{% translate 'Close messages' %}"
         storage_key="bloomerp-im-draft-position" :page_mode="chat_page">
         <c-slot name="launcher"><i class="fa-regular fa-comment" aria-hidden="true"></i><span>{% translate 'Chat' %}</span><span class="workspace-tool-count" data-count hidden></span></c-slot>
-        <c-slot name="header_start"><button type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50" data-action="back" data-floating-panel-focus hidden aria-label="{% translate 'Back to search' %}"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i></button></c-slot>
+        <c-slot name="header_start"><button type="button" class="icon-button" data-action="back" data-floating-panel-focus hidden aria-label="{% translate 'Back to search' %}"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i></button></c-slot>
         <c-slot name="header_controls">
                     <c-ui.dropdown.body width="w-56" :fixed="True">
                         <c-slot name="trigger_html">
-                            <button type="button" x-ref="trigger" aria-label="{% translate 'Settings' %}" aria-haspopup="true" :aria-expanded="open.toString()" @click="open = !open; if (open) $nextTick(() => resolvePlacement())" class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-gear" aria-hidden="true"></i></button>
+                            <button type="button" x-ref="trigger" aria-label="{% translate 'Settings' %}" aria-haspopup="true" :aria-expanded="open.toString()" @click="open = !open; if (open) $nextTick(() => resolvePlacement())" class="icon-button"><i class="fa-solid fa-gear" aria-hidden="true"></i></button>
                         </c-slot>
                         <button type="button" role="menuitemcheckbox" aria-checked="false" data-call-action="availability" @click="$dispatch('dropdown-close')" class="flex w-full items-center gap-3 px-4 py-2 text-left text-sm text-primary-800 transition-colors hover:bg-primary-50 focus:bg-primary-50">
                             <i class="fa-solid fa-phone w-4" aria-hidden="true"></i>
@@ -22,7 +22,7 @@
                     </c-ui.dropdown.body>
                     <c-ui.dropdown.body width="w-80" :fixed="True">
                         <c-slot name="trigger_html">
-                            <button type="button" x-ref="trigger" aria-label="{% translate 'New conversation' %}" aria-haspopup="true" :aria-expanded="open.toString()" @click="open = !open; if (open) $nextTick(() => resolvePlacement())" class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
+                            <button type="button" x-ref="trigger" aria-label="{% translate 'New conversation' %}" aria-haspopup="true" :aria-expanded="open.toString()" @click="open = !open; if (open) $nextTick(() => resolvePlacement())" class="icon-button"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
                         </c-slot>
                         <div class="im-recipient-search">
                             <c-ui.search name="recipient_query" placeholder="{% translate 'Search people and phone numbers…' %}" aria-label="{% translate 'Search people and phone numbers' %}" hx-get="{% url 'components_im_recipients' %}" hx-trigger="input changed delay:300ms" hx-target="#{{ im_prefix }}im-recipient-results" hx-sync="this:replace" />

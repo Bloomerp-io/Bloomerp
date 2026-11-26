@@ -31,10 +31,11 @@ export default class PagesPanel extends FloatingPanel {
         void this.openLatest();
     }
 
-    /** Reopen the user's most recently edited page after safely flushing the current draft. */
+    /** Reopen the most recent page or focus the current draft if it cannot be saved. */
     private async openLatest(): Promise<void> {
         const editor = this.editor();
         if (!editor || await editor.flush()) await this.load('');
+        else editor.focusBody();
     }
 
     /** Point fullscreen navigation at exactly the scratchpad's currently selected page. */
@@ -55,7 +56,9 @@ export default class PagesPanel extends FloatingPanel {
         if (target.closest('[data-pages-history]')) {
             const history = this.element.querySelector<HTMLElement>('[data-pages-history-panel]')!;
             this.showHistory(history.hidden);
-            if (!history.hidden) {
+            if (history.hidden) {
+                this.editor()?.focusBody();
+            } else {
                 const nav = history.querySelector<HTMLElement>('[data-pages-navigation]')!;
                 await htmx.ajax('get', this.element.dataset.navigationUrl!, { target: nav, swap: 'innerHTML' });
             }
@@ -77,14 +80,18 @@ export default class PagesPanel extends FloatingPanel {
         this.element.querySelector<HTMLElement>('[data-pages-content]')!.hidden = show;
     }
 
-    /** Load the same server-rendered editor used by the full Pages layout. */
+    /** Load the editor and focus it once visible unless the user has moved focus elsewhere. */
     private async load(search: string): Promise<void> {
         if (this.loading) return;
         const target = this.element.querySelector<HTMLElement>('[data-pages-content]')!;
+        const previousFocus = document.activeElement;
         this.loading = true;
         try {
             await htmx.ajax('get', this.element.dataset.editorUrl! + search, { target, swap: 'innerHTML' });
             this.showHistory(false);
+            if (document.activeElement === previousFocus || document.activeElement === document.body) {
+                this.editor()?.focusBody();
+            }
         } catch {
             if (!this.editor()) target.textContent = _('Could not load your pages.');
         } finally { this.loading = false; }

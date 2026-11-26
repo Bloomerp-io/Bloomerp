@@ -11,6 +11,9 @@ typed, documented functions over nontrivial lambdas.
 
 Each endpoint & model should have a file on its own.
 
+Put code in the existing model, view, or serializer that uses it. Ask for
+approval before creating a service file.
+
 # Testing requirements
 
 Before writing or modifying any tests, read `docs/developers/testing/index.md`

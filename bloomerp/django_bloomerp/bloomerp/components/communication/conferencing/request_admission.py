@@ -1,4 +1,5 @@
 """Browser-bound shared meeting request admission endpoint."""
+#SHOULD_API
 
 from uuid import UUID
 

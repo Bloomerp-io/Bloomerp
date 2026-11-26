@@ -18,9 +18,11 @@ TODO: M2M relationship should be enhanced
 
     bloomerp-component="datatable-cell"
     >
-    {% if foreign_preview_content_type_id %}
-        <span data-foreign-preview-object-id="{{ foreign_preview_object_id }}" data-foreign-preview-content-type-id="{{ foreign_preview_content_type_id }}">{{ value|safe }}</span>
-    {% else %}
-        {{ value|safe }}
-    {% endif %}
+    <div class="contents" data-dataview-cell-content>
+        {% if foreign_preview_content_type_id %}
+            <span data-foreign-preview-object-id="{{ foreign_preview_object_id }}" data-foreign-preview-content-type-id="{{ foreign_preview_content_type_id }}">{{ value|safe }}</span>
+        {% else %}
+            {{ value|safe }}
+        {% endif %}
+    </div>
 </td>

@@ -38,9 +38,15 @@ def register_builtins() -> None:
     """Register provider-owned integrations without allocating clients or discovering models."""
     from .builtins.pydantic_ai_common import PydanticAIProvider, PydanticAISettings
     from .builtins.pydantic_anthropic import AnthropicSettings, create_anthropic_model
-    from .builtins.pydantic_deepseek import create_deepseek_model
+    from .builtins.pydantic_deepseek import (
+        create_deepseek_model,
+        discover_deepseek_modalities,
+    )
     from .builtins.pydantic_open_ai import create_openai_chat_model, create_openai_model
-    from .builtins.pydantic_openrouter import create_openrouter_model
+    from .builtins.pydantic_openrouter import (
+        create_openrouter_model,
+        discover_openrouter_modalities,
+    )
 
     descriptions = {
         "openai": "Use OpenAI agents through the Responses API, including compatible reasoning models.",
@@ -48,6 +54,10 @@ def register_builtins() -> None:
         "deepseek": "Use DeepSeek models through its OpenAI-compatible Chat Completions API.",
         "anthropic": "Use Claude models through the Anthropic Messages API.",
         "openrouter": "Use OpenRouter with a vendor/model identifier. Available tools and settings depend on the selected model.",
+    }
+    modality_discovery = {
+        "deepseek": discover_deepseek_modalities,
+        "openrouter": discover_openrouter_modalities,
     }
     for key, name, factory, schema in [
         ("openai", "OpenAI", create_openai_model, PydanticAISettings),
@@ -70,6 +80,7 @@ def register_builtins() -> None:
                 runtime_factory=pydantic_runtime,
                 config_schema=schema,
                 integration=PydanticAIProvider(factory, schema),
+                model_modalities_factory=modality_discovery.get(key),
             ),
         )
 

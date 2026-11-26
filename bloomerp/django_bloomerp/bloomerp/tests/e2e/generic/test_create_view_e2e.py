@@ -18,11 +18,10 @@ from bloomerp.permissions.definition import (
 from bloomerp.permissions.manager import PolicyManager
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.tests.base import BloomerpE2ETestCase, E2EAction, E2ERequestScenario
-from bloomerp.tests.views.crud_test_mixin import CrudViewTestMixin
 from bloomerp.utils.models import get_create_view_url
 
 
-class TestCreateViewE2E(CrudViewTestMixin, BloomerpE2ETestCase):
+class TestCreateViewE2E(BloomerpE2ETestCase):
     create_foreign_models = True
 
     def goto_create_view(self, model: type[models.Model]) -> None:

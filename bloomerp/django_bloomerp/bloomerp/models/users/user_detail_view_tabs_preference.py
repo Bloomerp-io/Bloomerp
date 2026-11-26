@@ -327,16 +327,10 @@ class UserDetailViewTabsPreference(BasePreference):
 
         def render_tab(item: UserDetailViewTabItem) -> dict[str, Any]:
             """Resolve a tab's current URL and built-in presentation label."""
-            href = self.resolve_tab_url(item.url or "", object_pk)
-            parsed = urlsplit(href)
-            return {
-                "id": str(item.id),
-                "name": self.localized_item_name(item),
-                "url": item.url,
-                "href": href,
-                "is_external": bool(parsed.scheme and parsed.netloc),
-                "is_active": parsed.path.rstrip("/") == request_path.rstrip("/"),
-            }
+            return self._render_tab(
+                item_id=str(item.id), name=self.localized_item_name(item), url=item.url,
+                object_pk=object_pk, request_path=request_path,
+            )
 
         rendered: list[dict[str, Any]] = []
         for item in (item for item in items if item.parent_id is None):
@@ -355,6 +349,56 @@ class UserDetailViewTabsPreference(BasePreference):
             else:
                 rendered.append({**render_tab(item), "is_folder": False})
         return rendered
+
+    @classmethod
+    def build_configured_rendered_items(
+        cls,
+        configuration: DetailTabsConfiguration,
+        *,
+        model: type[models.Model],
+        object_pk: Any,
+        request_path: str,
+    ) -> list[dict[str, Any]]:
+        """Render a declarative tab configuration without creating a preference."""
+        def render_tab(tab: DetailTab, item_id: str) -> dict[str, Any]:
+            """Resolve a configured tab with the same presentation as a saved tab."""
+            return cls._render_tab(
+                item_id=item_id, name=tab.name, url=cls.get_configured_tab_url(tab, model),
+                object_pk=object_pk, request_path=request_path,
+            )
+
+        rendered: list[dict[str, Any]] = []
+        for position, item in enumerate(configuration.tabs):
+            item_id = f"tab-{position}"
+            if isinstance(item, DetailTabFolder):
+                rendered.append({
+                    "id": item_id,
+                    "name": item.name,
+                    "is_folder": True,
+                    "tabs": [
+                        render_tab(tab, f"{item_id}-{index}")
+                        for index, tab in enumerate(item.tabs)
+                    ],
+                })
+            else:
+                rendered.append({**render_tab(item, item_id), "is_folder": False})
+        return rendered
+
+    @classmethod
+    def _render_tab(
+        cls, *, item_id: str, name: str, url: str | None, object_pk: Any, request_path: str,
+    ) -> dict[str, Any]:
+        """Resolve the object link and active state shared by both tab sources."""
+        href = cls.resolve_tab_url(url or "", object_pk)
+        parsed = urlsplit(href)
+        return {
+            "id": item_id,
+            "name": name,
+            "url": url,
+            "href": href,
+            "is_external": bool(parsed.scheme and parsed.netloc),
+            "is_active": parsed.path.rstrip("/") == request_path.rstrip("/"),
+        }
 
     def localized_item_name(self, item: UserDetailViewTabItem) -> str:
         """Translate recognized generated names while retaining custom tab names."""

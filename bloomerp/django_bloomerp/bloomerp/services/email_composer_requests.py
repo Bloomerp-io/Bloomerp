@@ -12,7 +12,6 @@ from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext as _
 
-from bloomerp.communication.builtins.emails.base_adapter import EmailAttachment
 from bloomerp.communication.utils.permissions import accessible_inbox_folders
 from bloomerp.models.communication.email_account import EmailAccount
 from bloomerp.models.communication.email_draft import EmailDraft
@@ -98,10 +97,3 @@ def _parse_recipients(value: str) -> list[str]:
 def _join_recipients(value: object) -> str:
     """Format a recipient list for the email input."""
     return ", ".join(str(item) for item in value) if isinstance(value, list) else str(value or "")
-
-
-def _get_attachments(request: HttpRequest) -> list[EmailAttachment]:
-    """Resolve current authorized selections through the shared email attachment service."""
-    from bloomerp.services.email_attachment_services import get_email_attachments
-
-    return get_email_attachments(request)

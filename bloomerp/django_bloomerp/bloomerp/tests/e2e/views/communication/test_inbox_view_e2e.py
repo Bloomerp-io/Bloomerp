@@ -1,4 +1,4 @@
-"""Browser regressions for inbox selection, conversation navigation and preview closing."""
+"""Browser regressions for inbox and calendar navigation."""
 
 import re
 from datetime import timedelta
@@ -8,6 +8,7 @@ from django.utils import timezone
 from playwright.sync_api import expect
 
 from bloomerp.models import EmailAccount
+from bloomerp.models.communication.calendar import BookingLink
 from bloomerp.models.communication.inbox.inbox import Inbox
 from bloomerp.models.communication.inbox.inbox_folder import InboxFolder
 from bloomerp.models.communication.inbox.inbox_item import InboxItem
@@ -26,6 +27,9 @@ class TestInboxViewE2E(BloomerpE2ETestCase):
         """Seed a conversation and a following message for a complete navigation journey."""
         account = EmailAccount.objects.create(email_address="navigation@example.com")
         inbox = Inbox.objects.create(name="Navigation inbox", user=self.admin_user)
+        self.booking_link = BookingLink.objects.create(
+            title="Consultation", organizing_inbox=inbox, meeting_duration_minutes=30, timezone="UTC",
+        )
         PreferenceManager(self.admin_user).select(inbox)
         folder = InboxFolder.objects.create(inbox=inbox, type="email", related_object_id=str(account.pk))
         preference = UserInboxPreference.get_for_user(self.admin_user)
@@ -60,7 +64,48 @@ class TestInboxViewE2E(BloomerpE2ETestCase):
                 E2EAction(name="Close the detail and reopen it", execute=self.close_and_reopen_preview),
                 E2EAction(name="Render the composer in dark mode", execute=self.check_composer_colors),
             ],
+        ), E2ERequestScenario(
+            name="The calendar opens a focused booking Dataview and keeps its place",
+            user=self.admin_user, url=reverse("inbox"),
+            actions=[
+                E2EAction(name="Open the list and view a booking in place", execute=self.open_booking_links),
+                E2EAction(name="Create a booking and refresh the list", execute=self.create_booking_link),
+            ],
         )]
+
+    def open_booking_links(self) -> None:
+        """Load the booking table and open a row without navigating away."""
+        self.page.get_by_role("link", name="Calendar", exact=True).click()
+        self.page.get_by_role("button", name="Booking links", exact=True).click()
+        calendar_url = self.page.url
+        drawer = self.page.locator("#bloomerp-general-use-drawer")
+        expect(drawer.get_by_role("heading", name="Booking links")).to_be_visible()
+        title_column = drawer.get_by_role("columnheader", name="Title")
+        title_column.get_by_role("button", name="Title").click()
+        expect(title_column).to_have_attribute("aria-sort", "descending")
+        drawer.get_by_role("row").filter(has_text=self.booking_link.title).dblclick()
+        detail = self.page.locator("[data-dataview-detail-drawer]").filter(
+            has=self.page.get_by_role("heading", name=self.booking_link.title, exact=True),
+        )
+        expect(detail).to_be_visible()
+        detail.get_by_role("button", name="Close details").click()
+        expect(detail).to_be_hidden()
+        expect(drawer).to_be_visible()
+        expect(self.page).to_have_url(calendar_url)
+
+    def create_booking_link(self) -> None:
+        """Use standard Add to create a prefilled link and refresh the same drawer."""
+        drawer = self.page.locator("#bloomerp-general-use-drawer")
+        drawer.get_by_role("button", name="Add", exact=True).click()
+        modal = self.page.get_by_role("dialog")
+        modal.locator('[name="title"]').fill("Another consultation")
+        modal.locator('[name="meeting_duration_minutes"]').fill("30")
+        modal.get_by_role("button", name="Save", exact=True).click()
+        expect(modal).to_be_hidden()
+        expect(drawer.get_by_role("row").filter(has_text="Another consultation")).to_be_visible()
+        self.assertTrue(BookingLink.objects.filter(
+            title="Another consultation", organizing_inbox=self.booking_link.organizing_inbox,
+        ).exists())
 
     def use_dark_theme(self) -> None:
         """Load the inbox in dark mode to verify both preview title colors."""

@@ -1,7 +1,9 @@
+from django.contrib.auth.models import Group
 from django.db.models import Q
 
 from bloomerp.lookups.builtins.equals import EQUALS
 from bloomerp.lookups.definition import CompiledLookup, CompiledSQL
+from bloomerp.models.application_field import ApplicationField
 from bloomerp.models.project_management.initiative import Initiative
 from bloomerp.tests.base import (
     BloomerpLookupTestCase,
@@ -14,7 +16,12 @@ class TestEqualsLookup(BloomerpLookupTestCase):
     lookup = EQUALS
     create_foreign_models = True
 
+    def group_user_field(self) -> ApplicationField:
+        """Resolve the reverse user relation used by group membership lookups."""
+        return self.get_application_field("user", Group)
+
     def get_test_scenarios(self) -> list[LookupScenario]:
+        """Cover equality lookups on scalar fields and related paths."""
         return [
             LookupScenario(
                 name="empty exact expression",
@@ -74,6 +81,16 @@ class TestEqualsLookup(BloomerpLookupTestCase):
                 value="Earth",
                 expected_lookup=CompiledLookup(
                     predicate=Q(country__planet__name="Earth")
+                ),
+            ),
+            LookupScenario(
+                name="matches a user through a reverse group membership relation",
+                application_field=self.group_user_field,
+                field_path="assigned_groups__user",
+                expression="equals",
+                value=self.normal_user.pk,
+                expected_lookup=CompiledLookup(
+                    predicate=Q(assigned_groups__user=self.normal_user.pk)
                 ),
             ),
             LookupScenario(

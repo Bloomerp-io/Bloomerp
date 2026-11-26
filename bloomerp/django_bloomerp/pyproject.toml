@@ -1,6 +1,6 @@
 [project]
 name = "Bloomerp"
-version = "1.19.7"
+version = "1.20.0beta"
 description = "Bloomerp is an open-source Business Management Software framework that lets you create fully functional business management applications just by defining your Django database models."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -84,7 +84,8 @@ dependencies = [
     "packaging==24.1",
     "pandas==2.2.2",
     "pandocfilters==1.5.1",
-    "pillow==10.4.0",
+    "pillow==11.3.0",
+    "pillow-heif==1.8.1",
     "platformdirs==4.3.6",
     "plotly==5.24.1",
     "prometheus_client==0.21.1",
@@ -167,13 +168,6 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-file-extraction = [
-    "docling[rapidocr]==2.60.0",
-    "docling-core==2.49.0",
-    "rapidocr==3.4.0",
-    "torch==2.8.0",
-    "torchvision==0.23.0",
-]
 postgres = [
     "psycopg2-binary==2.9.9",
 ]
@@ -204,6 +198,10 @@ bloomerp = [
     "cli/template_project/.gitignore",
     "cli/template_project/.python-version",
     "templates/**/*",
+    "tutorials/*.yaml",
+    "tutorials/*.yml",
+    "tutorials/**/*.yaml",
+    "tutorials/**/*.yml",
     "static/**/*",
     "locale/**/*",
     "i18n/*.mjs",
@@ -217,13 +215,3 @@ omit = ["bloomerp/migrations/*", "bloomerp/tests/*"]
 
 [tool.coverage.report]
 show_missing = true
-
-# Keep the optional CPU-only parser from downloading GPU runtimes.
-[tool.uv.sources]
-torch = [{ index = "pytorch-cpu", extra = "file-extraction" }]
-torchvision = [{ index = "pytorch-cpu", extra = "file-extraction" }]
-
-[[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-explicit = true

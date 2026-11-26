@@ -13,7 +13,14 @@ from bloomerp.forms.model_form import BloomerpModelForm, bloomerp_modelform_fact
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
 from bloomerp.utils.models import get_create_view_url, get_detail_view_url
-from bloomerp.utils.requests import render_blank_form
+from bloomerp.utils.requests import (
+    CREATE_DRAWER_BODY_ID,
+    CREATE_MODAL_BODY_ID,
+    MODAL_CREATE_HEADER,
+    is_drawer_create,
+    modal_saved_response,
+    render_blank_form,
+)
 from bloomerp.views.generic.model.create import BloomerpCreateView
 
 
@@ -35,14 +42,20 @@ class CreateObjectComponentView(BloomerpCreateView):
     htmx_include_addendum = False
 
     def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
-        """Render creation in its caller's modal, using custom views' canonical paths and initial values."""
+        """Render creation in its caller's overlay, using any custom view's canonical path."""
         self.content_type = get_object_or_404(ContentType, id=kwargs["content_type_id"])
         self.model = self.content_type.model_class()
         if self.model is None:
             return HttpResponse("Invalid content type", status=400)
         if self._create_view_is_overridden() and not getattr(request, "_bloomerp_custom_create", False):
             url = reverse(get_create_view_url(self.model))
-            if request.GET.get("data_view_create_id") or request.POST.get("data_view_create_id"):
+            if (
+                request.headers.get(MODAL_CREATE_HEADER) == "true"
+                or is_drawer_create(request)
+                or getattr(request.htmx, "target", None) == CREATE_MODAL_BODY_ID
+                or request.GET.get("data_view_create_id")
+                or request.POST.get("data_view_create_id")
+            ):
                 if not UserPolicyManager(request.user).has_global_permission(self.model, "add"):
                     return HttpResponse("Forbidden", status=403)
                 match = resolve(url)
@@ -70,7 +83,9 @@ class CreateObjectComponentView(BloomerpCreateView):
         )
 
     def get_form_hx_target(self) -> str:
-        """Keep form submissions and validation errors inside their own dialog."""
+        """Keep form submissions and validation errors inside the opening overlay."""
+        if is_drawer_create(self.request):
+            return f"#{CREATE_DRAWER_BODY_ID}"
         return "closest [data-modal-body]"
 
     def get_form_hx_push_url(self) -> bool:
@@ -125,6 +140,12 @@ class CreateObjectComponentView(BloomerpCreateView):
 
         if self.request.POST.get("next"):
             return redirect(self.request.POST.get("next"))
+
+        if self.request.headers.get(MODAL_CREATE_HEADER) == "true":
+            return modal_saved_response([
+                {"text": str(message), "type": message.level_tag}
+                for message in get_messages(self.request)
+            ])
 
         htmx_response = HttpResponse(status=204)
         data_view_create_id = self.request.POST.get("data_view_create_id")

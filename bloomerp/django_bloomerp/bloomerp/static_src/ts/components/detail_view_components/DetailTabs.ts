@@ -46,10 +46,17 @@ export default class DetailTabs extends BaseComponent {
     private readonly dragOverHandler = (event: DragEvent) => this.onDragOver(event);
     private readonly dropHandler = (event: DragEvent) => this.onDrop(event);
     private readonly documentClickHandler = (event: MouseEvent) => this.onDocumentClick(event);
-    private readonly keydownHandler = (event: KeyboardEvent) => this.onKeyDown(event);
     private readonly modalSavedHandler = (event: Event) => this.onModalSaved(event as CustomEvent<TabItemSavedDetail>);
     private readonly modalInputHandler = (event: Event) => this.onModalInput(event);
 
+    /** Resolve the current internal tab for an embedded detail view. */
+    public get activeTabUrl(): string | null {
+        const item = this.activeId ? this.findItem(this.activeId) : null;
+        const link = item?.matches("a") ? item : item?.querySelector("[data-tab-link]");
+        return link?.getAttribute("hx-get") || null;
+    }
+
+    /** Bind tabs to their current detail frame and register their interaction handlers. */
     public initialize(): void {
         if (!this.element) return;
 
@@ -60,8 +67,11 @@ export default class DetailTabs extends BaseComponent {
         this.canManage = this.element.dataset.canManage === 'true';
         this.activeId = this.findActiveId();
         this.element.addEventListener('click', this.clickHandler);
+        this.stripList.addEventListener('keydown', this.onTabKeyDown);
+        this.stripList.addEventListener('focusout', this.onTabFocusOut);
+        this.element.addEventListener('htmx:beforeCleanupElement', this.handleCleanup);
         document.addEventListener('click', this.documentClickHandler);
-        document.addEventListener('keydown', this.keydownHandler);
+        document.addEventListener('keydown', this.onDocumentEscape);
 
         if (this.canManage) {
             this.setDraggableState();
@@ -79,15 +89,19 @@ export default class DetailTabs extends BaseComponent {
         this.applyActiveStyles();
     }
 
+    /** Release the event handlers and any pending layout save. */
     public destroy(): void {
         this.element?.removeEventListener('click', this.clickHandler);
+        this.stripList?.removeEventListener('keydown', this.onTabKeyDown);
+        this.stripList?.removeEventListener('focusout', this.onTabFocusOut);
+        this.element?.removeEventListener('htmx:beforeCleanupElement', this.handleCleanup);
         this.stripContainer?.removeEventListener('contextmenu', this.contextMenuHandler);
         this.element?.removeEventListener('dragstart', this.dragStartHandler);
         this.element?.removeEventListener('dragend', this.dragEndHandler);
         this.stripContainer?.removeEventListener('dragover', this.dragOverHandler);
         this.stripContainer?.removeEventListener('drop', this.dropHandler);
         document.removeEventListener('click', this.documentClickHandler);
-        document.removeEventListener('keydown', this.keydownHandler);
+        document.removeEventListener('keydown', this.onDocumentEscape);
 
         const modalBody = document.getElementById('bloomerp-general-use-modal-body');
         document.removeEventListener('detail-tabs-item-saved', this.modalSavedHandler);
@@ -98,6 +112,11 @@ export default class DetailTabs extends BaseComponent {
         this.clearDragState();
     }
 
+    /** Release document listeners when HTMX replaces the tab strip. */
+    private handleCleanup = (event: Event): void => {
+        if (event.target === this.element) this.destroy();
+    };
+
     private setDraggableState(): void {
         this.getTopLevelItems().forEach((item) => item.setAttribute('draggable', 'true'));
         this.getFolderItems().forEach((folder) => {
@@ -105,6 +124,7 @@ export default class DetailTabs extends BaseComponent {
         });
     }
 
+    /** Activate clicked tabs and return focus to a folder after selecting a child. */
     private onClick(event: Event): void {
         const target = event.target as HTMLElement | null;
         if (!target) return;
@@ -120,6 +140,9 @@ export default class DetailTabs extends BaseComponent {
         const tab = target.closest<HTMLElement>('[data-tab-link], [data-folder-tab-item]');
         if (tab) {
             const item = tab.closest<HTMLElement>('[data-tab-item]');
+            if (tab.matches('[data-folder-tab-item]') && tab.contains(document.activeElement)) {
+                item?.querySelector<HTMLElement>('[data-folder-toggle]')?.focus({ preventScroll: true });
+            }
             this.activeId = tab.dataset.itemId || item?.dataset.itemId || null;
             this.applyActiveStyles();
             this.closeFolders();
@@ -361,6 +384,7 @@ export default class DetailTabs extends BaseComponent {
         getGeneralModal().close();
     }
 
+    /** Create a closed folder with the same controls as a server-rendered folder. */
     private createFolder(id: string, name: string): HTMLElement {
         const folder = document.createElement('li');
         folder.dataset.tabItem = '';
@@ -369,7 +393,7 @@ export default class DetailTabs extends BaseComponent {
         folder.dataset.itemName = name;
         folder.className = 'relative shrink-0 cursor-pointer select-none border-b-2 border-transparent';
         folder.innerHTML = `
-            <button type="button" data-folder-toggle class="h-full w-full px-4 py-2 text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 hover:bg-gray-50"></button>
+            <button type="button" data-folder-toggle aria-expanded="false" class="h-full w-full px-4 py-2 text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary-500 hover:bg-gray-50"></button>
             <div data-folder-tabs class="absolute left-0 top-full z-50 mt-1 hidden min-w-56 rounded-xl border border-gray-200 bg-white shadow-xs"></div>
         `;
         const toggle = folder.querySelector<HTMLElement>('[data-folder-toggle]');
@@ -462,6 +486,7 @@ export default class DetailTabs extends BaseComponent {
         return { id, name, url, active: tab?.dataset.tabActive === 'true' };
     }
 
+    /** Toggle a folder's existing panel and report its expanded state. */
     private toggleFolder(folder: HTMLElement): void {
         const panel = this.getFolderPanel(folder);
         if (!panel) return;
@@ -475,14 +500,17 @@ export default class DetailTabs extends BaseComponent {
         panel.style.top = `${Math.round(rect.bottom + 4)}px`;
         panel.style.minWidth = `${Math.max(Math.round(rect.width), 224)}px`;
         panel.classList.remove('hidden');
+        folder.querySelector('[data-folder-toggle]')?.setAttribute('aria-expanded', 'true');
     }
 
+    /** Close all folder panels and reset their controls to the collapsed state. */
     private closeFolders(): void {
         for (const folder of this.getFolderItems()) {
             const panel = this.getFolderPanel(folder);
             panel?.classList.add('hidden');
             panel?.classList.remove('fixed');
             if (panel) panel.removeAttribute('style');
+            folder.querySelector('[data-folder-toggle]')?.setAttribute('aria-expanded', 'false');
         }
     }
 
@@ -492,21 +520,115 @@ export default class DetailTabs extends BaseComponent {
         this.closeFolders();
     }
 
-    private onKeyDown(event: KeyboardEvent): void {
-        if (!this.element) return;
-        const target = event.target as HTMLElement | null;
-        if (event.altKey && event.code === 'KeyT' && !this.isTypingTarget(target)) {
-            event.preventDefault();
-            this.findItem(this.activeId || '')?.querySelector<HTMLElement>('[data-tab-link], [data-folder-toggle]')?.focus();
-        }
-        if (event.key === 'Escape') this.closeFolders();
+    /** Focus the selected tab, its folder control, or the first available tab. */
+    public focusActiveTab(): boolean {
+        const active = this.activeId ? this.findItem(this.activeId) : null;
+        const item = active?.closest('[data-tab-item]');
+        const controls = this.getStripControls();
+        const control = controls.find(function belongsToActiveItem(candidate: HTMLElement): boolean {
+            return candidate.parentElement === item;
+        }) ?? controls[0];
+        return this.focusTabControl(control);
     }
+
+    /** Navigate visible tabs or run their ordinary click actions from the keyboard. */
+    private readonly onTabKeyDown = (event: KeyboardEvent): void => {
+        if (event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+        if (!(event.target instanceof HTMLElement)) return;
+        const item = event.target.closest<HTMLElement>('[data-tab-item]');
+        const control = item?.querySelector<HTMLElement>(':scope > [data-tab-link], :scope > [data-folder-toggle]');
+        const folderTab = event.target.closest<HTMLElement>('[data-folder-tab-item]');
+        if (!control || (event.target !== control && !folderTab)) return;
+
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+            const controls = this.getStripControls();
+            const index = controls.indexOf(control);
+            if (index < 0 || controls.length < 2) return;
+            const offset = event.key === 'ArrowLeft' ? -1 : 1;
+            const next = controls[(index + offset + controls.length) % controls.length];
+            if (this.focusTabControl(next)) {
+                this.closeFolders();
+                event.preventDefault();
+            }
+            return;
+        }
+
+        if (control.matches('[data-folder-toggle]')) {
+            this.handleFolderKey(event, item, control, folderTab);
+        }
+        if (event.key === ' ' && event.target instanceof HTMLAnchorElement) {
+            event.preventDefault();
+            if (!event.repeat) event.target.click();
+        }
+    };
+
+    /** Open a folder through its button and let arrows move between its links. */
+    private handleFolderKey(event: KeyboardEvent, folder: HTMLElement, toggle: HTMLElement, current: HTMLElement | null): void {
+        const open = toggle.getAttribute('aria-expanded') === 'true';
+        if (event.key === 'Escape' && open) {
+            this.focusTabControl(toggle);
+            this.closeFolders();
+            event.preventDefault();
+            return;
+        }
+
+        const activate = !current && (event.key === 'Enter' || event.key === ' ');
+        const vertical = event.key === 'ArrowDown' || event.key === 'ArrowUp';
+        if (!activate && !vertical) return;
+
+        if (activate || !open) {
+            event.preventDefault();
+            if (event.repeat) return;
+            toggle.click();
+            if (open) return;
+        }
+
+        const links = this.getFolderTabs(folder).filter(this.isTabControlAvailable);
+        if (!links.length) return;
+        const index = current ? links.indexOf(current) : -1;
+        const next = index < 0
+            ? links[event.key === 'ArrowUp' ? links.length - 1 : 0]
+            : links[(index + (event.key === 'ArrowUp' ? -1 : 1) + links.length) % links.length];
+        if (this.focusTabControl(next)) event.preventDefault();
+    }
+
+    /** Keep keyboard navigation on the rendered, enabled strip controls. */
+    private getStripControls(): HTMLElement[] {
+        const controls = this.stripList?.querySelectorAll<HTMLElement>(
+            ':scope > [data-tab-item] > :is([data-tab-link], [data-folder-toggle])',
+        );
+        return controls ? Array.from(controls).filter(this.isTabControlAvailable) : [];
+    }
+
+    /** Exclude controls that cannot receive visible focus. */
+    private readonly isTabControlAvailable = (control: HTMLElement): boolean => {
+        return !control.closest('[inert], [aria-disabled="true"]') && !control.matches(':disabled')
+            && control.getClientRects().length > 0 && getComputedStyle(control).visibility === 'visible';
+    };
+
+    /** Report a move only when a new tab control receives focus. */
+    private focusTabControl(control: HTMLElement | undefined): boolean {
+        if (!control || document.activeElement === control) return false;
+        control.focus();
+        return document.activeElement === control;
+    }
+
+    /** Close a folder after keyboard focus leaves the strip. */
+    private readonly onTabFocusOut = (event: FocusEvent): void => {
+        if (!(event.relatedTarget instanceof Node) || !this.stripList?.contains(event.relatedTarget)) this.closeFolders();
+    };
+
+    /** Preserve Escape dismissal when a folder is opened with the mouse. */
+    private readonly onDocumentEscape = (event: KeyboardEvent): void => {
+        if (event.key === 'Escape') this.closeFolders();
+    };
 
     private findActiveId(): string | null {
         const active = this.element?.querySelector<HTMLElement>('[data-tab-active="true"]');
         return active?.dataset.itemId || active?.closest<HTMLElement>('[data-tab-item]')?.dataset.itemId || null;
     }
 
+    /** Keep visual selection and the accessible tab state in sync. */
     private applyActiveStyles(): void {
         for (const item of this.getTopLevelItems()) {
             const folderActive = item.dataset.tabType === 'folder'
@@ -518,13 +640,18 @@ export default class DetailTabs extends BaseComponent {
             item.classList.toggle('font-medium', active);
             item.classList.toggle('border-transparent', !active);
             item.classList.toggle('text-gray-700', !active);
+            if (item.dataset.tabType === 'tab') {
+                item.dataset.tabActive = String(active);
+                item.querySelector('[data-tab-link]')?.setAttribute('aria-selected', String(active));
+            }
         }
-        this.element?.querySelectorAll<HTMLElement>('[data-folder-tab-item]').forEach((tab) => {
+        for (const tab of this.element?.querySelectorAll<HTMLElement>('[data-folder-tab-item]') ?? []) {
             const active = tab.dataset.itemId === this.activeId;
+            tab.dataset.tabActive = String(active);
             tab.classList.toggle('bg-primary/5', active);
             tab.classList.toggle('text-primary', active);
             tab.classList.toggle('font-medium', active);
-        });
+        }
     }
 
     private getHorizontalDragAfterElement(clientX: number): HTMLElement | null {
@@ -628,10 +755,6 @@ export default class DetailTabs extends BaseComponent {
         } catch {
             return false;
         }
-    }
-
-    private isTypingTarget(target: HTMLElement | null): boolean {
-        return Boolean(target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
     }
 
     private generateId(): string {

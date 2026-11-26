@@ -5,6 +5,9 @@ export type ShortcutDefinition = {
     alt: boolean;
 };
 
+export type ShortcutSequence = readonly [ShortcutDefinition, ShortcutDefinition, ...ShortcutDefinition[]];
+export type ShortcutBinding = ShortcutDefinition | ShortcutSequence;
+
 const MODIFIER_ALIASES: Record<string, keyof Omit<ShortcutDefinition, "key">> = {
     mod: "mod",
     cmd: "mod",
@@ -40,6 +43,7 @@ export function isMacPlatform(): boolean {
     );
 }
 
+/** Parse a single key or modifier combination. */
 export function parseShortcut(shortcut: string): ShortcutDefinition | null {
     const normalized = shortcut.trim().toLowerCase();
     if (!normalized) return null;
@@ -73,6 +77,29 @@ export function parseShortcut(shortcut: string): ShortcutDefinition | null {
     }
 
     return definition.key ? definition : null;
+}
+
+/** Parse a single shortcut or ordered steps separated by `then`. */
+export function parseShortcutBinding(shortcut: string): ShortcutBinding | null {
+    const [firstStep, secondStep, ...remainingSteps] = shortcut.trim().split(/(?:^|\s+)then(?=\s|$)/i);
+    const first = parseShortcut(firstStep);
+    if (!first || secondStep === undefined) return first;
+
+    const second = parseShortcut(secondStep);
+    if (!second) return null;
+
+    const sequence: [ShortcutDefinition, ShortcutDefinition, ...ShortcutDefinition[]] = [first, second];
+    for (const step of remainingSteps) {
+        const definition = parseShortcut(step);
+        if (!definition) return null;
+        sequence.push(definition);
+    }
+    return sequence;
+}
+
+/** Identify a binding that needs more than one key press. */
+export function isShortcutSequence(shortcut: ShortcutBinding): shortcut is ShortcutSequence {
+    return Array.isArray(shortcut);
 }
 
 export function formatShortcutForDisplay(shortcut: ShortcutDefinition): string {

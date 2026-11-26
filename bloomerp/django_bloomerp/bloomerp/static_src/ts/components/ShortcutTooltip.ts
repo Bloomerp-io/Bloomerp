@@ -2,10 +2,13 @@ import BaseComponent from "./BaseComponent";
 import {
     formatShortcutForDisplay,
     formatShortcutForAria,
-    parseShortcut,
-    type ShortcutDefinition,
+    isShortcutSequence,
+    parseShortcutBinding,
+    type ShortcutSequence,
 } from "../utils/shortcuts";
 import { getShortcutManager } from "../utils/shortcutManager";
+import { TOOLTIP_SHOW_DELAY_MS } from "../utils/tooltip";
+import { t } from "../utils/i18n";
 
 type Action = "focus" | "click";
 type Position = "top" | "bottom" | "left" | "right";
@@ -22,6 +25,8 @@ const INTERACTIVE_SELECTOR = [
     "[role='button']",
     "[tabindex]:not([tabindex='-1'])",
 ].join(", ");
+
+let shortcutDescriptionId = 0;
 
 function isValidAction(value: string | undefined): value is Action {
     return value === "focus" || value === "click";
@@ -120,19 +125,20 @@ export default class ShortcutTooltip extends BaseComponent {
     private targetSelector: string = "";
     private focusTargetSelector: string = "";
     private focusScope: string = "self";
-    private shortcutDefinition: ShortcutDefinition | null = null;
     private text: string = "";
     private position: Position = "top";
     private tooltipNode: HTMLElement | null = null;
     private targetElement: HTMLElement | null = null;
+    private sequenceDescription: HTMLElement | null = null;
     private unregisterShortcut: (() => void) | null = null;
     private hoverHandler: (() => void) | null = null;
     private leaveHandler: (() => void) | null = null;
-    private focusInHandler: (() => void) | null = null;
     private focusOutHandler: ((event: FocusEvent) => void) | null = null;
+    private hoverTimer: number | undefined;
     private hoverVisible = false;
     private revealVisible = false;
 
+    /** Attach the button's tooltip listeners and register its keyboard shortcut. */
     public initialize(): void {
         if (!this.element) return;
 
@@ -143,9 +149,9 @@ export default class ShortcutTooltip extends BaseComponent {
         this.focusScope = (this.element.dataset.focusScope || "self").trim();
         this.text = (this.element.dataset.text || "").trim();
         this.position = isValidPosition(this.element.dataset.position) ? this.element.dataset.position : "top";
-        this.shortcutDefinition = parseShortcut(this.shortcut);
+        const shortcut = parseShortcutBinding(this.shortcut);
 
-        if (!this.shortcutDefinition) {
+        if (!shortcut) {
             console.warn("Invalid shortcut definition:", this.shortcut, this.element);
             return;
         }
@@ -157,50 +163,57 @@ export default class ShortcutTooltip extends BaseComponent {
         }
 
         this.element.classList.add("relative");
-        this.targetElement.setAttribute("aria-keyshortcuts", formatShortcutForAria(this.shortcutDefinition));
+        const sequence = isShortcutSequence(shortcut);
+        if (sequence) {
+            this.describeSequence(this.targetElement, shortcut);
+        } else {
+            this.targetElement.setAttribute("aria-keyshortcuts", formatShortcutForAria(shortcut));
+        }
 
         this.tooltipNode = createTooltipNode(
             this.text,
-            formatShortcutForDisplay(this.shortcutDefinition),
+            sequence ? shortcut.map(formatShortcutForDisplay).join(" → ") : formatShortcutForDisplay(shortcut),
             this.position,
         );
         this.element.appendChild(this.tooltipNode);
 
-        this.hoverHandler = () => this.setTooltipState("hover", true);
-        this.leaveHandler = () => this.setTooltipState("hover", false);
-        this.focusInHandler = () => this.setTooltipState("hover", true);
-        this.focusOutHandler = (event: FocusEvent) => {
+        this.hoverHandler = this.setHoverIntent.bind(this, true);
+        this.leaveHandler = this.setHoverIntent.bind(this, false);
+        /** Cancel the hover hint when focus leaves the entire shortcut wrapper. */
+        const onFocusOut = (event: FocusEvent): void => {
             const nextTarget = event.relatedTarget as Node | null;
             if (nextTarget && this.element?.contains(nextTarget)) return;
-            this.setTooltipState("hover", false);
+            this.setHoverIntent(false);
         };
+        this.focusOutHandler = onFocusOut;
 
         this.element.addEventListener("mouseenter", this.hoverHandler);
         this.element.addEventListener("mouseleave", this.leaveHandler);
-        this.element.addEventListener("focusin", this.focusInHandler);
+        this.element.addEventListener("focusin", this.hoverHandler);
         this.element.addEventListener("focusout", this.focusOutHandler);
 
         this.unregisterShortcut = getShortcutManager().register({
-            rootElement: this.element,
-            shortcut: this.shortcutDefinition,
+            rootElement: sequence ? this.targetElement : this.element,
+            shortcut,
+            capture: !sequence && shortcut.mod && this.element.hasAttribute("data-shortcut-capture"),
             showHint: () => this.setTooltipState("reveal", true),
             hideHint: () => this.setTooltipState("reveal", false),
             performAction: () => this.performAction(),
         });
     }
 
+    /** Cancel pending hints and release the shortcut and its listeners. */
     public destroy(): void {
         this.unregisterShortcut?.();
         this.unregisterShortcut = null;
+        this.setHoverIntent(false);
 
         if (this.hoverHandler) {
             this.element?.removeEventListener("mouseenter", this.hoverHandler);
+            this.element?.removeEventListener("focusin", this.hoverHandler);
         }
         if (this.leaveHandler) {
             this.element?.removeEventListener("mouseleave", this.leaveHandler);
-        }
-        if (this.focusInHandler) {
-            this.element?.removeEventListener("focusin", this.focusInHandler);
         }
         if (this.focusOutHandler) {
             this.element?.removeEventListener("focusout", this.focusOutHandler);
@@ -208,8 +221,58 @@ export default class ShortcutTooltip extends BaseComponent {
 
         this.tooltipNode?.remove();
         this.tooltipNode = null;
+        this.removeSequenceDescription();
 
         super.destroy();
+    }
+
+    /** Provide ordered instructions because aria-keyshortcuts describes independent chords. */
+    private describeSequence(target: HTMLElement, sequence: ShortcutSequence): void {
+        const description = document.createElement("span");
+        description.hidden = true;
+        description.id = `shortcut-description-${++shortcutDescriptionId}`;
+        const steps = sequence.map(formatShortcutForAria).join(t(" then "));
+        description.textContent = t("Keyboard shortcut: %s").replace("%s", steps);
+        const describedBy = target.getAttribute("aria-describedby");
+        target.setAttribute("aria-describedby", [describedBy, description.id].filter(Boolean).join(" "));
+        this.element.appendChild(description);
+        this.sequenceDescription = description;
+    }
+
+    /** Remove this sequence's description while preserving other descriptions on the control. */
+    private removeSequenceDescription(): void {
+        if (!this.sequenceDescription || !this.targetElement) return;
+
+        const descriptionId = this.sequenceDescription.id;
+        const ids = (this.targetElement.getAttribute("aria-describedby") ?? "").split(/\s+/);
+        /** Keep only existing references to descriptions owned by other elements. */
+        function isOtherDescription(id: string): boolean {
+            return Boolean(id) && id !== descriptionId;
+        }
+        const remaining = ids.filter(isOtherDescription);
+        if (remaining.length) this.targetElement.setAttribute("aria-describedby", remaining.join(" "));
+        else this.targetElement.removeAttribute("aria-describedby");
+
+        this.sequenceDescription.remove();
+        this.sequenceDescription = null;
+    }
+
+    /** Delay local hover and focus hints independently of the keyboard reveal. */
+    private setHoverIntent(active: boolean): void {
+        if (!active) {
+            window.clearTimeout(this.hoverTimer);
+            this.hoverTimer = undefined;
+            this.setTooltipState("hover", false);
+            return;
+        }
+        if (this.hoverVisible || this.hoverTimer !== undefined) return;
+
+        /** Show the hint after the user has stayed on the control. */
+        const reveal = (): void => {
+            this.hoverTimer = undefined;
+            if (this.element?.isConnected) this.setTooltipState("hover", true);
+        };
+        this.hoverTimer = window.setTimeout(reveal, TOOLTIP_SHOW_DELAY_MS);
     }
 
     private setTooltipState(state: TooltipState, visible: boolean): void {

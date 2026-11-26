@@ -22,7 +22,7 @@ the framework. Commands in the guides run from your generated project directory
 | Configure boards or calendars | [Kanban](dataviews/kanban.md), [calendar](dataviews/calendar.md) |
 | Build dashboards from reusable tiles | [Workspaces](workspaces/index.md) |
 | Add field types, lookups, or filter controls | [Fields and filters](fields/index.md) |
-| Store files or extract their contents | [File fields](fields/file-field.md), [file extraction](file-extraction.md) |
+| Store files | [File fields](fields/file-field.md) |
 | Use template UI components | [Cotton component reference](cotton/index.md) |
 | Add a workflow node | [Automation](automation/index.md) |
 | Expose tools and reference material to AI clients | [MCP](mcp/index.md) |

@@ -126,7 +126,7 @@ class TestLabelsFieldLookup(BaseBloomerpTestCaseWithModels):
         )
 
     def test_renderer_uses_saved_colors_and_escapes_names(self) -> None:
-        """Render colored labels with legible text while escaping user-supplied names."""
+        """Apply the saved color to the decorative dot and escape the label name."""
         from bloomerp.field_types.builtins.labels import render_labels
 
         self.red.name = "<script>red</script>"
@@ -134,6 +134,9 @@ class TestLabelsFieldLookup(BaseBloomerpTestCaseWithModels):
         self.red.save()
         field = ApplicationField.get_by_field(self.CustomerModel, "object_labels")
         rendered = render_labels(field, self.one)
-        self.assertIn("background-color: #facc15; color: #111827", rendered)
-        self.assertIn("&lt;script&gt;red&lt;/script&gt;", rendered)
-        self.assertNotIn("<script>", rendered)
+        self.assertHTMLEqual(
+            rendered,
+            '<span class="badge badge-secondary bg-transparent gap-1.5">'
+            '<span class="size-2 shrink-0 rounded-full" style="background-color: #facc15" aria-hidden="true"></span>'
+            '&lt;script&gt;red&lt;/script&gt;</span>',
+        )

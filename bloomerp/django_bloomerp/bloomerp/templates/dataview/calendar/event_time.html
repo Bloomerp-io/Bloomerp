@@ -1,0 +1,3 @@
+{% if not event.all_day %}
+<span class="block truncate tabular-nums opacity-75">{{ event.start|time:"H:i" }}{% if event.end_time %}–{{ event.end_time|time:"H:i" }}{% endif %}</span>
+{% endif %}

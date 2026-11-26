@@ -4,7 +4,9 @@ Parameters:
 - slot : everything inside of the component
 - trigger_text : text to display on the dropdown button (default: "Options")
 - trigger_icon_class : CSS classes for a Font Awesome or other icon element rendered before the trigger text
+- icon_button : use the shared icon button style with trigger_icon_class and trigger_aria_label (True or "plain")
 - trigger_button_class : use btn-based trigger styling instead of the default inline trigger styling
+- trigger_size : optional trigger sizing ("xs", "sm", "md", or "lg"), independent of the menu width
 - trigger_class : additional CSS classes for the trigger button
 - trigger_aria_label : accessible name for an icon-only trigger
 - menu_class : additional CSS classes for the dropdown menu
@@ -120,30 +122,38 @@ Parameters:
 {% if trigger_html %}
     {{ trigger_html|safe }}
 {% elif not trigger_selector %}
+    {% firstof trigger_size size 'md' as button_size %}
     <button 
         type="button" 
         x-ref="trigger"
         name="{{ trigger_button_name }}"
         role="button"
         class="
-            {% if trigger_button_class %}
+            {% if icon_button %}
+                icon-button
+            {% elif trigger_button_class %}
                 btn
-                {% if size == 'sm' %}
+                {% if button_size == 'xs' %}
+                    btn-xs
+                {% elif button_size == 'sm' %}
                     btn-sm
-                {% elif size == 'lg' %}
+                {% elif button_size == 'lg' %}
                     btn-lg
                 {% endif %}
                 {{ trigger_button_class }}
             {% else %}
-                {% if size == 'sm' %}
+                {% if button_size == 'xs' %}
+                    px-2 py-1 text-xs leading-4
+                {% elif button_size == 'sm' %}
                     px-2 py-1.5 text-sm
-                {% elif size == 'lg' %}
+                {% elif button_size == 'lg' %}
                     px-6 py-3 text-lg
                 {% else %}
                     px-3 py-2 text-base
                 {% endif %}
 
-                inline-flex items-center justify-center w-full rounded-xl font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200
+                inline-flex items-center justify-center w-full rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-200
+                outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 active:outline-none
 
                 {% if disabled %}
                     opacity-50 cursor-not-allowed
@@ -153,25 +163,34 @@ Parameters:
             {% endif %}
             {{ trigger_class }}
         " 
-        @click="{% if not disabled %}open = !open; if (open) $nextTick(() => resolvePlacement()){% endif %}"
+        @click="{% if not disabled %}
+            {% if fixed %}
+            $refs.menu.togglePopover();
+            open = $refs.menu.matches(':popover-open');
+            {% else %}
+            open = !open;
+            {% endif %}
+            if (open) $nextTick(() => resolvePlacement());
+        {% endif %}"
         :aria-expanded="open.toString()"
         aria-haspopup="true"
         {% if trigger_aria_label %}aria-label="{{ trigger_aria_label }}"{% endif %}
+        {% if icon_button == 'plain' %}data-icon-button-appearance="plain"{% endif %}
         {% if disabled %}disabled{% endif %}
         id="{{ trigger_button_id }}"
     >
         {# Show custom trigger_icon if provided, else use trigger_text #}
         {% if trigger_icon_class %}
-            <i class="{{ trigger_icon_class }}"></i>
+            {# Give icon-only triggers the same line box as labeled buttons. #}
+            <span{% if icon_button %} aria-hidden="true"{% endif %}><i class="{{ trigger_icon_class }}"></i></span>
         {% else %}
             {{ trigger_text|default:"Options"|safe }}
         {% endif %}
         {% if trigger_icon_class and trigger_text %}
-            <span>{{ trigger_text|safe }}</span>
+            <span data-dropdown-trigger-label>{{ trigger_text|safe }}</span>
         {% endif %}
-        {# Arrow icon shown only when icon is true and no custom trigger_icon #}
         {% if icon|default:True and not trigger_icon and not trigger_icon_class %}
-            <svg class="-mr-1 ml-2 h-5 w-5 transition-transform duration-200" 
+            <svg aria-hidden="true" class="{% if button_size == 'xs' or button_size == 'sm' %}h-4 w-4 shrink-0{% else %}-mr-1 ml-2 h-5 w-5{% endif %} transition-transform duration-200"
                 :class="{ 'rotate-180': open }"
                 fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                 <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path>
@@ -184,7 +203,11 @@ Parameters:
     <div 
         x-ref="menu"
         data-dropdown-panel
-        {% if fixed %}popover="manual"{% endif %}
+        {% if fixed %}
+        {# Synchronize the trigger when the browser closes the popover. #}
+        popover="manual"
+        @beforetoggle.self="if ($event.newState === 'closed') open = false"
+        {% endif %}
         class="
             bloomerp-dropdown-menu
             {% if fixed %}fixed inset-auto z-[140] m-0 p-0 overflow-visible{% else %}absolute z-[90]{% endif %}

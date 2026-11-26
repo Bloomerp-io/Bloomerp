@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from django.core.exceptions import FieldDoesNotExist, ObjectDoesNotExist, ValidationError
+from django.core.exceptions import (
+    FieldDoesNotExist,
+    ObjectDoesNotExist,
+    ValidationError,
+)
 from django.db.models import Count, ForeignKey, Model, OneToOneField, Q, QuerySet
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
@@ -17,6 +21,7 @@ from .config import KanbanDataView
 
 if TYPE_CHECKING:
     from bloomerp.models import ApplicationField
+    from bloomerp.models.definition import DataviewActionContext
     from bloomerp.models.users.user import AbstractBloomerpUser
     from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 
@@ -27,8 +32,23 @@ KANBAN_MAX_RELATED_COLUMNS = 50
 
 
 class KanbanDataviewRenderer(BaseDataviewRenderer):
-    template_name = "cotton/features/dataviews/kanban.html"
+    template_name = "dataview/kanban/body.html"
+    item_template_name = "dataview/kanban/item.html"
     reserved_query_params = {"kanban_page", "kanban_column", "kanban_loaded_ids"}
+
+    def get_item_context(
+        self,
+        obj: Model,
+        row_index: int,
+        action_context: DataviewActionContext,
+        *,
+        placement: str = "",
+    ) -> dict[str, Any] | None:
+        """Apply the configured lane colours to the reused card template."""
+        group_field = self.get_group_by_field(self.state.fields, self.options)
+        if group_field is not None:
+            self._prepare_card_colour(obj, group_field, self.options)
+        return super().get_item_context(obj, row_index, action_context, placement=placement)
 
     @classmethod
     def action_requires_count(cls, action: str) -> bool:
@@ -48,7 +68,6 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         )
         operation_querystring = self.build_page_querystring(
             self.state.request,
-            self.state.operation_context_token,
         )
         if operation_querystring:
             move_url = f"{move_url}?{operation_querystring}"
@@ -90,7 +109,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             "kanban_too_many_groups": kanban_too_many_groups,
             "group_by_field": group_by_field,
             "kanban_page_querystring": self.build_page_querystring(
-                self.state.request, self.state.operation_context_token
+                self.state.request
             ),
             "component_args" : {
                 "data-group-by-field-id": group_by_field.id if group_by_field else "",
@@ -129,14 +148,11 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
     def build_page_querystring(
         cls,
         request: HttpRequest,
-        operation_context_token: str | None = None,
     ) -> str:
-        """Keep filters and operation authorization without lane pagination parameters."""
+        """Keep filters without lane pagination parameters."""
         querydict = request.GET.copy()
         for key in {"page"} | cls.reserved_query_params:
             querydict.pop(key, None)
-        if operation_context_token:
-            querydict["_dataview_operation_context"] = operation_context_token
         return querydict.urlencode()
 
     @classmethod
@@ -154,7 +170,9 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         if action != "column":
             return super().handle_action(action, request, state)
 
-        from bloomerp.components.objects.dataviews.dataview import build_dataview_action_context
+        from bloomerp.components.objects.dataviews.dataview import (
+            build_dataview_action_context,
+        )
 
         group_by_field = cls.get_group_by_field(
             state.fields,
@@ -195,7 +213,7 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
             )
         return render(
             request,
-            "components/objects/dataview_kanban_cards.html",
+            "dataview/kanban/cards.html",
             {
                 "content_type_id": state.content_type.id,
                 "fields": state.render_fields,
@@ -203,12 +221,12 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
                 "group": group,
                 "preference": state.preference,
                 "object_actions": state.object_actions,
+                "dataview_item_template": cls.item_template_name,
                 "dataview_action_context": build_dataview_action_context(request, state),
                 "kanban_append": True,
                 "kanban_card_order": card_order,
                 "kanban_page_querystring": cls.build_page_querystring(
                     request,
-                    state.operation_context_token,
                 ),
             },
         )
@@ -300,13 +318,15 @@ class KanbanDataviewRenderer(BaseDataviewRenderer):
         visible_object = state.queryset.filter(pk=obj.pk).first()
         card_html = ""
         if visible_object is not None:
-            from bloomerp.components.objects.dataviews.dataview import build_dataview_action_context
+            from bloomerp.components.objects.dataviews.dataview import (
+                build_dataview_action_context,
+            )
             from bloomerp.field_types.utils.value_loading import prepare_field_values
 
             cls._prepare_card_colour(visible_object, group_by_field, state.options)
             prepare_field_values([visible_object], state.render_fields)
             card_html = render_to_string(
-                "components/objects/kanban_card.html",
+                cls.item_template_name,
                 {
                     "object": visible_object,
                     "content_type_id": state.content_type_id,

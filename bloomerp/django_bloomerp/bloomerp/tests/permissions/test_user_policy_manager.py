@@ -1,3 +1,13 @@
+from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import PermissionDenied
+from django.db import models
+from django.http import HttpRequest
+from django.utils.functional import SimpleLazyObject
+
+from bloomerp.agents.artifacts.object import (
+    ObjectArtifactPayload,
+    object_prompt_context,
+)
 from bloomerp.lookups import builtins as lookups
 from bloomerp.models.application_field import ApplicationField
 from bloomerp.permissions.definition import (
@@ -12,11 +22,8 @@ from bloomerp.permissions.manager import (
     field_access_annotation_name,
 )
 from bloomerp.tests.base import BaseBloomerpTestCaseWithModels
-from django.contrib.contenttypes.models import ContentType
-from django.db import models
-from django.utils.functional import SimpleLazyObject
-
 from bloomerp.tests.utils.names import FIRST_NAMES
+
 """
 Superuser, anonymous user, and user with no policies.
 Direct-user and group policies.
@@ -38,6 +45,33 @@ class TestUserPermissionManager(BaseBloomerpTestCaseWithModels):
     auto_create_users = True
     use_bloomerp_base = True
     create_foreign_models = True
+
+    def test_agent_object_context_rechecks_view_permission(self) -> None:
+        """Recheck current field and row grants for a previously attached record."""
+        record = self.CustomerModel.objects.create(
+            first_name="Visible", last_name="Hidden field", age=49
+        )
+        policy = PolicyManager.create_policy(
+            self.CustomerModel,
+            field_permissions={"first_name": "view"},
+            row_permissions=[RowPolicyRuleContent(permissions=["view"], conditions=[])],
+            global_permissions=["view"],
+        )
+        policy.assign_user(self.normal_user)
+        request = HttpRequest()
+        request.user = self.normal_user
+        payload = ObjectArtifactPayload(
+            model_label=record._meta.label,
+            object_id=str(record.pk),
+            object_name="Stale label",
+        )
+        context = object_prompt_context(payload, request)
+        self.assertIn('"first_name": "Visible"', context)
+        self.assertNotIn('"age"', context)
+        self.assertNotIn("Stale label", context)
+        policy.users.remove(self.normal_user)
+        with self.assertRaises(PermissionDenied):
+            object_prompt_context(payload, request)
 
     def extendedSetup(self):
         """
@@ -736,12 +770,14 @@ class TestUserPermissionManager(BaseBloomerpTestCaseWithModels):
     def permission_token(self, *, public: bool = False) -> str:
         """Issue a short-lived customer-only grant for row five and its age field."""
         from datetime import timedelta
+
         from django.utils import timezone
-        from bloomerp.permissions.definition import PermissionToken
+
+        from bloomerp.tokens import PermissionToken
 
         return PermissionToken(
-            model_label=self.CustomerModel._meta.label_lower,
-            audience=None if public else str(self.normal_user.pk),
+            model=self.CustomerModel,
+            user=None if public else self.normal_user,
             public=public,
             expiry=timezone.now() + timedelta(minutes=5),
             rule=AccessRule(
@@ -773,16 +809,20 @@ class TestUserPermissionManager(BaseBloomerpTestCaseWithModels):
     def test_permission_token_rejects_tampering_recipient_and_expiry(self) -> None:
         """Fail closed for altered, misaddressed, and expired signed capabilities."""
         from datetime import timedelta
+
         from django.core.exceptions import PermissionDenied
         from django.utils import timezone
-        from bloomerp.permissions.definition import PermissionToken
+
+        from bloomerp.tokens import PermissionToken
 
         encoded = self.permission_token()
         with self.assertRaises(PermissionDenied):
             UserPolicyManager(self.normal_user, token=encoded + "x")
         with self.assertRaises(PermissionDenied):
             UserPolicyManager(self.admin_user, token=encoded)
-        token = PermissionToken.verify(encoded, audience=str(self.normal_user.pk))
+        token = PermissionToken.verify(encoded, user=self.normal_user)
+        self.assertIs(token.model, self.CustomerModel)
+        self.assertIs(token.user, self.normal_user)
         token.expiry = timezone.now() - timedelta(seconds=1)
         with self.assertRaises(PermissionDenied):
             UserPolicyManager(self.normal_user, token=token.sign())
@@ -794,18 +834,15 @@ class TestUserPermissionManager(BaseBloomerpTestCaseWithModels):
         self.assertEqual(list(manager.get_accessible_fields(self.CustomerModel, "view").values_list("field", flat=True)), ["age"])
         self.assertFalse(manager.get_accessible_queryset(self.CustomerModel, "view").exclude(age=5).exists())
 
-    def test_permission_token_action_urls_stay_same_origin(self) -> None:
-        """Preserve tokens for actions while withholding them from external destinations."""
+    def test_permission_token_query_parameter_is_ignored(self) -> None:
+        """Ignore the previous URL token even if it has a valid signature."""
         from unittest.mock import patch
-        from django.test import RequestFactory
-        from bloomerp.permissions.access_tokens import permission_token_url
 
-        encoded = self.permission_token()
-        request = RequestFactory().get("/calendar/", {"_permission_token": encoded})
+        from django.test import RequestFactory
+
+        request = RequestFactory().get("/calendar/", {"_permission_token": self.permission_token()})
         request.user = self.normal_user
         with patch("bloomerp.middleware.current_request", return_value=request):
-            self.assertIn("_permission_token=", permission_token_url(request, "/actions/?page=1"))
-            self.assertEqual(permission_token_url(request, "https://external.example/action/"), "https://external.example/action/")
-            self.assertTrue(UserPolicyManager(self.normal_user).has_global_permission(self.CustomerModel, "view"))
-            self.assertFalse(UserPolicyManager(self.admin_user, token=None)._token_rule(self.CustomerModel))
-        self.assertIsNone(UserPolicyManager(self.normal_user).token)
+            manager = UserPolicyManager(self.normal_user)
+            self.assertFalse(manager.has_global_permission(self.CustomerModel, "view"))
+            self.assertIsNone(manager.token)

@@ -1,0 +1,408 @@
+{% load i18n %}
+<section bloomerp-component="bloomerp:tutorial" data-user-id="{{ request.user.pk }}" hidden
+    aria-labelledby="tutorial-authoring-title"
+    class="fixed right-3 bottom-12 z-[2147483646] w-96 max-w-[calc(100vw-1rem)] rounded-xl border border-gray-200 bg-white p-4 shadow-xl dark:border-zinc-700 dark:bg-zinc-900 [body:has(#tutorial-step-modal.flex)_&]:invisible">
+    {% csrf_token %}
+    <header class="flex items-center gap-1 text-sm">
+        <h2 id="tutorial-authoring-title" class="flex-1 text-sm font-semibold">{% translate 'Tutorial editor' %}</h2>
+        <button type="button" data-tutorial-preview-start
+            class="icon-button"
+            aria-label="{% translate 'Preview' %}" title="{% translate 'Preview' %}" disabled>
+            <i class="fa-solid fa-play" aria-hidden="true"></i>
+        </button>
+        <button type="button" data-tutorial-exit
+            class="icon-button"
+            aria-label="{% translate 'Exit tutorial mode' %}" title="{% translate 'Exit tutorial mode' %}">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+        <button type="button" data-tutorial-drag
+            class="icon-button touch-none select-none cursor-grab active:cursor-grabbing"
+            aria-label="{% translate 'Move tutorial panel with the arrow keys' %}"
+            title="{% translate 'Drag to move' %}">
+            <i class="fa-solid fa-grip-vertical" aria-hidden="true"></i>
+        </button>
+    </header>
+    <div data-tutorial-content class="mt-3">
+        <form data-tutorial-settings class="mb-3 space-y-2">
+            <fieldset class="space-y-2" disabled>
+                <h3 class="mb-1 text-sm font-semibold">
+                    <label for="tutorial-trigger-route">{% translate 'Trigger' %}</label>
+                </h3>
+                {% include "widgets/route_picker.html" with input_id="tutorial-trigger-route" input_name="trigger_path" suggestions_id="tutorial-trigger-routes" only %}
+                <datalist id="tutorial-trigger-routes"></datalist>
+                <p class="text-xs text-gray-600 dark:text-zinc-400">{% translate 'Use * to match part of a path, for example /*bulk-upload.' %}</p>
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="auto_start">
+                    {% translate 'Start automatically' %}
+                </label>
+            </fieldset>
+            <p data-tutorial-settings-status class="text-xs text-gray-600 dark:text-zinc-400" role="status" hidden></p>
+        </form>
+        <h3 id="tutorial-steps-title" class="mb-1 text-sm font-semibold">{% translate 'Steps' %}</h3>
+        <div class="max-h-60 overflow-y-auto">
+            <table class="table table-sm table-fixed" aria-labelledby="tutorial-steps-title">
+                <thead>
+                    <tr>
+                        <th scope="col" class="border-0 bg-transparent p-0"><span class="sr-only">{% translate 'Step' %}</span></th>
+                        <th scope="col" class="w-20 border-0 bg-transparent p-0"><span class="sr-only">{% translate 'Actions' %}</span></th>
+                    </tr>
+                </thead>
+                <tbody data-tutorial-step-rows></tbody>
+                <tbody>
+                    <tr><td colspan="2">
+                        <p data-tutorial-steps-status role="status" class="py-1 text-sm text-gray-600 dark:text-zinc-400"></p>
+                    </td></tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2">
+                            <button type="button" data-tutorial-add-step
+                                class="flex w-full cursor-pointer items-center gap-2 rounded px-1 py-1.5 text-left text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-zinc-400 dark:hover:bg-zinc-800">
+                                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                                {% translate 'Add step' %}
+                            </button>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+            <template data-tutorial-step-label>
+                <div class="flex items-center gap-2">
+                    <button type="button" data-tutorial-step-drag
+                        class="inline-flex h-5 w-5 shrink-0 touch-none cursor-grab items-center justify-center rounded text-xs text-gray-500 hover:bg-gray-100 active:cursor-grabbing dark:text-zinc-400 dark:hover:bg-zinc-800"
+                        aria-label="{% translate 'Reorder step with the arrow keys' %}" title="{% translate 'Drag to reorder' %}">
+                        <i class="fa-solid fa-grip-vertical" aria-hidden="true"></i>
+                    </button>
+                    <span data-tutorial-step-name class="min-w-0 wrap-break-word"></span>
+                </div>
+            </template>
+            <template data-tutorial-step-actions>
+                <div class="flex items-center justify-end gap-1 [@media(hover:hover)]:opacity-0 group-hover/tutorial-step:opacity-100 group-focus-within/tutorial-step:opacity-100">
+                    <button type="button" data-tutorial-step-action="edit"
+                        class="inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded text-xs text-gray-600 hover:bg-gray-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                        aria-label="{% translate 'Edit step' %}" title="{% translate 'Edit step' %}">
+                        <i class="fa-solid fa-pencil" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" data-tutorial-step-action="copy"
+                        class="inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded text-xs text-gray-600 hover:bg-gray-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                        aria-label="{% translate 'Copy step' %}" title="{% translate 'Copy step' %}">
+                        <i class="fa-regular fa-copy" aria-hidden="true"></i>
+                    </button>
+                    <button type="button" data-tutorial-step-action="remove"
+                        class="inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded text-xs text-gray-600 hover:bg-gray-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                        aria-label="{% translate 'Remove step' %}" title="{% translate 'Remove step' %}">
+                        <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </template>
+        </div>
+    </div>
+    <div data-tutorial-picker-controls class="mt-3 space-y-3" hidden>
+        <p role="status" class="text-sm">{% translate 'Click normally to open menus. Use Command-click on Mac or Control-click on other systems to select an area.' %}</p>
+        <button type="button" data-tutorial-cancel-selection class="btn btn-secondary btn-sm">
+            {% translate 'Cancel selection' %}
+        </button>
+    </div>
+</section>
+<style>
+    [data-tutorial-popover-highlight] {
+        outline: 2px solid var(--color-amber-400, #ffb900) !important;
+        outline-offset: -2px;
+    }
+    .dark [data-tutorial-popover-highlight] {
+        outline-color: var(--color-amber-300, #ffd230) !important;
+    }
+    #tutorial-presentation[data-tutorial-tooltip] {
+        inset: auto;
+        margin: 0;
+        padding: 0.75rem;
+        translate: none;
+        overflow: visible;
+    }
+    #tutorial-presentation[data-tutorial-positioned] {
+        inset: auto;
+        margin: 0;
+        translate: none;
+        overflow-y: auto;
+    }
+
+    [data-tutorial-preview-drag] {
+        cursor: move;
+        touch-action: none;
+    }
+    #tutorial-presentation[data-tutorial-tooltip] [data-tutorial-preview-text] {
+        max-height: 45dvh;
+        overflow-y: auto;
+    }
+    #tutorial-presentation[data-tutorial-tooltip]:not([data-tutorial-positioned])::before {
+        content: "";
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        transform: rotate(45deg);
+        background: inherit;
+        border: inherit;
+        pointer-events: none;
+    }
+    #tutorial-presentation[data-tooltip-position="top"]::before,
+    #tutorial-presentation[data-tooltip-position="bottom"]::before {
+        left: clamp(12px, var(--tooltip-anchor-x), calc(100% - 12px));
+        translate: -50% 0;
+    }
+    #tutorial-presentation[data-tooltip-position="top"]::before {
+        bottom: -5px;
+        border-width: 0 1px 1px 0;
+    }
+    #tutorial-presentation[data-tooltip-position="bottom"]::before {
+        top: -5px;
+        border-width: 1px 0 0 1px;
+    }
+    #tutorial-presentation[data-tooltip-position="left"]::before,
+    #tutorial-presentation[data-tooltip-position="right"]::before {
+        top: clamp(12px, var(--tooltip-anchor-y), calc(100% - 12px));
+        translate: 0 -50%;
+    }
+    #tutorial-presentation[data-tooltip-position="left"]::before {
+        right: -5px;
+        border-width: 1px 1px 0 0;
+    }
+    #tutorial-presentation[data-tooltip-position="right"]::before {
+        left: -5px;
+        border-width: 0 0 1px 1px;
+    }
+</style>
+<div id="tutorial-presentation-backdrop" class="pointer-events-none fixed inset-0 z-[2147483645] bg-black/45" hidden aria-hidden="true"></div>
+<div id="tutorial-target-preview" class="pointer-events-none fixed inset-0 z-[2147483645]" hidden aria-hidden="true">
+    <template><div class="absolute rounded-md border-2 border-amber-400 dark:border-amber-300"></div></template>
+</div>
+
+<section id="tutorial-presentation" role="dialog" aria-labelledby="tutorial-presentation-title" hidden
+    class="fixed top-1/2 left-1/2 z-[2147483647] max-h-[calc(100dvh-4rem)] w-96 max-w-[calc(100vw-1rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-gray-200 bg-white p-4 shadow-xl data-[size=medium]:w-xl data-[size=large]:w-3xl dark:border-zinc-700 dark:bg-zinc-900">
+    <header class="flex items-start gap-3">
+        <button type="button" data-tutorial-preview-drag class="icon-button"
+            aria-label="{% translate 'Move tutorial card' %}"
+            title="{% translate 'Drag to move the tutorial card, or use the arrow keys' %}">
+            <i class="fa-solid fa-grip-vertical" aria-hidden="true"></i>
+        </button>
+        <div class="min-w-0 flex-1">
+            <p data-tutorial-preview-count class="text-xs text-gray-600 dark:text-zinc-400" aria-live="polite"></p>
+            <h2 id="tutorial-presentation-title" tabindex="-1" class="mt-1 wrap-break-word text-base font-semibold text-gray-900 outline-none dark:text-zinc-100"></h2>
+        </div>
+        <button type="button" data-tutorial-preview-close class="icon-button"
+            aria-label="{% translate 'Close tutorial' %}" title="{% translate 'Close tutorial' %}">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+    </header>
+    <div data-tutorial-preview-text class="bloomerp-text-editor mt-3 space-y-2 text-sm wrap-break-word"></div>
+    <p data-tutorial-preview-hint class="mt-3 text-xs text-gray-600 dark:text-zinc-400" hidden></p>
+    <p data-tutorial-preview-notice class="mt-3 text-xs text-gray-600 dark:text-zinc-400" role="status" hidden></p>
+    <p data-tutorial-action-error class="mt-3 text-xs text-red-600" role="alert" hidden></p>
+    <div class="mt-4 flex flex-wrap justify-end gap-2">
+        <button type="button" data-tutorial-preview-close class="btn btn-secondary btn-sm">{% translate 'Close' %}</button>
+        <button type="button" data-tutorial-action-retry class="btn btn-secondary btn-sm" hidden>{% translate 'Retry action' %}</button>
+        <button type="button" data-tutorial-preview-previous class="btn btn-secondary btn-sm" hidden>{% translate 'Previous' %}</button>
+        <button type="button" data-tutorial-preview-next class="btn btn-primary btn-sm">{% translate 'Next' %}</button>
+    </div>
+</section>
+
+{% translate 'Add step' as tutorial_step_modal_title %}
+{% translate 'Describe this step' as tutorial_step_description_placeholder %}
+<c-ui.modal id="tutorial-step-modal" :title="tutorial_step_modal_title" size="md" backdrop_click_close="False" body_padding="p-4" :show_footer="True">
+    <form id="tutorial-step-form" class="space-y-4">
+        <fieldset class="space-y-3">
+            <legend><span class="workspace-row__title whitespace-normal">{% translate 'Content' %}</span></legend>
+        <div>
+            <c-ui.text.label for="tutorial-step-title">
+                {% translate 'Title' %}<span class="text-rose-500" aria-hidden="true">*</span>
+            </c-ui.text.label>
+            <input id="tutorial-step-title" name="name" class="input w-full" maxlength="255" required>
+        </div>
+        <div>
+            <c-ui.text.label for="tutorial-step-page">{% translate 'Page' %}</c-ui.text.label>
+            <input id="tutorial-step-page" name="page_path" class="input w-full" maxlength="2048"
+                aria-describedby="tutorial-step-page-help" spellcheck="false">
+            <p id="tutorial-step-page-help" class="mt-1 text-xs text-gray-600 dark:text-zinc-400">
+                {% translate 'Enter an exact path or leave blank to stay on the current page.' %}
+            </p>
+        </div>
+        <div>
+            <c-ui.text.label>
+                <span id="tutorial-step-description-label">{% translate 'Description' %}</span>
+            </c-ui.text.label>
+            <c-ui.inputs.text_editor name="tutorial_step_description"
+                :placeholder="tutorial_step_description_placeholder" :compact="True" :has_border="True" class="p-2 text-sm" />
+        </div>
+        <div>
+            <c-ui.text.label for="tutorial-step-size">{% translate 'Size' %}</c-ui.text.label>
+            <select id="tutorial-step-size" name="size" class="select w-full">
+                <option value="small" selected>{% translate 'Small' %}</option>
+                <option value="medium">{% translate 'Medium' %}</option>
+                <option value="large">{% translate 'Large' %}</option>
+            </select>
+        </div>
+        </fieldset>
+        <fieldset class="space-y-3">
+            <legend id="tutorial-highlights-title"><span class="workspace-row__title whitespace-normal">{% translate 'Highlights' %}</span></legend>
+        <div class="flex items-center gap-2">
+            <input id="tutorial-step-backdrop" type="checkbox" name="include_backdrop" checked>
+            <c-ui.text.label for="tutorial-step-backdrop">{% translate 'Include backdrop' %}</c-ui.text.label>
+        </div>
+        <p id="tutorial-highlights-help" class="text-xs text-gray-600 dark:text-zinc-400">{% translate 'With the backdrop on, only highlights that allow interaction can be used.' %}</p>
+        <div class="max-h-60 overflow-y-auto">
+            <table class="table table-sm table-fixed" aria-labelledby="tutorial-highlights-title"
+                aria-describedby="tutorial-highlights-help">
+                <thead>
+                    <tr>
+                        <th scope="col" class="px-1 pb-2 font-medium">{% translate 'Highlight' %}</th>
+                        <th id="tutorial-highlight-allow-interaction" scope="col"
+                            class="w-24 px-1 pb-2 text-center font-medium leading-tight sm:w-28">
+                            {% translate 'Allow interaction' %}
+                        </th>
+                        <th scope="col" class="w-16"><span class="sr-only">{% translate 'Actions' %}</span></th>
+                    </tr>
+                </thead>
+                <tbody data-tutorial-highlights></tbody>
+                <tfoot>
+                    <tr>
+                            <td colspan="3" class="border-t border-gray-200 pt-1 dark:border-zinc-700">
+                            <button type="button" data-tutorial-interaction="add-highlight"
+                                class="flex w-full cursor-pointer items-center gap-2 rounded px-1 py-1.5 text-left text-xs font-medium text-gray-600 hover:bg-gray-100 dark:text-zinc-400 dark:hover:bg-zinc-800">
+                                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+                                {% translate 'Add highlight' %}
+                            </button>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div data-tutorial-tooltip-field hidden>
+            <div class="flex items-center gap-2">
+                <input id="tutorial-step-show-tooltip" type="checkbox" name="show_as_tooltip" disabled>
+                <c-ui.text.label for="tutorial-step-show-tooltip">{% translate 'Show as tooltip' %}</c-ui.text.label>
+            </div>
+            <div data-tutorial-tooltip-anchor-field hidden>
+                <c-ui.text.label for="tutorial-step-tooltip-anchor">{% translate 'Tooltip anchor' %}</c-ui.text.label>
+                <select id="tutorial-step-tooltip-anchor" data-tutorial-highlight-choice="tooltip_highlight_id" class="select w-full"></select>
+            </div>
+        </div>
+        </fieldset>
+        <fieldset class="space-y-3">
+            <legend><span class="workspace-row__title whitespace-normal">{% translate 'Advance' %}</span></legend>
+        <div class="grid gap-3 sm:grid-cols-3">
+            <div class="sm:col-span-2">
+                <c-ui.text.label for="tutorial-step-advance">{% translate 'Advance when' %}</c-ui.text.label>
+                <select id="tutorial-step-advance" name="advance_mode" class="select w-full">
+                    <option value="manual">{% translate 'Manually' %}</option>
+                    <option value="click">{% translate 'When clicked' %}</option>
+                    <option value="dblclick">{% translate 'When double-clicked' %}</option>
+                    <option value="input">{% translate 'When typing in an input' %}</option>
+                    <option value="navigation">{% translate 'When navigated to a new URL' %}</option>
+                    <option value="delay">{% translate 'After a delay' %}</option>
+                </select>
+            </div>
+            <div data-tutorial-advance-highlight-field class="sm:col-span-3" hidden>
+                <c-ui.text.label for="tutorial-step-advance-highlight">{% translate 'Advance highlight' %}</c-ui.text.label>
+                <select id="tutorial-step-advance-highlight" data-tutorial-highlight-choice="advance_highlight_id" class="select w-full"
+                    aria-describedby="tutorial-step-advance-highlight-error"></select>
+                <p id="tutorial-step-advance-highlight-error" class="mt-1 text-xs text-red-600" role="status" hidden></p>
+            </div>
+            <div>
+                <c-ui.text.label for="tutorial-step-delay">
+                    {% translate 'Advance delay (ms)' %}<span data-tutorial-delay-required class="text-rose-500" aria-hidden="true" hidden>*</span>
+                </c-ui.text.label>
+                <input id="tutorial-step-delay" type="number" name="advance_delay_ms" class="input w-full"
+                    min="0" max="2147483647" step="1" value="0">
+            </div>
+            <div data-tutorial-advance-url-field class="sm:col-span-3" hidden>
+                <c-ui.text.label for="tutorial-step-advance-url">{% translate 'Destination URL pattern' %}</c-ui.text.label>
+                <input id="tutorial-step-advance-url" name="advance_url_pattern" class="input w-full" maxlength="2048"
+                    aria-describedby="tutorial-step-advance-url-help" placeholder="/misc/tutorials/*" spellcheck="false" disabled>
+                <p id="tutorial-step-advance-url-help" class="mt-1 text-xs text-gray-600 dark:text-zinc-400">
+                    {% translate 'Use * to match part of a path. Leave blank to advance on any URL change.' %}
+                </p>
+            </div>
+            <div data-tutorial-hide-next-field class="sm:col-span-3" hidden>
+                <div class="flex items-center gap-2">
+                    <input id="tutorial-step-hide-next" type="checkbox" name="hide_next_button" disabled>
+                    <c-ui.text.label for="tutorial-step-hide-next">{% translate 'Hide Next button' %}</c-ui.text.label>
+                </div>
+            </div>
+        </div>
+        </fieldset>
+        <div class="space-y-4" role="group" aria-label="{% translate 'Step actions' %}">
+            {% translate 'Before step' as before_step_title %}
+            {% translate 'After step' as after_step_title %}
+            {% translate 'Add action before step' as add_before_step_action %}
+            {% translate 'Add action after step' as add_after_step_action %}
+            {% include "components/tutorials/step_action_table.html" with phase="before" title=before_step_title add_label=add_before_step_action only %}
+            {% include "components/tutorials/step_action_table.html" with phase="after" title=after_step_title add_label=add_after_step_action only %}
+        </div>
+        <template data-tutorial-highlight-template>
+            <tr data-tutorial-highlight-row>
+                <td class="py-1.5">
+                    <input class="input input-sm min-w-0 w-full" data-tutorial-highlight-label maxlength="120" required aria-label="{% translate 'Highlight name' %}">
+                </td>
+                <td class="py-1.5 text-center">
+                    <label class="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md align-middle hover:bg-gray-100 dark:hover:bg-zinc-800">
+                        <input type="checkbox" data-tutorial-highlight-interactive aria-labelledby="tutorial-highlight-allow-interaction">
+                    </label>
+                </td>
+                <td class="py-1.5">
+                    <div class="flex items-center justify-end gap-1">
+                        <button type="button" data-tutorial-interaction="pick-highlight"
+                            class="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-sm text-gray-600 hover:bg-gray-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                            aria-label="{% translate 'Pick highlight again' %}" title="{% translate 'Pick highlight again' %}">
+                            <i class="fa-solid fa-crosshairs" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" data-tutorial-interaction="remove-highlight"
+                            class="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-sm text-gray-600 hover:bg-gray-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                            aria-label="{% translate 'Remove highlight' %}" title="{% translate 'Remove highlight' %}">
+                            <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        </template>
+        <template data-tutorial-action-template>
+            <tr data-tutorial-action-row>
+                <td class="py-1.5 pr-2 align-top">
+                    <select class="select select-sm w-full" data-tutorial-action-kind aria-label="{% translate 'Action type' %}">
+                        <option value="click">{% translate 'Click' %}</option>
+                        <option value="fill">{% translate 'Fill' %}</option>
+                        <option value="select">{% translate 'Select option' %}</option>
+                        <option value="wait">{% translate 'Wait for element' %}</option>
+                    </select>
+                </td>
+                <td class="py-1.5 align-top">
+                    <select class="select select-sm w-full" data-tutorial-action-target aria-label="{% translate 'Action target' %}"></select>
+                    <input class="input input-sm mt-1 w-full" data-tutorial-action-value maxlength="2048"
+                        aria-label="{% translate 'Text or option value' %}" placeholder="{% translate 'Text or option value' %}" hidden>
+                </td>
+                <td class="py-1.5 align-top">
+                    <div class="flex items-center justify-end gap-1">
+                        <button type="button" data-tutorial-interaction="pick-action"
+                            class="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-sm text-gray-600 hover:bg-gray-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                            aria-label="{% translate 'Pick element' %}" title="{% translate 'Pick element' %}">
+                            <i class="fa-solid fa-crosshairs" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" data-tutorial-interaction="move-action-up"
+                            class="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-sm text-gray-600 hover:bg-gray-100 disabled:cursor-default disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                            aria-label="{% translate 'Move action up' %}" title="{% translate 'Move action up' %}">
+                            <i class="fa-solid fa-arrow-up" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" data-tutorial-interaction="remove-action"
+                            class="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-sm text-gray-600 hover:bg-gray-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                            aria-label="{% translate 'Remove action' %}" title="{% translate 'Remove action' %}">
+                            <i class="fa-regular fa-trash-can" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        </template>
+        <p data-tutorial-step-error class="text-sm text-red-600" role="alert" hidden></p>
+    </form>
+    <c-slot name="footer_slot">
+        <div class="flex justify-end gap-2">
+            <button type="submit" form="tutorial-step-form" class="btn btn-primary btn-sm">{% translate 'Save' %}</button>
+        </div>
+    </c-slot>
+</c-ui.modal>

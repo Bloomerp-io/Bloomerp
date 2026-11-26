@@ -20,7 +20,6 @@ from bloomerp.services.workspace_services import (
     create_or_update_default_tiles,
     render_tile_to_string,
     resolve_tile_type_from_config,
-    select_workspace,
 )
 from bloomerp.tests.base import (
     BaseBloomerpTestCaseWithModels,
@@ -392,7 +391,8 @@ class TestWorkspaceModel(BloomerpModelTestCase, BaseBloomerpTestCaseWithModels):
         Workspace.objects.filter(pk=secondary.pk).update(selected=True)
         return secondary
 
-    def select_shared_workspace(self):
+    def select_shared_workspace(self) -> BasePreference:
+        """Select a shared workspace to exercise live preference resolution."""
         self.current_workspace = Workspace.objects.create(
             user=self.admin_user,
             module_id="sales",
@@ -405,7 +405,7 @@ class TestWorkspaceModel(BloomerpModelTestCase, BaseBloomerpTestCaseWithModels):
             name="Shared",
         )
         self.shared_workspace.shared_with_users.add(self.admin_user)
-        return select_workspace(self.shared_workspace, self.admin_user)
+        return PreferenceManager(self.admin_user).select(self.shared_workspace)
 
     def shared_workspace_selection_is_live(self, effective):
         self.current_workspace.refresh_from_db()

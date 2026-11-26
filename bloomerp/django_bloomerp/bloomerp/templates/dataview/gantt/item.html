@@ -1,0 +1,5 @@
+{% if row.scheduled %}
+    {% include "dataview/gantt/row.html" %}
+{% else %}
+    {% include "dataview/gantt/unscheduled_item.html" %}
+{% endif %}

@@ -12,6 +12,8 @@ from bloomerp.models import DocumentTemplate
 from bloomerp.models.files.file_node import FileNode
 from bloomerp.models.files.file_reference import FileReference
 from bloomerp.models.project_management.todo import Todo
+from bloomerp.permissions.definition import AccessRule, RowPolicyRuleContent
+from bloomerp.permissions.manager import PolicyManager
 from bloomerp.services.document_services import DocumentTemplateService
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
@@ -79,10 +81,33 @@ class TestGenerateDocumentTemplateComponent(BloomerpComponentTestCase):
         self.assertFalse(FileReference.objects.exists())
         return True
 
+    def grant_template_without_source_row(self, _scenario: RequestScenario) -> None:
+        """Grant the template and model permissions while withholding source row access."""
+        PolicyManager.create_policy(
+            DocumentTemplate,
+            rule=AccessRule(row_permissions=[RowPolicyRuleContent(permissions=["view"])]),
+            global_permissions=["view"],
+        ).assign_user(self.normal_user)
+        for model in (self.CustomerModel, Todo):
+            PolicyManager.create_policy(
+                model, rule=AccessRule(), global_permissions=["view"],
+            ).assign_user(self.normal_user)
+
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Cover all selected objects, preset objects, and generation without saving."""
         data = {"customer": str(self.customer.pk), "todo": str(self.todo.pk)}
         return [
+            RequestScenario(
+                name="A template cannot be opened for an unreadable source record",
+                user=self.normal_user,
+                view_kwargs={"id": str(self.template.pk)},
+                query_params={
+                    "content_type_id": ContentType.objects.get_for_model(self.customer).pk,
+                    "object_id": str(self.customer.pk),
+                },
+                prepare=self.grant_template_without_source_row,
+                expected=ExpectedResult(status_code=404),
+            ),
             RequestScenario(
                 name="Save one PDF referencing both selected models and its template",
                 method="POST",

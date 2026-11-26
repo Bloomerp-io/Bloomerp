@@ -1,3 +1,6 @@
+import type { HtmxResponseInfo } from 'htmx.org';
+
+let pendingMainRequests = 0;
 
 /**
  * Function that inserts a skeleton into the target element.
@@ -81,7 +84,30 @@ function insertAnimation(target: HTMLElement, animation: string | null) {
 }
 
 
-export function SetupAnimationListener() {
+/** Shows the main panel ring when a tracked request starts. */
+function showMainLoadingRing(): void {
+    pendingMainRequests += 1;
+    document.documentElement.setAttribute('data-main-loading', '');
+}
+
+/** Clears the ring after the last tracked request finishes or fails. */
+function finishMainRequest(): void {
+    pendingMainRequests -= 1;
+    document.documentElement.toggleAttribute('data-main-loading', pendingMainRequests > 0);
+}
+
+/** Tracks HTMX requests that target the panel or its main content swap container. */
+function trackMainRequest(event: Event): void {
+    const detail = (event as CustomEvent<HtmxResponseInfo>).detail;
+    if (!detail?.target?.matches('#main, #main-content') || !detail.xhr) return;
+
+    detail.xhr.addEventListener('loadstart', showMainLoadingRing, { once: true });
+    detail.xhr.addEventListener('loadend', finishMainRequest, { once: true });
+}
+
+/** Registers the main loading ring and opt-in HTMX content animations. */
+export function SetupAnimationListener(): void {
+    document.addEventListener('htmx:beforeSend', trackMainRequest);
     document.addEventListener('htmx:beforeSend', (ev) => {
         const sourceElement = ev.target as HTMLElement
 

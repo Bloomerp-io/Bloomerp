@@ -1,4 +1,6 @@
+import { fetchFromComponent } from "../../utils/requestContext";
 import { BaseDataViewComponent } from "./BaseDataViewComponent";
+import { getDataviewCreate } from "./DataviewCreate";
 import { BaseDataViewCell } from "./BaseDataViewCell";
 import { MessageType } from "../UiMessage";
 import { getComponent } from "../BaseComponent";
@@ -58,12 +60,12 @@ export class Calendar extends BaseDataViewComponent {
     protected cellClass = CalendarCell;
     private viewMode = "week";
     private pageOffset = 0;
-    private mutationInFlight = false;
+    private unscheduleDragId: string | null = null;
     private activeGestureController: AbortController | null = null;
     private activeGestureCleanup: (() => void) | null = null;
     private currentTimeTimer: number | null = null;
-    private timeGridObserver: ResizeObserver | null = null;
-    private timeGridFrame: number | null = null;
+    private gridObserver: ResizeObserver | null = null;
+    private gridFrame: number | null = null;
     private currentTimeMinutes = 0;
     private timeGridCentered = false;
 
@@ -75,7 +77,7 @@ export class Calendar extends BaseDataViewComponent {
         this.viewMode = this.element.dataset.calendarViewMode || "week";
         this.pageOffset = Number.parseInt(this.element.dataset.pageOffset || "0", 10) || 0;
         const controller = this.ensureAbortController();
-        if (["day", "week", "month"].includes(this.viewMode) && this.dataViewContainer?.canCreate) {
+        if (["day", "week", "month"].includes(this.viewMode) && getDataviewCreate(this.element)) {
             this.element.addEventListener("dblclick", this.onEmptyCellDoubleClick, { signal: controller.signal });
         }
 
@@ -100,7 +102,7 @@ export class Calendar extends BaseDataViewComponent {
         this.element.addEventListener("dragstart", this.onCalendarDragStart, {
             signal: controller.signal,
         });
-        this.element.addEventListener("dragend", this.clearDropHighlights, {
+        this.element.addEventListener("dragend", this.onCalendarDragEnd, {
             signal: controller.signal,
         });
         this.element.addEventListener("dragover", this.onGridDragOver, {
@@ -113,7 +115,8 @@ export class Calendar extends BaseDataViewComponent {
             signal: controller.signal,
         });
 
-        this.element.addEventListener("keydown", (event) => {
+        this.element.addEventListener("keydown", /** Navigate calendar periods outside the sidebar search. */ (event: KeyboardEvent): void => {
+            if (event.target instanceof HTMLInputElement && event.target.name === "unscheduled_q") return;
             if (!event.metaKey || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
             event.preventDefault();
             event.stopImmediatePropagation();
@@ -124,8 +127,11 @@ export class Calendar extends BaseDataViewComponent {
         }, { capture: true, signal: controller.signal });
 
         this.updateCurrentTime();
-        if (this.element.querySelector("[data-calendar-current-time]")) {
-            this.initializeTimeGrid();
+        const hasTimeGrid = Boolean(this.element.querySelector("[data-calendar-current-time]"));
+        if (hasTimeGrid || (this.viewMode === "month" && this.element.querySelector("[data-calendar-grid]"))) {
+            this.initializeGridLayout();
+        }
+        if (hasTimeGrid) {
             if (this.currentTimeTimer !== null) window.clearInterval(this.currentTimeTimer);
             this.currentTimeTimer = window.setInterval(this.updateCurrentTime, 30_000);
         }
@@ -135,29 +141,29 @@ export class Calendar extends BaseDataViewComponent {
         });
     }
 
-    /** Fit hourly calendars to their visible container and center the time after layout. */
-    private initializeTimeGrid(): void {
+    /** Keep the month and hourly grids fitted when their visible container changes size. */
+    private initializeGridLayout(): void {
         this.timeGridCentered = false;
-        this.fitTimeGrid();
-        window.addEventListener("resize", this.fitTimeGrid, { signal: this.ensureAbortController().signal });
-        this.timeGridObserver?.disconnect();
+        this.fitGrid();
+        window.addEventListener("resize", this.fitGrid, { signal: this.ensureAbortController().signal });
+        this.gridObserver?.disconnect();
         if (typeof ResizeObserver !== "undefined") {
-            this.timeGridObserver = new ResizeObserver(this.fitTimeGrid);
+            this.gridObserver = new ResizeObserver(this.fitGrid);
             const container = this.dataViewContainer?.element ?? this.element;
-            if (container) this.timeGridObserver.observe(container);
+            if (container) this.gridObserver.observe(container);
             for (let ancestor = this.element?.parentElement; ancestor; ancestor = ancestor.parentElement) {
                 if (["auto", "scroll", "hidden", "clip"].includes(getComputedStyle(ancestor).overflowY)) {
-                    this.timeGridObserver.observe(ancestor);
+                    this.gridObserver.observe(ancestor);
                 }
             }
         }
-        if (this.timeGridFrame !== null) window.cancelAnimationFrame(this.timeGridFrame);
-        this.timeGridFrame = window.requestAnimationFrame(this.onTimeGridLayout);
+        if (this.gridFrame !== null) window.cancelAnimationFrame(this.gridFrame);
+        this.gridFrame = window.requestAnimationFrame(this.onGridLayout);
     }
 
-    /** Size the day/week grid within viewport and ancestor clipping boundaries. */
-    private fitTimeGrid = (): void => {
-        if (!this.element?.isConnected || !["day", "week"].includes(this.viewMode)) return;
+    /** Size the day, week, or month grid within the viewport and its clipping ancestors. */
+    private fitGrid = (): void => {
+        if (!this.element?.isConnected || !["day", "week", "month"].includes(this.viewMode)) return;
         let top = this.element.getBoundingClientRect().top;
         let bottom = window.innerHeight;
         let padding = 0;
@@ -174,10 +180,10 @@ export class Calendar extends BaseDataViewComponent {
         this.element.style.height = `${Math.max(0, Math.floor(bottom - top))}px`;
     };
 
-    /** Center the current hour once, leaving later scrolling and clock updates undisturbed. */
-    private onTimeGridLayout = (): void => {
-        this.timeGridFrame = null;
-        this.fitTimeGrid();
+    /** Refit after layout and center hourly grids once on the current time. */
+    private onGridLayout = (): void => {
+        this.gridFrame = null;
+        this.fitGrid();
         const grid = this.element?.querySelector<HTMLElement>("[data-calendar-grid]");
         const column = grid?.querySelector<HTMLElement>("[data-calendar-time-column]");
         if (this.timeGridCentered || !grid || !column || grid.clientHeight === 0) return;
@@ -191,7 +197,7 @@ export class Calendar extends BaseDataViewComponent {
 
     /** Refit an existing calendar when HTMX changes its surrounding controls or content. */
     public override onAfterSwap(): void {
-        this.fitTimeGrid();
+        this.fitGrid();
     }
 
     /** Release layout observers and timers before HTMX removes this calendar. */
@@ -228,10 +234,10 @@ export class Calendar extends BaseDataViewComponent {
 
     /** Release calendar layout, event gestures, and the live current-time indicator timer. */
     public override destroy(): void {
-        this.timeGridObserver?.disconnect();
-        this.timeGridObserver = null;
-        if (this.timeGridFrame !== null) window.cancelAnimationFrame(this.timeGridFrame);
-        this.timeGridFrame = null;
+        this.gridObserver?.disconnect();
+        this.gridObserver = null;
+        if (this.gridFrame !== null) window.cancelAnimationFrame(this.gridFrame);
+        this.gridFrame = null;
         if (this.currentTimeTimer !== null) window.clearInterval(this.currentTimeTimer);
         this.currentTimeTimer = null;
         this.activeGestureController?.abort();
@@ -265,7 +271,7 @@ export class Calendar extends BaseDataViewComponent {
         if (!cell || !this.element?.contains(cell)) return;
         const values = this.getCreateInitialValues(cell);
         const opener = cell.querySelector<HTMLElement>("[data-calendar-unit-cell]") ?? cell;
-        if (!values || !this.dataViewContainer?.openCreateForm(values, opener)) return;
+        if (!values || !getDataviewCreate(opener)?.open(opener, values)) return;
         event.preventDefault();
         event.stopPropagation();
     };
@@ -301,7 +307,7 @@ export class Calendar extends BaseDataViewComponent {
         const csrfToken = getCsrfToken();
         const signal = this.ensureAbortController().signal;
         try {
-            const response = await fetch(url, {
+            const response = await fetchFromComponent(this.element, url, {
                 method: "POST",
                 credentials: "same-origin",
                 signal,
@@ -445,7 +451,7 @@ export class Calendar extends BaseDataViewComponent {
     /** Synchronize keyboard selection when Tab or an assistive control focuses an event directly. */
     private onCellFocus = (event: FocusEvent): void => {
         const target = event.target as HTMLElement | null;
-        if (target?.closest("[data-calendar-object-actions]")) return;
+        if (target?.closest("[data-no-row-click], [data-calendar-object-actions]")) return;
         const element = target?.closest<HTMLElement>('[bloomerp-component="calendar-cell"]');
         const cell = element ? getComponent(element) : null;
         if (cell instanceof CalendarCell) {
@@ -573,7 +579,7 @@ export class Calendar extends BaseDataViewComponent {
     private onEventPointerDown = (event: PointerEvent): void => {
         if (!this.element || event.button !== 0 || this.mutationInFlight) return;
         const target = event.target as HTMLElement | null;
-        if (target?.closest("[data-calendar-object-actions]")) return;
+        if (target?.closest("[data-no-row-click], [data-calendar-object-actions]")) return;
         const edge = target?.closest<HTMLElement>("[data-calendar-resize-start], [data-calendar-resize-end]");
         const item = target?.closest<HTMLElement>("[data-calendar-event]");
         if (!item) return;
@@ -690,9 +696,11 @@ export class Calendar extends BaseDataViewComponent {
         }, { signal: gesture.signal, once: true });
     };
 
+    /** Start a drag from a record while leaving its embedded controls interactive. */
     private onCalendarDragStart = (event: DragEvent): void => {
+        this.unscheduleDragId = null;
         const target = event.target as HTMLElement | null;
-        if (target?.closest("[data-calendar-object-actions], [data-calendar-resize-start], [data-calendar-resize-end]")) {
+        if (target?.closest("[data-no-row-click], [data-calendar-object-actions], [data-calendar-resize-start], [data-calendar-resize-end]")) {
             event.preventDefault();
             return;
         }
@@ -723,6 +731,9 @@ export class Calendar extends BaseDataViewComponent {
                 JSON.stringify(payload),
             );
             event.dataTransfer.setData("text/plain", objectId);
+            if (scheduledItem.dataset.calendarCanUnschedule === "true") {
+                this.unscheduleDragId = objectId;
+            }
             return;
         }
 
@@ -740,7 +751,23 @@ export class Calendar extends BaseDataViewComponent {
         event.dataTransfer.setData("text/plain", objectId);
     };
 
+    /** Clear the active calendar drag and its visual feedback. */
+    private onCalendarDragEnd = (): void => {
+        this.unscheduleDragId = null;
+        this.clearDropHighlights();
+    };
+
+    /** Highlight the grid or sidebar when it accepts the active drag. */
     private onGridDragOver = (event: DragEvent): void => {
+        if (this.getUnscheduledDropzone(event.target)) {
+            if (this.unscheduleDragId && event.dataTransfer && !this.mutationInFlight) {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+                this.clearDropHighlights();
+                this.highlightUnscheduledDropzone(true);
+            }
+            return;
+        }
         const dropzone = this.findDropzone(event);
         if (!dropzone || !event.dataTransfer) return;
         event.preventDefault();
@@ -749,14 +776,30 @@ export class Calendar extends BaseDataViewComponent {
         dropzone.classList.add("ring-2", "ring-inset", "ring-primary");
     };
 
+    /** Remove feedback when the drag leaves a calendar drop target. */
     private onGridDragLeave = (event: DragEvent): void => {
+        const sidebar = this.getUnscheduledDropzone(event.target);
+        if (sidebar) {
+            if (!sidebar.contains(event.relatedTarget as Node | null)) this.highlightUnscheduledDropzone(false);
+            return;
+        }
         const dropzone = this.findDropzone(event);
         if (!dropzone || dropzone.contains(event.relatedTarget as Node | null)) return;
         dropzone.classList.remove("ring-2", "ring-inset", "ring-primary");
     };
 
+    /** Save the new calendar placement or clear it on a sidebar drop. */
     private onGridDrop = (event: DragEvent): void => {
         if (!event.dataTransfer || this.mutationInFlight) return;
+        const sidebar = this.getUnscheduledDropzone(event.target);
+        if (sidebar) {
+            if (!this.unscheduleDragId) return;
+            event.preventDefault();
+            const objectId = this.unscheduleDragId;
+            this.onCalendarDragEnd();
+            void this.unscheduleRecord(sidebar, objectId);
+            return;
+        }
         const dropzone = this.findDropzone(event);
         const unit = dropzone?.dataset.calendarUnit;
         if (!dropzone || !unit) return;
@@ -892,7 +935,7 @@ export class Calendar extends BaseDataViewComponent {
         this.mutationInFlight = true;
         const csrfToken = getCsrfToken();
         try {
-            const response = await fetch(url, {
+            const response = await fetchFromComponent(this.element, url, {
                 method: "POST",
                 credentials: "same-origin",
                 headers: {
@@ -921,8 +964,10 @@ export class Calendar extends BaseDataViewComponent {
         }
     }
 
+    /** Remove feedback from the calendar grid and the unscheduled sidebar. */
     private clearDropHighlights = (): void => {
         if (!this.element) return;
+        this.highlightUnscheduledDropzone(false);
         for (const dropzone of this.element.querySelectorAll<HTMLElement>(
             "[data-calendar-dropzone]",
         )) {

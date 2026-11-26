@@ -19,25 +19,29 @@ from bloomerp.models.users.user_list_view_preference import UserListViewPreferen
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
+from bloomerp.services.action_services import ACTION_DATAVIEW_PREFERENCE_PARAM
 from bloomerp.services.bulk_action_services import (
     execute_bulk_delete,
     execute_bulk_update,
 )
-from bloomerp.services.object_services import string_search_on_queryset
 from bloomerp.services.preference_services import PreferenceManager
+from bloomerp.services.search_services import string_search_on_queryset
 from bloomerp.services.user_services import get_data_view_fields
 from bloomerp.utils.async_utils import run_async_or_sync
 from bloomerp.utils.models import get_model_and_content_type_or_404
 from bloomerp.utils.requests import render_message
 
 RESERVED_BULK_QUERY_KEYS = {
+    "_dataview_instance",
     "action",
     "application_field_id",
     "csrfmiddlewaretoken",
     "object_ids",
     "page",
     "q",
+    "selected_ids",
     "selection",
+    ACTION_DATAVIEW_PREFERENCE_PARAM,
     # HTMX includes the bulk action form's current field value on GET requests.
     "value",
     "_component_id",
@@ -199,8 +203,12 @@ def _build_bulk_action_state(
     filter_querydict = _filter_querydict(request, preference, model)
     queryset = ModelFilterManager(model).filter(filter_querydict, queryset=queryset)
 
-    object_ids = request.GET.getlist("object_ids")
     selection = request.GET.get("selection")
+    object_ids = request.GET.getlist("object_ids")
+    if selection == "selected" and "selected_ids" in request.GET:
+        object_ids = request.GET.getlist("selected_ids")
+    elif selection == "filtered":
+        object_ids = []
     if object_ids:
         queryset = queryset.filter(pk__in=object_ids)
     elif selection == "selected":
@@ -397,7 +405,7 @@ def bulk_actions(request: HttpRequest, content_type_id: int) -> HttpResponse:
         response["HX-Trigger-After-Swap"] = json.dumps(
             {
                 "bloomerp:close-modal": {"modalId": "bulk-actions-modal"},
-                "bloomerp:bulk-action-complete": {"contentTypeId": str(content_type_id)},
+                "bloomerp:dataview-refresh": {"renderId": request.GET.get("_dataview_instance")},
             }
         )
         return response

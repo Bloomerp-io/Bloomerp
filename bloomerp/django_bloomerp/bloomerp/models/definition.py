@@ -1,7 +1,7 @@
 import inspect
 import json
 import re
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from typing import TYPE_CHECKING, Any, Literal, Optional, Self, Type
@@ -25,8 +25,20 @@ from pydantic.json_schema import SkipJsonSchema
 
 from bloomerp.config.definition import BloomerpConfig
 from bloomerp.dataviews.definition import BaseDataview
+from bloomerp.field_types.registry import FormFactory, WidgetFactory
 from bloomerp.filters.definition import Filters
-from bloomerp.models.object_actions.defaults import get_default_object_actions
+from bloomerp.models.actions.dataview.add import (
+    can_create_dataview_object,  # noqa: F401
+)
+from bloomerp.models.actions.dataview.builtins import (  # noqa: F401
+    get_dataview_actions,
+    get_default_dataview_actions,
+)
+from bloomerp.models.actions.object.builtins import get_default_object_actions
+from bloomerp.models.actions.object.resolution import (  # noqa: F401
+    get_object_actions,
+    iter_object_actions,
+)
 from bloomerp.permissions.definition import AccessRule, BloomerpPermission
 from bloomerp.workspaces.base import BaseTileConfig
 
@@ -271,6 +283,7 @@ class ApiSettings(BaseModel):
 # ------------------------------------
 ActionMethod = Literal["GET", "POST"]
 ActionModalSize = Literal["sm", "md", "lg", "xl", "full"]
+ActionDrawerSize = Literal["sm", "md", "lg", "xl", "2xl", "4xl", "6xl", "full"]
 ObjectActionSurface = Literal["detail", "dataview_item"]
 
 
@@ -286,7 +299,9 @@ class DataviewActionContext:
     querystring: str = ""
     filters: Filters = dataclass_field(default_factory=list)
     selected_ids: list[str] = dataclass_field(default_factory=list)
-    operation_context_token: str | None = None
+    component_args: dict[str, str] = dataclass_field(default_factory=dict)
+    render_id: str | None = None
+    create_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -299,6 +314,11 @@ class ObjectActionContext:
     object: Model
     surface: ObjectActionSurface
     dataview: DataviewActionContext | None = None
+
+    @property
+    def button_size(self) -> Literal["xs", "sm"]:
+        """Return the standard button size for this record's action surface."""
+        return "sm" if self.surface == "detail" else "xs"
 
 
 ActionResponse = HttpResponse | StreamingHttpResponse | None
@@ -354,11 +374,15 @@ class _Action[Context](_ActionTrigger[Context]):
     )
     button_attrs: dict[str, Any] | Callable[[Context], dict[str, Any]] = Field(
         default_factory=dict,
-        description="HTML attributes or a callback that computes them. Overrides the button defaults.",
+        description="HTML attributes or a callback. An href renders a link, and an empty href hides it.",
     )
     success_message: str | None = Field(
         default=None,
         description="Message displayed when the execution callback returns no response.",
+    )
+    refresh_on_success: Literal["dataview"] | None = Field(
+        default=None,
+        description="Refresh the originating Dataview when the execution callback returns None.",
     )
 
     @model_validator(mode="after")
@@ -391,30 +415,96 @@ class _Action[Context](_ActionTrigger[Context]):
 class ObjectAction(_Action[ObjectActionContext]):
     """Declare a button that acts on a single record."""
 
+    refresh_on_success: Literal["item", "dataview"] | None = Field(
+        default=None,
+        description=(
+            "Refresh the item in place, or the Dataview if the action changes selection, "
+            "grouping, or order. Applies when the execution callback returns None."
+        ),
+    )
 
-class DataviewAction(_Action[DataviewActionContext]):
+
+class _DataviewSelectionAction(BaseModel):
+    """Allow Dataview actions to appear in the selection controls."""
+
+    requires_selection: bool = Field(
+        default=False,
+        description="Show this action when the Dataview has a record selection.",
+    )
+
+
+class DataviewAction(_Action[DataviewActionContext], _DataviewSelectionAction):
     """Declare a button that acts on a dataview or its selection."""
+
+    forward_dataview_context: bool = Field(
+        default=True,
+        description="Send the originating Dataview's filters and selection to the action.",
+    )
 
 
 class _ModalButton(BaseModel):
     """Supply standard modal attributes to an ordinary action button."""
 
-    modal_title: str | None = Field(
+    modal_id: str = Field(
+        default="bloomerp-general-use-modal",
+        min_length=1,
+        description="ID of the modal to open and load.",
+    )
+    title: str | None = Field(
         default=None, description="Modal heading. Defaults to the button label."
     )
-    modal_size: ActionModalSize = Field(default="md", description="Modal width preset.")
+    size: ActionModalSize = Field(default="md", description="Modal width preset.")
+    body_class: str | None = Field(
+        default=None, description="CSS classes to apply to the modal body for this opening."
+    )
 
     def modal_button_attrs(self, label: str | None) -> dict[str, str]:
-        """Build attributes for loading and opening the shared modal."""
-        modal_id = "bloomerp-general-use-modal"
-        title = self.modal_title or label
-        return {
+        """Build attributes for loading and opening the configured modal."""
+        modal_id = self.modal_id
+        title = self.title or label
+        attrs = {
             "hx-target": f"#{modal_id}-body",
             "bloomerp-open-modal": modal_id,
             "bloomerp-set-modal-title-for": modal_id,
             "bloomerp-set-modal-title-to": gettext(title) if title else "",
-            "bloomerp-set-modal-size-to": self.modal_size,
+            "bloomerp-set-modal-size-to": self.size,
         }
+        if self.body_class:
+            attrs["bloomerp-set-modal-body-class-to"] = self.body_class
+        return attrs
+
+
+class _DrawerButton(BaseModel):
+    """Supply standard drawer attributes to an ordinary action button."""
+
+    drawer_id: str = Field(
+        default="bloomerp-general-use-drawer",
+        min_length=1,
+        description="ID of the drawer to open and load.",
+    )
+    title: str | None = Field(
+        default=None, description="Drawer heading. Defaults to the button label."
+    )
+    size: ActionDrawerSize = Field(default="md", description="Drawer width preset.")
+    body_class: str | None = Field(
+        default=None, description="CSS classes to apply to the drawer body for this opening."
+    )
+
+    def drawer_button_attrs(self, label: str | None) -> dict[str, str]:
+        """Build attributes for loading and opening the configured drawer."""
+        drawer_id = self.drawer_id
+        title = self.title or label
+        attrs = {
+            "hx-target": f"#{drawer_id}-body",
+            "hx-push-url": "false",
+            "bloomerp-open-drawer": drawer_id,
+            "bloomerp-set-drawer-title-for": drawer_id,
+            "bloomerp-set-drawer-title-to": gettext(title) if title else "",
+            "bloomerp-set-drawer-size-to": self.size,
+        }
+        if self.body_class:
+            attrs["bloomerp-set-drawer-body-class-to"] = self.body_class
+        return attrs
 
 
 class ObjectModalAction(ObjectAction, _ModalButton):
@@ -425,8 +515,36 @@ class ObjectModalAction(ObjectAction, _ModalButton):
     )
 
     def default_button_attrs(self) -> dict[str, str]:
-        """Open the shared modal and load the response into it."""
+        """Open the configured modal and load the response into it."""
         return self.modal_button_attrs(self.label)
+
+
+class ObjectDrawerAction(ObjectAction, _DrawerButton):
+    """Provide drawer button defaults for a record action."""
+
+    method: ActionMethod = Field(
+        default="GET", description="HTTP method used to load the drawer."
+    )
+
+    def default_button_attrs(self) -> dict[str, str]:
+        """Open the configured drawer and load the response into it."""
+        return self.drawer_button_attrs(self.label)
+
+
+ObjectActionTarget = Literal["main", "modal", "drawer"]
+
+
+class DataviewDrawerAction(DataviewAction, _DrawerButton):
+    """Provide drawer button defaults for a dataview action."""
+
+    size: ActionDrawerSize = Field(default="2xl", description="Drawer width preset.")
+    method: ActionMethod = Field(
+        default="GET", description="HTTP method used to load the drawer."
+    )
+
+    def default_button_attrs(self) -> dict[str, str]:
+        """Open the configured drawer and load the response into it."""
+        return self.drawer_button_attrs(self.label)
 
 
 class DataviewModalAction(DataviewAction, _ModalButton):
@@ -437,7 +555,7 @@ class DataviewModalAction(DataviewAction, _ModalButton):
     )
 
     def default_button_attrs(self) -> dict[str, str]:
-        """Open the shared modal and load the response into it."""
+        """Open the configured modal and load the response into it."""
         return self.modal_button_attrs(self.label)
 
 
@@ -458,19 +576,30 @@ class ObjectHTMLAction(_HTMLAction[ObjectActionContext]):
     """Render an action template for a single record."""
 
 
-class DataviewHTMLAction(_HTMLAction[DataviewActionContext]):
+class DataviewHTMLAction(_HTMLAction[DataviewActionContext], _DataviewSelectionAction):
     """Render an action template in the dataview toolbar."""
 
 
-class ObjectActionGrouping(_ActionTrigger[ObjectActionContext]):
+class _ActionGrouping[Context](_ActionTrigger[Context]):
+    """Configure the shared dropdown trigger for a group of actions."""
+
+    button_size: Literal["xs", "sm", "md", "lg"] | None = Field(
+        default="sm", description="Size of the dropdown trigger button."
+    )
+
+
+class ObjectActionGrouping(_ActionGrouping[ObjectActionContext]):
     """Render record actions and subgroups in a dropdown."""
 
+    button_size: Literal["xs", "sm", "md", "lg"] | None = Field(
+        default=None, description="Dropdown trigger size. Defaults to the record surface size."
+    )
     actions: "list[ObjectActionDefinition]" = Field(
         description="Child record actions and subgroups in display order."
     )
 
 
-class DataviewActionGrouping(_ActionTrigger[DataviewActionContext]):
+class DataviewActionGrouping(_ActionGrouping[DataviewActionContext], _DataviewSelectionAction):
     """Render dataview actions and subgroups in a dropdown."""
 
     actions: "list[DataviewActionDefinition]" = Field(
@@ -479,144 +608,13 @@ class DataviewActionGrouping(_ActionTrigger[DataviewActionContext]):
 
 
 ObjectActionDefinition = (
-    ObjectAction | ObjectModalAction | ObjectHTMLAction | ObjectActionGrouping
+    ObjectAction | ObjectModalAction | ObjectDrawerAction | ObjectHTMLAction | ObjectActionGrouping
 )
 DataviewActionDefinition = (
-    DataviewAction | DataviewModalAction | DataviewHTMLAction | DataviewActionGrouping
+    DataviewAction | DataviewModalAction | DataviewDrawerAction | DataviewHTMLAction | DataviewActionGrouping
 )
 ObjectActionGrouping.model_rebuild()
 DataviewActionGrouping.model_rebuild()
-
-
-def iter_object_actions(
-    actions: Sequence[ObjectActionDefinition],
-    *,
-    include_group: Callable[[ObjectActionGrouping], bool] | None = None,
-) -> Iterator[ObjectActionDefinition]:
-    """Yield actions in display order, skipping groups excluded by the predicate."""
-    for action in actions:
-        is_group = isinstance(action, ObjectActionGrouping)
-        if is_group and include_group is not None and not include_group(action):
-            continue
-        yield action
-        if is_group:
-            yield from iter_object_actions(action.actions, include_group=include_group)
-
-
-def get_object_actions(
-    model: type[Model],
-    *,
-    surface: ObjectActionSurface,
-    group_all: bool = False,
-) -> list[ObjectActionDefinition]:
-    """Resolve built-ins and model overrides for an object action surface."""
-    from bloomerp.models.object_actions.sidebar import detail_only
-
-    config = get_model_config(model)
-    configured = config.object_actions if config else get_default_object_actions
-    actions = configured(model) if callable(configured) else configured
-    if surface == "detail":
-        return actions
-    actions = [
-        action for action in actions if action.should_render_func is not detail_only
-    ]
-    if group_all:
-        return (
-            [ObjectActionGrouping(id="more-actions", actions=actions)]
-            if actions
-            else []
-        )
-    grouped_ids = {"create-todo", "contact"}
-    grouped = [action for action in actions if action.id in grouped_ids]
-    if grouped:
-        return [
-            ObjectActionGrouping(id="more-actions", actions=grouped),
-            *(action for action in actions if action.id not in grouped_ids),
-        ]
-    return actions
-
-
-def can_create_dataview_object(context: DataviewActionContext) -> bool:
-    """Enable Add only when the model exposes a create route and the user has add permission."""
-    from django.urls import NoReverseMatch, reverse
-
-    from bloomerp.permissions.manager import UserPolicyManager
-    from bloomerp.utils.models import get_create_view_url
-
-    if not UserPolicyManager(context.request.user).has_global_permission(
-        context.model, BloomerpPermission.ADD
-    ):
-        return False
-    try:
-        reverse(get_create_view_url(context.model))
-    except NoReverseMatch:
-        return False
-    return True
-
-
-def get_default_dataview_actions(
-    model: type[Model],
-    skip: Sequence[str] | None = None,
-    include: Sequence[str] | None = None,
-) -> list[DataviewActionDefinition]:
-    """Return a model's standard toolbar actions, limited by include and then skip.
-
-    An omitted include selects all defaults; an empty include selects none.
-    Skip takes precedence when an action appears in both lists.
-    """
-    template_root = "components/objects/dataview_actions"
-
-    actions: list[DataviewActionDefinition] = [
-        DataviewHTMLAction(
-            id="filter",
-            template_name=f"{template_root}/filter.html",
-            shortcut="mod+1",
-        ),
-        DataviewHTMLAction(
-            id="add",
-            should_render_func=can_create_dataview_object,
-            template_name=f"{template_root}/add.html",
-            shortcut="mod+2",
-        ),
-        DataviewHTMLAction(
-            id="bulk-actions",
-            template_name=f"{template_root}/bulk_actions.html",
-            shortcut="mod+3",
-        ),
-        DataviewHTMLAction(
-            id="export",
-            template_name=f"{template_root}/export.html",
-            shortcut="mod+4",
-        ),
-        DataviewHTMLAction(
-            id="display-options",
-            template_name=f"{template_root}/display_options.html",
-            shortcut="mod+5",
-        ),
-        DataviewHTMLAction(
-            id="select-preference",
-            template_name=f"{template_root}/select_preference.html",
-            shortcut="mod+6",
-        ),
-    ]
-    return [
-        action
-        for action in actions
-        if (include is None or action.id in include)
-        and (not skip or action.id not in skip)
-    ]
-
-
-def get_dataview_actions(model: type[Model]) -> list[DataviewActionDefinition]:
-    """Resolve the model's configured toolbar list or call its action factory."""
-    config = get_model_config(model)
-    view_settings = config.model_view_settings if config else None
-    configured = (
-        view_settings.dataview_actions
-        if view_settings
-        else get_default_dataview_actions
-    )
-    return configured(model) if callable(configured) else configured
 
 
 class DetailViewSettings(BaseModel):
@@ -666,6 +664,11 @@ class ModelViewSettings(BaseModel):
     skip_views: Optional[list[str]] = None
 
     default_dataviews: list[SerializeAsAny[BaseDataview]] = Field(default_factory=list)
+
+    embedded_queryset_scope: Callable[[HttpRequest, QuerySet, dict[str, str]], QuerySet] | None = Field(
+        default=None,
+        description="Narrow the authorized queryset for a signed inline Dataview layout.",
+    )
 
     dataview_actions: (
         list[DataviewActionDefinition]
@@ -782,6 +785,8 @@ class FieldSettings(BaseModel):
 
     field: str
     advanced_rendering: str | None = None
+    widget_factory: Optional[WidgetFactory] = None
+    form_factory: Optional[FormFactory] = None
 
 
 #
@@ -791,18 +796,8 @@ StringSearchSettings = SearchSettings
 class BloomerpModelConfig(BaseModel):
     """
     Used to define certain bloomerp related meta data on a model.
-
-    Usage
-    ```python
-    from bloomerp.models.definition import BloomerpModelConfig
-
-    class Lorum(BloomerpModel):
-        bloomerp_config = BloomerpModelConfig(
-            ...
-        )
-    ```
     """
-
+    
     module: str | type | None = None
     icon: Optional[str] = Field(
         default="fa fa-cube",

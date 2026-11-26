@@ -1,0 +1,42 @@
+{% load bloomerp %}
+
+<tr
+    class="cursor-pointer"
+    data-dataview-item
+    {% dataview_record_attrs object dataview_action_context row_index %}
+>
+    <td data-dataview-selection-column>
+        <c-features.dataviews.checkbox object_id="{{ object.pk }}" :label="object" />
+    </td>
+    {% if avatar_field %}
+    <td
+        class="cursor-context-menu w-14"
+        data-dropdown="cell-menu"
+        data-column-index="0"
+        data-row-index="{{ row_index }}"
+        data-value=""
+        data-object-id="{{ object.pk }}"
+        data-object-string="{{ object }}"
+        data-application-field-id="{{ avatar_field.id }}"
+        data-application-field-name="{{ avatar_field.field }}"
+        data-detail-url="{{ object.get_absolute_url }}"
+        bloomerp-component="datatable-cell"
+    >
+        <c-ui.avatar :object="object" :avatar_attribute="avatar_field.field" size="32" class_name="rounded-full object-cover" />
+    </td>
+    {% endif %}
+    {% for field in fields %}
+        {% if avatar_field %}
+            {% render_dataview_value object=object application_field=field user=request.user row_index=row_index column_index=forloop.counter0|add:1 url=object.get_absolute_url split_view_enabled=preference.split_view_enabled %}
+        {% else %}
+            {% render_dataview_value object=object application_field=field user=request.user row_index=row_index column_index=forloop.counter0 url=object.get_absolute_url split_view_enabled=preference.split_view_enabled %}
+        {% endif %}
+    {% endfor %}
+    {% if object_actions %}
+        <td class="w-32 whitespace-nowrap">
+            {% for action in object_actions %}
+                {% render_object_action action=action object=object request=request content_type_id=content_type_id dataview=dataview_action_context %}
+            {% endfor %}
+        </td>
+    {% endif %}
+</tr>

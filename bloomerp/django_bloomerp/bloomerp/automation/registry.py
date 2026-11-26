@@ -36,7 +36,7 @@ from bloomerp.automation.triggers.human_trigger import HumanTrigger
 from bloomerp.automation.triggers.object_crud_trigger import ObjectCrudTrigger
 from bloomerp.automation.triggers.on_schedule_trigger import ScheduleTrigger
 from bloomerp.utils.registry import BaseRegistry
-
+from bloomerp.automation.triggers.object_action_trigger import ObjectActionTrigger
 
 WorkflowNodeType = Literal["ACTION", "FLOW", "TRIGGER"]
 
@@ -173,6 +173,14 @@ WORKFLOW_NODES = [
         "Check whether the number of elements in a list satisfies a condition",
         executor_cls=ListCountConditionExecutor,
         icon="fa-solid fa-code-branch"
+    ),
+    WorkflowNodeDefinition(
+        "OBJECT_ACTION",
+        "TRIGGER",
+        "Object Action Trigger",
+        "Triggers a workflow when a user clicks a button on a particular object.",
+        executor_cls=ObjectActionTrigger,
+        icon="fa-solid fa-bolt"
     )
 ]
 

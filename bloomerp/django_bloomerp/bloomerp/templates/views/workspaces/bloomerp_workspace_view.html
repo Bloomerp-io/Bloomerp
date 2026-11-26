@@ -1,4 +1,5 @@
 {% load i18n %}
+<div class="contents" data-preference-refresh="workspace" data-preference-refresh-url="{{ request.get_full_path }}">
 {% if workspace %}
     <c-features.workspaces.container 
         :workspace="workspace" 
@@ -40,4 +41,5 @@
         </div>
     </c-ui.center_page_element>
 {% endif %}
+</div>
 

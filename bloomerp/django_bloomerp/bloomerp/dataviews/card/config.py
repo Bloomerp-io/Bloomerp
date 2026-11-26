@@ -13,6 +13,7 @@ class CardDataView(BaseDataview):
     """A declarative card dataview."""
 
     view_type: Literal["card"] = "card"
+    dataview_component_id: str | None = "card-view"
     page_size: Literal[10, 25, 50, 100] = 25
 
     @classmethod

@@ -1,0 +1,66 @@
+{% load bloomerp i18n %}
+<div bloomerp-component="{{ dataview_component_id|default:'file-browser' }}" data-folder-type="{{ folder_type }}"
+     data-content-type-id="{{ content_type_id }}"
+     data-dataview-record-type="{{ file_content_type_id }}"
+     {% if file_content_type_id != content_type_id %}data-record-selection-disabled{% endif %}
+     data-upload-url="{{ upload_url }}" data-upload-model-label="{{ upload_model_label }}"
+     data-upload-object-id="{{ upload_object_id }}">
+    <div class="overflow-x-auto">
+        <table class="table table-auto table-hover">
+            <thead>
+                <tr>
+                    <td colspan="6" class="border-b border-gray-200 bg-gray-50 px-4 py-3">
+                        <div class="flex flex-wrap items-center justify-between gap-3" data-file-browser-header>
+                            <nav aria-label="{% trans 'File folders' %}" class="flex min-w-0 flex-wrap items-center gap-1 text-sm" data-file-browser-navigation>
+                                <i class="fa fa-folder-open mr-1 text-gray-400" aria-hidden="true"></i>
+                                {% for crumb in breadcrumbs %}
+                                    {% if not forloop.first %}<i class="fa fa-chevron-right px-1 text-xs text-gray-400" aria-hidden="true"></i>{% endif %}
+                                    {% if forloop.last %}
+                                        <span class="shrink-0 font-medium text-gray-900" aria-current="page">{{ crumb.name }}</span>
+                                    {% else %}
+                                        <button type="button" class="shrink-0 rounded px-1 py-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-primary"
+                                                data-browser-path="{{ crumb.path|default:'' }}"
+                                                data-browser-folder="{{ crumb.folder_id|default:'' }}">{{ crumb.name }}</button>
+                                    {% endif %}
+                                {% endfor %}
+                            </nav>
+                            <div class="flex items-center gap-2" data-file-browser-actions>
+                                <select data-folder-type-select class="select select-sm rounded-xl border-gray-200 bg-white" aria-label="{% trans 'Folder type' %}">
+                                    <option value="virtual" {% if folder_type == 'virtual' %}selected{% endif %}>{% trans "Virtual folders" %}</option>
+                                    <option value="physical" {% if folder_type == 'physical' %}selected{% endif %}>{% trans "Physical folders" %}</option>
+                                </select>
+                                {% if can_upload %}
+                                    <label class="btn btn-sm btn-primary cursor-pointer">
+                                        <i class="fa fa-upload" aria-hidden="true"></i>{% trans "Upload" %}
+                                        <input type="file" multiple class="sr-only" data-file-browser-upload-input aria-label="{% trans 'Upload files' %}">
+                                    </label>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                <th scope="col" class="w-10" data-dataview-selection-column><c-features.dataviews.checkbox :all="True" /></th>
+                <th>{% trans "Name" %}</th><th>{% trans "Objects" %}</th>
+                <th>{% trans "File Size" %}</th><th>{% trans "Uploaded At" %}</th><th>{% trans "Actions" %}</th>
+            </tr></thead>
+            <tbody>
+                {% for folder in folders %}
+                    <tr><td colspan="6">
+                        <button type="button" class="flex items-center gap-2 w-full text-left"
+                                data-browser-path="{{ folder.path|default:'' }}"
+                                data-browser-folder="{{ folder.folder_id|default:'' }}">
+                            <i class="fa fa-folder" aria-hidden="true"></i>{{ folder.name }}
+                        </button>
+                    </td></tr>
+                {% endfor %}
+                {% for file in files %}
+                    {% include dataview_item_template|default:"dataview/file_browser/item.html" with row_index=forloop.counter0 %}
+                {% endfor %}
+                {% if not folders and not files %}
+                    <tr><td colspan="6" class="py-8 text-center text-base-content/60">{% trans "No files found" %}</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>

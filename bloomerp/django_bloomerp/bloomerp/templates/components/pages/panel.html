@@ -3,12 +3,12 @@
      data-navigation-url="{% url 'components_pages_navigation' %}" data-fullscreen-url="{% url 'pages_model' %}" data-editor-url="{% url 'components_pages_editor' %}">
     {% static 'bloomerp/img/pages-header-logo.png' as pages_logo %}
     <c-ui.floating_panel panel_id="bloomerp-pages-panel" title="{% translate 'Pages' %}" :logo="pages_logo"
-        launcher_label="{% translate 'Open Pages scratchpad' %}" close_label="{% translate 'Close Pages scratchpad' %}"
+        launcher_label="{% translate 'Open Pages scratchpad' %}" launcher_shortcut="k then p" close_label="{% translate 'Close Pages scratchpad' %}"
         storage_key="bloomerp_pages_{{ request.user.pk }}">
         <c-slot name="launcher"><i class="fa-regular fa-file-lines" aria-hidden="true"></i><span>{% translate 'Pages' %}</span></c-slot>
         <c-slot name="header_controls">
-            <button type="button" data-pages-history aria-label="{% translate 'Page history' %}" title="{% translate 'Page history' %}" class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i></button>
-            <button type="button" data-pages-new aria-label="{% translate 'New page' %}" class="flex h-8 w-8 items-center justify-center rounded-lg text-primary-800 hover:bg-primary-50"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
+            <button type="button" data-pages-history aria-label="{% translate 'Page history' %}" title="{% translate 'Page history' %}" class="icon-button"><i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i></button>
+            <button type="button" data-pages-new aria-label="{% translate 'New page' %}" class="icon-button"><i class="fa-solid fa-plus" aria-hidden="true"></i></button>
         </c-slot>
         <c-slot name="sidebar">
             <div data-pages-history-panel hidden class="min-h-0 flex-1 overflow-y-auto px-5 py-4">

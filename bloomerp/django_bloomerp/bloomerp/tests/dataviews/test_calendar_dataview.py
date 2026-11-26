@@ -140,16 +140,41 @@ class TestCalendarDataview(BloomerpDataviewTestCase):
             {1: (0, 3), 2: (1, 3), 3: (2, 3), 4: (1, 3), 5: (0, 1), 6: (0, 1)},
         )
 
-    def test_short_events_respect_the_minimum_rendered_height(self) -> None:
-        """Avoid visually overlapping cards even when consecutive short events do not overlap in time."""
+    def test_timed_events_share_columns_only_when_their_times_overlap(self) -> None:
+        """Stack short and touching events and separate those that overlap by a minute."""
+        renderer = self.mixed_renderer("week")
         base = datetime(2026, 10, 15, 9, tzinfo=timezone.get_current_timezone())
-        events = [
-            {"object": SimpleNamespace(pk=index), "start_date": base.date(), "start_time": (base + timedelta(minutes=offset)).time(),
-             "duration_minutes": 15, "all_day": False}
-            for index, offset in enumerate((0, 15, 36))
-        ]
-        positioned = CalendarDataviewRenderer._position_timed_events(events)
-        self.assertEqual([(event["timed_column"], event["timed_columns"]) for event in positioned], [(0, 2), (1, 2), (0, 1)])
+
+        def event(identifier: int, start_offset: int, end_offset: int) -> SimpleNamespace:
+            """Construct a timed record using minutes relative to 09:00."""
+            return SimpleNamespace(
+                pk=identifier,
+                start=base + timedelta(minutes=start_offset),
+                end=base + timedelta(minutes=end_offset),
+                start_date=None,
+                end_date=None,
+            )
+
+        for ending_minute, expected in (
+            (25, [(0, 1), (0, 1)]),
+            (30, [(0, 1), (0, 1)]),
+            (31, [(0, 2), (1, 2)]),
+        ):
+            with self.subTest(ending_minute=ending_minute):
+                events, _legend = renderer._build_events(
+                    [event(1, 0, ending_minute), event(2, 30, 60)],
+                    renderer.get_start_field(renderer.state.fields, renderer.options),
+                    renderer.get_end_field(renderer.state.fields, renderer.options),
+                    None,
+                )
+                self.assertEqual(
+                    [(item["timed_column"], item["timed_columns"]) for item in events],
+                    expected,
+                )
+                self.assertEqual(
+                    events[0]["display_duration_minutes"],
+                    ending_minute if ending_minute <= 30 else 33,
+                )
 
     def test_unreadable_or_ambiguous_date_ranges_are_not_rendered(self) -> None:
         """Suppress incomplete or mixed pairs and dates denied by row-specific field access."""
@@ -169,6 +194,7 @@ class TestCalendarDataview(BloomerpDataviewTestCase):
     def test_view_mode_saves_only_the_calendar_period(self) -> None:
         """Save each supported period without losing date fields or other dataview options."""
         preference = SimpleNamespace(
+            pk=1,
             options={"calendar": {"start_field": "start", "end_field": "end"}, "table": {"page_size": 20}},
             save=Mock(),
         )
@@ -194,7 +220,7 @@ class TestCalendarDataview(BloomerpDataviewTestCase):
         """Reject malformed JSON, unsupported periods, and invalid JSON value types."""
         for payload in ('{', '[]', '{}', '{"view_mode":"decade"}', '{"view_mode":[]}'):
             with self.subTest(payload=payload):
-                preference = SimpleNamespace(options={}, save=Mock())
+                preference = SimpleNamespace(pk=1, options={}, save=Mock())
                 request = RequestFactory().post("/", payload, content_type="application/json")
                 request.user = Mock()
                 with patch("bloomerp.dataviews.calendar.renderer.PreferenceManager") as manager:
@@ -207,7 +233,7 @@ class TestCalendarDataview(BloomerpDataviewTestCase):
 
     def test_view_mode_requires_post_and_preference_management(self) -> None:
         """Prevent reads and users without preference ownership from changing saved periods."""
-        preference = SimpleNamespace(options={}, save=Mock())
+        preference = SimpleNamespace(pk=1, options={}, save=Mock())
         state = SimpleNamespace(preference=preference)
         request = RequestFactory().get("/")
         self.assertEqual(CalendarDataviewRenderer.handle_action("view-mode", request, state).status_code, 405)

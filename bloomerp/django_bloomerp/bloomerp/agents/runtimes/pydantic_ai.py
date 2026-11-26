@@ -5,10 +5,8 @@ Chat Completions. Credentials and HTTP clients are scoped to an attempt. This
 module does not depend on Django, Redis, or a worker: a runner may consume it in
 an async request or a worker (or via an async bridge from synchronous code).
 
-Only extracted artifact content is supported initially. Native file uploads and
-cost accounting require separate integrations; unsupported budgets/settings are
-rejected rather than silently ignored. Checkpoints contain sensitive model
-history and must have the same access restrictions as the conversation.
+Checkpoints retain protected file references and sensitive model history.
+Attachment bytes are resolved for the provider request under current permissions.
 """
 
 from __future__ import annotations
@@ -17,6 +15,7 @@ import asyncio
 import json
 import logging
 from collections.abc import AsyncIterable
+from dataclasses import replace
 from importlib.metadata import version
 from typing import Any, cast
 from uuid import UUID, uuid4
@@ -27,6 +26,8 @@ from pydantic_ai import Agent, DeferredToolRequests, RunContext
 from pydantic_ai.exceptions import ModelHTTPError, UsageLimitExceeded
 from pydantic_ai.messages import (
     AgentStreamEvent,
+    BinaryContent,
+    DocumentUrl,
     ModelMessage,
     ModelMessagesTypeAdapter,
     ModelRequest,
@@ -41,6 +42,8 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 from pydantic_ai.models import Model
+from pydantic_ai.models.anthropic import AnthropicModel
+from pydantic_ai.models.openai import OpenAIChatModel, OpenAIResponsesModel
 from pydantic_ai.result import AgentStream
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.tools import ToolDefinition
@@ -79,6 +82,7 @@ from bloomerp.agents.runtime import (
 SDK_VERSION = version("pydantic-ai-slim")
 RUNTIME_VERSION = "1"
 MAX_TOOL_JSON_CORRECTIONS = 2
+ATTACHMENT_PREFIX = "bloomerp-file:"
 
 
 class MalformedToolArgumentsError(ValueError):
@@ -199,6 +203,22 @@ def _messages(
                         block.provider_call_id,
                     )
                 )
+            elif block.type == "artifact" and block.file_id and block.media_type:
+                parts.append(
+                    UserPromptPart(
+                        [
+                            str(
+                                block.content.get(
+                                    "description", f"Attachment {block.artifact_id}"
+                                )
+                            ),
+                            DocumentUrl(
+                                f"{ATTACHMENT_PREFIX}{block.file_id}",
+                                media_type=block.media_type,
+                            ),
+                        ]
+                    )
+                )
             else:
                 text = (
                     block.text
@@ -232,6 +252,73 @@ def _serialize(history: list[ModelMessage]) -> list[JsonValue]:
     return json.loads(ModelMessagesTypeAdapter.dump_json(history))
 
 
+def supports_attachment(model: Model, media_type: str) -> bool:
+    """Check the pinned SDK transport's binary encoding for this media type."""
+    binary = BinaryContent(data=b"", media_type=media_type)
+    try:
+        file_format = binary.format
+    except ValueError:
+        return False
+    if isinstance(model, AnthropicModel):
+        return binary.is_image or media_type in {"application/pdf", "text/plain"}
+    if isinstance(model, OpenAIResponsesModel):
+        return binary.is_image or binary.is_document
+    if isinstance(model, OpenAIChatModel):
+        return (
+            binary.is_image
+            or binary.is_document
+            or (binary.is_audio and file_format in {"wav", "mp3"})
+        )
+    return True
+
+
+async def _attachment_history(
+    request: AgentRuntimeRunRequest, model: Model, history: list[ModelMessage]
+) -> list[ModelMessage]:
+    """Resolve protected references for this request, prioritizing the latest messages."""
+    remaining = request.attachment_byte_limit
+    hydrated: list[ModelMessage] = []
+    for message in reversed(history):
+        if isinstance(message, ModelRequest):
+            parts = list(message.parts)
+            for index, part in enumerate(parts):
+                if not isinstance(part, UserPromptPart) or isinstance(
+                    part.content, str
+                ):
+                    continue
+                match part.content:
+                    case [str(description), DocumentUrl(url=url) as file] if (
+                        url.startswith(ATTACHMENT_PREFIX)
+                    ):
+                        pass
+                    case _:
+                        continue
+                data = None
+                if (
+                    remaining
+                    and request.attachment_reader is not None
+                    and request.config.modalities is not None
+                    and request.config.modalities.accepts_attachment(file.media_type)
+                    and supports_attachment(model, file.media_type)
+                ):
+                    data = await request.attachment_reader(
+                        UUID(url.removeprefix(ATTACHMENT_PREFIX)),
+                        file.media_type,
+                        remaining,
+                    )
+                content: str | BinaryContent = (
+                    "Native file content is unavailable for this request."
+                )
+                if data and len(data) <= remaining:
+                    content = BinaryContent(data=data, media_type=file.media_type)
+                    remaining -= len(data)
+                parts[index] = replace(part, content=[description, content])
+            if parts != list(message.parts):
+                message = replace(message, parts=parts)
+        hydrated.append(message)
+    return list(reversed(hydrated))
+
+
 class PydanticAIRuntime(BaseAgentRuntime[_State]):
     """Adapt PydanticAI agents and histories to the shared runtime lifecycle."""
 
@@ -257,7 +344,7 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
                     message.role != "user" or not block.content
                 ):
                     raise ValueError(
-                        "Artifacts require extracted content in a user message; native file URLs are not supported"
+                        "Artifacts require a description or structured content in a user message"
                     )
 
     def _initial_state(self, request: AgentRuntimeRunRequest) -> _State:
@@ -486,8 +573,9 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
                 while True:
                     attempt.failure_stage = "model_request"
                     try:
+                        provider_history = await _attachment_history(request, model, history)
                         result = await agent.run(
-                            message_history=history,
+                            message_history=provider_history,
                             model_settings=cast(ModelSettings, turn_settings),
                             usage=tokens,
                             usage_limits=UsageLimits(
@@ -506,7 +594,11 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
                                 "retry_after_seconds": retry_after,
                                 "response_started": response_started,
                             })
-                            raise ModelRequestFailed(classified) from error
+                            # Provider error bodies may echo input files or credentials.
+                            safe_error = ModelHTTPError(
+                                error.status_code, error.model_name
+                            ).with_traceback(error.__traceback__)
+                            raise ModelRequestFailed(classified) from safe_error
                         retries += 1
                         attempt.failure_stage = "model_retry_wait"
                         # History contains completed tool outcomes. Retry only this
@@ -525,7 +617,11 @@ class PydanticAIRuntime(BaseAgentRuntime[_State]):
                     input_tokens=tokens.input_tokens, output_tokens=tokens.output_tokens
                 )
                 attempt.failure_stage = "model_response_serialization"
-                state.history = _serialize(result.all_messages())
+                state.history = _serialize(
+                    history + result.new_messages()
+                    if provider_history != history
+                    else result.all_messages()
+                )
                 if isinstance(result.output, DeferredToolRequests):
                     attempt.failure_stage = "tool_proposal_parsing"
                     catalog = {tool.identifier: tool for tool in request.tools}

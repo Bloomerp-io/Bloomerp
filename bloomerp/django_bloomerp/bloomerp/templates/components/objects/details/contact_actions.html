@@ -6,7 +6,13 @@
             {% include "components/objects/details/contact_items.html" %}
         </c-ui.dropdown.submenu>
     {% else %}
-        <c-ui.dropdown.body :trigger_text="contact_action_label" trigger_icon_class="fa fa-address-book" trigger_button_class="btn btn-secondary btn-sm" :fixed="True">
+        <c-ui.dropdown.body
+            :trigger_text="contact_action_label"
+            trigger_icon_class="fa fa-address-book"
+            trigger_button_class="btn-secondary"
+            :trigger_size="action_context.button_size"
+            :fixed="True"
+        >
             {% include "components/objects/details/contact_items.html" %}
         </c-ui.dropdown.body>
     {% endif %}

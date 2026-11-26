@@ -23,6 +23,7 @@ from bloomerp.models.definition import (
     BloomerpModelConfig,
     DetailViewSettings,
     FieldLayout,
+    FieldSettings,
     LayoutItem,
     LayoutRow,
     ModelViewSettings,
@@ -285,6 +286,23 @@ class ApplicationField(models.Model):
     def get_model(self) -> Type[models.Model]:
         """Returns the model class for this application field."""
         return self.content_type.model_class()
+    
+    def get_model_config(self) -> Optional[BloomerpModelConfig]:
+        """Returns the model config for this application field, if any."""
+        from bloomerp.models.definition import get_model_config
+        return get_model_config(self.get_model())
+
+    def get_field_setting(self) -> Optional["FieldSettings"]:
+        """Returns the field setting for this application field, if any."""
+        model_config = self.get_model_config()
+        if not model_config or model_config.field_settings is None:
+            return None
+        
+        for setting in model_config.field_settings:
+            if setting.field == self.field:
+                return setting
+        return None
+        
     
     def get_related_model(self) -> Optional[models.Model]:
         """Returns the related model class for this application field, if any."""

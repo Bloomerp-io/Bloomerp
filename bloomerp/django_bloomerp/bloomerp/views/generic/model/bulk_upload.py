@@ -129,7 +129,10 @@ def ctx_review_step(request: HttpRequest, view, orchestrator: BaseStateOrchestra
     }
 
 
-def pcs_review_step(request: HttpRequest, view:"BloomerpBulkUploadView", orchestrator: BaseStateOrchestrator):
+def pcs_review_step(
+    request: HttpRequest, view: BloomerpBulkUploadView, orchestrator: BaseStateOrchestrator,
+) -> WizardError | None:
+    """Validate the current review page, save row edits, and update pagination."""
     file_id = orchestrator.get_session_data(DRAFT_FILE_ID_KEY)
     if not file_id:
         return WizardError(
@@ -150,7 +153,6 @@ def pcs_review_step(request: HttpRequest, view:"BloomerpBulkUploadView", orchest
 
     if not review_page.formset.is_valid():
         review_page.page_row_errors = {}
-        review_page.invalid_row_indexes = []
         for form in review_page.formset.forms:
             if not form.errors and not form.non_field_errors():
                 continue
@@ -162,7 +164,6 @@ def pcs_review_step(request: HttpRequest, view:"BloomerpBulkUploadView", orchest
             non_field_errors = [str(error) for error in form.non_field_errors()]
             if non_field_errors:
                 review_page.page_row_errors[row_index]["__all__"] = non_field_errors
-            review_page.invalid_row_indexes.append(str(row_index))
         return WizardError(
             message="Please fix the highlighted row errors before continuing.",
             title="Review errors",
@@ -187,6 +188,7 @@ def pcs_review_step(request: HttpRequest, view:"BloomerpBulkUploadView", orchest
     orchestrator.set_session_data(REVIEW_PAGE_KEY, next_page)
     view._review_page_number_override = next_page
     view._review_page = None
+    return None
 
 
 def ctx_confirm_step(request: HttpRequest, view:"BloomerpBulkUploadView", orchestrator: BaseStateOrchestrator):

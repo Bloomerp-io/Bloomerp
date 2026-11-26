@@ -16,8 +16,6 @@ export default class CalendarEventEditor extends ObjectCRUDViewContainer {
         const users = this.element.querySelector<HTMLInputElement>('[name="attendee_users"]');
         if (source && users) {
             const searchUrl = new URL(this.element.dataset.recipientSearchUrl!, location.origin);
-            const token = this.value("_permission_token");
-            if (token) searchUrl.searchParams.set("_permission_token", token);
             this.recipients = new EmailRecipients(source, this.lifecycle.signal, searchUrl.pathname + searchUrl.search, users);
         }
         this.element.addEventListener("change", this.onChange, { signal: this.lifecycle.signal });
@@ -94,7 +92,6 @@ export default class CalendarEventEditor extends ObjectCRUDViewContainer {
             users: this.selectedUsers(), day: this.value("start_date"), timezone: this.value("event_timezone"),
             startTime: this.value("start_time"), endTime: this.value("end_time"), endDate: this.value("end_date"),
             allDay: Boolean(this.element.querySelector<HTMLInputElement>('[name="all_day"]')?.checked),
-            token: this.value("_permission_token"),
         });
     }
 

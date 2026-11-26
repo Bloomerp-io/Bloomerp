@@ -1,24 +1,107 @@
-from bloomerp.models.mixins.default_filters_mixin import DefaultFiltersMixin
-from django.utils.translation import gettext_lazy as _, gettext_noop
 from typing import Any
 
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import Case, IntegerField, QuerySet, When
+from django.db.models.functions import Coalesce
 from django.urls import reverse
+from django.utils.translation import gettext_lazy as _, gettext_noop
+from django_htmx.http import HttpResponseLocation
 
+from bloomerp.lookups.builtins.utils import no_value_form_factory
+from bloomerp.lookups.definition import CompiledLookup, LookupDefinition
+from bloomerp.middleware import current_request
 from bloomerp.models import BloomerpModel, FieldLayout, LayoutRow
+from bloomerp.models.application_field import ApplicationField
+from bloomerp.models.definition import (
+    DataviewAction,
+    DataviewActionContext,
+    DataviewActionDefinition,
+    ModelViewSettings,
+    ObjectAction,
+    ObjectActionContext,
+    ObjectActionDefinition,
+    StringSearchSettings,
+    get_default_dataview_actions,
+)
 from bloomerp.models.mixins.content_layout_model_mixin import ContentLayoutModelMixin
+from bloomerp.models.mixins.default_filters_mixin import DefaultFiltersMixin
+from bloomerp.models.actions.object.builtins import get_default_object_actions
 from bloomerp.models.users.base_preference import BasePreference
 from bloomerp.models.users.user import AbstractBloomerpUser
 from bloomerp.models.workspaces.tile import Tile
 from bloomerp.modules.definition import module_registry
 
 
+def available_workspace_filter(
+    _field: ApplicationField, field_path: str, _expression: str, value: bool,
+) -> CompiledLookup:
+    """Match the live workspace behind each preference available to the current user."""
+    from bloomerp.services.preference_services import PreferenceManager
+
+    user = getattr(current_request(), "user", None)
+    if user is None or not user.is_authenticated:
+        raise ValidationError("Workspace availability requires a signed-in user")
+    available_ids = PreferenceManager(user).get_available(Workspace).order_by().annotate(
+        effective_id=Coalesce("source_object_id", "pk"),
+    ).values("effective_id")
+    predicate = models.Q(**{f"{field_path}__in": available_ids})
+    return CompiledLookup(predicate=predicate if value else ~predicate)
+
+
+def open_workspace_attrs(context: ObjectActionContext) -> dict[str, str]:
+    """Link a workspace card to its full workspace view."""
+    url = context.object.get_absolute_url()
+    return {"href": url, "hx-get": url, "hx-target": "#main-content", "hx-push-url": "true"}
+
+
+def open_workspace_create_view(_context: DataviewActionContext) -> HttpResponseLocation:
+    """Navigate to the workspace creation page through HTMX."""
+    return HttpResponseLocation(reverse("workspaces_add"), target="#main-content")
+
+
+AVAILABLE_WORKSPACE = LookupDefinition(
+    id="workspace_available",
+    label=gettext_noop("Available workspace"),
+    expressions=("workspace_available",),
+    q_factory=available_workspace_filter,
+    default_form_factory=no_value_form_factory,
+)
+OPEN_WORKSPACE = ObjectAction(
+    id="open-workspace",
+    label=gettext_noop("Open workspace"),
+    button_attrs=open_workspace_attrs,
+)
+CREATE_WORKSPACE = DataviewAction(
+    id="add",
+    label=gettext_noop("Create"),
+    icon="fa fa-plus",
+    execution_func=open_workspace_create_view,
+    method="GET",
+    button_attrs={"hx-target": "#main-content"},
+)
+
+
+def workspace_object_actions(model: type[models.Model]) -> list[ObjectActionDefinition]:
+    """Register the workspace link alongside the model's standard actions."""
+    return [OPEN_WORKSPACE, *get_default_object_actions(model)]
+
+
+def workspace_dataview_actions(model: type[models.Model]) -> list[DataviewActionDefinition]:
+    """Use the personal workspace form for the toolbar's create action."""
+    return [CREATE_WORKSPACE, *get_default_dataview_actions(model, skip=("add",))]
+
+
 class Workspace(DefaultFiltersMixin, ContentLayoutModelMixin, BasePreference):
     """A selectable, shareable workspace preference scoped by module."""
 
     preference_scope_fields = ("module_id",)
+    filter_lookups = {"id": (AVAILABLE_WORKSPACE,)}
+    bloomerp_config = BasePreference.bloomerp_config.model_copy(update={
+        "model_view_settings": ModelViewSettings(dataview_actions=workspace_dataview_actions),
+        "object_actions": workspace_object_actions,
+        "string_search_settings": StringSearchSettings(string_search_fields=["name"]),
+    })
 
     class Meta(BloomerpModel.Meta):
         verbose_name = _("Workspace")

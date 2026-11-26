@@ -7,13 +7,14 @@ import { navigateAgentPage } from '@/utils/agent';
 export default class PagesWorkspace extends BaseComponent {
     private readonly lifecycle = new AbortController();
 
-    /** Bind page links and refresh grouped history after committed edits. */
+    /** Bind navigation and save handlers, then focus the opened document. */
     public initialize(): void {
         const options = { signal: this.lifecycle.signal };
         this.element.addEventListener('click', this.navigate, options);
         this.element.addEventListener('bloomerp:page-saved', this.saved, options);
         this.element.addEventListener('bloomerp:page-deleted', this.deleted, options);
         this.element.addEventListener('htmx:beforeCleanupElement', this.cleanup, options);
+        this.editor().focusBody();
     }
 
     /** Resolve the single active editor for this workspace. */

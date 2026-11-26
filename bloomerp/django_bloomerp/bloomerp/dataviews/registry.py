@@ -43,6 +43,9 @@ class DataviewRegistry(BaseRegistry[DataviewTypeDefinition]):
             BaseDataview,
         ):
             raise TypeError("Dataview config_cls must extend BaseDataview.")
+        template = obj.renderer_cls.item_template_name
+        if obj.record_based and (not isinstance(template, str) or not template.strip()):
+            raise ValueError(f"Record-based Dataview {key!r} must declare an item_template_name.")
 
         view_type_field = obj.config_cls.model_fields.get("view_type")
         if view_type_field is None or view_type_field.default != key:
@@ -91,6 +94,13 @@ def register_dataview(
 
     Third-party Django apps may call this from a top-level ``dataviews`` module;
     Bloomerp imports those modules during application startup.
+    Record-based renderers must declare ``item_template_name`` and include it
+    as ``dataview_item_template`` when rendering their collection. Use
+    ``{% dataview_record_attrs object dataview_action_context row_index %}``
+    on each item root and include ``data-dataview-item-placement`` when the
+    renderer needs it to replace an individual occurrence.
+    The built-in types use ``dataview/<key>/body.html`` and
+    ``dataview/<key>/item.html``.
     """
     DATAVIEW_REGISTRY.register(definition.key, definition)
     return definition
@@ -159,6 +169,7 @@ register_dataview(
         icon="fa fa-table",
         renderer_cls=PivotTableDataviewRenderer,
         config_cls=PivotTableDataView,
+        record_based=False,
     )
 )
 

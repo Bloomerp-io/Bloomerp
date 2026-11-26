@@ -9,35 +9,14 @@ from django.utils.translation import gettext
 from django.template.loader import render_to_string
 
 from bloomerp.models import LayoutItem
-from bloomerp.models.workspaces.workspace import Workspace
 from bloomerp.models.workspaces.tile import Tile
 from bloomerp.modules.definition import ModuleRegistry, module_registry
-from bloomerp.workspaces.analytics_tile.utils import TileFieldType
 from bloomerp.workspaces.base import BaseTileConfig
 from bloomerp.workspaces.links_tile.model import Link, LinkTileConfig
 from bloomerp.workspaces.registry import TILE_TYPE_REGISTRY
 from bloomerp.models.users import User
 from bloomerp.services.sectioned_layout_services import AvailableLayoutItem
 from django.db.models import Q
-from django.forms import Form
-from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
-
-
-PRIMITIVE_FIELD_TYPE_MAP = {
-    TileFieldType.TEXT.value.key: FIELD_TYPE_REGISTRY.CHAR_FIELD,
-    TileFieldType.NUMERIC.value.key: FIELD_TYPE_REGISTRY.DECIMAL_FIELD,
-    TileFieldType.DATE.value.key: FIELD_TYPE_REGISTRY.DATE_FIELD,
-    TileFieldType.DATETIME.value.key: FIELD_TYPE_REGISTRY.DATE_TIME_FIELD,
-    TileFieldType.BOOL.value.key: FIELD_TYPE_REGISTRY.BOOLEAN_FIELD,
-}
-
-
-
-def select_workspace(workspace: Workspace, user: User) -> Workspace:
-    """Select an owned or shared workspace for the user's module scope."""
-    from bloomerp.services.preference_services import PreferenceManager
-
-    return PreferenceManager(user).select(workspace)
 
 
 def resolve_tile_type_from_config(config: BaseTileConfig) -> str:

@@ -147,6 +147,7 @@ class PreservedRelatedFieldsField(forms.Field):
 
 class FileBrowserDataview(BaseDataview):
     view_type: Literal["file_browser"] = "file_browser"
+    dataview_component_id: str | None = "file-browser"
     view_mode: Literal["normal", "split", "drawer"] = "normal"
     related_fields: dict[int, list[str]] = Field(default_factory=dict)
     folder_type:Literal['virtual', 'physical'] = 'virtual'

@@ -47,6 +47,7 @@ export class SavedFilters {
         }
     };
 
+    /** Build the saved-filter picker and its naming and save controls. */
     constructor(
         private api: FilterApi,
         private getFilters: () => Filter[],
@@ -86,7 +87,6 @@ export class SavedFilters {
         this.name.placeholder = t('Filter name');
         this.name.setAttribute('aria-label', t('Filter name'));
         this.saveButton = button('', () => { void this.save(); }, 'inline-flex h-9 w-9 shrink-0 items-center justify-center border-0 border-l border-gray-200 bg-transparent text-xs hover:bg-base disabled:opacity-50');
-        this.saveButton.title = t('Save filter');
         this.saveButton.setAttribute('aria-label', t('Save filter'));
         addTooltip(this.saveButton, { text: t('Save filter'), position: 'bottom' });
         const icon = element('i', 'fa-solid fa-floppy-disk');

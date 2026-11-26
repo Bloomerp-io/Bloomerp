@@ -1,0 +1,30 @@
+{% load i18n %}
+{% load bloomerp %}
+
+{% for row in gant_rows %}
+{% include dataview_item_template with row_index=forloop.counter0 %}
+{% empty %}
+    {% if not page_obj or page_obj.number == 1 %}
+    <div class="grid min-h-32 border-b border-gray-200" data-gant-layout>
+        <div class="sticky left-0 z-30 flex items-center border-r border-gray-200 bg-base px-3 text-sm text-gray-500">
+            {% blocktrans %}No scheduled records.{% endblocktrans %}
+        </div>
+        <div class="relative flex items-center justify-center bg-base text-xs text-gray-500" data-gant-dropzone>
+            {% blocktrans %}Drop an unscheduled record here.{% endblocktrans %}
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
+
+{% if page_obj and page_obj.has_next %}
+<div
+    class="py-3 text-center text-xs text-gray-500"
+    data-gant-page-loader
+    hx-get="{% url 'components_dataview_renderer_operation' content_type_id=content_type_id preference_id=preference.pk action='page' %}{% if gant_page_querystring %}?{{ gant_page_querystring }}&amp;{% else %}?{% endif %}gant_page={{ page_obj.next_page_number }}"
+    hx-trigger="intersect once"
+    hx-target="this"
+    hx-swap="outerHTML"
+>
+    {% blocktrans %}Loading more…{% endblocktrans %}
+</div>
+{% endif %}

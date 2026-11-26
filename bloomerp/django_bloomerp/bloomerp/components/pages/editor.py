@@ -16,4 +16,8 @@ from bloomerp.services.page_services import page_context
 @require_GET
 def page_editor(request: HttpRequest) -> HttpResponse:
     """Render an authorized page or a blank draft for the scratchpad."""
-    return render(request, "components/pages/editor.html", page_context(request))
+    return render(
+        request,
+        "components/pages/editor.html",
+        {**page_context(request), "compact_page_editor": True},
+    )

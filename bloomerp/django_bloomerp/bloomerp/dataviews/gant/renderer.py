@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 from datetime import date, datetime, time, timedelta
 from math import isfinite
-from typing import Any, Iterable
+from typing import TYPE_CHECKING, Any, Iterable
 
 from django.db import transaction
-from django.db.models import Max, Min, Q, QuerySet
+from django.db.models import Max, Min, Model, Q, QuerySet
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -16,14 +16,19 @@ from bloomerp.models.application_field import ApplicationField
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 
-from ..definition import BaseDataviewRenderer, DataviewPagination
+from ..definition import BaseDataviewRenderer, DataviewPagination, DataviewState
+from ..unscheduled import UnscheduledDataviewMixin
+
+if TYPE_CHECKING:
+    from bloomerp.models.definition import DataviewActionContext
 
 
-class GanttDataviewRenderer(BaseDataviewRenderer):
+class GanttDataviewRenderer(UnscheduledDataviewMixin, BaseDataviewRenderer):
     """Render records as rows on a horizontally scaled Gantt timeline."""
 
-    template_name = "cotton/features/dataviews/gant.html"
-    reserved_query_params = {"gant_page", "gant_unscheduled_page"}
+    template_name = "dataview/gantt/body.html"
+    item_template_name = "dataview/gantt/item.html"
+    reserved_query_params = {"gant_page", "gant_unscheduled_page", "unscheduled_q"}
 
     @classmethod
     def apply_sorting(
@@ -81,12 +86,46 @@ class GanttDataviewRenderer(BaseDataviewRenderer):
         )
         return DataviewPagination(queryset=page_obj, page_obj=page_obj)
 
-    def get_context_data(self, pagination: DataviewPagination) -> dict[str, Any]:
+    def get_context_data(
+        self, pagination: DataviewPagination, *, include_unscheduled: bool = True,
+    ) -> dict[str, Any]:
+        """Include both the timeline and the independently paginated sidebar."""
         context = super().get_context_data(pagination)
         context.update(self._build_gant_context(pagination.queryset))
+        if include_unscheduled:
+            context.update(self._unscheduled_context())
         return context
 
-    def _build_gant_context(self, objects: Iterable) -> dict[str, Any]:
+    def get_item_context(
+        self,
+        obj: Model,
+        row_index: int,
+        action_context: DataviewActionContext,
+        *,
+        placement: str = "",
+    ) -> dict[str, Any] | None:
+        """Build one timeline row or unscheduled item in its current location."""
+        start = self.get_field_from_data_view_fields(self.state.fields, self.options.start_field)
+        end = self.get_field_from_data_view_fields(self.state.fields, self.options.end_field)
+        if not start or not end:
+            return None
+        row = self._build_row(
+            obj, start, end,
+            self._get_self_relation_field(self.options.dependency_from_field),
+            self._get_self_relation_field(self.options.dependency_for_field),
+        )
+        current_placement = (
+            f"scheduled:{row['start_ms']}:{row['end_ms']}" if row["scheduled"] else "unscheduled"
+        )
+        if placement and placement != current_placement:
+            return None
+        context = super().get_item_context(obj, row_index, action_context, placement=placement)
+        if context is not None:
+            context["row"] = row
+        return context
+
+    def _build_gant_context(self, objects: Iterable[Model]) -> dict[str, Any]:
+        """Build the scheduled timeline and its pagination links."""
         start_field = self.get_field_from_data_view_fields(
             self.state.fields,
             getattr(self.options, "start_field", None),
@@ -111,13 +150,7 @@ class GanttDataviewRenderer(BaseDataviewRenderer):
             "gant_end_ms": None,
             "gant_page_querystring": self.build_querystring(
                 self.state.request,
-                ("page", "gant_page", "gant_unscheduled_page"),
-            ),
-            "gant_unscheduled_rows": [],
-            "gant_unscheduled_page_obj": None,
-            "gant_unscheduled_querystring": self.build_querystring(
-                self.state.request,
-                ("page", "gant_page", "gant_unscheduled_page"),
+                ("page", *self.reserved_query_params),
             ),
         }
         if not start_field or not end_field:
@@ -129,7 +162,6 @@ class GanttDataviewRenderer(BaseDataviewRenderer):
             end_field,
         )
 
-        unscheduled_page = self._get_unscheduled_page(start_field, end_field)
         context.update({
             "gant_start": timeline_start,
             "gant_end": timeline_end,
@@ -147,41 +179,41 @@ class GanttDataviewRenderer(BaseDataviewRenderer):
                 )
                 for obj in objects
             ],
-            "gant_unscheduled_rows": [
-                self._build_row(
-                    obj,
-                    start_field,
-                    end_field,
-                    dependency_from_field,
-                    dependency_for_field,
-                )
-                for obj in unscheduled_page
-            ],
-            "gant_unscheduled_page_obj": unscheduled_page,
         })
         return context
 
-    def _get_unscheduled_page(
-        self,
-        start_field: ApplicationField,
-        end_field: ApplicationField,
-    ):
+    def _unscheduled_context(self) -> dict[str, Any]:
+        """Search and page records missing either required timeline date."""
+        start_field = self.get_field_from_data_view_fields(
+            self.state.fields, getattr(self.options, "start_field", None),
+        )
+        end_field = self.get_field_from_data_view_fields(
+            self.state.fields, getattr(self.options, "end_field", None),
+        )
+        if not start_field or not end_field:
+            return {}
         queryset = self.state.queryset.filter(
             Q(**{f"{start_field.field}__isnull": True})
             | Q(**{f"{end_field.field}__isnull": True}),
         )
-        if not queryset.query.order_by:
-            queryset = queryset.order_by("pk")
-        return self.paginate_object_list(
+        page = self.paginate_unscheduled(
             queryset,
             int(getattr(self.options, "page_size", 25)),
-            self.state.request.GET.get("gant_unscheduled_page", 1),
+            "gant_unscheduled_page",
+        )
+        return self.unscheduled_context(
+            page,
+            [self._build_row(obj, start_field, end_field, None, None) for obj in page],
+            "gant_unscheduled_page",
         )
 
     @classmethod
-    def handle_action(cls, action: str, request, state) -> HttpResponse:
+    def handle_action(cls, action: str, request: HttpRequest, state: DataviewState) -> HttpResponse:
+        """Dispatch scheduling changes and independent timeline or sidebar pagination."""
         if action == "dates":
             return cls._update_dates(request, state)
+        if action == "unscheduled" and request.method == "POST":
+            return cls(state).unschedule_record()
 
         if action not in {"page", "unscheduled"}:
             return super().handle_action(action, request, state)
@@ -189,18 +221,29 @@ class GanttDataviewRenderer(BaseDataviewRenderer):
         if request.method != "GET":
             return HttpResponse("Method not allowed", status=405)
 
+        renderer = cls(state)
+        if action == "unscheduled":
+            return renderer.render_unscheduled(renderer._unscheduled_context())
+
         pagination = cls.paginate_queryset(
             state.queryset,
             state.preference,
             request,
             state.options,
         )
-        renderer = cls(state)
-        context = renderer.get_context_data(pagination)
+        context = renderer.get_context_data(pagination, include_unscheduled=False)
         context["page_obj"] = pagination.page_obj
-        if action == "unscheduled":
-            return render(request, "components/objects/dataview_gant_unscheduled.html", context)
-        return render(request, "components/objects/dataview_gant_rows.html", context)
+        return render(request, "dataview/gantt/rows.html", context)
+
+    def get_unschedule_fields(self, _obj: Model) -> tuple[ApplicationField, ...]:
+        """Return the two configured date fields visible in this Gantt view."""
+        start_field = self.get_field_from_data_view_fields(
+            self.state.fields, getattr(self.options, "start_field", None),
+        )
+        end_field = self.get_field_from_data_view_fields(
+            self.state.fields, getattr(self.options, "end_field", None),
+        )
+        return (start_field, end_field) if start_field and end_field else ()
 
     @classmethod
     def _update_dates(cls, request: HttpRequest, state) -> HttpResponse:
@@ -416,12 +459,13 @@ class GanttDataviewRenderer(BaseDataviewRenderer):
 
     def _build_row(
         self,
-        obj,
+        obj: Model,
         start_field: ApplicationField,
         end_field: ApplicationField,
-        dependency_from_field,
-        dependency_for_field,
+        dependency_from_field: ApplicationField | None,
+        dependency_for_field: ApplicationField | None,
     ) -> dict[str, Any]:
+        """Prepare a row's dates, scheduling permissions, and dependencies."""
         start_value = getattr(obj, start_field.field, None)
         end_value = getattr(obj, end_field.field, None)
         item_start = self._as_datetime(start_value)
@@ -454,6 +498,10 @@ class GanttDataviewRenderer(BaseDataviewRenderer):
             ),
             "can_edit_start": can_edit_start,
             "can_edit_end": can_edit_end,
+            "can_unschedule": (
+                can_edit_start and can_edit_end
+                and self.scheduling_dates_are_optional(start_field, end_field)
+            ),
             "dependency_from_id": self._related_object_id(obj, dependency_from_field),
             "dependency_for_id": self._related_object_id(obj, dependency_for_field),
         }

@@ -58,6 +58,10 @@ class AIAgentDetailsLayout(LayoutFormMixin):
                 ],
             ),
             (
+                _("Model capabilities"),
+                ["modalities", "discover_modalities"],
+            ),
+            (
                 _("Tools"),
                 [
                     "internal_tool_mode",
@@ -285,6 +289,8 @@ class CreateAIAgentView(WizardMixin, BaseBloomerpView, TemplateView):
         candidate.created_by = self.request.user
         candidate.updated_by = self.request.user
         candidate.set_credentials(form.credentials)
+        if not form.discover_model_modalities(candidate):
+            return WizardError(message=_("Review the agent details."), step=1)
         if not UserPolicyManager(self.request.user).candidate_matches_row_policies(
             candidate, "add"
         ):

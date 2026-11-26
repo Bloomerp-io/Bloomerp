@@ -14,6 +14,7 @@ from bloomerp.models.communication.calendar import (
     CalendarEvent,
     CalendarEventParticipant,
 )
+from bloomerp.utils.rich_text import format_content
 
 PARTSTAT_TO_STATUS = {
     "NEEDS-ACTION": "awaiting_response",
@@ -185,7 +186,7 @@ def build_scheduling_calendar(
     response_status: str | None = None,
     cancel_entire_event: bool = True,
 ) -> bytes:
-    """Emit scheduling properties, distinguishing attendee removal from whole-event cancellation."""
+    """Emit scheduling properties with a plain-text description for local events."""
     calendar = Calendar()
     calendar.add("PRODID", "-//Bloomerp//Calendar scheduling//EN")
     calendar.add("VERSION", "2.0")
@@ -196,7 +197,8 @@ def build_scheduling_calendar(
     component.add("DTSTAMP", stamp.astimezone(UTC))
     component.add("ORGANIZER", vCalAddress(f"mailto:{event.organizer_email}"))
     component.add("SUMMARY", event.title)
-    component.add("DESCRIPTION", event.content)
+    description = event.content if method == "REPLY" else format_content(event.content, "plain")
+    component.add("DESCRIPTION", description)
     component.add("LOCATION", event.location)
     component.add(
         "DTSTART", event.start_date if event.all_day else event.start.astimezone(UTC)

@@ -1,13 +1,16 @@
 import json
 from typing import Any
 from unittest.mock import patch
+from urllib.parse import parse_qsl, urlsplit
 from uuid import uuid4
 
 from bs4 import BeautifulSoup
+from django.conf import settings
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpRequest, HttpResponse
+from django.test import RequestFactory
 from django.urls import reverse
 
 from bloomerp.filters.definition import FilterCondition
@@ -19,6 +22,9 @@ from bloomerp.models import (
     RowPolicy,
     RowPolicyRule,
 )
+from bloomerp.models.communication.calendar import BookingLink
+from bloomerp.models.communication.inbox.inbox import Inbox
+from bloomerp.models.actions.object.create_object import create_object_action
 from bloomerp.models.project_management.initiative import Initiative
 from bloomerp.models.project_management.todo import Todo, TodoPriority, TodoStatus
 from bloomerp.models.users.user_object_layout_preference import (
@@ -33,12 +39,14 @@ from bloomerp.permissions.definition import (
 from bloomerp.permissions.manager import PolicyManager
 from bloomerp.router import router
 from bloomerp.services.preference_services import PreferenceManager
+from bloomerp.templatetags.bloomerp import render_object_action
 from bloomerp.tests.base.request_test_case_mixin import ExpectedResult
 from bloomerp.tests.base.view_test_case import (
     BloomerpModelViewTestCase,
     ModelRequestScenario,
     RequestScenario,
 )
+from bloomerp.utils.models import get_create_view_url
 
 
 def overridden_create_view(
@@ -62,6 +70,24 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
             field.field: field
             for field in ApplicationField.get_for_model(self.CustomerModel)
         }
+
+    def prepare_main_create_action(self, scenario: RequestScenario) -> None:
+        """Follow the rendered main-target action to the canonical create URL."""
+        source = Initiative.objects.create(name="Original initiative")
+        request = RequestFactory().get("/")
+        request.user = self.admin_user
+        action = create_object_action(
+            Initiative, target="main", initial={"name": "Follow-up initiative"},
+        )
+        button = BeautifulSoup(render_object_action(action, source, request), "html.parser").select_one(
+            "button[hx-get]",
+        )
+        self.assertIsNotNone(button)
+        self.assertEqual(button["hx-target"], "#main-content")
+        self.assertEqual(button["hx-push-url"], "true")
+        url = urlsplit(button["hx-get"])
+        self.assertEqual(url.path, reverse(get_create_view_url(Initiative)))
+        scenario.query_params = dict(parse_qsl(url.query))
 
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Return create-view scenarios, including form help-text rendering."""
@@ -88,10 +114,49 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
                 expected=ExpectedResult(response_validators=self.contains_text("The priority of the todo")),
             ),
             ModelRequestScenario(
+                name="Booking link preselects the server timezone by default",
+                model=BookingLink,
+                user=self.admin_user,
+                expected=ExpectedResult(
+                    response_validators=self.booking_server_timezone_selected
+                ),
+            ),
+            ModelRequestScenario(
+                name="Booking link offers timezones with GMT offsets",
+                model=BookingLink,
+                user=self.admin_user,
+                query_params={"timezone": "Asia/Kolkata"},
+                expected=ExpectedResult(
+                    response_validators=self.booking_timezone_choices_render
+                ),
+            ),
+            ModelRequestScenario(
+                name="Booking link saves and reopens structured availability",
+                model=BookingLink,
+                method="POST",
+                user=self.admin_user,
+                prepare=self.prepare_booking_availability,
+                expected=ExpectedResult(
+                    status_code=302, response_validators=self.booking_availability_saved
+                ),
+            ),
+            ModelRequestScenario(
                 name="Query parameters prefill create fields",
                 description="UC: A user follows a create URL containing field values.\nExpected Result: Matching form inputs are prefilled.",
                 model=customer, user=self.admin_user, query_params={"first_name": "XYZ"},
                 expected=ExpectedResult(response_validators=self.input_equals("first_name", "XYZ")),
+            ),
+            ModelRequestScenario(
+                name="Main create action opens the model create page with its defaults",
+                model=Initiative,
+                user=self.admin_user,
+                headers={"HX-Request": "true", "HX-Target": "main-content"},
+                prepare=self.prepare_main_create_action,
+                expected=ExpectedResult(response_validators=[
+                    self.contains_text('id="htmx-addendum"'),
+                    self.contains_text('hx-target="#main-content"'),
+                    self.input_equals("name", "Follow-up initiative"),
+                ]),
             ),
             ModelRequestScenario(
                 name="Generated create layout omits header attachment fields and enables Attach",
@@ -369,6 +434,53 @@ class TestBloomerpCreateView(BloomerpModelViewTestCase):
 
     def grant_no_row_policy(self, _scenario):
         self.grant_policy(["first_name", "last_name", "age"], [])
+
+    def prepare_booking_availability(self, scenario: RequestScenario) -> None:
+        """Submit a booking link with a weekly interval and an unavailable date."""
+        inbox = Inbox.objects.create(user=self.admin_user, name="Booking availability inbox")
+        self.booking_schedule = {
+            "start_date": "2026-12-01",
+            "days": {"monday": [{"start": "09:00", "end": "12:00"}]},
+            "exceptions": [{"date": "2026-12-07"}],
+        }
+        scenario.data = {
+            "title": "Consultation availability",
+            "organizing_inbox": str(inbox.pk),
+            "meeting_duration_minutes": "30",
+            "timezone": "Europe/Brussels",
+            "availability_hours": json.dumps(self.booking_schedule),
+        }
+
+    def booking_availability_saved(self, _response: HttpResponse) -> bool:
+        """Check the model and the reopened form agree on the serialized schedule."""
+        booking = BookingLink.objects.get(title="Consultation availability")
+        if booking.get_availability().model_dump(mode="json", exclude_defaults=True) != self.booking_schedule:
+            return False
+        response = self.client.get(booking.get_absolute_url())
+        soup = BeautifulSoup(response.content, "html.parser")
+        output = soup.select_one('[bloomerp-component="booking-availability"] [data-availability-value]')
+        return output is not None and json.loads(output["value"]) == self.booking_schedule
+
+    def booking_server_timezone_selected(self, response: HttpResponse) -> bool:
+        """Confirm an unprefilled booking form selects the configured server timezone."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        selected = soup.select_one('select[name="timezone"] option[selected]')
+        return selected is not None and selected.get("value") == settings.TIME_ZONE
+
+    def booking_timezone_choices_render(self, response: HttpResponse) -> bool:
+        """Check that the timezone select shows offsets and honors initial data."""
+        soup = BeautifulSoup(response.content, "html.parser")
+        select = soup.select_one('select[name="timezone"]')
+        if select is None:
+            return False
+        selected = select.select_one('option[value="Asia/Kolkata"][selected]')
+        utc = select.select_one('option[value="UTC"]')
+        return (
+            selected is not None
+            and selected.get_text(strip=True) == "(GMT+05:30) Asia/Kolkata"
+            and utc is not None
+            and utc.get_text(strip=True) == "(GMT+00:00) UTC"
+        )
 
     def generated_create_field_state(self, response: HttpResponse) -> bool:
         """Check generated forms omit header fields while offering attachment controls."""

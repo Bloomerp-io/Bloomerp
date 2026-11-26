@@ -23,6 +23,7 @@ class GanttDataView(BaseDataview):
     """A declarative Gantt dataview."""
 
     view_type: Literal["gantt"] = "gantt"
+    dataview_component_id: str | None = "gant-chart"
     start_field: str
     end_field: str
     dependency_from_field: str | None = None

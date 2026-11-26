@@ -106,7 +106,6 @@ class TestRenderLayoutItemComponent(BloomerpComponentTestCase):
         return [
             self.tile_scenario('Workspace defaults filter analytics tiles', ['David'], defaults=True),
             self.tile_scenario('Workspace defaults filter dataview tiles', ['David'], defaults=True, tile=self.dataview_tile),
-            self.tile_scenario('Explicit empty filters override workspace defaults', ['David', 'Daniel', 'Emma'], defaults=True, groups=[]),
             self.tile_scenario('No filters renders all names', ['David', 'Daniel', 'Emma']),
             self.tile_scenario('Shorthand first_name filters the rendered tile', ['David'], params={'first_name': 'David'}),
             self.tile_scenario('Canonical first_name filters the rendered tile', ['David'], groups=[

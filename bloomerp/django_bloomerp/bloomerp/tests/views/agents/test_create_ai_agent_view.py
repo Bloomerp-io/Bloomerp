@@ -1,7 +1,14 @@
 """Exercise the routed two-step AI agent wizard and its secret boundary."""
 
 from typing import Any
+from unittest.mock import patch
 
+from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
+from django.http import HttpResponse
+from django.urls import resolve, reverse
+
+from bloomerp.agents.definition import ModelModalities, ModelModality
 from bloomerp.agents.providers.registry import AI_PROVIDER_REGISTRY
 from bloomerp.forms.agents.ai_agent import AIAgentDetailsForm
 from bloomerp.lookups import builtins as lookups
@@ -15,10 +22,6 @@ from bloomerp.tests.base import (
     RequestScenario,
 )
 from bloomerp.views.agents.create_ai_agent import CreateAIAgentView
-from django.contrib.auth import get_user_model
-from django.contrib.contenttypes.models import ContentType
-from django.http import HttpResponse
-from django.urls import resolve, reverse
 
 
 class CreateAIAgentViewTests(BloomerpModelViewTestCase):
@@ -125,6 +128,36 @@ class CreateAIAgentViewTests(BloomerpModelViewTestCase):
         self.assertEqual(list(agent.mcp_integrations.all()), [self.integration])
         return True
 
+    def prepare_discovery_scenario(self, scenario: RequestScenario) -> None:
+        """Select OpenRouter and submit the wizard with discovery enabled."""
+        self.client.force_login(self.user)
+        self.select_provider("openrouter")
+        self.enterContext(
+            patch.object(
+                AI_PROVIDER_REGISTRY.get("openrouter"),
+                "model_modalities_factory",
+                return_value=ModelModalities(
+                    input=(ModelModality.TEXT, ModelModality.FILE)
+                ),
+            )
+        )
+        scenario.data = self.details(
+            model_identifier="openai/gpt-4.1-mini",
+            discover_modalities="on",
+        )
+
+    def discovered_modalities_persist(self, response: HttpResponse) -> bool:
+        """Verify discovered capabilities are saved and pinned in the runtime config."""
+        agent = AIAgent.objects.get()
+        self.assertEqual(
+            agent.modalities, {"input": ["text", "file"], "output": ["text"]}
+        )
+        self.assertEqual(
+            agent.runtime_config().modalities,
+            ModelModalities(input=(ModelModality.TEXT, ModelModality.FILE)),
+        )
+        return True
+
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Describe final-step validation and tool selections on the registered create route."""
         return [
@@ -144,6 +177,16 @@ class CreateAIAgentViewTests(BloomerpModelViewTestCase):
                 prepare=self.prepare_details_scenario,
                 expected=ExpectedResult(
                     status_code=302, response_validators=self.selected_tools_persist
+                ),
+            ),
+            RequestScenario(
+                name="Discovered modalities persist",
+                method="POST",
+                user=self.user,
+                prepare=self.prepare_discovery_scenario,
+                expected=ExpectedResult(
+                    status_code=302,
+                    response_validators=self.discovered_modalities_persist,
                 ),
             ),
             RequestScenario(

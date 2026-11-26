@@ -1,12 +1,27 @@
-<div id="htmx-addendum" {% if include_addendum_oob %}hx-swap-oob="outerHTML"{% endif %}>
-    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 p-4">
-        <div class="w-full overflow-x-auto sm:w-auto sm:max-w-[60%]">
+{% load i18n %}
+<div id="htmx-addendum" data-tutorial-route="{{ request.resolver_match.view_name }}" data-tutorial-path="{{ request.path }}"
+    {% if include_addendum_oob %}hx-swap-oob="outerHTML"{% endif %}>
+    <div class="flex items-center justify-between gap-2 border-b border-gray-200 p-2">
+        <div class="flex min-w-0 items-center gap-3 sm:max-w-[60%]">
+            {% translate 'Toggle sidebar' as toggle_sidebar_label %}
+            <c-ui.shortcut_tooltip shortcut="mod+shift+b" action="click" position="right" :text="toggle_sidebar_label" wrapper_class="flex shrink-0 items-center">
+                <button id="sidebar-toggle" type="button"
+                    class="icon-button group/sidebar-toggle" data-icon-button-appearance="plain"
+                    aria-controls="sidebar" aria-expanded="false" aria-label="{% translate 'Show sidebar' %}"
+                    data-show-label="{% translate 'Show sidebar' %}" data-hide-label="{% translate 'Hide sidebar' %}"
+                    data-pin-label="{% translate 'Keep sidebar open' %}">
+                    <span class="relative block -scale-x-100" aria-hidden="true">
+                        <c-icons.sidebar_right size="16" class="block" />
+                        <c-icons.sidebar_right_selected size="16" class="absolute inset-0 opacity-0 transition-opacity duration-250 ease-out group-aria-expanded/sidebar-toggle:opacity-100 motion-reduce:transition-none" />
+                    </span>
+                </button>
+            </c-ui.shortcut_tooltip>
             <nav
-                class="flex min-w-max justify-start sm:justify-end"
+                class="min-w-0 overflow-x-auto"
                 aria-label="Breadcrumb"
                 bloomerp-component="breadcrumb"
             >
-                <ol class="inline-flex items-center">
+                <ol class="flex min-w-max items-center">
                 {% for crumb in breadcrumbs %}
                     {% if breadcrumbs|length > 2 and forloop.counter == 2 %}
                     <li
@@ -15,7 +30,7 @@
                     >
                         <button
                             type="button"
-                            class="inline-flex h-6 min-w-6 items-center justify-center rounded-md px-1.5 text-sm font-medium text-primary-900 transition-colors hover:bg-gray-100 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            class="inline-flex h-6 min-w-6 cursor-pointer items-center justify-center rounded-md px-1.5 text-sm font-medium text-primary-900 transition-colors hover:text-primary-600 focus-visible:text-primary-600"
                             aria-label="Show breadcrumb path"
                             aria-expanded="false"
                             data-breadcrumb-toggle
@@ -68,6 +83,46 @@
                 {% endfor %}
                 </ol>
             </nav>
+        </div>
+        <div class="flex shrink-0 items-center gap-1">
+        {% if object_navigation %}
+            <div class="flex items-center gap-1" hx-target="#main-content" hx-swap="innerHTML" hx-push-url="true">
+                <button type="button" {% if object_navigation.0 %}hx-get="{{ object_navigation.0 }}"{% else %}disabled{% endif %}
+                    aria-label="{% translate 'Previous object' %}" title="{% translate 'Previous object' %}"
+                    class="icon-button" data-icon-button-appearance="plain">
+                    <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
+                </button>
+                <button type="button" {% if object_navigation.1 %}hx-get="{{ object_navigation.1 }}"{% else %}disabled{% endif %}
+                    aria-label="{% translate 'Next object' %}" title="{% translate 'Next object' %}"
+                    class="icon-button" data-icon-button-appearance="plain">
+                    <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+                </button>
+            </div>
+        {% endif %}
+        {% if request.user.is_authenticated %}
+            {% translate 'View all tutorials' as view_all_tutorials_label %}
+            {% url 'misc_module_my_tutorials' as my_tutorials_url %}
+            <c-ui.dropdown.body id="tutorial-launcher" width="w-56" wrapper_class="shrink-0">
+                <c-slot name="trigger_html">
+                    <button type="button" id="tutorial-launcher-trigger" x-ref="trigger"
+                        aria-label="{% translate 'Tutorials for this page' %}" title="{% translate 'Tutorials for this page' %}"
+                        aria-haspopup="true" :aria-expanded="open.toString()" @click="open = !open"
+                        class="icon-button" data-icon-button-appearance="plain">
+                        <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
+                    </button>
+                </c-slot>
+                <p data-tutorial-launcher-empty class="px-4 py-2 text-sm text-gray-500">{% translate 'No tutorials on this page.' %}</p>
+                <div data-tutorial-launcher-items role="none"></div>
+                <template data-tutorial-launcher-item>
+                    <button type="button" role="menuitem"
+                        class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:text-primary-800"></button>
+                </template>
+                <c-ui.dropdown.item type="divider" />
+                <c-ui.dropdown.item text="{{ view_all_tutorials_label }}"
+                    href="{{ my_tutorials_url }}" hx_get="{{ my_tutorials_url }}" hx_target="#main-content"
+                    hx_swap="innerHTML" hx_push_url="true" close_menu=True />
+            </c-ui.dropdown.body>
+        {% endif %}
         </div>
     </div>
 </div>

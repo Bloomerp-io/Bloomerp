@@ -27,10 +27,10 @@ erDiagram
     Inbox |o--o{ CalendarEvent : organizes_locally
     CalendarEvent ||--o{ CalendarEventParticipant : has
     User |o--o{ CalendarEventParticipant : identifies
-    Inbox }o--o{ CalendarBooking : booking_destinations
-    Inbox ||--o{ CalendarBooking : organizes_bookings
-    CalendarBooking ||--o{ CalendarBookingSubmission : receives
-    CalendarBookingSubmission |o--o| CalendarEvent : originates
+    Inbox }o--o{ BookingLink : booking_destinations
+    Inbox ||--o{ BookingLink : organizes_bookings
+    BookingLink ||--o{ BookingLinkSubmission : receives
+    BookingLinkSubmission |o--o| CalendarEvent : originates
 
     Inbox {
         uuid id PK
@@ -66,7 +66,7 @@ erDiagram
         datetime responded_at "nullable"
     }
 
-    CalendarBooking {
+    BookingLink {
         uuid id PK
         uuid organizing_inbox_id FK
         string title
@@ -78,7 +78,7 @@ erDiagram
         bool active
     }
 
-    CalendarBookingSubmission {
+    BookingLinkSubmission {
         uuid id PK
         uuid calendar_booking_id FK
         string name
@@ -132,7 +132,7 @@ erDiagram
 - All-day events require `start_date` and an exclusive `end_date` after it.
   `start`, `end`, and `event_timezone` are null. Display these as calendar dates,
   not midnight UTC instants that shift dates when converted for other viewers.
-- Booking availability hours are interpreted in the CalendarBooking's IANA timezone,
+- Booking availability hours are interpreted in the BookingLink's IANA timezone,
   including daylight saving changes. Do not offer nonexistent local times. When
   a local time is ambiguous, require an explicit occurrence or UTC offset before
   scheduling rather than silently guessing.
@@ -145,16 +145,19 @@ erDiagram
 
 ## Calendar booking
 
-- A CalendarBooking provides a public shareable booking page with many-to-many
+- A BookingLink provides a public shareable booking page with many-to-many
   target Inboxes as destinations. These are all placement
   destinations, not a round-robin pool from which one salesperson is chosen.
   A separate organizing Inbox defines the sending identity. Its duration,
   availability hours, timezone, title, description, public unguessable token,
   and active flag define the reusable configuration.
+  Availability has optional inclusive start and end dates, recurring local hour
+  windows for each weekday, and dated overrides that replace the weekday's hours.
+  An override with no windows closes that date.
   An active booking must have destination Inboxes and an organizing Inbox.
-  CalendarBookingSubmission records booking origin and visitor details, provides
+  BookingLinkSubmission records booking origin and visitor details, provides
   a place for future booking-form answers, and belongs to
-  CalendarBooking. CalendarEvent optionally references its originating submission
+  BookingLink. CalendarEvent optionally references its originating submission
   through the nullable unique `calendar_booking_submission_id` foreign key
   (one-to-one). Each event has zero or one submission, and each submission has at
   most one event. Ordinary events leave the reference null, and submissions have
@@ -173,9 +176,9 @@ erDiagram
 - A successful MVP booking creates ONE shared CalendarEvent and places it in all
   configured destination Inboxes, using the separately specified organizing Inbox.
   Save the event, all destination placements, the visitor participant, any explicitly
-  configured actual attendees, and CalendarBookingSubmission together in the same
+  configured actual attendees, and BookingLinkSubmission together in the same
   atomic confirmation. The
-  submission records name, email, and `submitted_at` and references CalendarBooking.
+  submission records name, email, and `submitted_at` and references BookingLink.
   Set the new event's `calendar_booking_submission_id` to that submission in the
   same atomic operation, without a direct configuration foreign key on the event.
   One meeting has one shared event record across internal attendees, with

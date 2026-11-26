@@ -1,4 +1,5 @@
 {% load bloomerp %}
+{% url 'bloomerp_home_view' as sidebar_home_url %}
 
 {% with children=item.tree_children %}
 <li class="list-none">
@@ -35,15 +36,16 @@
         data-drop-parent-id="{{ item.id }}"
         data-drop-position="{{ children|length }}"
         {% endif %}
-        class="relative flex items-center overflow-visible rounded-xl cursor-grab active:cursor-grabbing"
+        class="relative flex items-center overflow-visible rounded-xl cursor-default"
     >
         {% if item.is_folder %}
         <div class="text-gray-700 flex min-w-0 flex-1 items-center gap-2 px-1 py-px rounded">
         {% else %}
         <a
             href="{{ item.url }}"
+            {% if item.url == sidebar_home_url %}data-tutorial-anchor="sidebar-home"{% endif %}
             draggable="false"
-            class="text-gray-700 flex min-w-0 flex-1 items-center gap-2 px-1 py-px rounded hover:text-primary-800"
+            class="text-gray-700 flex min-w-0 flex-1 items-center gap-2 px-1 py-px rounded cursor-default hover:text-primary-800"
             {% if item.is_internal_url %}
             hx-get="{{ item.url }}"
             hx-target="{{ HTMX_MAIN_CONTENT_DIV_ID|default:'#main-content' }}"
@@ -70,7 +72,7 @@
                 type="button"
                 data-sidebar-folder-button
                 aria-expanded="false"
-                class="btn-sm ml-auto shrink-0 p-1 text-xs rounded-md text-gray-500 hover:bg-gray-200 hover:text-gray-700 hover:cursor-pointer">
+                class="btn-sm ml-auto shrink-0 p-1 text-xs rounded-md text-gray-500 cursor-default hover:bg-gray-200 hover:text-gray-700">
                 <i data-sidebar-folder-caret class="fa-solid fa-caret-right text-secondary text-sm"></i>
             </button>
             {% endif %}
@@ -89,7 +91,7 @@
                 class="transition-opacity duration-150"
             >
                 <c-ui.dropdown.body data-ignore-toggle trigger_icon_class="fa-solid fa-ellipsis"
-                    trigger_button_class="p-1 text-xs rounded-md bg-gray-100 border-none text-gray-500 hover:bg-gray-200 hover:text-gray-700 hover:cursor-pointer"
+                    trigger_button_class="p-1 text-xs rounded-md bg-gray-100 border-none text-gray-500 cursor-default hover:bg-gray-200 hover:text-gray-700"
                     size="sm" 
                     direction="down" 
                     fixed=True

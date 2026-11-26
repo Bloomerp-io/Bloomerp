@@ -336,7 +336,6 @@ class TestConferenceController(CallFixtures, BaseBloomerpTestCaseWithModels):
         """Keep future links valid without media provisioning, then start once the host explicitly joins."""
         from bloomerp.communication.builtins.conferencing.sharing import shared_session
         from bloomerp.models.communication.calendar import CalendarEvent
-        from bloomerp.services.calendar_conferencing import reserve_calendar_conference
 
         self.prepare_call()
         start = timezone.now() + timedelta(days=2)
@@ -348,8 +347,8 @@ class TestConferenceController(CallFixtures, BaseBloomerpTestCaseWithModels):
             event_timezone="UTC",
         )
         event.participants.create(user=self.admin_user)
-        link = reserve_calendar_conference(
-            event, self.normal_user, [self.admin_user], "https://app.example/"
+        link = event.reserve_conference(
+            self.normal_user, [self.admin_user], "https://app.example/"
         )
         event.refresh_from_db()
         session = event.conference_session

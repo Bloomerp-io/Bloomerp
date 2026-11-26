@@ -52,9 +52,14 @@
 .filter-condition-error:empty { display: none; }
 .filter-condition-error:not(:empty) { padding-top: 6px; }
 
-/* Clip only the collapsed header, leaving expanded widget menus unrestricted. */
+/* Round the collapsed controls without clipping their tooltips. */
 [data-filter-group][data-collapsed="true"] > .filter-group-toolbar {
     border-bottom: 0;
     border-radius: inherit;
-    overflow: hidden;
+}
+[data-filter-group][data-collapsed="true"] > .filter-group-toolbar > select:first-child {
+    border-bottom-left-radius: inherit;
+}
+[data-filter-group][data-collapsed="true"] > .filter-group-toolbar > button:last-child {
+    border-bottom-right-radius: inherit;
 }

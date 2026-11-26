@@ -1,0 +1,39 @@
+{% load bloomerp %}
+
+<div
+    class="card bg-white hover:shadow-md transition-shadow cursor-pointer"
+    data-detail-url="{{ object.get_absolute_url }}"
+    {% dataview_record_attrs object dataview_action_context row_index %}
+    data-object-string="{{ object }}"
+    data-card-index="{{ row_index }}"
+    bloomerp-component="card-view-card"
+>
+    <div class="flex items-start gap-3">
+        {% if avatar_field %}
+            <c-ui.avatar :object="object" :avatar_attribute="avatar_field.field" size="40" class_name="rounded-full object-cover" />
+        {% endif %}
+        <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+                <span class="min-w-0 flex-1 truncate font-medium text-gray-900" title="{{ object }}">{{ object }}</span>
+                <c-features.dataviews.checkbox object_id="{{ object.pk }}" :label="object" />
+            </div>
+            <div class="mt-2 space-y-1">
+                {% for field in fields %}
+                <div class="flex items-center text-xs text-gray-600">
+                    <span class="text-gray-400 mr-1 truncate w-20">{{ field.title }}:</span>
+                    <span class="truncate flex-1">
+                        {% render_dataview_value object=object application_field=field user=request.user row_index=row_index column_index=forloop.counter0 url=object.get_absolute_url split_view_enabled=preference.split_view_enabled %}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+            {% if object_actions %}
+                <div class="mt-3 flex flex-wrap gap-1" data-no-row-click>
+                    {% for action in object_actions %}
+                        {% render_object_action action=action object=object request=request content_type_id=content_type_id dataview=dataview_action_context %}
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>

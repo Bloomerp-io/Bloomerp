@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from django.views import View
+from django.urls import NoReverseMatch, reverse
 from django.apps import AppConfig, apps
 from django.utils.encoding import force_str
 from django.utils.translation import gettext, pgettext
@@ -1287,6 +1288,30 @@ class BloomerpRouteRegistry:
         """Get all registered routes."""
         self._auto_import_views()  # Ensure views are imported before returning routes
         return self.routes.copy()
+
+    def get_link_route_suggestions(self) -> list[dict[str, str]]:
+        """Return navigable application routes for the editable URL datalist."""
+        suggestions: list[dict[str, str]] = []
+        seen_urls: set[str] = set()
+        for route in self.get_routes():
+            path = route.path or ""
+            if path.lstrip("/").startswith(("api/", "components/")) or route.nr_of_args() > 0:
+                continue
+            try:
+                url = reverse(route.url_name)
+            except NoReverseMatch:
+                continue
+            if url in seen_urls:
+                continue
+            seen_urls.add(url)
+            suggestions.append(
+                {
+                    "url": url,
+                    "name": route.localized_name or url,
+                    "description": " ".join(route.localized_description.split()),
+                }
+            )
+        return sorted(suggestions, key=lambda suggestion: (suggestion["name"].lower(), suggestion["url"]))
 
     def get_routes_by_model(self, model: Model) -> List[BloomerpRoute]:
         """Get all routes registered for a specific model."""

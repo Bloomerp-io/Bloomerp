@@ -12,7 +12,7 @@ from django.utils.translation import gettext as _
 from bloomerp.router import router
 from bloomerp.communication.builtins.voip.access import VoIPAccessManager
 from bloomerp.models.communication.voip import VoIPNumber
-
+# SHOULD_API
 
 @router.register(
     path="components/communication/voip/numbers/<uuid:number_id>/assign/",

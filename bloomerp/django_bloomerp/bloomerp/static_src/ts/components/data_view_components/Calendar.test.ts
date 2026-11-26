@@ -7,6 +7,7 @@ import type { OutputAsset, OutputChunk } from 'rollup';
 import { JSDOM, type DOMWindow } from 'jsdom';
 import type renderDataview from '../../utils/dataview.ts';
 import type { Calendar, CalendarCell } from './Calendar.ts';
+import type { DataViewContainer } from './DataViewContainer.ts';
 
 const root = fileURLToPath(new URL('../../..', import.meta.url)).replace(/\/$/, '');
 const entry = `${root}/calendar-regression-entry.ts`;
@@ -22,19 +23,23 @@ const result = await build({
             return `
                 import { Calendar, CalendarCell } from '${root}/ts/components/data_view_components/Calendar';
                 import { DataViewContainer } from '${root}/ts/components/data_view_components/DataViewContainer';
+                import { DataviewActionList } from '${root}/ts/components/data_view_components/DataviewActionList';
+                import { DataviewCreate } from '${root}/ts/components/data_view_components/DataviewCreate';
                 import { Modal } from '${root}/ts/components/Modal';
                 import { Drawer } from '${root}/ts/components/Drawer';
                 import InboxCalendarOverlay from '${root}/ts/components/inbox/InboxCalendarOverlay';
                 import renderDataview from '${root}/ts/utils/dataview';
-                import { registerComponent, initComponents, getComponent } from '${root}/ts/components/BaseComponent';
+                import { registerComponent, initComponents, getComponent, setupComponentAutoInit } from '${root}/ts/components/BaseComponent';
                 import htmx from 'htmx.org';
                 registerComponent('calendar', Calendar);
                 registerComponent('inbox-calendar-overlay', InboxCalendarOverlay);
                 registerComponent('calendar-cell', CalendarCell);
                 registerComponent('dataview-container', DataViewContainer);
+                registerComponent('dataview-action-list', DataviewActionList);
+                registerComponent('dataview-create', DataviewCreate);
                 registerComponent('modal', Modal);
                 registerComponent('drawer', Drawer);
-                export { initComponents, getComponent, htmx, renderDataview };
+                export { initComponents, getComponent, htmx, renderDataview, setupComponentAutoInit };
             `;
         },
     }],
@@ -50,9 +55,13 @@ const scriptCode = script.code;
 interface FixtureWindow extends DOMWindow {
     CalendarFixture: {
         initComponents(element: HTMLElement): void;
-        getComponent(element: HTMLElement): Calendar | CalendarCell | null;
+        getComponent(element: HTMLElement): Calendar | CalendarCell | DataViewContainer | null;
         renderDataview: typeof renderDataview;
-        htmx: { ajax(method: string, url: string, options: Record<string, unknown>): Promise<HTMLElement> };
+        setupComponentAutoInit(): void;
+        htmx: {
+            ajax(method: string, url: string, options: Record<string, unknown>): Promise<HTMLElement>;
+            swap(target: HTMLElement, html: string, options: Record<string, unknown>): void;
+        };
     };
 }
 interface Fixture {
@@ -66,10 +75,9 @@ interface Fixture {
 function fixture(mode: string, create: boolean = true, datePair: boolean = true, endField: boolean = true, query: Record<string, string> = {}): Fixture {
     const month = mode === 'month';
     const dom = new JSDOM(`<!doctype html>
-        <section data-calendar-dataview-host><div id="data-view-1" bloomerp-component="dataview-container" data-content-type-id="1"
-            data-base-url="/components/dataview/1/" data-url="/components/dataview/1/?inboxes=1"
-            data-create-url="${create ? '/components/create-object/1/?inboxes=1' : ''}"
-            data-modal-id="create-object-modal" data-target="#create-object-modal-body">
+        <section data-calendar-dataview-host><div id="data-view-1" bloomerp-component="dataview-container" data-content-type-id="1" data-dataview-selection-enabled
+            data-base-url="/components/dataview/1/" data-url="/components/dataview/1/?inboxes=1">
+            ${create ? '<div bloomerp-component="dataview-create" data-create-url="/components/create-object/1/?inboxes=1" hidden></div>' : ''}
             <details bloomerp-component="inbox-calendar-overlay" data-preferred-group="1" data-save-url="/components/communication/calendar/1/align/" open>
                 <input type="checkbox" data-overlay-inbox value="1" checked>
                 <input type="checkbox" data-overlay-inbox value="2" checked>
@@ -123,8 +131,8 @@ function doubleClick(f: Fixture, element: HTMLElement): void {
     element.dispatchEvent(new f.w.MouseEvent('dblclick', { bubbles: true, cancelable: true }));
 }
 
-/** Supply browser geometry for an hourly grid while exercising the real component lifecycle. */
-function hourlyLayoutFixture(mode: string, dates: string[]): Fixture {
+/** Supply viewport and application content bounds for calendar sizing tests. */
+function calendarLayoutFixture(mode: string): Fixture {
     const f = fixture(mode);
     const calendar = f.w.document.querySelector<HTMLElement>('[bloomerp-component="calendar"]')!;
     const component = f.w.CalendarFixture.getComponent(calendar) as Calendar;
@@ -142,92 +150,27 @@ function hourlyLayoutFixture(mode: string, dates: string[]): Fixture {
     calendar.getBoundingClientRect = function calendarBounds(): DOMRect {
         return new f.w.DOMRect(0, 180 - f.w.document.body.scrollTop, 1000, Number.parseFloat(calendar.style.height) || 0);
     };
-    const grid = calendar.querySelector<HTMLElement>('[data-calendar-grid]')!;
-    grid.innerHTML = `<div data-calendar-day-header></div>${dates.map(hourlyColumnMarkup).join('')}`;
-    Object.defineProperty(grid, 'clientHeight', { value: 700 });
-    Object.defineProperty(grid.querySelector('[data-calendar-day-header]'), 'offsetHeight', { value: 40 });
-    /** Keep the scroll viewport fixed while its time columns move internally. */
-    grid.getBoundingClientRect = function gridBounds(): DOMRect {
-        return new f.w.DOMRect(0, 240, 1000, 700);
-    };
-    for (const column of grid.querySelectorAll<HTMLElement>('[data-calendar-time-column]')) {
-        /** Model the 24 eighty-pixel hourly rows after scrolling. */
-        column.getBoundingClientRect = function columnBounds(): DOMRect {
-            return new f.w.DOMRect(0, 340 - grid.scrollTop, 120, 1920);
-        };
-    }
-    component.initialize();
     return f;
 }
 
-/** Render only the hourly column contract needed by the layout and live marker. */
-function hourlyColumnMarkup(date: string): string {
-    return `<div data-calendar-time-column><div class="hidden" data-calendar-current-time="${date}">
-        <span class="hidden" data-calendar-current-time-dot></span></div></div>`;
-}
+/** Keep the month grid below its toolbar and within the visible content area after resizing. */
+function monthFitsContentArea(): void {
+    const f = calendarLayoutFixture('month');
+    try {
+        const calendar = f.w.document.querySelector<HTMLElement>('[bloomerp-component="calendar"]')!;
+        const component = f.w.CalendarFixture.getComponent(calendar) as Calendar;
+        component.initialize();
+        assert.equal(calendar.style.height, '780px');
 
-/** Wait for the component's initial layout frame before checking its scroll position. */
-function nextLayoutFrame(f: Fixture): Promise<void> {
-    return new Promise<void>(function scheduleFrame(resolve: () => void): void {
-        /** Resolve after previously queued component layout work. */
-        f.w.requestAnimationFrame(function finishFrame(): void { resolve(); });
-    });
-}
-
-/** Constrain both hourly modes, center local time, and preserve manual scrolling on resize. */
-async function hourlyViewportAndCurrentTime(): Promise<void> {
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'Pacific/Kiritimati', year: 'numeric', month: '2-digit', day: '2-digit',
-    });
-    const today = formatter.format(new Date());
-    for (const mode of ['day', 'week']) {
-        const f = hourlyLayoutFixture(mode, mode === 'week' ? ['2000-01-01', today] : [today]);
-        try {
-            await nextLayoutFrame(f);
-            const calendar = f.w.document.querySelector<HTMLElement>('[bloomerp-component="calendar"]')!;
-            const grid = calendar.querySelector<HTMLElement>('[data-calendar-grid]')!;
-            const marker = calendar.querySelector<HTMLElement>(`[data-calendar-current-time="${today}"]`)!;
-            assert.equal(calendar.style.height, '780px');
-            const timeOffset = 100 + Number.parseFloat(marker.style.top) / 100 * 1920;
-            assert.equal(grid.scrollTop, Math.max(0, timeOffset - 370));
-            assert.equal(marker.classList.contains('hidden'), false);
-            assert.equal(calendar.querySelectorAll('[data-calendar-current-time-dot]:not(.hidden)').length, 1);
-            assert.equal(marker.querySelector('[data-calendar-current-time-dot]')!.classList.contains('hidden'), false);
-            if (mode === 'week') {
-                assert.equal(calendar.querySelector('[data-calendar-current-time="2000-01-01"]')!.classList.contains('hidden'), false);
-            }
-            f.w.document.body.scrollTop = 100;
-            f.w.dispatchEvent(new f.w.Event('resize'));
-            assert.equal(calendar.style.height, '780px');
-            f.w.document.body.scrollTop = 0;
-            grid.scrollTop = 42;
-            Object.defineProperty(f.w.document.body, 'clientHeight', { value: 764 });
-            f.w.dispatchEvent(new f.w.Event('resize'));
-            assert.equal(calendar.style.height, '580px');
-            assert.equal(grid.scrollTop, 42);
-            calendar.dispatchEvent(new f.w.Event('htmx:beforeCleanupElement', { bubbles: true }));
-            Object.defineProperty(f.w.document.body, 'clientHeight', { value: 664 });
-            f.w.dispatchEvent(new f.w.Event('resize'));
-            assert.equal(calendar.style.height, '580px');
-        } finally { f.dom.window.close(); }
+        f.w.document.body.scrollTop = 100;
+        Object.defineProperty(f.w.document.body, 'clientHeight', { value: 764 });
+        f.w.dispatchEvent(new f.w.Event('resize'));
+        assert.equal(calendar.style.height, '580px');
+    } finally {
+        f.dom.window.close();
     }
 }
-test('hourly calendars fit their viewport, center timezone-local time, and mark only today', hourlyViewportAndCurrentTime);
-
-/** Keep other periods centered at the current hour without showing today's marker or dot. */
-async function hourlyPastPeriod(): Promise<void> {
-    const f = hourlyLayoutFixture('week', ['2000-01-01', '2000-01-02']);
-    try {
-        await nextLayoutFrame(f);
-        const calendar = f.w.document.querySelector<HTMLElement>('[bloomerp-component="calendar"]')!;
-        assert.equal(calendar.querySelectorAll('[data-calendar-current-time]:not(.hidden)').length, 0);
-        assert.equal(calendar.querySelectorAll('[data-calendar-current-time-dot]:not(.hidden)').length, 0);
-        const marker = calendar.querySelector<HTMLElement>('[data-calendar-current-time]')!;
-        const grid = calendar.querySelector<HTMLElement>('[data-calendar-grid]')!;
-        assert.equal(grid.scrollTop, Math.max(0, 100 + Number.parseFloat(marker.style.top) / 100 * 1920 - 370));
-    } finally { f.dom.window.close(); }
-}
-test('other weeks retain current-hour centering without a current-day marker', hourlyPastPeriod);
+test('month calendar fits the visible content area on resize', monthFitsContentArea);
 
 /** Verify hour defaults, inherited filters, modal opening, and the shared create correlation ID. */
 function hourlyCreation(): void {
@@ -240,15 +183,17 @@ function hourlyCreation(): void {
             assert.equal(query.get('starts_at'), '2026-10-15T09:00:00+02:00');
             assert.equal(query.get('ends_at'), '2026-10-15T10:00:00+02:00');
             assert.equal(query.get('inboxes'), '1');
-            assert(query.get('data_view_create_id'));
-            assert(!f.w.document.getElementById('create-object-modal')!.classList.contains('hidden'));
+            assert.equal(query.has('data_view_create_id'), false);
+            const modal = f.w.document.querySelector<HTMLElement>('[data-modal-instance-of="create-object-modal"]')!;
+            assert(modal.classList.contains('flex'));
+            assert.match(modal.getAttribute('hx-headers') ?? '', /"X-Bloomerp-Modal-Create":"true"/);
         } finally { f.dom.window.close(); }
     }
 }
 test('day and week double-clicks open the shared modal with one-hour defaults', hourlyCreation);
 
-/** Cycle overlapping event cards horizontally and keep directly focused cards tied to their own details. */
-test('day and week keyboard navigation selects and opens individual events in the same slot', (): void => {
+/** Cycle overlapping events, toggle record selection with Space, and open the active event with Enter. */
+test('Space selects calendar records and Enter opens the active record', (): void => {
     for (const mode of ['day', 'week']) {
         const f = fixture(mode);
         try {
@@ -256,11 +201,14 @@ test('day and week keyboard navigation selects and opens individual events in th
             f.w.HTMLElement.prototype.scrollIntoView = function scrollCell(): void {};
             const calendar = f.w.document.querySelector<HTMLElement>('[bloomerp-component="calendar"]')!;
             const first = calendar.querySelector<HTMLElement>('[data-calendar-event]')!;
+            first.setAttribute('data-dataview-record', '');
+            first.insertAdjacentHTML('afterbegin', '<input type="checkbox" data-bulk-checkbox data-object-id="event">');
             const unit = f.cell.dataset.calendarUnit!;
             first.dataset.calendarUnit = unit;
             f.cell.querySelector<HTMLElement>('[data-calendar-unit-cell]')!.dataset.calendarUnit = unit;
-            first.insertAdjacentHTML('afterend', `<div role="button" tabindex="0" data-calendar-event data-calendar-unit="${unit}"
-                data-object-id="second" data-detail-url="/events/second/update/" bloomerp-component="calendar-cell">Second event</div>`);
+            first.insertAdjacentHTML('afterend', `<div role="button" tabindex="0" data-dataview-record data-calendar-event data-calendar-unit="${unit}"
+                data-object-id="second" data-detail-url="/events/second/update/" bloomerp-component="calendar-cell">
+                <input type="checkbox" data-bulk-checkbox data-object-id="second">Second event</div>`);
             const second = first.nextElementSibling as HTMLElement;
             f.w.CalendarFixture.initComponents(second);
             const component = f.w.CalendarFixture.getComponent(calendar) as Calendar;
@@ -269,12 +217,23 @@ test('day and week keyboard navigation selects and opens individual events in th
             calendar.dispatchEvent(new f.w.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
             assert.equal(component.currentCell?.element, first);
             assert.equal(calendar.querySelectorAll('[data-calendar-event].cell-selected').length, 1);
-            calendar.dispatchEvent(new f.w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-            assert.equal(f.requests[0].pathname, '/events/event/update/');
+            const space = new f.w.KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+            calendar.dispatchEvent(space);
+            assert.equal(space.defaultPrevented, true);
+            assert.equal(first.querySelector('input')?.checked, true);
+            calendar.dispatchEvent(new f.w.KeyboardEvent('keydown', { key: ' ', repeat: true, bubbles: true }));
+            assert.equal(first.querySelector('input')?.checked, true);
+            assert.equal(f.requests.length, 0);
             calendar.dispatchEvent(new f.w.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
             assert.equal(component.currentCell?.element, second);
+            calendar.dispatchEvent(new f.w.KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+            assert.equal(second.querySelector('input')?.checked, true);
+            assert.equal(first.querySelector('input')?.checked, true);
+            calendar.dispatchEvent(new f.w.KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+            assert.equal(second.querySelector('input')?.checked, false);
             calendar.dispatchEvent(new f.w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-            assert.equal(f.requests[1].pathname, '/events/second/update/');
+            assert.equal(f.requests[0].pathname, '/events/second/update/');
+            assert.equal(second.querySelector('input')?.checked, false);
         } finally { f.dom.window.close(); }
     }
 });
@@ -428,11 +387,12 @@ test('renderDataview accepts optional shell arguments, filters, and synchronizat
             assert.equal(query.has('_permission_token'), false);
             assert.deepEqual(JSON.parse(query.get('filter')!), [{ connector: 'AND', conditions: [] }]);
             assert.equal((options.headers as Record<string, string>)['X-Bloomerp-Sync-Url'], 'true');
+            assert.equal((options.headers as Record<string, string>)['X-Bloomerp-Context'], 'view-context');
             return Promise.resolve(host);
         };
         await f.w.CalendarFixture.renderDataview(host, 1, undefined, [{ connector: 'AND', conditions: [] }], {
-            queryParams: { calendar_page: 3, _permission_token: 'obsolete-token', filter: 'obsolete-filter' },
-            args: { hide_filters: true, calendar_inbox: 2 }, hideFilters: false, permissionToken: null, syncUrl: true,
+            queryParams: { calendar_page: 3, filter: 'obsolete-filter' },
+            args: { hide_filters: true, calendar_inbox: 2 }, hideFilters: false, contextId: 'view-context', syncUrl: true,
         });
     } finally { f.dom.window.close(); }
 });
@@ -449,6 +409,7 @@ test('double-clicking an event opens its update URL inside the shared drawer', (
         target = options.target;
         assert.equal(url, '/events/event/update/');
         assert.equal(options.push, 'false');
+        assert.equal(options.source, event);
         return Promise.resolve(f.w.document.createElement('div'));
     };
     event.dispatchEvent(new f.w.MouseEvent('dblclick', { bubbles: true }));
@@ -457,20 +418,145 @@ test('double-clicking an event opens its update URL inside the shared drawer', (
     f.dom.window.close();
 });
 
+/** Row requests and filter resets retain a source within the same dataview context. */
+test('row details and filter resets inherit the dataview context with clean URLs', (): void => {
+    const f = fixture('month');
+    try {
+        const container = f.w.document.getElementById('data-view-1')!;
+        container.dataset.requestContextId = 'view-context';
+        const dataview = f.w.CalendarFixture.getComponent(container) as DataViewContainer;
+        const event = container.querySelector<HTMLElement>('[data-calendar-event]')!;
+        const urls: URL[] = [];
+        const contexts: Array<string | undefined> = [];
+        /** Record the URL and nearest context the shared HTMX source will inherit. */
+        f.w.CalendarFixture.htmx.ajax = function captureRequest(_method: string, url: string, options: Record<string, unknown>): Promise<HTMLElement> {
+            const source = options.source as HTMLElement;
+            urls.push(new URL(url, f.w.location.origin));
+            contexts.push(source.closest<HTMLElement>('[data-request-context-id]')?.dataset.requestContextId);
+            return Promise.resolve(container);
+        };
+        doubleClick(f, event);
+        dataview.filter({}, true);
+        assert.equal(urls[0].pathname, '/events/event/update/');
+        assert.equal(urls[0].search, '');
+        assert.equal(urls[1].search, '');
+        assert.deepEqual(contexts, ['view-context', 'view-context']);
+    } finally {
+        f.dom.window.close();
+    }
+});
 
-/** The shared toolbar must send the checkbox selection that exists when the action is clicked. */
+
+/** Check width and body class overrides when several actions reuse the same drawer. */
+function drawerPresentation(): void {
+    const f = fixture('month');
+    try {
+        const { document } = f.w;
+        document.body.insertAdjacentHTML('beforeend', `
+            <button id="wide" bloomerp-open-drawer="preview" bloomerp-set-drawer-title-for="preview"
+                bloomerp-set-drawer-title-to="Bookings" bloomerp-set-drawer-size-to="4xl"
+                bloomerp-set-drawer-body-class-to="p-4 overflow-auto">Bookings</button>
+            <button id="full" bloomerp-open-drawer="preview" bloomerp-set-drawer-title-for="preview"
+                bloomerp-set-drawer-size-to="full" bloomerp-set-drawer-body-class-to="p-6">All bookings</button>
+            <button id="object-large" bloomerp-open-drawer="preview" bloomerp-set-drawer-title-for="preview"
+                bloomerp-set-drawer-size-to="lg">File</button>
+            <button id="plain" bloomerp-open-drawer="preview">Plain opener</button>
+            <div id="preview" class="hidden" bloomerp-component="drawer" data-drawer-size="xl">
+                <div id="preview-panel" class="max-w-xl w-full" data-drawer-panel>
+                    <h2 data-drawer-title></h2>
+                    <div id="preview-body" class="overflow-auto"></div>
+                </div>
+            </div>`);
+        f.w.CalendarFixture.getComponent(document.getElementById('preview')!);
+        const panel = document.getElementById('preview-panel')!;
+        const body = document.getElementById('preview-body')!;
+
+        document.getElementById('wide')!.click();
+        assert.ok(panel.classList.contains('max-w-4xl'));
+        assert.ok(!panel.classList.contains('max-w-xl'));
+        assert.ok(body.classList.contains('p-4'));
+        assert.equal(panel.querySelector('[data-drawer-title]')?.textContent, 'Bookings');
+
+        document.getElementById('full')!.click();
+        assert.ok(panel.classList.contains('max-w-full'));
+        assert.ok(!panel.classList.contains('max-w-4xl'));
+        assert.ok(body.classList.contains('p-6'));
+        assert.ok(!body.classList.contains('p-4'));
+
+        document.getElementById('object-large')!.click();
+        assert.ok(panel.classList.contains('max-w-lg'));
+        assert.ok(!panel.classList.contains('max-w-full'));
+        assert.ok(!body.classList.contains('p-6'));
+        assert.ok(body.classList.contains('overflow-auto'));
+
+        document.getElementById('plain')!.click();
+        assert.ok(panel.classList.contains('max-w-xl'));
+        assert.ok(!panel.classList.contains('max-w-lg'));
+        assert.equal(body.className, 'overflow-auto');
+    } finally {
+        f.dom.window.close();
+    }
+}
+test('drawer openers set body classes and width independently', drawerPresentation);
+
+/** Check that a modal opener owns its body classes for one opening. */
+function modalPresentation(): void {
+    const f = fixture('month');
+    try {
+        const { document } = f.w;
+        document.body.insertAdjacentHTML('beforeend', `
+            <button id="compact-modal" bloomerp-open-modal="preview-modal"
+                bloomerp-set-modal-body-class-to="p-2 text-sm bg-base">Compact</button>
+            <button id="styled-modal" bloomerp-open-modal="preview-modal"
+                bloomerp-set-modal-body-class-to="rounded-lg">Styled</button>
+            <button id="plain-modal" bloomerp-open-modal="preview-modal">Plain</button>
+            <div id="preview-modal" bloomerp-component="modal" data-modal-padding="p-4"
+                data-modal-body-class="text-sm"></div>`);
+        f.w.CalendarFixture.getComponent(document.getElementById('preview-modal')!);
+        const body = document.getElementById('preview-modal-body')!;
+
+        document.getElementById('compact-modal')!.click();
+        assert.ok(body.classList.contains('p-2'));
+        assert.ok(body.classList.contains('bg-base'));
+        assert.ok(!body.classList.contains('p-4'));
+
+        document.getElementById('styled-modal')!.click();
+        assert.ok(body.classList.contains('rounded-lg'));
+        assert.ok(body.classList.contains('p-4'));
+        assert.ok(!body.classList.contains('p-2'));
+        assert.ok(!body.classList.contains('bg-base'));
+
+        document.getElementById('plain-modal')!.click();
+        assert.ok(body.classList.contains('text-sm'));
+        assert.ok(body.classList.contains('p-4'));
+        assert.ok(body.classList.contains('overflow-y-auto'));
+        assert.ok(!body.classList.contains('rounded-lg'));
+    } finally {
+        f.dom.window.close();
+    }
+}
+test('modal openers replace their body classes and restore the default padding', modalPresentation);
+
+/** Forward the live selection and filters while preserving the action header. */
 function toolbarSelection(): void {
-    const f = fixture('month', true, true, true, { filter: 'old-filter', _permission_token: 'view-token' });
+    const f = fixture('month', true, true, true, {
+        filter: 'old-filter',
+    });
     try {
         const container = f.w.document.getElementById('data-view-1')!;
         container.insertAdjacentHTML('beforeend', `
             <input type="checkbox" data-bulk-checkbox data-object-id="first">
             <input type="checkbox" data-bulk-checkbox data-object-id="second">
-            <div data-data-view-button="reconcile" data-dataview-action="true"><button id="reconcile">Reconcile</button></div>
-            <div data-data-view-button="export"><button id="export">Export</button></div>
-            <div data-base-url="/nested/" data-content-type-id="2">
-                <div data-data-view-button="nested" data-dataview-action="true"><button id="nested">Nested</button></div>
+            <div bloomerp-component="dataview-action-list">
+                <div data-data-view-button="reconcile" data-dataview-action="true"><button id="reconcile">Reconcile</button></div>
+                <div data-data-view-button="export"><button id="export">Export</button></div>
+                <button type="button" data-dataview-create-button>Add</button>
+                <div data-base-url="/nested/" data-content-type-id="2">
+                    <div data-data-view-button="nested" data-dataview-action="true"><button id="nested">Nested</button></div>
+                </div>
             </div>`);
+        const actions = container.querySelector<HTMLElement>('[bloomerp-component="dataview-action-list"]')!;
+        const actionList = f.w.CalendarFixture.getComponent(actions)!;
         const checkbox = container.querySelector<HTMLInputElement>('[data-object-id="first"]')!;
         checkbox.checked = true;
         checkbox.dispatchEvent(new f.w.Event('change', { bubbles: true }));
@@ -478,21 +564,32 @@ function toolbarSelection(): void {
         /** Emit HTMX's request configuration boundary and inspect its parameters. */
         function parameters(id: string): Record<string, unknown> {
             const button = f.w.document.getElementById(id)!;
-            const detail = { elt: button, path: '/action/?filter=old-filter&_permission_token=action-token', parameters: {} as Record<string, unknown> };
+            const detail = {
+                elt: button,
+                path: '/action/?filter=old-filter',
+                headers: { 'X-Bloomerp-Context': 'action-context' },
+                parameters: {} as Record<string, unknown>,
+            };
             button.dispatchEvent(new f.w.CustomEvent('htmx:configRequest', { bubbles: true, detail }));
-            return { ...detail.parameters, path: detail.path };
+            return { ...detail.parameters, path: detail.path, context: detail.headers['X-Bloomerp-Context'] };
         }
         assert.equal(JSON.stringify(parameters('reconcile').selected_ids), '["first"]');
         assert.equal(parameters('nested').selected_ids, undefined);
         assert.equal(parameters('export').selected_ids, undefined);
         const dataSection = f.w.document.getElementById('data-view-data-section')!;
         dataSection.dispatchEvent(new f.w.CustomEvent('htmx:afterSwap', {
-            bubbles: true, detail: { target: dataSection, xhr: { responseURL: 'https://app.example/dataview/?filter=current-filter&q=search' } },
+            bubbles: true,
+            detail: {
+                target: dataSection,
+                xhr: { responseURL: 'https://app.example/dataview/?filter=current-filter&q=search' },
+            },
         }));
         const updated = new URL(parameters('reconcile').path as string, f.w.location.origin);
         assert.equal(updated.searchParams.get('filter'), 'current-filter');
         assert.equal(updated.searchParams.get('q'), 'search');
-        assert.equal(updated.searchParams.get('_permission_token'), 'action-token');
+        assert.equal(updated.searchParams.has('_permission_token'), false);
+        assert.equal(updated.searchParams.has('_dataview_detail_view_token'), false);
+        assert.equal(parameters('reconcile').context, 'action-context');
         dataSection.dispatchEvent(new f.w.CustomEvent('htmx:afterSwap', {
             bubbles: true, detail: { target: dataSection, xhr: { responseURL: 'https://app.example/dataview/' } },
         }));
@@ -501,9 +598,320 @@ function toolbarSelection(): void {
         checkbox.dispatchEvent(new f.w.Event('change', { bubbles: true }));
         assert.equal(JSON.stringify(parameters('reconcile').selected_ids), '[]');
 
+        actions.querySelector<HTMLButtonElement>('[data-dataview-create-button]')?.click();
+        assert.equal(f.requests[0].pathname, '/components/create-object/1/');
+        assert.equal(f.requests[0].searchParams.has('data_view_create_id'), false);
+        assert(f.w.document.querySelector('[data-modal-instance-of="create-object-modal"].flex'));
+
         // Teardown releases the listener even if the old DOM still exists.
-        f.w.CalendarFixture.getComponent(container)!.destroy();
+        actionList.destroy();
         assert.equal(parameters('reconcile').selected_ids, undefined);
     } finally { f.dom.window.close(); }
 }
 test('toolbar requests carry the current checkbox selection and stay scoped to their container', toolbarSelection);
+
+/** Exercise record selection across duplicate items, renderer swaps, and collection changes. */
+function sharedRecordSelection(): void {
+    const f = fixture('month', true, true, true, { q: 'test' });
+    try {
+        const container = f.w.document.getElementById('data-view-1')!;
+        const component = f.w.CalendarFixture.getComponent(container)!;
+        const section = container.querySelector<HTMLElement>('#data-view-data-section')!;
+        container.insertAdjacentHTML('afterbegin', `
+            <div data-dataview-selection-bar hidden>
+                <span data-selection-count data-label="%(count)s selected"></span>
+                <div data-dataview-selection-actions bloomerp-component="dataview-action-list" hidden>
+                    <div data-dataview-action><button type="button" data-test-action>Action</button></div>
+                </div>
+            </div>`);
+        const bar = container.querySelector<HTMLElement>('[data-dataview-selection-bar]')!;
+        const actions = container.querySelector<HTMLElement>('[data-dataview-selection-actions]')!;
+        f.w.CalendarFixture.getComponent(actions);
+        const status = container.querySelector<HTMLElement>('[data-selection-count]')!;
+        const action = container.querySelector<HTMLButtonElement>('[data-test-action]')!;
+        container.dataset.renderId = 'original-view';
+
+        /** Render a selectable record using the same contract as the production checkbox template. */
+        function record(id: string): string {
+            return `<div data-dataview-record><input type="checkbox" data-bulk-checkbox data-object-id="${id}"></div>`;
+        }
+
+        /** Read the selection passed to an action on the host model. */
+        function selectedIds(): string[] {
+            const parameters = {} as { selected_ids: string[] };
+            action.dispatchEvent(new f.w.CustomEvent('htmx:configRequest', { bubbles: true, detail: { elt: action, parameters } }));
+            return Array.from(parameters.selected_ids);
+        }
+
+        /** Report a data section swap while preserving the fixture's original request path. */
+        function swapResults(query: string): void {
+            const url = new URL(container.dataset.url!);
+            url.search = query;
+            section.dispatchEvent(new f.w.CustomEvent('htmx:afterSwap', {
+                bubbles: true, detail: { target: section, xhr: { responseURL: url.toString() } },
+            }));
+        }
+
+        section.innerHTML = record('same') + record('same') + record('different')
+            + `<div data-base-url="/nested/" data-content-type-id="1">${record('nested')}</div>`;
+        component.onAfterSwap();
+        const duplicates = section.querySelectorAll<HTMLInputElement>('[data-object-id="same"]');
+        assert.equal(duplicates[0].hidden, false);
+        assert.equal(bar.hidden, true);
+        assert.equal(actions.hidden, true);
+        duplicates[0].click();
+        assert.equal(duplicates[1].checked, true);
+        assert.equal(duplicates[1].parentElement?.hasAttribute('data-dataview-record-selected'), true);
+        assert.equal(status.textContent, '1 selected');
+        assert.equal(bar.hidden, false);
+        assert.equal(actions.hidden, false);
+        f.w.CalendarFixture.setupComponentAutoInit();
+        const card = duplicates[0].parentElement!;
+        f.w.CalendarFixture.htmx.swap(card, '<input type="checkbox" data-bulk-checkbox data-object-id="same">', {
+            swapStyle: 'innerHTML', swapDelay: 0, settleDelay: 0,
+        });
+        assert.equal(card.querySelector<HTMLInputElement>('input')?.checked, true);
+        section.querySelector<HTMLInputElement>('[data-object-id="different"]')?.click();
+        assert.deepEqual(selectedIds(), ['same', 'different']);
+        assert.equal(status.textContent, '2 selected');
+
+        section.innerHTML = '<input type="checkbox" data-bulk-checkbox data-all="true">' + record('same') + record('new')
+            + `<div data-base-url="/nested/" data-content-type-id="1">${record('nested')}</div>`;
+        swapResults('inboxes=1&q=test&page=2');
+        assert.equal(section.querySelector<HTMLInputElement>('[data-object-id="same"]')?.checked, true);
+        const master = section.querySelector<HTMLInputElement>('[data-all]')!;
+        assert.equal(master.indeterminate, true);
+        assert.equal(status.textContent, '2 selected');
+        master.click();
+        assert.deepEqual(selectedIds(), ['same', 'different', 'new']);
+        master.click();
+        assert.deepEqual(selectedIds(), ['different']);
+        section.querySelector<HTMLInputElement>('[data-object-id="same"]')?.click();
+        swapResults('inboxes=1&q=different&page=2');
+        assert.deepEqual(selectedIds(), []);
+        assert.equal(bar.hidden, true);
+        assert.equal(section.querySelector<HTMLInputElement>('[data-object-id="same"]')?.checked, false);
+
+        section.querySelector<HTMLInputElement>('[data-object-id="same"]')?.click();
+        f.w.document.body.dispatchEvent(new f.w.CustomEvent('bloomerp:dataview-refresh', { detail: { renderId: 'another-view' } }));
+        assert.deepEqual(selectedIds(), ['same']);
+        assert.equal(f.requests.length, 0);
+        f.w.document.body.dispatchEvent(new f.w.CustomEvent('bloomerp:dataview-refresh', { detail: { renderId: 'original-view' } }));
+        assert.deepEqual(selectedIds(), []);
+        assert.equal(f.requests.length, 1);
+
+        section.innerHTML = `<div data-dataview-record-type="2">${record('file')}</div>`;
+        component.onAfterSwap();
+        const file = section.querySelector<HTMLInputElement>('[data-object-id="file"]')!;
+        assert.equal(file.hidden, true);
+        file.click();
+        assert.equal(status.textContent, '');
+        assert.equal(bar.hidden, true);
+        assert.equal(actions.hidden, true);
+        assert.deepEqual(selectedIds(), []);
+
+        section.innerHTML = record('same');
+        container.removeAttribute('data-dataview-selection-enabled');
+        component.onAfterSwap();
+        const unavailable = section.querySelector<HTMLInputElement>('[data-object-id="same"]')!;
+        assert.equal(unavailable.hidden, true);
+        unavailable.click();
+        assert.deepEqual(selectedIds(), []);
+        assert.equal(bar.hidden, true);
+    } finally {
+        f.dom.window.close();
+    }
+}
+test('record selection follows the filtered collection across renderer swaps and stays scoped to its model', sharedRecordSelection);
+
+/** A save from a portaled drawer reloads matching views with their own filters. */
+function contentTypeRefresh(): void {
+    const f = fixture('week', false, true, true, { q: 'first' });
+    try {
+        const sources: string[] = [];
+        const capture = f.w.CalendarFixture.htmx.ajax;
+        /** Verify that each view owns its request and that a background reload leaves history alone. */
+        f.w.CalendarFixture.htmx.ajax = function captureRefresh(method: string, url: string, options: Record<string, unknown>): Promise<HTMLElement> {
+            const source = options.source as HTMLElement;
+            sources.push(source.id);
+            assert.equal(options.target, source.querySelector('#data-view-data-section'));
+            assert.equal(options.push, 'false');
+            assert.equal(options.replace, 'false');
+            return capture(method, url, options);
+        };
+        f.w.document.body.insertAdjacentHTML('beforeend', `
+            <div id="second-view" bloomerp-component="dataview-container" data-content-type-id="1"
+                 data-base-url="/components/dataview/1/" data-url="/components/dataview/1/?q=second" data-sync-url="true">
+                <div id="data-view-data-section"></div>
+            </div>
+            <div id="other-view" bloomerp-component="dataview-container" data-content-type-id="2"
+                 data-base-url="/components/dataview/2/" data-url="/components/dataview/2/?q=other">
+                <div id="data-view-data-section"></div>
+            </div>
+            <div id="file-view" bloomerp-component="dataview-container" data-content-type-id="3"
+                 data-base-url="/components/dataview/3/" data-url="/components/dataview/3/?q=files">
+                <div id="data-view-data-section"><div data-dataview-record-type="1"></div></div>
+            </div>
+            <div data-dataview-detail-drawer><form></form></div>`);
+        f.w.CalendarFixture.initComponents(f.w.document.body);
+        const drawerForm = f.w.document.querySelector('[data-dataview-detail-drawer] form')!;
+        drawerForm.dispatchEvent(new f.w.CustomEvent('bloomerp:dataview-refresh', {
+            bubbles: true, detail: { contentTypeId: 1 },
+        }));
+        assert.deepEqual(f.requests.map((url: URL): string | null => url.searchParams.get('q')), [
+            'first', 'second', 'files',
+        ]);
+        assert.deepEqual(sources, ['data-view-1', 'second-view', 'file-view']);
+    } finally {
+        f.dom.window.close();
+    }
+}
+test('a drawer save refreshes DataViews displaying the same content type', contentTypeRefresh);
+
+/** Replace the action's row while leaving a second view of the same record intact. */
+function scopedItemRefresh(): void {
+    const f = fixture('week');
+    try {
+        const first = f.w.document.getElementById('data-view-1')!;
+        const recordMarkup = '<tr data-dataview-record data-dataview-item-index="4" data-object-id="22"'
+            + ' data-dataview-item-url="/components/dataview/1/item/22/?q=first">'
+            + '<td><button type="button">Complete</button></td></tr>';
+        first.querySelector('#data-view-data-section')!.innerHTML = `<table><tbody>${recordMarkup}</tbody></table>`;
+        first.insertAdjacentHTML('afterend', `
+            <div id="second-view" bloomerp-component="dataview-container" data-content-type-id="1"
+                 data-base-url="/components/dataview/1/" data-url="/components/dataview/1/?q=second">
+                <div id="data-view-data-section"><table><tbody>${recordMarkup.replace('q=first', 'q=second')}</tbody></table></div>
+            </div>`);
+        const second = f.w.document.getElementById('second-view')!;
+        f.w.CalendarFixture.initComponents(second);
+        const firstRow = first.querySelector('tr')!;
+        /** Capture the request and exercise HTMX's actual row replacement. */
+        f.w.CalendarFixture.htmx.ajax = function loadRow(method: string, url: string, options: Record<string, unknown>): Promise<HTMLElement> {
+            f.requests.push(new URL(url, f.w.location.origin));
+            assert.equal(method, 'get');
+            assert.equal(options.source, firstRow);
+            assert.equal(options.target, firstRow);
+            assert.equal(options.swap, 'outerHTML');
+            assert.equal((options.headers as Record<string, string>)['X-Bloomerp-Dataview-Item-Index'], '4');
+            f.w.CalendarFixture.htmx.swap(firstRow, '<tr><td>Completed</td></tr>', {
+                swapStyle: 'outerHTML', swapDelay: 0, settleDelay: 0,
+            });
+            return Promise.resolve(first.querySelector('tr')!);
+        };
+        firstRow.querySelector('button')!.dispatchEvent(new f.w.CustomEvent('bloomerp:dataview-record-refresh', {
+            bubbles: true,
+            detail: { contentTypeId: 1, objectId: '22', originOnly: true },
+        }));
+        assert.equal(f.requests.length, 1);
+        assert.equal(f.requests[0].searchParams.get('q'), 'first');
+        assert.equal(first.querySelector('tr')?.textContent, 'Completed');
+        assert.equal(second.querySelector('tr')?.textContent, 'Complete');
+    } finally {
+        f.dom.window.close();
+    }
+}
+test('an object action replaces only its originating record', scopedItemRefresh);
+
+/** Resolve each occurrence of an embedded record through its host's item URL. */
+function embeddedItemRefresh(): void {
+    const f = fixture('week');
+    try {
+        const view = f.w.document.getElementById('data-view-1')!;
+        const section = view.querySelector('#data-view-data-section')!;
+        section.innerHTML = `
+            <div data-dataview-record data-object-id="60" data-dataview-record-content-type-id="2"
+                 data-dataview-item-url="/components/dataview/1/item/60/?folder_id=4" data-dataview-item-placement="first"></div>
+            <div data-dataview-record data-object-id="60" data-dataview-record-content-type-id="2"
+                 data-dataview-item-url="/components/dataview/1/item/60/?folder_id=7" data-dataview-item-placement="second"></div>
+            <div data-dataview-record data-object-id="60" data-dataview-record-content-type-id="1"
+                 data-dataview-item-url="/components/dataview/1/item/60/?folder_id=9"></div>`;
+        const placements: string[] = [];
+        /** Capture the row-specific request and its renderer placement. */
+        f.w.CalendarFixture.htmx.ajax = function loadRow(method: string, url: string, options: Record<string, unknown>): Promise<HTMLElement> {
+            f.requests.push(new URL(url, f.w.location.origin));
+            assert.equal(method, 'get');
+            assert.equal(options.source, options.target);
+            placements.push((options.headers as Record<string, string>)['X-Bloomerp-Dataview-Item-Placement']);
+            return Promise.resolve(options.target as HTMLElement);
+        };
+        f.w.document.body.dispatchEvent(new f.w.CustomEvent('bloomerp:dataview-record-refresh', {
+            detail: { contentTypeId: 2, objectId: '60' },
+        }));
+        assert.deepEqual(f.requests.map((url: URL): string => url.pathname), [
+            '/components/dataview/1/item/60/', '/components/dataview/1/item/60/',
+        ]);
+        assert.deepEqual(f.requests.map((url: URL): string | null => url.searchParams.get('folder_id')), ['4', '7']);
+        assert.deepEqual(placements, ['first', 'second']);
+    } finally {
+        f.dom.window.close();
+    }
+}
+test('a record refresh uses the matching host rows and their own placement', embeddedItemRefresh);
+
+/** Ensure save, dismissal, and draft reuse stay scoped to the Dataview that opened each modal. */
+async function scopedCreateModal(): Promise<void> {
+    const f = fixture('week', true, true, true, { q: 'first' });
+    try {
+        const first = f.w.document.getElementById('data-view-1')!;
+        first.insertAdjacentHTML('afterbegin', '<button type="button" data-dataview-create-button>Add first</button>');
+        const firstAdd = first.querySelector<HTMLButtonElement>('[data-dataview-create-button]')!;
+        first.insertAdjacentHTML('beforeend', `
+            <div id="second-view" bloomerp-component="dataview-container" data-content-type-id="1" data-dataview-selection-enabled
+                 data-base-url="/components/dataview/1/" data-url="/components/dataview/1/?q=second">
+                <div bloomerp-component="dataview-create" data-create-url="/components/create-object/1/" hidden></div>
+                <button type="button" data-dataview-create-button>Add second</button>
+                <div id="data-view-data-section"><input type="checkbox" data-bulk-checkbox data-object-id="checked"></div>
+            </div>`);
+        const second = f.w.document.getElementById('second-view')!;
+        f.w.CalendarFixture.initComponents(second);
+        const secondAdd = second.querySelector<HTMLButtonElement>('[data-dataview-create-button]')!;
+        const checked = second.querySelector<HTMLInputElement>('[data-bulk-checkbox]')!;
+        checked.click();
+
+        firstAdd.click();
+        const firstModal = f.w.document.querySelector<HTMLElement>('[data-modal-instance-of="create-object-modal"]')!;
+        const firstBody = firstModal.querySelector<HTMLElement>('[data-modal-body]')!;
+        firstBody.innerHTML = '<form><input value="Retained draft"></form>';
+        secondAdd.click();
+        const secondModal = f.w.document.querySelectorAll<HTMLElement>('[data-modal-instance-of="create-object-modal"]').item(1);
+        assert.notEqual(firstModal.id, secondModal.id);
+        const secondBody = secondModal.querySelector<HTMLElement>('[data-modal-body]')!;
+        secondBody.innerHTML = '<form></form>';
+        secondAdd.remove();
+        secondBody.querySelector('form')!.dispatchEvent(new f.w.CustomEvent('bloomerp:close-modal', {
+            bubbles: true, detail: { result: 'saved' },
+        }));
+
+        /** Wait for the modal's configured exit animation to finish. */
+        function afterClose(): Promise<void> {
+            return new Promise<void>(function wait(resolve: () => void): void {
+                f.w.setTimeout(resolve, 240);
+            });
+        }
+
+        await afterClose();
+        assert(firstModal.classList.contains('flex'));
+        assert(secondModal.classList.contains('hidden'));
+        assert.equal(f.requests.length, 3);
+        assert.equal(f.requests[2].searchParams.get('q'), 'second');
+        assert.equal(checked.checked, true);
+
+        firstModal.querySelector<HTMLButtonElement>('[bloomerp-close-modal]')!.click();
+        await afterClose();
+        assert.equal(f.requests.length, 3);
+        firstAdd.click();
+        assert.equal(firstBody.querySelector<HTMLInputElement>('input')?.value, 'Retained draft');
+        assert.equal(f.requests.length, 3);
+        firstBody.querySelector('form')!.dispatchEvent(new f.w.CustomEvent('bloomerp:close-modal', {
+            bubbles: true, detail: { result: 'saved' },
+        }));
+        await afterClose();
+        assert.equal(f.requests.length, 4);
+        assert.equal(f.requests[3].searchParams.get('q'), 'first');
+        firstAdd.click();
+        assert.equal(f.requests.length, 5);
+    } finally {
+        f.dom.window.close();
+    }
+}
+test('create modals refresh only their originating Dataview and preserve dismissed drafts', scopedCreateModal);

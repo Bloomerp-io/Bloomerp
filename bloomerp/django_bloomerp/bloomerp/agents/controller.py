@@ -6,6 +6,7 @@ import asyncio
 import logging
 from contextlib import suppress
 from datetime import timedelta
+from functools import partial
 from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID, uuid4
 
@@ -20,6 +21,8 @@ from django.db import transaction
 from django.utils import timezone
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
+from bloomerp.agents.artifacts.file import read_file_attachment
+from bloomerp.agents.artifacts.selection import EditorAttachment
 from bloomerp.agents.definition import (
     AgentError,
     BrowserContext,
@@ -46,7 +49,7 @@ from bloomerp.agents.runtime import (
     AgentRuntimeToolCoordinator,
 )
 from bloomerp.config.definition import BloomerpAgentSettings, get_bloomerp_config
-from bloomerp.services.mcp.client import MCPUnavailableError
+from bloomerp.mcp.client import MCPUnavailableError
 
 if TYPE_CHECKING:
     from bloomerp.models.agents import (
@@ -84,7 +87,9 @@ class AgentChatRequest(AgentControllerPayload):
     """
 
     content: MessageContent
-    attachments: list[str] = Field(default_factory=list, max_length=20)
+    attachments: list[str | EditorAttachment] = Field(
+        default_factory=list, max_length=20
+    )
     conversation_id: UUID | None = None
     agent_id: UUID | None = Field(
         default=None, validation_alias=AliasChoices("agent_id", "model_id")
@@ -410,17 +415,15 @@ class AgentController:
         }
 
     def accept_message(self, request: AgentChatRequest) -> AgentSubmission:
-        """Authorize and atomically create one message/run, deduplicating client retries."""
+        """Authorize and persist one plain-text or Markdown prompt and deduplicate retries."""
         from bloomerp.models.agents import AIArtifact, AIConversation, AIMessage
 
         self.authorize()
         if not request.content.root or any(
-            block.type != "text" or block.format != "plain"
+            block.type != "text" or block.format not in {"plain", "markdown"}
             for block in request.content.root
         ):
-            raise DjangoValidationError(
-                "Only plain text input is supported at this boundary"
-            )
+            raise DjangoValidationError("Chat input must be plain text or Markdown")
         if (
             not any(block.text.strip() for block in request.content.root)
             and not request.attachments
@@ -652,6 +655,7 @@ class AgentController:
                 if run.trigger_message_id
                 else None,
                 limit=options.history_limit,
+                modalities=config.modalities,
             )
             coordinator = self.get_tool_coordinator(run, attempt)
             tools = await database_sync_to_async(self.get_mcp_client(run).definitions)()
@@ -664,6 +668,12 @@ class AgentController:
                 tools=tools,
                 budgets=RunBudgets.model_validate(run.budgets),
                 usage=RunUsage.model_validate(run.usage),
+                attachment_reader=database_sync_to_async(
+                    partial(read_file_attachment, self.user)
+                ),
+                attachment_byte_limit=getattr(
+                    settings, "BLOOMERP_AGENT_UPLOAD_MAX_BYTES", 20 * 1024 * 1024
+                ),
             )
             credentials = await database_sync_to_async(self.get_credentials)(config)
             if run.checkpoint:

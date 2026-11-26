@@ -4,8 +4,42 @@
         <iframe src="{{ media_url }}" class="block h-full w-full border-0" title="{{ file.name }}"></iframe>
     </div>
 {% elif kind == "image" %}
-    <div class="flex h-full min-h-0 items-center justify-center bg-gray-50 p-6">
-        <img src="{{ media_url }}" alt="{{ file.name }}" class="max-h-full max-w-full rounded-lg object-contain shadow-lg">
+    <div bloomerp-component="image-preview" class="flex h-full min-h-0 flex-col bg-gray-50">
+        <div data-image-preview-controls hidden role="group" aria-label="{% translate 'Image controls' %}">
+            <div class="flex flex-wrap items-center justify-center gap-1 border-b border-gray-200 px-2 py-1">
+                <button type="button" data-image-preview-action="zoom-out" class="btn btn-ghost btn-sm"
+                        aria-label="{% translate 'Zoom out' %}" title="{% translate 'Zoom out' %}" disabled>
+                    <i class="fa-solid fa-magnifying-glass-minus" aria-hidden="true"></i>
+                </button>
+                <output data-image-preview-zoom class="px-1 text-sm tabular-nums" aria-label="{% translate 'Zoom relative to fit' %}">100%</output>
+                <button type="button" data-image-preview-action="zoom-in" class="btn btn-ghost btn-sm"
+                        aria-label="{% translate 'Zoom in' %}" title="{% translate 'Zoom in' %}">
+                    <i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i>
+                </button>
+                <button type="button" data-image-preview-action="flip-horizontal" class="btn btn-ghost btn-sm" aria-pressed="false"
+                        aria-label="{% translate 'Flip horizontally' %}" title="{% translate 'Flip horizontally' %}">
+                    <i class="fa-solid fa-arrows-left-right" aria-hidden="true"></i>
+                </button>
+                <button type="button" data-image-preview-action="flip-vertical" class="btn btn-ghost btn-sm" aria-pressed="false"
+                        aria-label="{% translate 'Flip vertically' %}" title="{% translate 'Flip vertically' %}">
+                    <i class="fa-solid fa-arrows-up-down" aria-hidden="true"></i>
+                </button>
+                <button type="button" data-image-preview-action="reset" class="btn btn-ghost btn-sm"
+                        aria-label="{% translate 'Reset view' %}" title="{% translate 'Reset view' %}">
+                    <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+        <div data-image-preview-viewport class="m-4 flex min-h-0 flex-1 overflow-auto" tabindex="0"
+             role="region" aria-label="{% translate 'Image preview' %}">
+            <img src="{{ media_url }}" alt="{{ file.name }}" class="m-auto max-h-full max-w-full shrink-0 rounded-lg object-contain">
+        </div>
+        <div data-image-preview-error hidden>
+            <div class="px-6 py-8 text-center">
+                <p role="status">{% translate "This image could not be previewed." %}</p>
+                <a href="{{ download_url }}" class="btn btn-primary btn-sm mt-4" download>{% translate "Download" %}</a>
+            </div>
+        </div>
     </div>
 {% elif kind == "video" %}
     <div class="flex h-full min-h-0 items-center justify-center bg-slate-950">
@@ -27,17 +61,17 @@
             <details class="mb-4"{% if forloop.first %} open{% endif %}>
                 <summary class="cursor-pointer py-2 font-semibold">{{ sheet.name }}</summary>
                 {% if sheet.truncated %}<p class="mb-2 text-sm">{% translate "This is a partial preview. Download the file to see all data." %}</p>{% endif %}
-                <div class="overflow-auto rounded-xl border border-gray-200">
-                    <table class="w-full text-left text-sm">
-                        <thead class="bg-gray-50"><tr>
-                            <th class="border-b border-gray-200 px-3 py-2" scope="col">#</th>
-                            {% for column in sheet.columns %}<th class="border-b border-gray-200 px-3 py-2" scope="col">{{ column }}</th>{% endfor %}
+                <div class="overflow-auto">
+                    <table class="table table-sm">
+                        <thead><tr>
+                            <th scope="col">#</th>
+                            {% for column in sheet.columns %}<th scope="col">{{ column }}</th>{% endfor %}
                         </tr></thead>
                         <tbody>
                             {% for row in sheet.rows %}<tr>
-                                <th class="border-b border-gray-200 px-3 py-2" scope="row">{{ forloop.counter }}</th>
-                                {% for cell in row %}<td class="whitespace-pre-wrap border-b border-gray-200 px-3 py-2">{{ cell }}</td>{% endfor %}
-                            </tr>{% empty %}<tr><td class="px-3 py-2">{% translate "Empty sheet" %}</td></tr>{% endfor %}
+                                <th class="font-medium text-gray-500" scope="row">{{ forloop.counter }}</th>
+                                {% for cell in row %}<td class="whitespace-pre-wrap">{{ cell }}</td>{% endfor %}
+                            </tr>{% empty %}<tr><td colspan="{{ sheet.columns|length|add:1 }}">{% translate "Empty sheet" %}</td></tr>{% endfor %}
                         </tbody>
                     </table>
                 </div>

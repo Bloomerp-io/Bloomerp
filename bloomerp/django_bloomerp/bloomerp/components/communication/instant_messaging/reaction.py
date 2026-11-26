@@ -1,4 +1,5 @@
 """Set the requester's emoji reaction through the messaging controller."""
+# SHOULD_API
 
 from uuid import UUID
 

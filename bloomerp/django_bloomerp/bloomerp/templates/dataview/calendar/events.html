@@ -1,0 +1,21 @@
+{% load i18n %}
+{% load bloomerp %}
+
+{% for event in events %}
+    {% include dataview_item_template with variant="event" row_index=forloop.counter0 %}
+{% endfor %}
+
+{% if calendar_has_more %}
+<button
+    type="button"
+    class="btn btn-sm mt-1 w-full border-gray-200 bg-base text-dark"
+    data-calendar-unit="{{ calendar_unit }}"
+    data-calendar-load-more
+    bloomerp-component="calendar-cell"
+    hx-get="{{ calendar_unit_url }}{% if calendar_page_querystring %}?{{ calendar_page_querystring }}&{% else %}?{% endif %}calendar_view_mode={{ calendar_view_mode }}&calendar_unit={{ calendar_unit|urlencode }}&calendar_unit_offset={{ calendar_next_unit_offset }}"
+    hx-target="this"
+    hx-swap="outerHTML"
+>
+    {% blocktrans %}Load more{% endblocktrans %}
+</button>
+{% endif %}

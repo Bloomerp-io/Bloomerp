@@ -4,7 +4,7 @@
 {% elif pivot_too_tall %}
     <p class="p-4 text-sm text-dark">{% translate "This pivot has too many nested rows to display safely. Select fewer row fields or narrow the data." %}</p>
 {% else %}
-    {% include "cotton/features/dataviews/pivot_table.html" %}
+    {% include "dataview/pivot_table/body.html" %}
 {% endif %}
 {% if show_global_pagination %}
 <nav

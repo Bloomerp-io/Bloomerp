@@ -1,43 +1,51 @@
+from django.http import Http404, HttpRequest, HttpResponse
+
 from bloomerp.components.objects.dataviews.dataview import (
-    DATAVIEW_OPERATION_CONTEXT_PARAM,
     _build_dataview_state,
+    get_context_dataview_token,
     resolve_dataview_preference,
 )
 from bloomerp.dataviews.registry import DATAVIEW_REGISTRY
 from bloomerp.router import router
-from django.http import HttpRequest, HttpResponse
 
 
 @router.register(
-    path=(
-        "components/dataview/<int:content_type_id>/preference/"
-        "<int:preference_id>/renderer-operation/<str:action>/"
+    re_path=(
+        r"^components/dataview/(?P<content_type_id>[0-9]+)/"
+        r"(?:preference/(?P<preference_id>[0-9]+)/)?renderer-operation/(?P<action>[^/]+)/$"
     ),
     name="components_dataview_renderer_operation",
 )
 def dataview_action(
     request: HttpRequest,
-    content_type_id: int,
-    preference_id: int,
+    content_type_id: str,
     action: str,
+    preference_id: str | None = None,
 ) -> HttpResponse:
-    """Dispatch an operation to the renderer of an available preference."""
-    preference = resolve_dataview_preference(request, content_type_id, preference_id)
+    """Dispatch an operation using the view's saved or signed layout."""
+    content_type_pk = int(content_type_id)
+    signed_layout = get_context_dataview_token(request, content_type_pk) is not None
+    if preference_id is None and not signed_layout:
+        raise Http404("A signed calendar layout is required")
 
-    definition = DATAVIEW_REGISTRY.get(preference.view_type)
-    if definition is None:
-        return HttpResponse("Invalid view type", status=400)
+    preference = None
+    if preference_id is not None and not signed_layout:
+        preference = resolve_dataview_preference(request, content_type_pk, int(preference_id))
 
     state = _build_dataview_state(
         request,
-        content_type_id,
+        content_type_pk,
         preference=preference,
-        calculate_count=definition.renderer_cls.action_requires_count(action),
+        renderer_action=action,
     )
     if isinstance(state, HttpResponse):
         return state
-    state.operation_context_token = request.GET.get(
-        DATAVIEW_OPERATION_CONTEXT_PARAM
+    expected_preference_id = preference.pk if preference is not None else (
+        int(preference_id) if preference_id is not None else None
     )
-
+    if state.preference.pk != expected_preference_id or (
+        preference_id is None and state.preference.view_type != "calendar"
+    ):
+        raise Http404("Dataview layout does not match the renderer operation")
+    definition = DATAVIEW_REGISTRY.get(state.preference.view_type)
     return definition.renderer_cls.handle_action(action, request, state)

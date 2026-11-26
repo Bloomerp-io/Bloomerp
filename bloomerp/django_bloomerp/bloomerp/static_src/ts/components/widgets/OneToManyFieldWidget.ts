@@ -1,4 +1,9 @@
 import { componentIdentifier, getComponent, initComponents } from "../BaseComponent";
+import type { Modal } from "../Modal";
+import type { ForeignFieldSelection } from "../data_view_components/ForeignFieldDataViewContainer";
+import renderDataview from "@/utils/dataview";
+import { t } from "@/utils/i18n";
+import { createModalInstance } from "@/utils/modals";
 import { attachObjectPreviewTooltip } from "@/utils/objectPreviewTooltip";
 import { BaseWidget, type BaseWidgetSerializableState } from "./BaseWidget";
 
@@ -27,6 +32,7 @@ export default class OneToManyFieldWidget extends BaseWidget {
     private selectAllHandler: ((event: Event) => void) | null = null;
     private actionHandler: ((event: Event) => void) | null = null;
     private selectAllCheckbox: HTMLInputElement | null = null;
+    private insertModal: Modal | null = null;
     private previewCleanupFns: Array<() => void> = [];
     private currentPage = 1;
     private pageSize = 10;
@@ -65,7 +71,10 @@ export default class OneToManyFieldWidget extends BaseWidget {
         return Math.min(100, Math.max(1, pageSize));
     }
 
+    /** Release the widget controls and any picker owned by this form. */
     public destroy(): void {
+        this.insertModal?.destroy();
+        this.insertModal = null;
         if (this.addButton && this.addButtonHandler) {
             this.addButton.removeEventListener("click", this.addButtonHandler);
         }
@@ -183,7 +192,7 @@ export default class OneToManyFieldWidget extends BaseWidget {
         const existing = Array.from(this.tbody.querySelectorAll<HTMLElement>("[data-one-to-many-row]"));
         const previous = existing.map((row: HTMLElement): OneToManyRowState => this.serializeRow(row));
         if (rows.length === existing.length && rows.every((row: OneToManyRowState, index: number): boolean =>
-            (row.id ?? "") === (previous[index].id ?? ""))) {
+            (row.id ?? "") === (previous[index].id ?? "") && row.INSERT === previous[index].INSERT)) {
             rows.forEach((row: OneToManyRowState, index: number): void => {
                 const changes = Object.fromEntries(Object.entries(row).filter(
                     ([key, next]: [string, string | string[]]): boolean => JSON.stringify(next) !== JSON.stringify(previous[index][key]),
@@ -200,8 +209,9 @@ export default class OneToManyFieldWidget extends BaseWidget {
             const fragment = this.rowTemplate.content.cloneNode(true) as DocumentFragment;
             this.replacePrefix(fragment, rowIndex);
             const rowElement = fragment.querySelector<HTMLElement>("[data-one-to-many-row]");
+            if (rowElement && rowData.INSERT) this.applyRowData(rowElement, rowData);
             this.tbody?.appendChild(fragment);
-            if (rowElement) {
+            if (rowElement && !rowData.INSERT) {
                 initComponents(rowElement);
                 this.applyRowData(rowElement, {
                     ...this.getDefaultRowData(),
@@ -263,6 +273,7 @@ export default class OneToManyFieldWidget extends BaseWidget {
         this.deleteRows(rows);
     }
 
+    /** Append a new row or a pending link and notify the parent form. */
     private addRow(
         rowData: OneToManyRowState = {},
         embeddedWidgetStates: EmbeddedWidgetState[] = [],
@@ -276,7 +287,7 @@ export default class OneToManyFieldWidget extends BaseWidget {
         const rowElement = fragment.querySelector<HTMLElement>("[data-one-to-many-row]");
         if (rowElement) {
             this.applyRowData(rowElement, {
-                ...this.getDefaultRowData(),
+                ...(rowData.INSERT ? {} : this.getDefaultRowData()),
                 ...rowData,
             });
         }
@@ -295,6 +306,66 @@ export default class OneToManyFieldWidget extends BaseWidget {
         this.configureRowPreviewActions();
         this.onChange();
         return rowElement;
+    }
+
+    /** Reuse the foreign-field table picker in a dialog owned by this widget. */
+    private openInsertPicker(button: HTMLButtonElement): void {
+        const contextId = button.dataset.oneToManyInsertExisting;
+        const contentType = this.element?.dataset.relatedContentTypeId;
+        if (!contextId || !contentType || button.disabled || this.insertModal?.element.isConnected) return;
+
+        const modal = createModalInstance("advanced-query-modal", button);
+        this.insertModal = modal;
+        modal.setTitle(t("Insert existing"));
+        modal.setSize("full");
+        const body = modal.getBodyElement();
+        const status = document.createElement("p");
+        status.className = "mb-2 text-sm text-gray-600 empty:mb-0";
+        status.setAttribute("role", "status");
+        const dataview = document.createElement("div");
+        body.append(status, dataview);
+
+        const onSelection = (event: Event): void => {
+            this.insertExistingSelection(event as CustomEvent<ForeignFieldSelection>, modal, status);
+        };
+        dataview.addEventListener("bloomerp:foreign-field-dataview-select", onSelection);
+        modal.element.addEventListener("bloomerp:modal-closed", (): void => {
+            if (this.insertModal === modal) this.insertModal = null;
+        }, { once: true });
+        modal.open();
+        void renderDataview(dataview, contentType, "foreign-field-dataview", undefined, {
+            contextId,
+            syncUrl: false,
+        }).catch((): void => {
+            if (dataview.isConnected) status.textContent = t("Unable to load existing records.");
+        });
+    }
+
+    /** Stage the selected identity and copy only the picker’s visible cell labels. */
+    private insertExistingSelection(
+        event: CustomEvent<ForeignFieldSelection>, modal: Modal, status: HTMLElement,
+    ): void {
+        const objectId = event.detail?.objectId;
+        if (this.insertModal !== modal || !objectId || !(event.target instanceof HTMLElement)) return;
+        if (this.getAllRows().some((row: HTMLElement): boolean =>
+            row.querySelector<HTMLInputElement>('input[type="hidden"][name$="__id"]')?.value === objectId)) {
+            status.textContent = t("This record is already in the form.");
+            return;
+        }
+        const selected = event.target.querySelector(
+            `td[data-application-field-name][data-object-id="${CSS.escape(objectId)}"]`,
+        )?.closest("tr");
+        if (!selected) return;
+        const rowData: OneToManyRowState = {};
+        for (const cell of selected.querySelectorAll<HTMLTableCellElement>("td[data-application-field-name]")) {
+            const fieldName = cell.dataset.applicationFieldName;
+            if (fieldName) rowData[fieldName] = cell.innerText.trim();
+        }
+        const row = this.addRow({ ...rowData, id: objectId, INSERT: "1" });
+        if (row) {
+            event.target.inert = true;
+            modal.close();
+        }
     }
 
     private replacePrefix(root: ParentNode, rowIndex: number): void {
@@ -357,6 +428,11 @@ export default class OneToManyFieldWidget extends BaseWidget {
         for (const cell of rowElement.querySelectorAll<HTMLElement>("[data-one-to-many-cell]")) {
             const fieldName = cell.dataset.oneToManyCell;
             if (!fieldName) continue;
+            const pendingValue = cell.querySelector("[data-one-to-many-pending-value]");
+            if (pendingValue) {
+                rowData[fieldName] = pendingValue.textContent ?? "";
+                continue;
+            }
             for (const root of cell.querySelectorAll<HTMLElement>(`[${componentIdentifier}]`)) {
                 const widget = getComponent(root);
                 if (!(widget instanceof BaseWidget)) continue;
@@ -454,6 +530,10 @@ export default class OneToManyFieldWidget extends BaseWidget {
 
     /** Apply supplied columns through their widget contracts, leaving other columns untouched. */
     private applyRowData(rowElement: HTMLElement, rowData: OneToManyRowState): void {
+        if (rowData.INSERT === "1" || rowData.INSERT === "true" || rowElement.hasAttribute("data-one-to-many-pending")) {
+            this.applyPendingRowData(rowElement, rowData);
+            return;
+        }
         const handled = new Set<string>();
         for (const cell of rowElement.querySelectorAll<HTMLElement>("[data-one-to-many-cell]")) {
             const name = cell.dataset.oneToManyCell!;
@@ -495,13 +575,47 @@ export default class OneToManyFieldWidget extends BaseWidget {
         });
     }
 
+    /** Show a pending association as labels and submit only its identity and insert flag. */
+    private applyPendingRowData(row: HTMLElement, rowData: OneToManyRowState): void {
+        const id = row.querySelector<HTMLInputElement>('input[type="hidden"][name$="__id"]');
+        if (!id) return;
+        if (typeof rowData.id === "string") id.value = rowData.id;
+        if (!row.hasAttribute("data-one-to-many-pending")) {
+            row.dataset.oneToManyPending = "";
+            const marker = document.createElement("input");
+            marker.type = "hidden";
+            marker.name = id.name.replace(/__id$/, "__INSERT");
+            marker.value = "1";
+            id.after(marker);
+            row.querySelector("[data-one-to-many-clone-row]")?.parentElement?.remove();
+        }
+        for (const cell of row.querySelectorAll<HTMLElement>("[data-one-to-many-cell]")) {
+            const fieldName = cell.dataset.oneToManyCell;
+            if (!fieldName) continue;
+            let label = cell.querySelector<HTMLElement>("[data-one-to-many-pending-value]");
+            if (!label) {
+                label = document.createElement("span");
+                label.className = "line-clamp-2 wrap-anywhere";
+                label.dataset.oneToManyPendingValue = "";
+                cell.replaceChildren(label);
+            }
+            if (fieldName in rowData) label.textContent = String(rowData[fieldName] ?? "");
+        }
+    }
+
+    /** Route inline row, picker, and column controls inside this widget. */
     private handleAction(event: Event): void {
         const target = event.target as HTMLElement | null;
         const action = target?.closest<HTMLElement>(
             "[data-one-to-many-delete-row], [data-one-to-many-clone-row], [data-one-to-many-sort], "
-            + "[data-one-to-many-autofill], [data-one-to-many-previous-page], [data-one-to-many-next-page]",
+            + "[data-one-to-many-autofill], [data-one-to-many-previous-page], [data-one-to-many-next-page], "
+            + "[data-one-to-many-insert-existing]",
         );
         if (!action || !this.element?.contains(action)) return;
+        if (action instanceof HTMLButtonElement && action.hasAttribute("data-one-to-many-insert-existing")) {
+            this.openInsertPicker(action);
+            return;
+        }
 
         const row = action.closest<HTMLElement>("[data-one-to-many-row]");
         if (action.hasAttribute("data-one-to-many-delete-row") && row) {
@@ -542,10 +656,11 @@ export default class OneToManyFieldWidget extends BaseWidget {
         }
     }
 
+    /** Discard pending links and mark previously saved rows for deletion. */
     private deleteRows(rows: HTMLElement[]): void {
         rows.forEach((row) => {
             const idInput = row.querySelector<HTMLInputElement>('input[type="hidden"][name$="__id"]');
-            if (idInput?.value) {
+            if (idInput?.value && !row.hasAttribute("data-one-to-many-pending")) {
                 const prefix = idInput.name.replace(/__id$/, "");
                 let deleteInput = row.querySelector<HTMLInputElement>('input[type="hidden"][name$="__DELETE"]');
                 if (!deleteInput) {

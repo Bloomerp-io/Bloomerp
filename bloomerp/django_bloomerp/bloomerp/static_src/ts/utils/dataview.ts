@@ -6,7 +6,7 @@ import type { Filter } from "@/components/filters/definition";
 export interface RenderDataviewOptions {
     queryParams?: Record<string, string | number | boolean>;
     args?: Record<string, string | number | boolean>;
-    permissionToken?: string | null;
+    contextId?: string;
     hideFilters?: boolean;
     syncUrl?: boolean;
 }
@@ -29,10 +29,6 @@ export default function renderDataview(
     if (options.hideFilters !== undefined) {
         url.searchParams.set('_arg_hide_filters', String(options.hideFilters));
     }
-    if (options.permissionToken !== undefined) {
-        url.searchParams.delete('_permission_token');
-        if (options.permissionToken) url.searchParams.set('_permission_token', options.permissionToken);
-    }
     if (componentId) {
         url.searchParams.set('_component_id', componentId);
     }
@@ -45,9 +41,10 @@ export default function renderDataview(
         source: element,
         target: element,
         swap: 'innerHTML',
-        ...(options.syncUrl !== undefined ? {
-            headers: { 'X-Bloomerp-Sync-Url': String(options.syncUrl) },
-        } : {}),
+        headers: {
+            ...(options.contextId ? { 'X-Bloomerp-Context': options.contextId } : {}),
+            ...(options.syncUrl !== undefined ? { 'X-Bloomerp-Sync-Url': String(options.syncUrl) } : {}),
+        },
     }).then(() => {
         // After the HTMX swap, find the dataview container inside the provided element
         const dataViewEl = element.querySelector<HTMLElement>(

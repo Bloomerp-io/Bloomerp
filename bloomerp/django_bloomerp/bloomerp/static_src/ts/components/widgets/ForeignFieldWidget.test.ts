@@ -218,6 +218,48 @@ test('ordinary widgets preserve the body portal and viewport-plus-scroll coordin
     } finally { dispose(f); }
 });
 
+/** Verify that results stay attached and scrollable when the field has little room below it. */
+async function fitForeignFieldResults(): Promise<void> {
+    const f = await fixture(false);
+    try {
+        let fieldTop = 520;
+        let menuHeight = 220;
+        /** Provide the field bounds for each scroll position. */
+        function fieldBounds(): DOMRect {
+            return new f.w.DOMRect(120, fieldTop, 200, 38);
+        }
+        /** Report the menu height before viewport constraints are applied. */
+        function resultHeight(): number {
+            return menuHeight;
+        }
+        f.input.getBoundingClientRect = fieldBounds;
+        Object.defineProperty(f.menu, 'scrollHeight', { get: resultHeight });
+        Object.defineProperty(f.w, 'innerHeight', { value: 600, writable: true });
+        f.w.dispatchEvent(new f.w.Event('resize'));
+        assert.equal(f.menu.style.top, '296px');
+        assert.equal(f.menu.style.maxHeight, '');
+
+        fieldTop = 230;
+        menuHeight = 320;
+        Object.defineProperty(f.w, 'innerHeight', { value: 380 });
+        f.w.dispatchEvent(new f.w.Event('resize'));
+        assert.equal(f.menu.style.top, '4px');
+        assert.equal(f.menu.style.maxHeight, '222px');
+        assert.equal(f.menu.style.overflowY, 'auto');
+
+        fieldTop = 24;
+        f.w.dispatchEvent(new f.w.Event('scroll'));
+        assert.equal(f.menu.style.top, '66px');
+        assert.equal(f.menu.style.maxHeight, '310px');
+
+        f.w.document.getElementById('outside')!.click();
+        assert.equal(f.menu.style.maxHeight, '');
+        assert.equal(f.menu.style.overflowY, '');
+        assert.equal(f.menu.parentElement, f.widget);
+    } finally { dispose(f); }
+}
+test('foreign-field results flip above the anchor and fit the available viewport', fitForeignFieldResults);
+
 /** Keep selection bubbling and sibling restoration independent of dirty tracking. */
 test('selection bubbles inside the parent filter and restores the original DOM order', async (): Promise<void> => {
     const f = await fixture();
@@ -548,7 +590,8 @@ test('replacing and reinitializing a form fragment preserves selection events an
         await flushResults(f.w);
         assertFormState(f, '', '', false);
         assert.equal(f.w.document.querySelectorAll('.foreign-field-dropdown').length, 1);
-        assert.equal(f.menu.parentElement, f.w.document.body);
+        assert.equal(f.menu.parentElement, f.widget);
+        await reopen(f);
 
         probe = interruptRestorationWithFocusout(f);
         selectResult(f, '8');

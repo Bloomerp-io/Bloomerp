@@ -39,11 +39,25 @@ class TestBulkActionsComponent(BloomerpComponentTestCase):
                 ),
             ),
             RequestScenario(
+                name="render the generic Dataview selection",
+                user=self.admin_user,
+                view_kwargs=view_kwargs,
+                query_params={"selection": "selected", "selected_ids": str(selected.pk)},
+                expected=ExpectedResult(response_validators=self.contains_text("Delete 1 object(s)")),
+            ),
+            RequestScenario(
+                name="the all-matching action ignores checked IDs",
+                user=self.admin_user,
+                view_kwargs=view_kwargs,
+                query_params={"selection": "filtered", "selected_ids": str(selected.pk)},
+                expected=ExpectedResult(response_validators=self.contains_text("Delete 2 object(s)")),
+            ),
+            RequestScenario(
                 name="delete selected objects",
                 method="POST",
                 user=self.admin_user,
                 view_kwargs=view_kwargs,
-                query_params=query_params,
+                query_params={**query_params, "_dataview_instance": "original-view"},
                 data={"action": "bulk_delete"},
                 headers={"HX-Request": "true"},
                 prepare=self._disable_celery,
@@ -53,7 +67,7 @@ class TestBulkActionsComponent(BloomerpComponentTestCase):
                         self._object_exists(unselected.pk),
                         self._header_contains(
                             "HX-Trigger-After-Swap",
-                            "bloomerp:bulk-action-complete",
+                            '"bloomerp:dataview-refresh": {"renderId": "original-view"}',
                         ),
                     ],
                 ),
@@ -260,7 +274,7 @@ class TestBulkAddressUpdates(BloomerpComponentTestCase):
         return self.selected.address == {
             "street_1": "New street", "street_2": "Unit 2", "postal_code": "94105",
             "city": "San Francisco", "state": "California", "country": "US",
-        } and self.unselected.address["street_1"] == "Old street" and "bloomerp:bulk-action-complete" in response.headers.get("HX-Trigger-After-Swap", "")
+        } and self.unselected.address["street_1"] == "Old street" and "bloomerp:dataview-refresh" in response.headers.get("HX-Trigger-After-Swap", "")
 
     def _address_cleared(self, _response: "HttpResponse") -> bool:
         """Verify empty multipart inputs intentionally clear an optional address."""

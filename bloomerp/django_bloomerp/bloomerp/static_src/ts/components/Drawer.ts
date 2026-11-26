@@ -2,6 +2,16 @@ import BaseComponent from './BaseComponent';
 
 const OPEN_DRAWER_ATTRIBUTE = 'bloomerp-open-drawer';
 const CLOSE_DRAWER_ATTRIBUTE = 'bloomerp-close-drawer';
+const DRAWER_WIDTH_CLASSES = new Map([
+    ['sm', 'max-w-sm'],
+    ['md', 'max-w-md'],
+    ['lg', 'max-w-lg'],
+    ['xl', 'max-w-xl'],
+    ['2xl', 'max-w-2xl'],
+    ['4xl', 'max-w-4xl'],
+    ['6xl', 'max-w-6xl'],
+    ['full', 'max-w-full'],
+]);
 
 type DrawerSide = 'left' | 'right';
 
@@ -27,6 +37,10 @@ export class Drawer extends BaseComponent {
     private animationTimer: ReturnType<typeof setTimeout> | null = null;
     private previousBodyOverflow: string | null = null;
     private returnFocus: HTMLElement | null = null;
+    private defaultTitle = '';
+    private widthOverride: string | null = null;
+    private bodyClassTarget: HTMLElement | null = null;
+    private addedBodyClasses: string[] = [];
 
 
     private backdropClickHandler: ((e: MouseEvent) => void) | null = null;
@@ -58,6 +72,7 @@ export class Drawer extends BaseComponent {
             return;
         }
 
+        this.defaultTitle = this.panelElement.querySelector('[data-drawer-title]')?.textContent ?? '';
         this.setupBackdropClickHandler();
         this.setupEscapeKeyHandler();
         this.setupTriggerButtons();
@@ -99,13 +114,50 @@ export class Drawer extends BaseComponent {
                 `[${OPEN_DRAWER_ATTRIBUTE}], [${CLOSE_DRAWER_ATTRIBUTE}]`
             );
             if (trigger?.getAttribute(OPEN_DRAWER_ATTRIBUTE) === drawer.drawerId) {
-                drawer.open();
+                drawer.applyTriggerPresentation(trigger);
+                drawer.open(undefined, trigger.getAttribute('bloomerp-set-drawer-body-class-to') ?? '');
             } else if (trigger?.getAttribute(CLOSE_DRAWER_ATTRIBUTE) === drawer.drawerId) {
                 drawer.close();
             }
         }
         document.addEventListener('click', handleDrawerTrigger);
         this.triggerHandlers.push({ element: document, handler: handleDrawerTrigger });
+    }
+
+    /** Apply action presentation or restore the drawer defaults for a plain opener. */
+    private applyTriggerPresentation(trigger: Element): void {
+        if (!this.panelElement) return;
+
+        const hasOverrides = trigger.getAttribute('bloomerp-set-drawer-title-for') === this.drawerId;
+        const heading = this.panelElement.querySelector<HTMLElement>('[data-drawer-title]');
+        if (heading) {
+            const title = (hasOverrides && trigger.getAttribute('bloomerp-set-drawer-title-to')) || this.defaultTitle;
+            heading.textContent = title;
+            heading.hidden = !title;
+        }
+
+        const size = hasOverrides ? trigger.getAttribute('bloomerp-set-drawer-size-to') : null;
+        const width = size ? DRAWER_WIDTH_CLASSES.get(size) ?? null : null;
+        if (width === this.widthOverride && (!width || this.panelElement.classList.contains(width))) return;
+
+        const defaultWidth = DRAWER_WIDTH_CLASSES.get(this.element.dataset.drawerSize ?? '') ?? 'max-w-md';
+        this.panelElement.classList.remove(defaultWidth, this.widthOverride ?? defaultWidth);
+        this.panelElement.classList.add(width ?? defaultWidth);
+        this.widthOverride = width;
+    }
+
+    /** Replace opener-supplied classes while preserving the declared body classes. */
+    private applyBodyClass(bodyClass: string): void {
+        this.bodyClassTarget?.classList.remove(...this.addedBodyClasses);
+        const body = document.getElementById(`${this.drawerId}-body`);
+        this.bodyClassTarget = null;
+        this.addedBodyClasses = [];
+        if (!body || !this.panelElement?.contains(body)) return;
+        this.bodyClassTarget = body;
+        this.addedBodyClasses = (bodyClass.match(/\S+/g) ?? []).filter(
+            (name: string): boolean => !body.classList.contains(name),
+        );
+        body.classList.add(...this.addedBodyClasses);
     }
 
     private clearTriggerHandlers(): void {
@@ -155,8 +207,8 @@ export class Drawer extends BaseComponent {
         return this.side === 'left' ? '-translate-x-full' : 'translate-x-full';
     }
 
-    /** Open the panel and remember the originating cell or control for focus restoration. */
-    public open(returnFocus?: HTMLElement): void {
+    /** Open with optional body classes and remember the originating control for focus restoration. */
+    public open(returnFocus?: HTMLElement, bodyClass: string = ''): void {
         if (!this.element) return;
         this.syncElements();
 
@@ -165,7 +217,9 @@ export class Drawer extends BaseComponent {
             return;
         }
 
-        if (this.backdropElement.classList.contains('hidden')) {
+        this.applyBodyClass(bodyClass);
+        const wasHidden = this.backdropElement.classList.contains('hidden');
+        if (wasHidden) {
             this.returnFocus = returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
         }
         if (this.animationTimer) clearTimeout(this.animationTimer);
@@ -182,6 +236,10 @@ export class Drawer extends BaseComponent {
         }
         this.backdropElement.classList.remove('hidden');
         this.backdropElement.classList.add('flex');
+        if (wasHidden && !returnFocus && this.element.hasAttribute('data-drawer-focus-panel')) {
+            this.panelElement.tabIndex = -1;
+            this.panelElement.focus({ preventScroll: true });
+        }
 
         const closedClass = this.getClosedTranslateClass();
         this.panelElement.classList.remove('translate-x-0');

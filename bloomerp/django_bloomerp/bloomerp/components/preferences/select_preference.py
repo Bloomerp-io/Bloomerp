@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+from django.db.models import Q
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 
@@ -11,6 +14,7 @@ from bloomerp.utils.requests import render_page_refresh
     path="components/select_preference/<str:model>/",
     name="components_select_preference",
 )
+@login_required
 def select_preference(request: HttpRequest, model: str) -> HttpResponse:
     """Component that allows you to select a preference for preference models
 
@@ -30,12 +34,26 @@ def select_preference(request: HttpRequest, model: str) -> HttpResponse:
         action = request.POST.get("action")
         scope = preference_model.normalize_scope(request.POST.dict())
         if action == "select":
-            preference = manager.get_available(preference_model, scope).filter(
-                pk=request.POST.get("preference_id", "")
-            ).first()
+            partial = request.headers.get("X-Bloomerp-Preference-Refresh") == "true"
+            if partial and len(scope) != len(preference_model.preference_scope_fields):
+                return HttpResponse("Preference scope is required.", status=400)
+            try:
+                preference_id = preference_model._meta.pk.to_python(
+                    request.POST.get("preference_id", "")
+                )
+                preference = manager.get_available(preference_model, scope).filter(
+                    Q(pk=preference_id) | Q(source_object_id=preference_id)
+                ).first()
+            except (OverflowError, ValidationError, ValueError):
+                return HttpResponse("Invalid preference ID or scope.", status=400)
             if preference is None:
                 return HttpResponse("Preference not found.", status=404)
-            manager.select(preference)
+            try:
+                manager.select(preference)
+            except PermissionError:
+                return HttpResponse("Preference not found.", status=404)
+            if partial:
+                return HttpResponse(status=204)
             return render_page_refresh()
 
         return HttpResponse("Invalid action", status=400)

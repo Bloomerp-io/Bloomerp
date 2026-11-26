@@ -1,5 +1,7 @@
 import json
+from datetime import timedelta
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlsplit
 
 from bs4 import BeautifulSoup
 from django.contrib.auth.models import Permission
@@ -8,6 +10,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.http import HttpResponse
 from django.test import RequestFactory
 from django.urls import reverse
+from django.utils import timezone
 
 from bloomerp.filters.definition import FilterCondition
 from bloomerp.lookups import builtins as lookups
@@ -21,6 +24,8 @@ from bloomerp.models import (
     RowPolicy,
     RowPolicyRule,
 )
+from bloomerp.models.actions.object.activity import activity_action
+from bloomerp.models.actions.object.comments import comments_action
 from bloomerp.models.audit.activity_log import (
     ActivityLog,
     ActivityLogAction,
@@ -28,23 +33,37 @@ from bloomerp.models.audit.activity_log import (
 )
 from bloomerp.models.definition import (
     BloomerpModelConfig,
+    DetailTab,
+    DetailTabFolder,
+    DetailTabsConfiguration,
     ObjectActionContext,
     ObjectActionGrouping,
 )
-from bloomerp.models.object_actions.activity import activity_action
-from bloomerp.models.object_actions.comments import comments_action
 from bloomerp.models.project_management import Initiative, Todo
 from bloomerp.models.users.user import DetailSidebarViewPreference, User
+from bloomerp.models.users.user_detail_view_tabs_preference import (
+    UserDetailViewTabsPreference,
+)
 from bloomerp.models.users.user_object_layout_preference import (
     UserObjectLayoutPreference,
 )
-from bloomerp.permissions.definition import AccessRule, BloomerpPermission, RowPolicyRuleContent
+from bloomerp.permissions.definition import (
+    AccessRule,
+    BloomerpPermission,
+    RowPolicyRuleContent,
+)
 from bloomerp.permissions.manager import PolicyManager
 from bloomerp.tests.base.request_test_case_mixin import (
     ExpectedResult,
     ModelRequestScenario,
 )
 from bloomerp.tests.base.view_test_case import BloomerpDetailViewTestCase
+from bloomerp.tokens import (
+    REQUEST_TOKEN_HEADER,
+    REQUEST_TOKEN_QUERY_KEYS,
+    DetailViewToken,
+    RequestToken,
+)
 
 
 class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
@@ -70,6 +89,43 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         """Return the permission, layout, persistence, and activity scenarios."""
         customer_kwargs = {"pk": self.customer.pk}
         return [
+            ModelRequestScenario(
+                name="Signed detail layout honors field permissions and hides layout editing",
+                model=self.CustomerModel, user=self.normal_user, view_kwargs=customer_kwargs,
+                prepare=[self.grant_names_only, self.prepare_inline_detail_token],
+                expected=ExpectedResult(response_validators=self.signed_detail_layout_renders),
+            ),
+            ModelRequestScenario(
+                name="A full-page detail save keeps the layout token",
+                model=self.CustomerModel, user=self.admin_user, view_kwargs=customer_kwargs,
+                method="POST", data={"first_name": "Token update"},
+                prepare=self.prepare_inline_detail_token,
+                expected=ExpectedResult(status_code=302, response_validators=self.signed_detail_save_redirects),
+            ),
+            ModelRequestScenario(
+                name="A saved layout token cannot expose someone else's private preference",
+                model=self.CustomerModel, user=self.admin_user, view_kwargs=customer_kwargs,
+                prepare=self.prepare_private_detail_preference_token,
+                expected=ExpectedResult(status_code=404),
+            ),
+            ModelRequestScenario(
+                name="A saved layout token can opt into editing without selecting the layout",
+                model=self.CustomerModel, user=self.admin_user, view_kwargs=customer_kwargs,
+                prepare=self.prepare_editable_detail_preference_token,
+                expected=ExpectedResult(response_validators=self.saved_token_layout_is_editable),
+            ),
+            ModelRequestScenario(
+                name="Signed tabs override the tab strip and follow same-model detail links",
+                model=self.CustomerModel, user=self.admin_user, view_kwargs=customer_kwargs,
+                prepare=self.prepare_signed_tabs,
+                expected=ExpectedResult(response_validators=self.signed_tabs_render),
+            ),
+            ModelRequestScenario(
+                name="An empty signed tab configuration can accompany a field layout",
+                model=self.CustomerModel, user=self.admin_user, view_kwargs=customer_kwargs,
+                prepare=self.prepare_empty_signed_tabs,
+                expected=ExpectedResult(response_validators=self.empty_signed_tabs_render),
+            ),
             ModelRequestScenario(
                 name="Initiative todos follow multiple default ordering levels",
                 model=Initiative,
@@ -98,6 +154,26 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
                 view_kwargs=customer_kwargs,
                 headers={"HX-Request": "true", "HX-Target": "split-view-detail-content"},
                 expected=ExpectedResult(response_validators=self.split_view_content_renders),
+            ),
+            *[
+                ModelRequestScenario(
+                    name=f"A successful {mode} save reloads DataViews of the saved model",
+                    model=self.CustomerModel, user=self.admin_user, view_kwargs=customer_kwargs,
+                    method="POST", data={"first_name": "Saved in detail"},
+                    headers={"HX-Request": "true", "HX-Target": target},
+                    expected=ExpectedResult(response_validators=self.embedded_save_notifies_dataviews),
+                )
+                for mode, target in (
+                    ("drawer", f"drawer-detail-content-{self.content_type.pk}"),
+                    ("split view", "split-view-detail-content"),
+                )
+            ],
+            ModelRequestScenario(
+                name="An invalid drawer save leaves the DataViews alone",
+                model=self.CustomerModel, user=self.normal_user, view_kwargs=customer_kwargs,
+                method="POST", data={"age": "not-a-number"}, prepare=self.grant_age_change,
+                headers={"HX-Request": "true", "HX-Target": f"drawer-detail-content-{self.content_type.pk}"},
+                expected=ExpectedResult(response_validators=self.invalid_embedded_save_omits_refresh),
             ),
             *self.get_attachment_scenarios(),
             *self.get_avatar_scenarios(),
@@ -367,6 +443,162 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         return bool(
             form and form.get('hx-target') == '#split-view-detail-content'
             and not soup.select_one('[data-detail-view-grid], #htmx-addendum')
+        )
+
+    def embedded_save_notifies_dataviews(self, response: HttpResponse) -> bool:
+        """Verify that the saved form returns in place and announces its model."""
+        self.customer.refresh_from_db()
+        self.assertEqual(self.customer.first_name, "Saved in detail")
+        self.assertContains(response, '<form')
+        return json.loads(response["HX-Trigger-After-Swap"]) == {
+            "bloomerp:dataview-refresh": {"contentTypeId": self.content_type.pk},
+        }
+
+    def invalid_embedded_save_omits_refresh(self, response: HttpResponse) -> bool:
+        """Verify that an invalid save returns errors without asking DataViews to reload."""
+        return self.age_error_is_visible(response) and not response.has_header("HX-Trigger-After-Swap")
+
+    def prepare_layout_context(
+        self, scenario: ModelRequestScenario, layout: DetailViewToken, *, rule: AccessRule | None = None,
+    ) -> None:
+        """Bind the detail layout and any scoped grant to the authenticated scenario."""
+        context = RequestToken(
+            expiry=timezone.now() + timedelta(minutes=15), detail_views={self.CustomerModel: layout},
+            policies={self.CustomerModel: rule} if rule is not None else {},
+        )
+        scenario.headers = {**(scenario.headers or {}), **self.request_context_headers(context, scenario.user)}
+
+    def prepare_inline_detail_token(self, scenario: ModelRequestScenario) -> None:
+        """Request two fields and an empty actions allowlist for this viewer."""
+        layout = DetailViewToken(
+            field_layout=FieldLayout(rows=[LayoutRow(
+                columns=2, title="Signed details", items=[LayoutItem(id="first_name"), LayoutItem(id="age")],
+            )]),
+            object_actions=[],
+        )
+        self.prepare_layout_context(scenario, layout)
+
+    def signed_detail_layout_renders(self, response: HttpResponse) -> bool:
+        """Render the permitted inline field and keep layout and action state scoped."""
+        context = response.context
+        self.assertFalse(context["can_change"])
+        self.assertIsNone(context["change_context"])
+        self.assertEqual(context["object_actions"], [])
+        self.assertContains(response, "Signed details")
+        form = context["form"]
+        self.assertIn("first_name", form.fields)
+        self.assertNotIn("age", form.fields)
+        self.assertNotIn("last_name", form.fields)
+        return context["layout_preference_object"].pk is None
+
+    def signed_detail_save_redirects(self, response: HttpResponse) -> bool:
+        """Persist a permitted edit and retain the layout on the redirect."""
+        self.customer.refresh_from_db()
+        query = parse_qs(urlsplit(response["Location"]).query)
+        return (
+            self.customer.first_name == "Token update"
+            and not REQUEST_TOKEN_QUERY_KEYS.intersection(query)
+        )
+
+    def prepare_signed_tabs(self, scenario: ModelRequestScenario) -> None:
+        """Sign a tabs-only override with same-model, cross-model, and external links."""
+        overview = self.get_route("overview", model=self.CustomerModel).url_name
+        files = self.get_route("files", model=self.CustomerModel)
+        files_url = UserDetailViewTabsPreference.get_configured_tab_url(
+            DetailTab(name="Files", url_name=files.url_name), self.CustomerModel,
+        )
+        todo = self.get_route("overview", model=Todo).url_name
+        self.other_detail_url = reverse(todo, kwargs={"pk": self.customer.pk})
+        layout = DetailViewToken(
+            tab_configuration=DetailTabsConfiguration(name="Signed tabs", tabs=[
+                DetailTab(name="Record", url_name=overview),
+                DetailTabFolder(name="Links", tabs=[
+                    DetailTab(name="Attachments", url=f"{files_url}?mode=files#attachments"),
+                    DetailTab(name="Other model", url=self.other_detail_url),
+                    DetailTab(name="Documentation", url="https://docs.example.com/"),
+                ]),
+            ]),
+        )
+        rule = AccessRule(row_permissions=[RowPolicyRuleContent(permissions=["view"])])
+        self.prepare_layout_context(scenario, layout, rule=rule)
+
+    def signed_tabs_render(self, response: HttpResponse) -> bool:
+        """Keep field preferences available and carry the override through tab navigation."""
+        document = BeautifulSoup(response.content, "html.parser")
+        strip = document.select_one("[data-tab-strip]")
+        self.assertIsNotNone(strip)
+        self.assertEqual(strip["data-can-manage"], "false")
+        self.assertIsNone(strip.select_one('[aria-label="Select tabs preference"]'))
+        overview = strip.select_one("[data-tab-link]")
+        self.assertEqual(overview.get_text(strip=True), "Record")
+        self.assertEqual(overview["aria-selected"], "true")
+        self.assertTrue(response.context["show_layout_preferences"])
+        self.assertTrue(response.context["can_change"])
+
+        files, other_model, documentation = strip.select("[data-folder-tab-item]")
+        self.assertEqual(other_model["href"], self.other_detail_url)
+        self.assertEqual(documentation["href"], "https://docs.example.com/")
+        self.assertEqual(files["hx-get"], files["href"])
+        link = urlsplit(files["href"])
+        self.assertEqual(link.fragment, "attachments")
+        self.assertEqual(parse_qs(link.query), {"mode": ["files"]})
+        files_response = self.client.get(files["href"], headers={
+            REQUEST_TOKEN_HEADER: response.wsgi_request.headers[REQUEST_TOKEN_HEADER],
+        })
+        self.assertEqual(files_response.status_code, 200)
+        self.assertTrue(files_response.context["tab_items"][1]["tabs"][0]["is_active"])
+        return not UserDetailViewTabsPreference.objects.filter(
+            content_type=self.content_type, user=self.admin_user,
+        ).exists()
+
+    def prepare_empty_signed_tabs(self, scenario: ModelRequestScenario) -> None:
+        """Sign a field layout with an explicit empty tab strip."""
+        layout = DetailViewToken(
+            field_layout=FieldLayout(rows=[LayoutRow(columns=1, items=[LayoutItem(id="first_name")])]),
+            tab_configuration=DetailTabsConfiguration(),
+        )
+        self.prepare_layout_context(scenario, layout)
+
+    def empty_signed_tabs_render(self, response: HttpResponse) -> bool:
+        """Keep the strip empty and apply the accompanying inline field layout."""
+        self.assertEqual(response.context["tab_items"], [])
+        self.assertFalse(response.context["show_layout_preferences"])
+        return "first_name" in response.context["form"].fields
+
+    def prepare_private_detail_preference_token(self, scenario: ModelRequestScenario) -> None:
+        """Sign a layout ID belonging to another user without sharing it."""
+        preference = UserObjectLayoutPreference.objects.create(
+            user=self.normal_user, content_type=self.content_type, name="Private layout",
+        )
+        layout = DetailViewToken(
+            preference_id=preference.pk,
+        )
+        self.prepare_layout_context(scenario, layout)
+
+    def prepare_editable_detail_preference_token(self, scenario: ModelRequestScenario) -> None:
+        """Pin an owned saved layout and explicitly allow editing it."""
+        self.selected_layout = UserObjectLayoutPreference.objects.create(
+            user=self.admin_user, content_type=self.content_type, name="Selected layout", selected=True,
+        )
+        self.token_preference = UserObjectLayoutPreference.objects.create(
+            user=self.admin_user, content_type=self.content_type, name="Pinned layout",
+            layout={"rows": [{"columns": 1, "items": [{"id": self.fields_by_name["first_name"].pk}]}]},
+        )
+        layout = DetailViewToken(
+            preference_id=self.token_preference.pk, allow_layout_edit=True,
+        )
+        self.prepare_layout_context(scenario, layout)
+
+    def saved_token_layout_is_editable(self, response: HttpResponse) -> bool:
+        """Edit the pinned preference without switching the viewer's selected layout."""
+        self.token_preference.refresh_from_db()
+        self.selected_layout.refresh_from_db()
+        context = response.context
+        return (
+            context["can_change"]
+            and context["change_context"].owner_object_id == self.token_preference.pk
+            and not self.token_preference.selected
+            and self.selected_layout.selected
         )
 
     def prepare_editor_shared_layout(self, scenario: ModelRequestScenario) -> None:

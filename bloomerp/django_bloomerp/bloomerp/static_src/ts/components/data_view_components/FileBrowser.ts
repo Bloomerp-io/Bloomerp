@@ -1,3 +1,4 @@
+import { fetchFromComponent } from "../../utils/requestContext";
 import { BaseDataViewCell } from "./BaseDataViewCell";
 import { BaseDataViewComponent } from "./BaseDataViewComponent";
 import { attachObjectPreviewTooltip } from "@/utils/objectPreviewTooltip";
@@ -86,7 +87,7 @@ export class FileBrowser extends BaseDataViewComponent {
                     data.set("model_label", modelLabel);
                     data.set("object_id", objectId);
                 }
-                const response = await fetch(url, {
+                const response = await fetchFromComponent(input, url, {
                     method: "POST", body: data, credentials: "same-origin", signal,
                     headers: { "X-CSRFToken": getCsrfToken() ?? "" },
                 });

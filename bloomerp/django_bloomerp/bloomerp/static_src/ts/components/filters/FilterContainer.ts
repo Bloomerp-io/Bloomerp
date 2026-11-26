@@ -19,6 +19,8 @@ export default class FilterContainer extends BaseComponent {
     private output = element('input');
     private initialized = false;
     private invalidInitialState = false;
+    private formValue: string | null = null;
+    private formValueEdited = false;
     private presets?: SavedFilters;
     /** Allow embedded editors to supply scoped discovery while retaining the full group UI. */
     constructor(root?: HTMLElement, private suppliedApi?: FilterApi) {
@@ -27,17 +29,41 @@ export default class FilterContainer extends BaseComponent {
 
     private get singleGroup(): boolean { return this.element?.dataset.maxGroups === '1'; }
     private get includeControls(): boolean { return this.element?.dataset.includeControls !== 'false'; }
-    private onEdit = (): void => { queueMicrotask(() => this.syncLiveValue()); };
+    /** Track user edits and rebuild the editor when the parent form restores its value. */
+    private onEdit = (event: Event): void => {
+        if (event.target === this.output && this.formValue !== null) {
+            if (event.type === 'change' && this.output.value !== this.formValue) {
+                this.setFilters(parseInitialFilters(this.output.value || '[]'));
+            }
+            return;
+        }
+        queueMicrotask(() => this.syncLiveValue(true));
+    };
+    /** Serialize the embedded filter or block submission when a real row is incomplete. */
     private onSubmit = (event: Event): void => {
         if (this.includeControls || this.output.disabled || event.target !== this.element?.closest('form')) return;
         try { this.output.value = JSON.stringify(this.getFilters()); }
-        catch (error) { event.preventDefault(); this.output.value = ''; this.error.textContent = (error as Error).message; }
+        catch (error) {
+            event.preventDefault();
+            event.stopPropagation();
+            this.output.value = '';
+            this.error.textContent = (error as Error).message;
+        }
     };
 
-    private syncLiveValue(): void {
+    /** Keep the form's serialized value in sync and report changes for opted-in fields. */
+    private syncLiveValue(edited: boolean = false): void {
         if (!this.initialized || this.includeControls) return;
+        if (this.formValue !== null) {
+            this.formValueEdited ||= edited;
+            if (!this.formValueEdited) return;
+        }
         try { this.output.value = JSON.stringify(this.getFilters()); this.error.textContent = ''; }
         catch { this.output.value = ''; }
+        if (this.formValue !== null && this.output.value !== this.formValue) {
+            this.formValue = this.output.value;
+            this.output.dispatchEvent(new Event('change', { bubbles: true }));
+        }
     }
 
     /** Restore groups and connect controls, optionally using an injected API. */
@@ -55,6 +81,10 @@ export default class FilterContainer extends BaseComponent {
         this.output.type = 'hidden';
         this.output.name = this.getDataAttribute('name') ?? 'filter';
         this.output.dataset.widgetOutput = '';
+        if (!this.includeControls && this.element.dataset.trackFormValue === 'true') {
+            this.output.dataset.trackFormValue = '';
+            this.formValue = '';
+        }
         this.api = this.suppliedApi ?? new FilterApi(this.element, { scope: scope as 'model' | 'workspace', id });
         if (this.includeControls && this.element.dataset.presetsUrl) {
             this.presets = new SavedFilters(this.api, () => this.getFilters(), (filters, isNew) => {
@@ -92,6 +122,7 @@ export default class FilterContainer extends BaseComponent {
         }
     }
 
+    /** Add an editable filter group and its individual condition controls. */
     private addGroup(initial?: Filter): void {
         const root = element('div', 'min-w-0 rounded-xl border border-gray-200');
         root.dataset.filterGroup = '';
@@ -108,25 +139,31 @@ export default class FilterContainer extends BaseComponent {
         toggle.classList.add('border-l', 'rounded-tr-xl');
         toggle.setAttribute('aria-expanded', 'true');
         const group: GroupEditor = { root, content: rows, toggle, connector, rows: [] };
-        const add = (condition?: FilterCondition): void => {
-            const editor = new ConditionEditor(this.api, () => {
-                editor.destroy();
-                group.rows.splice(group.rows.indexOf(editor), 1);
-                this.syncLiveValue();
-            }, () => this.syncLiveValue());
-            group.rows.push(editor);
-            rows.append(editor.element);
-            void editor.initialize(condition);
-            this.syncLiveValue();
-        };
-        actions.append(this.iconButton(t('Add condition'), 'fa-plus', () => { this.setGroupExpanded(group, true); add(); }), this.iconButton(t('Remove group'), 'fa-trash', () => {
+        /** Remove the group and publish the remaining conditions to the form. */
+        const removeGroup = (): void => {
             if (this.singleGroup) { this.setFilters([]); return; }
             group.rows.forEach(row => row.destroy());
             this.groups.splice(this.groups.indexOf(group), 1);
             root.remove();
             this.updateGroupLabels();
-            this.syncLiveValue();
-        }));
+            this.syncLiveValue(true);
+        };
+        /** Append a condition, dropping a cleared group only for editors that opt in. */
+        const add = (condition?: FilterCondition): void => {
+            /** Remove this condition and update the serialized value. */
+            const removeCondition = (): void => {
+                editor.destroy();
+                group.rows.splice(group.rows.indexOf(editor), 1);
+                if (!group.rows.length && this.element?.dataset.removeEmptyGroups === 'true') removeGroup();
+                else this.syncLiveValue(true);
+            };
+            const editor = new ConditionEditor(this.api, removeCondition, () => this.syncLiveValue());
+            group.rows.push(editor);
+            rows.append(editor.element);
+            void editor.initialize(condition);
+            this.syncLiveValue(condition === undefined);
+        };
+        actions.append(this.iconButton(t('Add condition'), 'fa-plus', () => { this.setGroupExpanded(group, true); add(); }), this.iconButton(t('Remove group'), 'fa-trash', removeGroup));
         const spacer = element('span', 'flex-1');
         toolbar.append(connector, spacer, actions, toggle);
         root.append(toolbar, rows);
@@ -137,10 +174,10 @@ export default class FilterContainer extends BaseComponent {
         this.syncLiveValue();
     }
 
+    /** Build a filter toolbar button with an accessible name and a visual hint. */
     private iconButton(label: string, icon: string, action: () => void): HTMLButtonElement {
         const control = button('', action, 'inline-flex h-8 w-8 shrink-0 items-center justify-center border-0 border-l border-gray-200 bg-transparent text-xs hover:bg-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:-outline-offset-2');
         control.setAttribute('aria-label', label);
-        control.title = label;
         addTooltip(control, { text: label, position: 'bottom' });
         const glyph = element('i', `fa-solid ${icon}`);
         glyph.setAttribute('aria-hidden', 'true');
@@ -148,13 +185,13 @@ export default class FilterContainer extends BaseComponent {
         return control;
     }
 
+    /** Keep the group's visibility, icon, and tooltip in sync. */
     private setGroupExpanded(group: GroupEditor, expanded: boolean): void {
         group.content.hidden = !expanded;
         group.root.dataset.collapsed = String(!expanded);
         group.toggle.setAttribute('aria-expanded', String(expanded));
         const label = expanded ? t('Collapse group') : t('Expand group');
         group.toggle.setAttribute('aria-label', label);
-        group.toggle.title = label;
         addTooltip(group.toggle, { text: label, position: 'bottom' });
         group.toggle.querySelector('i')!.className = `fa-solid ${expanded ? 'fa-chevron-up' : 'fa-chevron-down'}`;
     }
@@ -179,16 +216,19 @@ export default class FilterContainer extends BaseComponent {
         }));
     }
 
+    /** Replace the groups and make their serialized value the form's baseline. */
     public setFilters(filters: Filter[]): void {
         if (this.singleGroup && filters.length > 1) throw new Error(t('This editor accepts one condition group per rule.'));
         if (this.singleGroup && !filters.length) filters = [{ connector: 'AND', conditions: [] }];
         this.invalidInitialState = false;
+        this.formValueEdited = false;
         this.groups.forEach(group => group.rows.forEach(row => row.destroy()));
         this.groups = [];
         this.body.replaceChildren();
         this.error.textContent = '';
         filters.forEach(group => this.addGroup(group));
         this.output.value = JSON.stringify(filters);
+        if (this.formValue !== null) this.formValue = this.output.value;
         this.syncLiveValue();
     }
 

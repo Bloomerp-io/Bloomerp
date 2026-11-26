@@ -43,7 +43,7 @@ class TestUserObjectLayoutPreferenceModel(
                 )
                 for model_name in (
                     "DocumentTemplateStyling", "SqlQuery", "AIAgentAccess", "MCPIntegration",
-                    "CalendarBooking", "CalendarBookingSubmission", "CalendarEventParticipant",
+                    "BookingLink", "BookingLinkSubmission", "CalendarEventParticipant",
                 )
             ],
             ModelScenario(

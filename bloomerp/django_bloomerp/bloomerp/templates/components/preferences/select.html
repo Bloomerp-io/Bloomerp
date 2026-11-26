@@ -2,7 +2,6 @@
 {% load bloomerp %}
 
 <div
-    class="max-h-80 overflow-y-auto"
     bloomerp-component="select-preference"
     data-model-name="{{ model }}"
     data-select-preference-url="{% url 'components_select_preference' model=model %}"
@@ -11,71 +10,67 @@
     data-delete-preference-url="{% url 'components_delete_preference' model=model preference_id='REPLACE_WITH_ID' %}"
     data-model-verbose-name="{{ model_verbose_name }}"
 >
-    {% for preference in preferences %}
-        {% can_manage_preference_object request.user preference as can_manage %}
-
-        <div class="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-50" data-preference-row>
-            <button
-                type="button"
-                class="min-w-0 flex-1 truncate text-left text-sm font-medium text-gray-800"
-                data-select-preference="{{ preference.id }}"
-            >
-                {% if preference.effective_preference.name == "Default" %}
-                    {% translate "Default" %}
-                {% else %}
-                    {{ preference.effective_preference.name }}
-                {% endif %}
-            </button>
-
-            {% if preference.selected and preference.user_id == request.user.id %}
-                <span class="text-xs font-medium text-primary-700">{% translate "Selected" %}</span>
-            {% endif %}
-            
-            {% if can_manage %}
-                <button type="button" class="btn btn-ghost btn-xs" data-rename-preference="{{ preference.id }}" aria-label="{% translate "Rename preference" %}">
-                    <i class="fa fa-pen"></i>
-                </button>
-                <button type="button" class="btn btn-ghost btn-xs" data-share-preference="{{ preference.id }}" aria-label="{% translate "Share preference" %}">
-                    <i class="fa fa-share-nodes"></i>
-                </button>
-                <button type="button" class="btn btn-ghost btn-xs text-danger" data-delete-preference="{{ preference.id }}" aria-label="{% translate "Delete preference" %}">
-                    <i class="fa fa-trash"></i>
-                </button>
-            {% endif %}
-        </div>
-    {% empty %}
-        <div class="px-4 py-3 text-sm text-gray-500">
-            {% translate "No preferences available yet." %}
-        </div>
+    {% csrf_token %}
+    {% for key, value in scope.items %}
+        <span hidden data-preference-scope-key="{{ key }}" data-preference-scope-value="{{ value }}"></span>
     {% endfor %}
-</div>
+    <div class="max-h-80 overflow-y-auto">
+        {% for preference in preferences %}
+            {% can_manage_preference_object request.user preference as can_manage %}
 
+            <div class="group/preference flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-50" data-preference-row>
+                <button
+                    type="button"
+                    class="min-w-0 flex-1 truncate text-left text-sm font-medium text-gray-800"
+                    data-select-preference="{{ preference.id }}"
+                    {% if preference.selected and preference.user_id == request.user.id %}data-selected-preference{% endif %}
+                >
+                    {% if preference.effective_preference.name == "Default" %}
+                        {% translate "Default" %}
+                    {% else %}
+                        {{ preference.effective_preference.name }}
+                    {% endif %}
+                </button>
 
-<div class="border-t border-gray-200 px-4 py-3">
-    <div class="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">
-        {% blocktrans %}New {{ model_verbose_name }}{% endblocktrans %}
+                {% if preference.selected and preference.user_id == request.user.id %}
+                    <span class="text-xs font-medium text-primary-700">{% translate "Selected" %}</span>
+                {% endif %}
+
+                {% if can_manage %}
+                    {% translate "Rename preference" as rename_label %}
+                    {% translate "Share preference" as share_label %}
+                    {% translate "Delete preference" as delete_label %}
+                    <div class="flex shrink-0 items-center gap-1 [@media(hover:hover)]:opacity-0 group-hover/preference:opacity-100 group-focus-within/preference:opacity-100">
+                        <button type="button" class="icon-button" data-icon-button-appearance="plain" data-rename-preference="{{ preference.id }}" aria-label="{{ rename_label }}" title="{{ rename_label }}">
+                            <i class="fa fa-pen" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" class="icon-button" data-icon-button-appearance="plain" data-share-preference="{{ preference.id }}" aria-label="{{ share_label }}" title="{{ share_label }}">
+                            <i class="fa fa-share-nodes" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" class="icon-button" data-icon-button-appearance="plain" data-delete-preference="{{ preference.id }}" aria-label="{{ delete_label }}" title="{{ delete_label }}">
+                            <i class="fa fa-trash" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        {% empty %}
+            <div class="px-4 py-3 text-sm text-gray-500">
+                {% translate "No preferences available yet." %}
+            </div>
+        {% endfor %}
     </div>
 
-    <form 
-        class="flex items-center gap-2" 
-        hx-post="{% url 'components_new_preference' model=model %}"
-        hx-tigger="submit"
-        hx-target="this"
-        >
-        {% csrf_token %}
-        {% for key, value in scope.items %}
-            <input type="hidden" name="{{ key }}" value="{{ value }}">
-        {% endfor %}
+    <div class="flex items-center gap-2 border-t border-gray-200 px-4 py-3">
         <input
             type="text"
-            name="name"
+            data-new-preference-name
             class="input input-sm w-full"
             placeholder="{% translate "Preference name" %}" aria-label="{% translate "Preference name" %}"
             maxlength="255"
             value=""
         >
-        <button type="submit" class="btn btn-primary btn-sm shrink-0">
+        <button type="button" data-save-preference class="btn btn-primary btn-xs shrink-0">
             {% translate "Save" %}
         </button>
-    </form>
+    </div>
 </div>

@@ -6,8 +6,8 @@ from typing import Any, ClassVar
 
 from django import forms
 
+from bloomerp.mcp.oauth import MCPAuthenticationError, validate_remote_url
 from bloomerp.models.agents import MCPIntegration
-from bloomerp.services.mcp.oauth import MCPAuthenticationError, validate_remote_url
 
 
 class MCPIntegrationForm(forms.ModelForm):

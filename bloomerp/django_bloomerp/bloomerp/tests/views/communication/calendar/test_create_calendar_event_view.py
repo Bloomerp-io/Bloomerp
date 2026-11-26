@@ -231,6 +231,24 @@ class TestCreateCalendarEventView(InboxCalendarFixtures, BloomerpModelViewTestCa
                 ),
             ),
             RequestScenario(
+                name="The Calendar composer closes its submitting modal after save",
+                method="POST",
+                user=self.actor,
+                headers={"HX-Request": "true", "X-Bloomerp-Modal-Create": "true"},
+                data=self.event_data(data_view_create_id=""),
+                expected=ExpectedResult(status_code=204, response_validators=self.saved_in_modal),
+            ),
+            RequestScenario(
+                name="The Calendar composer refreshes its originating page after a drawer save",
+                method="POST",
+                user=self.actor,
+                headers={"HX-Request": "true", "HX-Target": "bloomerp-general-use-drawer-body"},
+                data=self.event_data(data_view_create_id=""),
+                expected=ExpectedResult(
+                    status_code=204, response_validators=self.header_equals("HX-Refresh", "true"),
+                ),
+            ),
+            RequestScenario(
                 name="Invalid times preserve inputs and do not save",
                 method="POST",
                 user=self.actor,
@@ -326,6 +344,19 @@ class TestCreateCalendarEventView(InboxCalendarFixtures, BloomerpModelViewTestCa
             and trigger["data_view_create_id"] == "calendar-draft"
         )
 
+    def saved_in_modal(self, response: HttpResponse) -> bool:
+        """Return the generic modal result while saving the event in its authorized calendar."""
+        events = json.loads(response["HX-Trigger"])
+        detail = events["bloomerp:close-modal"]
+        return (
+            set(events) == {"bloomerp:close-modal"}
+            and set(detail) == {"result", "messages"}
+            and detail["result"] == "saved"
+            and CalendarEvent.objects.filter(
+                title="Composer test event", organizing_inbox=self.source,
+            ).exists()
+        )
+
     def all_day_saved(self, response: HttpResponse) -> bool:
         """Confirm exclusive date-only storage and an empty timed representation."""
         event = CalendarEvent.objects.get(title="Composer test event")
@@ -376,7 +407,7 @@ class TestCreateCalendarEventView(InboxCalendarFixtures, BloomerpModelViewTestCa
         return event.content == "" and event.location == ""
 
     def composer_controls(self, response: HttpResponse) -> bool:
-        """Require shared composer controls and sender-dependent invitations in the second row."""
+        """Require sender-dependent invitations to share the calendar and sender row."""
         html = response.content.decode()
         rows = BeautifulSoup(html, "html.parser").select("#calendar-event-create-form [data-layout-row]")
         return (
@@ -390,8 +421,11 @@ class TestCreateCalendarEventView(InboxCalendarFixtures, BloomerpModelViewTestCa
             and 'name="event_timezone"' in html
             and "Add an event to your calendar." not in html
             and 'name="organizer_email"' not in html
-            and len(rows) > 1
-            and rows[1].select_one('[data-layout-item-id="send_invitations"][x-show="Boolean(senderSelected)"]') is not None
+            and bool(rows)
+            and rows[0].select_one('[data-layout-item-id="sender"]') is not None
+            and rows[0].select_one(
+                '[data-layout-item-id="send_invitations"][data-colspan="2"][x-show="Boolean(senderSelected)"]'
+            ) is not None
             and 'x-model="senderSelected"' in html
             and 'x-bind:disabled="!senderSelected"' in html
         )
@@ -505,41 +539,45 @@ class TestCreateCalendarEventView(InboxCalendarFixtures, BloomerpModelViewTestCa
 
     def test_inbox_token_survives_dataview_create_and_post(self) -> None:
         """An Inbox owner without event policies can render, compose, and save only in that Inbox."""
-        import html
-        import re
         from urllib.parse import parse_qs, urlsplit
 
+        from bs4 import BeautifulSoup
         from django.urls import reverse
 
         from bloomerp.permissions.manager import UserPolicyManager
+        from bloomerp.tokens import REQUEST_TOKEN_HEADER, REQUEST_TOKEN_QUERY_KEYS
 
         self.assertFalse(UserPolicyManager(self.owner).has_global_permission(CalendarEvent, "add"))
         self.client.force_login(self.owner)
         page = self.client.get(reverse("inbox_calendar", kwargs={"inbox_id": self.source.pk}))
         self.assertEqual(page.status_code, 200)
-        embedded = re.search(r'hx-get="([^"]*components/dataview/[^"]*)"', page.content.decode())
-        self.assertIsNotNone(embedded)
-        dataview = self.client.get(html.unescape(embedded.group(1)))
+        loader = BeautifulSoup(page.content, "html.parser").select_one('[hx-trigger="load"][hx-get*="components/dataview/"]')
+        self.assertIsNotNone(loader)
+        headers = json.loads(loader["hx-headers"])
+        self.assertFalse(REQUEST_TOKEN_QUERY_KEYS.intersection(parse_qs(urlsplit(loader["hx-get"]).query)))
+        dataview = self.client.get(loader["hx-get"], headers=headers)
         self.assertEqual(dataview.status_code, 200)
         self.assertContains(dataview, self.timed.title)
         self.assertNotContains(dataview, self.unplaced.title)
         create_url = dataview.context["create_component_url"]
         self.assertIsNotNone(create_url)
-        composer = self.client.get(create_url + "&data_view_create_id=calendar-draft")
-        self.assertContains(composer, 'name="_permission_token"')
-        token = parse_qs(urlsplit(create_url).query)["_permission_token"][0]
-        unfiltered = self.client.get(urlsplit(html.unescape(embedded.group(1))).path, {"_permission_token": token})
+        self.assertFalse(REQUEST_TOKEN_QUERY_KEYS.intersection(parse_qs(urlsplit(create_url).query)))
+        headers["HX-Request"] = "true"
+        composer = self.client.get(create_url, {"data_view_create_id": "calendar-draft"}, headers=headers)
+        self.assertContains(composer, f'data-request-context-id="{headers[REQUEST_TOKEN_HEADER]}"')
+        self.assertNotContains(composer, 'name="_permission_token"')
+        unfiltered = self.client.get(urlsplit(loader["hx-get"]).path, headers=headers)
         self.assertNotContains(unfiltered, self.unplaced.title)
         self.assertContains(unfiltered, self.timed.title)
         action = composer.context["form_url"]
-        response = self.client.post(action, self.event_data(_permission_token=token))
+        response = self.client.post(action, self.event_data(), headers=headers)
         self.assertEqual(response.status_code, 204)
         event = CalendarEvent.objects.get(title="Composer test event")
         self.assertEqual(event.organizing_inbox_id, self.source.pk)
         # A different owned Inbox passes normal choice validation but not the signed add predicate.
         denied = self.client.post(action, self.event_data(
-            _permission_token=token, inbox=self.owner_calendar.pk, title="Outside signed inbox",
-        ))
+            inbox=self.owner_calendar.pk, title="Outside signed inbox",
+        ), headers=headers)
         self.assertEqual(denied.status_code, 200)
         self.assertContains(denied, "You cannot create events in this calendar.")
         self.assertFalse(CalendarEvent.objects.filter(title="Outside signed inbox").exists())

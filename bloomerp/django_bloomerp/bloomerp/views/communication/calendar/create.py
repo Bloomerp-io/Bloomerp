@@ -24,10 +24,16 @@ from bloomerp.forms.communication.calendar_event import (
 from bloomerp.models import FieldLayout, LayoutItem, LayoutRow
 from bloomerp.models.communication.calendar import CalendarEvent
 from bloomerp.models.communication.inbox.inbox import Inbox
-from bloomerp.permissions.access_tokens import request_permission_token
 from bloomerp.router import router
 from bloomerp.services.preference_services import PreferenceManager
 from bloomerp.utils.models import get_create_view_url, get_list_view_url
+from bloomerp.utils.requests import (
+    CREATE_DRAWER_BODY_ID,
+    CREATE_MODAL_BODY_ID,
+    MODAL_CREATE_HEADER,
+    is_drawer_create,
+    modal_saved_response,
+)
 from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.layout_form_mixin import LayoutFormMixin
 
@@ -53,8 +59,7 @@ class CalendarEventMixin(LayoutFormMixin):
         """Arrange permitted composer fields using the regular CRUD field layout."""
         form = self.get_form()
         sections = [
-            (None, 2, [("inbox", 1), ("sender", 1)]),
-            (None, 1, [("send_invitations", 1)]),
+            (None, 2, [("inbox", 1), ("sender", 1), ("send_invitations", 2)]),
             (None, 1, [("title", 1), ("attendees", 1)]),
             (
                 _("Timing"),
@@ -195,14 +200,18 @@ class CalendarEventMixin(LayoutFormMixin):
         return initial
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
-        """Preserve modal correlation and the composer action through validation errors."""
+        """Keep the composer layout and submission URL available through validation errors."""
         context = super().get_context_data(**kwargs)
         context.update(
             form_url=reverse(get_create_view_url(CalendarEvent)),
+            modal_create=(
+                self.request.headers.get(MODAL_CREATE_HEADER) == "true"
+                or self.request.htmx.target == CREATE_MODAL_BODY_ID
+            ),
+            drawer_create_target=f"#{CREATE_DRAWER_BODY_ID}" if is_drawer_create(self.request) else "",
             data_view_create_id=self.request.POST.get("data_view_create_id")
             or self.request.GET.get("data_view_create_id", ""),
             calendar_timezone=timezone.get_current_timezone_name(),
-            permission_token=request_permission_token(self.request.user),
         )
         form = context["form"]
         identities = {
@@ -271,7 +280,10 @@ class CalendarEventMixin(LayoutFormMixin):
         return self.get_success_response(event, notice)
 
     def get_success_response(self, event: CalendarEvent, notice: dict[str, str]) -> HttpResponse:
-        """Complete the existing composer in its dataview, modal, or full-page context."""
+        """Complete the composer in its submitting overlay or full-page context."""
+        if self.request.headers.get(MODAL_CREATE_HEADER) == "true":
+            return modal_saved_response([notice])
+
         caller = self.request.POST.get("data_view_create_id") or self.request.GET.get(
             "data_view_create_id"
         )
@@ -294,7 +306,7 @@ class CalendarEventMixin(LayoutFormMixin):
             messages.WARNING if notice["type"] == "warning" else messages.SUCCESS,
             notice["text"],
         )
-        if self.get_form().original is not None and self.request.htmx:
+        if is_drawer_create(self.request) or (self.get_form().original is not None and self.request.htmx):
             response = HttpResponse(status=204)
             response["HX-Refresh"] = "true"
             return response
@@ -311,3 +323,9 @@ class CalendarEventMixin(LayoutFormMixin):
 )
 class CreateCalendarEventView(CalendarEventMixin, BaseBloomerpView, FormView):
     """Create events with the same modal completion event as generic dataview creation."""
+
+    htmx_include_addendum = True
+
+    def get_htmx_include_addendum(self) -> bool:
+        """Render page navigation when the composer is opened as a main page."""
+        return self.htmx_include_addendum and self.request.htmx.target == self.htmx_main_target

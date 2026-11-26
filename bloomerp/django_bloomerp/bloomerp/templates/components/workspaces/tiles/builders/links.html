@@ -1,7 +1,7 @@
 {% load i18n %}
 <div
     oninput="
-        if (event.target.matches('[data-link-url], [data-edit-link-url]')) {
+        if (event.target.matches('[data-route-picker]')) {
             const option = Array.from(event.target.list?.options || []).find((candidate) => candidate.value === event.target.value);
             const form = event.target.closest('[data-add-link-form], [data-edit-link-form]');
             const nameInput = form?.querySelector('[data-link-name], [data-edit-link-name]');
@@ -35,7 +35,7 @@
             <div class="space-y-3" data-add-link-form>
                 <label class="block">
                     <span class="mb-1 block text-sm">{% blocktrans %}URL{% endblocktrans %}</span>
-                    <input type="text" class="input input-sm w-full" list="workspace-link-route-suggestions" data-link-url autocomplete="off">
+                    {% include "widgets/route_picker.html" with suggestions_id="workspace-link-route-suggestions" only %}
                     <span class="mt-1 block text-xs text-gray-500">{% blocktrans %}Search route names or descriptions, or enter any URL.{% endblocktrans %}</span>
                 </label>
                 <label class="block">
@@ -63,7 +63,7 @@
                     hx-vars='js:{
                         operation: "add_link",
                         data: {
-                            url: this.closest("[data-add-link-form]").querySelector("[data-link-url]").value,
+                            url: this.closest("[data-add-link-form]").querySelector("[data-route-picker]").value,
                             name: this.closest("[data-add-link-form]").querySelector("[data-link-name]").value,
                             icon: this.closest("[data-add-link-form]").querySelector("[name=add_link_icon]").value,
                             parent_path: JSON.parse(this.closest("[data-add-link-form]").querySelector("[data-link-parent]").value)

@@ -1,13 +1,14 @@
-from django.contrib.auth import get_user_model
-from django.contrib import messages
-from django.contrib.contenttypes.models import ContentType
 import logging
-from django.db.models.deletion import Collector
-from django.db.models.deletion import ProtectedError
-from django.db.models.deletion import RestrictedError
-from django.http import HttpResponse
+from typing import Any
+
+from django.contrib import messages
+from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
+from django.db.models.deletion import Collector, ProtectedError, RestrictedError
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect
 from django.urls import reverse
+from django_htmx.http import HttpResponseClientRedirect, HttpResponseLocation
 
 from bloomerp.models.files import FileNode
 from bloomerp.models.workspaces import SqlQuery, Tile
@@ -15,10 +16,9 @@ from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
 from bloomerp.utils.labels import safe_object_label
-from bloomerp.utils.models import get_delete_view_url
-from bloomerp.utils.models import get_list_view_url
+from bloomerp.utils.models import get_delete_view_url, get_list_view_url
+from bloomerp.utils.navigation import supports_main_content_navigation
 from bloomerp.views.generic.detail.base import BaseBloomerpDetailView
-
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -56,7 +56,8 @@ class BloomerpDeleteView(BaseBloomerpDetailView):
             and permission_manager.has_access_to_object(self.get_object(), BloomerpPermission.DELETE)
         )
 
-    def get_context_data(self, **kwargs):
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        """Prepare the deletion summary and the confirmation form's destination."""
         context = super().get_context_data(**kwargs)
         delete_preview = self.get_delete_preview()
         context["content_type_id"] = ContentType.objects.get_for_model(self.model).pk
@@ -65,9 +66,13 @@ class BloomerpDeleteView(BaseBloomerpDetailView):
         context["total_objects"] = delete_preview["total_objects"]
         context["list_url"] = self.get_success_url()
         context["delete_submit_url"] = self.get_delete_submit_url()
+        context["delete_submit_target"] = (
+            f"#{self.htmx_main_target}" if self.get_htmx_include_addendum() else ""
+        )
         return context
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        """Delete the confirmed object and return to its model list."""
         self.object = self.get_object()
         delete_preview = self.get_delete_preview()
         try:
@@ -76,7 +81,7 @@ class BloomerpDeleteView(BaseBloomerpDetailView):
             self.pre_delete_detail_url = ""
         if delete_preview["protected_objects"]:
             context = self.get_context_data(object=self.object)
-            return self.render_to_response(context, status=409)
+            return self.handle_conflict_response(context)
 
         deleted_count, deleted_by_model = self.object.delete()
         logger.info(
@@ -96,12 +101,26 @@ class BloomerpDeleteView(BaseBloomerpDetailView):
     def get_delete_submit_url(self):
         return reverse(get_delete_view_url(self.model), kwargs={"pk": self.object.pk})
 
-    def handle_success_response(self):
+    def handle_conflict_response(self, context: dict[str, Any]) -> HttpResponse:
+        """Show the current confirmation when a page submission can no longer delete."""
+        if (
+            context["delete_submit_target"]
+            and getattr(self.request.htmx, "target", None) == self.htmx_main_target
+        ):
+            return HttpResponseLocation(
+                context["delete_submit_url"],
+                target=context["delete_submit_target"],
+                status=409,
+            )
+        return self.render_to_response(context, status=409)
+
+    def handle_success_response(self) -> HttpResponse:
+        """Load the model list into the main content region for HTMX submissions."""
         success_url = self.get_success_url()
         if self.request.htmx:
-            response = HttpResponse(status=204)
-            response["HX-Redirect"] = success_url
-            return response
+            if supports_main_content_navigation(success_url):
+                return HttpResponseLocation(success_url, target=f"#{self.htmx_main_target}")
+            return HttpResponseClientRedirect(success_url)
         return redirect(success_url)
 
 

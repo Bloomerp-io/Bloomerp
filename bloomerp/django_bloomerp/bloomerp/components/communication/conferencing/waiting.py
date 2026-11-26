@@ -1,4 +1,5 @@
 """Expose the waiting list only to the currently authorized meeting host."""
+# SHOULD_API
 
 from uuid import UUID
 

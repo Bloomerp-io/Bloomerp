@@ -11,6 +11,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Model, Q, QuerySet
 from django.urls import reverse
+from django.utils.functional import cached_property
 from django.utils.translation import gettext as _
 
 from bloomerp.dataviews.definition import BaseDataviewRenderer, DataviewPagination
@@ -19,6 +20,7 @@ from bloomerp.modules.definition import module_registry
 from bloomerp.utils.models import string_search_on_qs
 
 if TYPE_CHECKING:
+    from bloomerp.models.definition import DataviewActionContext
     from bloomerp.models.files.file_node import FileNode
     from bloomerp.models.files.file_reference import FileReference
 
@@ -26,7 +28,8 @@ if TYPE_CHECKING:
 class FileBrowserRenderer(BaseDataviewRenderer):
     """Keep browsing inside the supplied scope and hide inaccessible reference labels."""
 
-    template_name = "dataviews/files.html"
+    template_name = "dataview/file_browser/body.html"
+    item_template_name = "dataview/file_browser/item.html"
     reserved_query_params: ClassVar[set[str]] = {"folder_id", "virtual_path", "folder_type"}
 
     def _related_scopes(self, objects: Iterable[Model], content_type: ContentType) -> dict[int, set[str]]:
@@ -208,15 +211,48 @@ class FileBrowserRenderer(BaseDataviewRenderer):
             "allow_unassigned_upload": not current and self.state.model is FileNode,
         }
 
-    def render(self, pagination: DataviewPagination | None = None, *, extra_context: dict[str, Any] | None = None) -> str:
-        """Render navigation and node actions without exposing legacy folder mutations."""
-        from bloomerp.files.access import FileAccessManager
+    @cached_property
+    def browser_context(self) -> dict[str, Any]:
+        """Build the current folder's permission-filtered rows and navigation."""
         from bloomerp.models.definition import get_object_actions
         from bloomerp.models.files.file_node import FileNode
         files, entries = self._visible_entries()
         mode = self.state.request.GET.get("folder_type", getattr(self.options, "folder_type", "virtual"))
         mode = mode if mode in {"virtual", "physical"} else "virtual"
         context = self._physical_context(files) if mode == "physical" else self._virtual_context(files, entries)
+        context.update({
+            "folder_type": mode,
+            "file_actions": get_object_actions(FileNode, surface="dataview_item"),
+            "file_content_type_id": ContentType.objects.get_for_model(FileNode).pk,
+        })
+        return context
+
+    def get_item(self, object_id: str) -> FileNode | None:
+        """Find a file in the current folder after checking its readable references."""
+        return next((file for file in self.browser_context["files"] if str(file.pk) == object_id), None)
+
+    def get_item_context(
+        self,
+        obj: Model,
+        row_index: int,
+        action_context: DataviewActionContext,
+        *,
+        placement: str = "",
+    ) -> dict[str, Any]:
+        """Provide the file row with the same actions and owners as the browser."""
+        return {
+            "file": obj,
+            "row_index": row_index,
+            "dataview_action_context": action_context,
+            "file_actions": self.browser_context["file_actions"],
+            "file_content_type_id": self.browser_context["file_content_type_id"],
+        }
+
+    def render(self, pagination: DataviewPagination | None = None, *, extra_context: dict[str, Any] | None = None) -> str:
+        """Render navigation and node actions without exposing legacy folder mutations."""
+        from bloomerp.files.access import FileAccessManager
+        from bloomerp.models.files.file_node import FileNode
+        context = self.browser_context.copy()
         target = context.pop("upload_target")
         access = FileAccessManager(self.state.request.user)
         can_upload = access.has_access_to_linked_object(target, "add") if target is not None else False
@@ -225,12 +261,10 @@ class FileBrowserRenderer(BaseDataviewRenderer):
             manager = UserPolicyManager(self.state.request.user)
             can_upload = all(manager.has_global_permission(FileNode, perm) for perm in ("add", "view"))
         context.update({
-            "folder_type": mode, "can_upload": can_upload,
+            "can_upload": can_upload,
             "upload_url": reverse("api_assistant_file_upload"),
             "upload_model_label": target._meta.label if target is not None else "",
             "upload_object_id": str(target.pk) if target is not None else "",
-            "file_actions": get_object_actions(FileNode, surface="dataview_item"),
-            "file_content_type_id": ContentType.objects.get_for_model(FileNode).pk,
         })
         context.update(extra_context or {})
         return super().render(pagination or DataviewPagination(self.state.queryset), extra_context=context)

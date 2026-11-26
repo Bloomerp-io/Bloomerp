@@ -78,14 +78,14 @@
     "alpinejs": "^3.15.3",
     "dompurify": "^3.4.16",
     "drawflow": "^0.0.60",
-    "grapesjs": "^0.22.14",
-    "grapesjs-preset-webpage": "^1.0.3",
     "htmx.org": "^2.0.3",
     "lexical": "^0.18.0",
     "livekit-client": "^2.22.4",
     "marked": "^16.4.2",
     "mermaid": "^12.2.0",
     "pdfjs-dist": "^5.7.284",
-    "sortablejs": "^1.15.7"
+    "sortablejs": "^1.15.7",
+    "turndown": "^7.2.5",
+    "turndown-plugin-gfm": "^1.0.2"
   }
 }

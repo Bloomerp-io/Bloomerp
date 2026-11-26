@@ -1,7 +1,7 @@
 import inspect
 import re
 from collections.abc import Iterable
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from enum import Enum
 from typing import Any, Optional
@@ -17,11 +17,10 @@ from django.utils.text import slugify
 
 from bloomerp.field_types.registry import FIELD_TYPE_REGISTRY
 from bloomerp.forms.document_templates import DocumentTemplateForm
-from bloomerp.models import AbstractBloomerpUser, ApplicationField, DocumentTemplate
+from bloomerp.models import AbstractBloomerpUser, DocumentTemplate
 from bloomerp.models.document_templates.document_template import FreeVariableConfig
 from bloomerp.models.files.file_node import FileNode
 from bloomerp.models.files.file_reference import FileReference
-from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.utils.pdf import generate_pdf
 from bloomerp.widgets.foreign_field_widget import ForeignFieldWidget
 
@@ -139,12 +138,6 @@ class TemplateInjectionMethod:
     label: str
     icon: str
     description: str
-    requires_field_selection: bool = False
-
-    def as_payload(self) -> dict[str, Any]:
-        payload = asdict(self)
-        payload["requiresFieldSelection"] = payload.pop("requires_field_selection")
-        return payload
 
 
 VALUE = TemplateInjectionMethod(
@@ -170,7 +163,6 @@ NESTED_FIELD = TemplateInjectionMethod(
     label="Nested field",
     icon="fa-solid fa-arrow-right",
     description="Insert a field from the related object.",
-    requires_field_selection=True,
 )
 LOOP = TemplateInjectionMethod(
     id="loop",
@@ -183,7 +175,6 @@ TABLE = TemplateInjectionMethod(
     label="Table",
     icon="fa-solid fa-table",
     description="Render related objects as a table.",
-    requires_field_selection=True,
 )
 COUNT = TemplateInjectionMethod(
     id="count",
@@ -197,11 +188,6 @@ LIST = TemplateInjectionMethod(
     icon="fa-solid fa-list-ul",
     description="Render related objects as a list.",
 )
-
-INJECTION_METHODS = {
-    method.id: method
-    for method in [VALUE, FORMATTED_DATE, YES_NO, NESTED_FIELD, LOOP, TABLE, COUNT, LIST]
-}
 
 FIELD_TYPE_TEMPLATE_INJECTIONS = {
     FIELD_TYPE_REGISTRY.PROPERTY.id: [VALUE],
@@ -238,33 +224,6 @@ FIELD_TYPE_TEMPLATE_INJECTIONS = {
     FIELD_TYPE_REGISTRY.BLOOMERP_FILE_FIELD.id: [VALUE],
 }
 
-
-
-@dataclass
-class DocumentTemplateValidationMessage:
-    code: str
-    message: str
-    variable: str | None = None
-
-    def as_payload(self) -> dict[str, str | None]:
-        return asdict(self)
-
-
-@dataclass
-class DocumentTemplateValidationResult:
-    errors: list[DocumentTemplateValidationMessage] = dataclass_field(default_factory=list)
-    warnings: list[DocumentTemplateValidationMessage] = dataclass_field(default_factory=list)
-
-    @property
-    def is_valid(self) -> bool:
-        return not self.errors
-
-    def as_payload(self) -> dict[str, Any]:
-        return {
-            "isValid": self.is_valid,
-            "errors": [message.as_payload() for message in self.errors],
-            "warnings": [message.as_payload() for message in self.warnings],
-        }
 
 
 class DocumentTemplateService:
@@ -311,19 +270,6 @@ class DocumentTemplateService:
 
     def get_model_content_types(self) -> QuerySet[ContentType]:
         return self.document_template.get_template_content_types()
-
-    def get_model_variables(self) -> QuerySet[ApplicationField]:
-        content_types = self.get_model_content_types()
-        if not content_types.exists():
-            return ApplicationField.objects.none()
-        if self.user:
-            manager = UserPolicyManager(self.user)
-            field_ids: list[int] = []
-            for content_type in content_types:
-                permission = f"view_{content_type.model}"
-                field_ids.extend(manager.get_accessible_fields(content_type, permission).values_list("id", flat=True))
-            return ApplicationField.objects.filter(id__in=field_ids).select_related("content_type").order_by("content_type__app_label", "content_type__model", "field")
-        return self.document_template.application_fields
 
     def get_free_variables(self) -> list[FreeVariableConfig]:
         """Returns the free variables for a document template
@@ -473,46 +419,6 @@ class DocumentTemplateService:
             for content_type in self.get_model_content_types()
             if content_type.model in form.cleaned_data
         }
-
-    def validate(self) -> DocumentTemplateValidationResult:
-        result = DocumentTemplateValidationResult()
-        template = self.document_template.template or ""
-        configured_slugs = self.document_template.get_free_variable_slugs()
-        used_slugs = set(re.findall(r"\bvars\.([a-zA-Z_][a-zA-Z0-9_]*)", template))
-
-        for slug in sorted(used_slugs - configured_slugs):
-            result.errors.append(DocumentTemplateValidationMessage(
-                code="unknown_free_variable",
-                message=f"Template references vars.{slug}, but no free variable with that slug is configured.",
-                variable=slug,
-            ))
-
-        for slug in sorted(configured_slugs - used_slugs):
-            result.warnings.append(DocumentTemplateValidationMessage(
-                code="unused_free_variable",
-                message=f"Free variable {slug} is configured but not used in the template.",
-                variable=slug,
-            ))
-
-        for config in self.get_free_variables():
-            try:
-                variable_type = FreeVariableType.from_id(config.type)
-            except ValueError:
-                result.errors.append(DocumentTemplateValidationMessage(
-                    code="unknown_free_variable_type",
-                    message=f"Free variable {config.normalized_slug} uses unknown type {config.type}.",
-                    variable=config.normalized_slug,
-                ))
-                continue
-
-            if variable_type.value.supports_choices and not config.choices:
-                result.errors.append(DocumentTemplateValidationMessage(
-                    code="missing_choices",
-                    message=f"Free variable {config.normalized_slug} requires choices.",
-                    variable=config.normalized_slug,
-                ))
-
-        return result
 
     def format_html(self, data: dict[str, Any]) -> str:
         django_engine = engines["django"]

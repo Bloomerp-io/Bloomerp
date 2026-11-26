@@ -1,0 +1,28 @@
+{% load bloomerp i18n %}
+
+{% if request.impersonator or request.user.is_superuser %}
+    {% translate "View as user" as view_as_user_label %}
+    {% url 'components_view_as_user' as view_as_user_url %}
+    <c-ui.dropdown.submenu text="{{ view_as_user_label }}" icon="fa-solid fa-user-group" overflow_visible="true">
+        {% if request.impersonator %}
+            {% translate "Stop viewing as this user" as stop_view_as_label %}
+            <c-ui.dropdown.item text="{{ stop_view_as_label }}"
+                onclick="document.getElementById('stop-view-as-form').requestSubmit()" />
+        {% else %}
+            <form method="post" action="{{ view_as_user_url }}" class="space-y-2 px-3 py-2"
+                x-data="{ selectedUser: '' }" @bloomerp:widget-change="selectedUser = $event.detail.value">
+                {% csrf_token %}
+                {% view_as_user_widget request.user %}
+                <button class="btn btn-primary btn-sm w-full" type="submit" disabled :disabled="!selectedUser">
+                    {{ view_as_user_label }}
+                </button>
+            </form>
+        {% endif %}
+    </c-ui.dropdown.submenu>
+    {% if request.impersonator %}
+        <form id="stop-view-as-form" action="{{ view_as_user_url }}" method="post" hidden>
+            {% csrf_token %}
+            <input type="hidden" name="action" value="stop">
+        </form>
+    {% endif %}
+{% endif %}

@@ -1,10 +1,10 @@
 {% load i18n %}
 {% load bloomerp %}
 
-<div class="mx-auto flex max-w-4xl justify-center xl:h-full xl:overflow-y-auto">
+<div class="mx-auto flex max-w-4xl justify-center px-4 pb-4 xl:h-full xl:overflow-y-auto">
 
     {% if queryset %}
-        <ol class="relative space-y-10 before:absolute before:left-5 before:top-3 before:h-full before:w-px before:bg-gray-200">
+        <ol class="relative min-w-0 space-y-10 before:absolute before:left-5 before:top-3 before:h-full before:w-px before:bg-gray-200">
             {% for entry in queryset %}
                 <li class="relative grid grid-cols-[2.75rem_1fr] gap-6">
                         <div class="relative z-10 flex justify-center">
@@ -21,7 +21,7 @@
 
                         <article class="min-w-0 pb-2">
                             <div class="flex flex-wrap items-center gap-2">
-                                <div class="text-base font-medium leading-7 text-gray-950 dark:text-gray-100">
+                                <div class="min-w-0 wrap-break-word text-base font-medium leading-7 text-gray-950 dark:text-gray-100">
                                     {{ entry.summary_string|activity_log_html }}
                                 </div>
                                 {% if entry.source %}
@@ -48,21 +48,21 @@
 
                                 <details class="group mt-3">
                                     <summary class="cursor-pointer text-sm font-medium text-gray-700 group-open:text-gray-950">{% translate "View changes" %}</summary>
-                                    <div class="mt-3 overflow-hidden rounded-md border border-gray-200">
-                                        <table class="min-w-full divide-y divide-gray-200 text-sm">
-                                            <thead class="bg-gray-50">
+                                    <div class="mt-3 overflow-x-auto">
+                                        <table class="table table-sm">
+                                            <thead>
                                                 <tr>
-                                                    <th class="px-3 py-2 text-left font-medium text-gray-600">{% translate "Field" %}</th>
-                                                    <th class="px-3 py-2 text-left font-medium text-gray-600">{% translate "Before" %}</th>
-                                                    <th class="px-3 py-2 text-left font-medium text-gray-600">{% translate "After" %}</th>
+                                                    <th scope="col">{% translate "Field" %}</th>
+                                                    <th scope="col">{% translate "Before" %}</th>
+                                                    <th scope="col">{% translate "After" %}</th>
                                                 </tr>
                                             </thead>
-                                            <tbody class="divide-y divide-gray-100 bg-white">
+                                            <tbody>
                                                 {% for change in entry.payload %}
                                                     <tr>
-                                                        <td class="whitespace-nowrap px-3 py-2 font-medium text-gray-800">{{ change.field }}</td>
-                                                        <td class="px-3 py-2 text-gray-600">{{ change.from|default:"-"|activity_log_html }}</td>
-                                                        <td class="px-3 py-2 text-gray-900">{{ change.to|default:"-"|activity_log_html }}</td>
+                                                        <td class="whitespace-nowrap font-medium">{{ change.field }}</td>
+                                                        <td class="text-gray-600">{{ change.from|default:"-"|activity_log_html }}</td>
+                                                        <td>{{ change.to|default:"-"|activity_log_html }}</td>
                                                     </tr>
                                                 {% endfor %}
                                             </tbody>
@@ -72,13 +72,13 @@
                             {% elif entry.action == "DELETE" and entry.payload %}
                                 <details class="group mt-3">
                                     <summary class="cursor-pointer text-sm font-medium text-gray-700 group-open:text-gray-950">{% translate "View deleted data" %}</summary>
-                                    <div class="mt-3 overflow-hidden rounded-md border border-gray-200">
-                                        <table class="min-w-full divide-y divide-gray-200 text-sm">
-                                            <tbody class="divide-y divide-gray-100 bg-white">
+                                    <div class="mt-3 overflow-x-auto">
+                                        <table class="table table-sm">
+                                            <tbody>
                                                 {% for field_name, value in entry.payload.items %}
                                                     <tr>
-                                                        <td class="w-44 whitespace-nowrap bg-gray-50 px-3 py-2 font-medium text-gray-700">{{ field_name }}</td>
-                                                        <td class="px-3 py-2 text-gray-900">{{ value|default:"-"|activity_log_html }}</td>
+                                                        <th scope="row" class="w-44 whitespace-nowrap font-medium">{{ field_name }}</th>
+                                                        <td>{{ value|default:"-"|activity_log_html }}</td>
                                                     </tr>
                                                 {% endfor %}
                                             </tbody>

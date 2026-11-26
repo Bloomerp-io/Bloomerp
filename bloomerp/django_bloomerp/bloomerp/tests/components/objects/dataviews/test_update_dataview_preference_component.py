@@ -3,9 +3,11 @@ from unittest.mock import patch
 
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpResponse
+from django.urls import reverse
 
 from bloomerp.dataviews.definition import DataviewState
 from bloomerp.dataviews.kanban.config import KanbanDataView
+from bloomerp.dataviews.table.config import TableDataView
 from bloomerp.models.files.file_node import FileNode
 from bloomerp.models.users.user_list_view_preference import UserListViewPreference
 from bloomerp.services.preference_services import PreferenceManager
@@ -163,9 +165,38 @@ class TestUpdateDataviewPreferenceComponent(BloomerpComponentTestCase):
             and html.index('value="1. Instroom"') < html.index('value="5. Aanbod"')
         )
 
+    def _prepare_component_overrides(self, _scenario: RequestScenario) -> None:
+        """Save a table layout that selects both frontend components."""
+        preference = self._preference()
+        preference.view_type = "table"
+        preference.options = {
+            "table": TableDataView(
+                container_component_id="foreign-field-dataview",
+                dataview_component_id="custom-table",
+            ).dump_options()
+        }
+        preference.save(update_fields=["view_type", "options"])
+
+    def _component_overrides_render(self, options: HttpResponse) -> bool:
+        """Verify the updated view uses the configured IDs and the standard base URL."""
+        self.assertContains(options, 'data-dataview-component-id="foreign-field-dataview"')
+        endpoint = reverse("components_dataview", kwargs=self.view_kwargs)
+        response = self.client.get(endpoint, headers={"HX-Request": "true"})
+        self.assertContains(response, 'bloomerp-component="foreign-field-dataview"')
+        self.assertContains(response, 'bloomerp-component="custom-table"')
+        self.assertContains(response, f'data-base-url="{endpoint}"')
+        return True
+
     def get_test_scenarios(self) -> list[RequestScenario]:
         """Cover preference operations and their persisted configuration."""
         return [
+            RequestScenario(
+                name="Editing table options preserves both configured component IDs",
+                method="POST", user=self.admin_user, view_kwargs=self.view_kwargs,
+                prepare=self._prepare_component_overrides,
+                data={"dataview_options_view_type": "table", "page_size": "50"},
+                expected=ExpectedResult(response_validators=self._component_overrides_render),
+            ),
             RequestScenario(
                 name="Persist explicit Kanban row order",
                 method="POST", user=self.admin_user, view_kwargs=self.view_kwargs,

@@ -1,0 +1,6 @@
+<input type="text" class="input input-sm w-full" list="{{ suggestions_id }}" autocomplete="off"
+    data-route-picker
+    {% if input_id %}id="{{ input_id }}"{% endif %}
+    {% if input_name %}name="{{ input_name }}"{% endif %}
+    {% if input_label %}aria-label="{{ input_label }}"{% endif %}
+    {% if value %}value="{{ value }}"{% endif %}>

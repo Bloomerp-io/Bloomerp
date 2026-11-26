@@ -1,3 +1,4 @@
+import { fetchFromComponent } from "../../utils/requestContext";
 import { t as _ } from "@/utils/i18n";
 import { getItemNavigationKey } from "@/utils/itemNavigation";
 import renderDataview from "@/utils/dataview";
@@ -406,7 +407,7 @@ export default class ForeignFieldWidget extends BaseWidget {
         }
         const url = `/components/search-objects/${this.contentTypeId}/?${params}`;
         try {
-            const resp = await fetch(url, {
+            const resp = await fetchFromComponent(this.element, url, {
                 credentials: 'same-origin',
                 signal: abortController.signal,
             });
@@ -890,8 +891,9 @@ export default class ForeignFieldWidget extends BaseWidget {
             params.set('filter', this.element.dataset.choicesFilter);
         }
         ids.forEach((id: string): void => { params.append('fk_selected_id', id); });
+        const url = `/components/search-objects/${this.contentTypeId}/?${params}`;
         try {
-            const response = await fetch(`/components/search-objects/${this.contentTypeId}/?${params}`, {
+            const response = await fetchFromComponent(this.element, url, {
                 credentials: 'same-origin',
                 signal: controller.signal,
             });
@@ -1033,10 +1035,13 @@ export default class ForeignFieldWidget extends BaseWidget {
         this.dropdown.style.marginTop = '0';
         this.dropdown.style.zIndex = '9999';
 
-        this.repositionDropdownHandler = () => this.positionDropdown();
+        /** Keep the results attached to the control as its visible area changes. */
+        this.repositionDropdownHandler = (): void => this.positionDropdown();
         window.addEventListener('resize', this.repositionDropdownHandler);
         this.dropdownPopoverHost?.addEventListener('transitionend', this.repositionDropdownHandler);
         window.addEventListener('scroll', this.repositionDropdownHandler, true);
+        window.visualViewport?.addEventListener('resize', this.repositionDropdownHandler);
+        window.visualViewport?.addEventListener('scroll', this.repositionDropdownHandler);
     }
 
     /** Remove portal listeners and restore the original parent, order, and styles. */
@@ -1060,6 +1065,8 @@ export default class ForeignFieldWidget extends BaseWidget {
             popoverHost?.removeEventListener('transitionend', repositionHandler);
             window.removeEventListener('resize', repositionHandler);
             window.removeEventListener('scroll', repositionHandler, true);
+            window.visualViewport?.removeEventListener('resize', repositionHandler);
+            window.visualViewport?.removeEventListener('scroll', repositionHandler);
         }
 
         this.dropdown.style.position = '';
@@ -1067,6 +1074,8 @@ export default class ForeignFieldWidget extends BaseWidget {
         this.dropdown.style.right = '';
         this.dropdown.style.top = '';
         this.dropdown.style.width = '';
+        this.dropdown.style.maxHeight = '';
+        this.dropdown.style.overflowY = '';
         this.dropdown.style.marginTop = '';
         this.dropdown.style.zIndex = '';
 
@@ -1080,29 +1089,40 @@ export default class ForeignFieldWidget extends BaseWidget {
         }
     }
 
-    /** Position within the portal padding box, including popover animation scale. */
+    /** Fit the results above or below the control while preserving portal coordinates. */
     private positionDropdown(): void {
         if (!this.dropdown || !this.input || this.dropdown.classList.contains('hidden')) return;
 
         const control = this.element.querySelector<HTMLElement>('.foreign-field-control') || this.input;
         const inputRect = control.getBoundingClientRect();
         const host = this.dropdownPopoverHost;
-        if (host) {
-            const rect = host.getBoundingClientRect();
-            const scaleX = host.offsetWidth ? rect.width / host.offsetWidth || 1 : 1;
-            const scaleY = host.offsetHeight ? rect.height / host.offsetHeight || 1 : 1;
-            this.dropdown.style.left = `${(inputRect.left - rect.left) / scaleX - host.clientLeft + host.scrollLeft}px`;
-            this.dropdown.style.top = `${(inputRect.bottom - rect.top + 4) / scaleY - host.clientTop + host.scrollTop}px`;
-            this.dropdown.style.width = `${Math.max(inputRect.width / scaleX, 160)}px`;
-            return;
-        }
-        const scrollX = window.scrollX || window.pageXOffset;
-        const scrollY = window.scrollY || window.pageYOffset;
-        const width = Math.max(inputRect.width, 160);
+        const hostRect = host?.getBoundingClientRect();
+        const scaleX = host?.offsetWidth && hostRect ? hostRect.width / host.offsetWidth || 1 : 1;
+        const scaleY = host?.offsetHeight && hostRect ? hostRect.height / host.offsetHeight || 1 : 1;
+        this.dropdown.style.width = `${Math.max(inputRect.width / scaleX, 160)}px`;
 
-        this.dropdown.style.left = `${inputRect.left + scrollX}px`;
-        this.dropdown.style.top = `${inputRect.bottom + scrollY + 4}px`;
-        this.dropdown.style.width = `${width}px`;
+        const gap = 4;
+        const viewport = window.visualViewport;
+        const viewportTop = viewport?.offsetTop ?? 0;
+        const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight);
+        const above = Math.max(0, inputRect.top - viewportTop - 2 * gap);
+        const below = Math.max(0, viewportBottom - inputRect.bottom - 2 * gap);
+        const height = this.dropdown.scrollHeight * scaleY;
+        const openAbove = height > below && above > below;
+        const available = openAbove ? above : below;
+        const needsScroll = height > available;
+        this.dropdown.style.maxHeight = needsScroll ? `${available / scaleY}px` : '';
+        this.dropdown.style.overflowY = needsScroll ? 'auto' : '';
+
+        const top = openAbove ? inputRect.top - gap - Math.min(height, available) : inputRect.bottom + gap;
+        const left = host && hostRect
+            ? (inputRect.left - hostRect.left) / scaleX - host.clientLeft + host.scrollLeft
+            : inputRect.left + window.scrollX;
+        const portalTop = host && hostRect
+            ? (top - hostRect.top) / scaleY - host.clientTop + host.scrollTop
+            : top + window.scrollY;
+        this.dropdown.style.left = `${left}px`;
+        this.dropdown.style.top = `${portalTop}px`;
     }
 
     private valuesEqual(left: string | string[], right: string | string[]): boolean {

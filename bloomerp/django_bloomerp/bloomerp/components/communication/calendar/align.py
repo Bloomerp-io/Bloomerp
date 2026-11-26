@@ -87,16 +87,10 @@ def align_calendars(request: HttpRequest, inbox_id: int) -> HttpResponse:
         preference.options = options
         preference.save(update_fields=["options"])
 
-    from bloomerp.views.communication.calendar.inbox_calendar import (
-        inbox_calendar_context,
-    )
+    from bloomerp.views.communication.calendar.inbox_calendar import InboxCalendarView
 
-    context = inbox_calendar_context(request, inbox.pk)
-    return render(request, "cotton/features/dataviews/call.html", {
-        "content_type_id": context["calendar_content_type_id"],
-        "filters": context["calendar_filters"],
-        "args": context["calendar_args"],
-        "token": context["calendar_token"],
-        "hide_filters": True,
-        "sync_url": request.headers.get("X-Bloomerp-Sync-Url", "false").lower() == "true",
-    })
+    view = InboxCalendarView(
+        dataview_sync_url=request.headers.get("X-Bloomerp-Sync-Url", "false").lower() == "true",
+    )
+    view.setup(request, inbox_id=inbox.pk)
+    return render(request, view.dataview_template_name, view.get_dataview_context())

@@ -16,14 +16,14 @@
 
   {% include "tailwind/errors_formset.html" %}
 
-    <table{% if form_id %} id="{{ form_id }}_table"{% endif%} class="table-auto">
+    <table{% if form_id %} id="{{ form_id }}_table"{% endif%} class="table table-auto">
         <thead>
             {% if formset.readonly and not formset.queryset.exists %}
             {% else %}
                 <tr>
                     {% for field in formset.forms.0 %}
                         {% if field.label and not field.is_hidden %}
-                            <th for="{{ field.auto_id }}" class="px-4 py-2">
+                            <th scope="col" for="{{ field.auto_id }}">
                                 {{ field.label|safe }}{% if field.field.required and not field|is_checkbox %}<span class="asteriskField">*</span>{% endif %}
                             </th>
                         {% endif %}
@@ -41,7 +41,7 @@
 
                 <tr>
                     {% for field in form %}
-                        {% include 'tailwind/field.html' with tag="td" form_show_labels=False field_class="border px-4 py-2" %}
+                        {% include 'tailwind/field.html' with tag="td" form_show_labels=False %}
                     {% endfor %}
                 </tr>
             {% endfor %}

@@ -315,7 +315,7 @@ function createVariablePickerLayout(): VariablePickerLayout {
     root.appendChild(searchInput)
 
     const emptyState = document.createElement('p')
-    emptyState.className = 'hidden rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500'
+    emptyState.className = 'hidden rounded-xl border border-dashed border-gray-200 bg-slate-50 px-4 py-6 text-sm text-slate-500'
     root.appendChild(emptyState)
 
     const results = document.createElement('div')
@@ -342,7 +342,7 @@ function createTemplateTagPickerLayout(): TemplateTagPickerLayout {
     root.appendChild(searchInput)
 
     const emptyState = document.createElement('p')
-    emptyState.className = 'hidden rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500'
+    emptyState.className = 'hidden rounded-xl border border-dashed border-gray-200 bg-slate-50 px-4 py-6 text-sm text-slate-500'
     root.appendChild(emptyState)
 
     const results = document.createElement('div')

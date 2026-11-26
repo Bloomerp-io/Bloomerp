@@ -126,11 +126,6 @@ def prepare_email_files(request: HttpRequest, body_html: str) -> tuple[str, list
     return (str(document) if images else body_html), attachments
 
 
-def get_email_attachments(request: HttpRequest) -> list[EmailAttachment]:
-    """Retain the legacy helper for ordinary stored and multipart attachments."""
-    return prepare_email_files(request, "")[1]
-
-
 def _image_content_type(content: bytes) -> str:
     """Validate actual raster bytes instead of trusting an image label or MIME metadata."""
     try:

@@ -48,6 +48,7 @@ class ExternalDataview(BaseDataview):
 
 class ExternalDataviewRenderer(BaseDataviewRenderer):
     template_name = "external/dataview.html"
+    item_template_name = "external/dataview_item.html"
 
 
 class SessionDataStub:
@@ -152,6 +153,24 @@ class ExtensibleViewRegistryTests(SimpleTestCase):
         # 2. Verify the registration key must match the definition and config.
         with self.assertRaisesRegex(ValueError, "match the dataview definition key"):
             registry.register("other_key", definition)
+
+    def test_record_based_dataview_requires_an_item_template(self) -> None:
+        """Reject incomplete record renderers and allow explicitly aggregate views."""
+        registry = DataviewRegistry(registry_item_class=DataviewTypeDefinition)
+        definition = DataviewTypeDefinition(
+            key="external_view",
+            label="External view",
+            description="A dataview supplied by an extension.",
+            icon="fa-puzzle-piece",
+            renderer_cls=BaseDataviewRenderer,
+            config_cls=ExternalDataview,
+        )
+        with self.assertRaisesRegex(ValueError, "must declare an item_template_name"):
+            registry.register(definition.key, definition)
+
+        definition.record_based = False
+        registry.register(definition.key, definition)
+        self.assertIs(registry.get(definition.key), definition)
 
     def test_external_dataview_resolves_declared_field_options(self):
         """

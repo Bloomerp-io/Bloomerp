@@ -8,6 +8,7 @@ from bloomerp.communication.builtins.emails.actions import fetch_email_attachmen
 from bloomerp.communication.utils.permissions import accessible_inbox_items
 from bloomerp.router import router
 
+# Could be an object grouping that renders IF email and attachments
 
 @router.register(
     path="components/communication/emails/download_attachment/<str:inbox_item_id>/<str:attachment_id>/",

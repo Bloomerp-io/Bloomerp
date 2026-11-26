@@ -19,7 +19,6 @@ from bloomerp.models.communication.conferencing import (
     ConferenceAttendance,
     ConferenceRoom,
 )
-from bloomerp.services.calendar_conferencing import reserve_calendar_conference
 from bloomerp.tests.base import (
     BloomerpComponentTestCase,
     ExpectedResult,
@@ -150,7 +149,7 @@ class TestJoinComponent(CallFixtures, BloomerpComponentTestCase):
             end=start + timedelta(hours=1),
             event_timezone="UTC",
         )
-        reserve_calendar_conference(event, self.normal_user, [], "https://testserver/")
+        event.reserve_conference(self.normal_user, [], "https://testserver/")
         self.session = event.conference_session
         scenario.view_kwargs = {"session_id": self.session.pk}
 

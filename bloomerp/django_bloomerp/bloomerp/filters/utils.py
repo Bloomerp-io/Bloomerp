@@ -1,14 +1,25 @@
 """Convert model metadata into the shared field-discovery contract."""
-from typing import Any
+from __future__ import annotations
+
+from collections.abc import Iterable
+from dataclasses import replace
+from typing import TYPE_CHECKING, Any
 
 from django.db.models import Model
 
 from bloomerp.filters.definition import Filter, FilterField, FilterFieldGroup
 from bloomerp.lookups.definition import FilterFieldContext
 
+if TYPE_CHECKING:
+    from bloomerp.models.application_field import ApplicationField
 
-def application_field_to_filter_field(application_field) -> FilterField:
+
+def application_field_to_filter_field(application_field: ApplicationField) -> FilterField:
+    """Expose the field's standard lookups and any model-specific additions."""
     field_type = application_field.get_field_type()
+    extra_lookups = getattr(application_field.get_model(), "filter_lookups", {})
+    if lookups := extra_lookups.get(application_field.field):
+        field_type = replace(field_type, lookups=(*field_type.lookups, *lookups))
     return FilterField(
         field=application_field.field,
         label=str(application_field.title),
@@ -19,10 +30,13 @@ def application_field_to_filter_field(application_field) -> FilterField:
     )
 
 
-def application_fields_to_filter_field_groups(application_fields) -> list[FilterFieldGroup]:
+def application_fields_to_filter_field_groups(
+    application_fields: Iterable[ApplicationField],
+) -> list[FilterFieldGroup]:
+    """Group fields that offer at least one filter lookup."""
     fields = [
-        application_field_to_filter_field(field)
-        for field in application_fields if field.get_field_type().lookups
+        field for application_field in application_fields
+        if (field := application_field_to_filter_field(application_field)).context.field_type.lookups
     ]
     return [FilterFieldGroup(name="Model fields", fields=fields)] if fields else []
 

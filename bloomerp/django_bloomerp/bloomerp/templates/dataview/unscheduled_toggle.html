@@ -1,0 +1,19 @@
+{% load i18n %}
+<button
+    type="button"
+    class="icon-button group/sidebar-toggle"
+    data-icon-button-appearance="plain"
+    data-resizable-div-toggle
+    aria-controls="resizable-div-{{ panel_key }}-{{ render_id }}"
+    aria-expanded="false"
+    aria-label="{% translate 'Open unscheduled records' %}"
+    data-expand-label="{% translate 'Open unscheduled records' %}"
+    data-collapse-label="{% translate 'Close unscheduled records' %}"
+    title="{% translate 'Unscheduled records' %}"
+    hidden
+>
+    <span class="relative block" aria-hidden="true">
+        <c-icons.sidebar_right size="18" class="block" />
+        <c-icons.sidebar_right_selected size="18" class="absolute inset-0 opacity-0 transition-opacity duration-250 ease-out group-aria-expanded/sidebar-toggle:opacity-100 motion-reduce:transition-none" />
+    </span>
+</button>

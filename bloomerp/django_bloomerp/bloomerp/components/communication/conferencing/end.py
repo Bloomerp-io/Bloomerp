@@ -1,4 +1,5 @@
 """Host-authorized conference termination."""
+# SHOULD_API
 
 from uuid import UUID
 

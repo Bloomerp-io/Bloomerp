@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET
 from bloomerp.router import router
 from bloomerp.communication.builtins.voip.access import VoIPAccessManager
-
+# SHOULD_API
 
 @router.register(
     path="components/communication/voip/browser-connections/",

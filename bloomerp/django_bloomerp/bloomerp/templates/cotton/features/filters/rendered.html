@@ -6,8 +6,8 @@
 
 
 <div data-rendered-filters
-     data-defaults-url="{{ defaults_url|with_permission_token:request }}"
-     data-value-editor-url="{{ value_editor_url|with_permission_token:request }}"
+     data-defaults-url="{{ defaults_url }}"
+     data-value-editor-url="{{ value_editor_url }}"
      data-host-id="{{ filter_host.pk }}"
      data-can-manage-defaults="{{ can_manage_defaults|yesno:'true,false' }}"
      data-default-filters="{{ filter_host.default_filter_records_json }}"
