@@ -1,4 +1,4 @@
-import { requestContextHeaders } from "../../utils/requestContext";
+import { fetchFromComponent } from "../../utils/requestContext";
 import { t as _ } from "@/utils/i18n";
 import { getItemNavigationKey } from "@/utils/itemNavigation";
 import renderDataview from "@/utils/dataview";
@@ -407,9 +407,8 @@ export default class ForeignFieldWidget extends BaseWidget {
         }
         const url = `/components/search-objects/${this.contentTypeId}/?${params}`;
         try {
-            const resp = await fetch(url, {
+            const resp = await fetchFromComponent(this.element, url, {
                 credentials: 'same-origin',
-                headers: requestContextHeaders(this.element, url),
                 signal: abortController.signal,
             });
             if (!resp.ok || requestId !== this.searchRequestId) return;
@@ -892,8 +891,9 @@ export default class ForeignFieldWidget extends BaseWidget {
             params.set('filter', this.element.dataset.choicesFilter);
         }
         ids.forEach((id: string): void => { params.append('fk_selected_id', id); });
+        const url = `/components/search-objects/${this.contentTypeId}/?${params}`;
         try {
-            const response = await fetch(`/components/search-objects/${this.contentTypeId}/?${params}`, {
+            const response = await fetchFromComponent(this.element, url, {
                 credentials: 'same-origin',
                 signal: controller.signal,
             });

@@ -48,7 +48,7 @@ New rules use field paths and lookup IDs. The permission boundary accepts
 legacy field-ID/operator rules and normalizes them on read. The permission
 editor uses the [shared FilterWidget](filter-editor.md#permission-rules).
 
-`validate_filters()` walks the same resolved field dependencies as compilation, checks model view grants, and requires field visibility across every row that can influence a predicate. Root fields may use conditional grants when every applicable row grant includes the field. Related rows require explicit unconditional view access; related fields require unconditional field coverage. This includes relation/count lookups whose path ends at the relation itself. Superusers bypass permission restrictions.
+`validate_filters()` walks the same resolved field dependencies as compilation, checks model view grants, and requires field visibility across every row that can influence a predicate. Root fields may use conditional grants when every applicable row grant includes the field. Equality on a root foreign key to a primary key can use view access to the selected related record. Other relation lookups and traversals require unconditional related-row access, and related fields require unconditional field coverage. Superusers bypass permission restrictions.
 
 These checks deliberately reject some safe but complicated combinations of overlapping policies: they do not try to prove arbitrary predicates equivalent. They never inspect today's row contents to infer that access is unrestricted. Related-row scoping during execution is still future work.
 

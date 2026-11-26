@@ -64,9 +64,6 @@ class DataViewTileRenderer(BaseTileRenderer):
 
         expiry = timezone.now() + timedelta(days=1)
         layout = DataviewToken(
-            model=model,
-            user=request.user,
-            expiry=expiry,
             preference_id=preference.pk,
             dataview_actions=config.actions,
         )

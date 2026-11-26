@@ -1,4 +1,4 @@
-import { requestContextHeaders } from "../../utils/requestContext";
+import { fetchFromComponent } from "../../utils/requestContext";
 import { BaseDataViewComponent } from "./BaseDataViewComponent";
 import { getDataviewCreate } from "./DataviewCreate";
 import { BaseDataViewCell } from "./BaseDataViewCell";
@@ -307,13 +307,12 @@ export class Calendar extends BaseDataViewComponent {
         const csrfToken = getCsrfToken();
         const signal = this.ensureAbortController().signal;
         try {
-            const response = await fetch(url, {
+            const response = await fetchFromComponent(this.element, url, {
                 method: "POST",
                 credentials: "same-origin",
                 signal,
                 headers: {
                     "Content-Type": "application/json",
-                    ...requestContextHeaders(this.element, url),
                     ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
                 },
                 body: JSON.stringify({ view_mode: select.value }),
@@ -936,12 +935,11 @@ export class Calendar extends BaseDataViewComponent {
         this.mutationInFlight = true;
         const csrfToken = getCsrfToken();
         try {
-            const response = await fetch(url, {
+            const response = await fetchFromComponent(this.element, url, {
                 method: "POST",
                 credentials: "same-origin",
                 headers: {
                     "Content-Type": "application/json",
-                    ...requestContextHeaders(this.element, url),
                     ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
                 },
                 body: JSON.stringify({ updates }),

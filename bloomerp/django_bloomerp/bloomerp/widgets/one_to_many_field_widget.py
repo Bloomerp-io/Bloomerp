@@ -1,6 +1,5 @@
 import json
 from collections.abc import Mapping
-from datetime import timedelta
 from html import unescape
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
@@ -12,7 +11,6 @@ from django.db import models
 from django.db.models import Model
 from django.forms import widgets
 from django.urls import reverse
-from django.utils import timezone
 from django.utils.html import strip_tags
 
 if TYPE_CHECKING:
@@ -298,7 +296,13 @@ class OneToManyFieldWidget(widgets.Widget):
         from bloomerp.middleware import current_request
         from bloomerp.permissions.definition import BloomerpPermission
         from bloomerp.permissions.manager import UserPolicyManager
-        from bloomerp.tokens import DataviewToken, RequestToken, get_token, issue_token
+        from bloomerp.tokens import (
+            DataviewToken,
+            RequestToken,
+            get_token,
+            issue_token,
+            request_token_expiry,
+        )
 
         user = self.insertion_user
         field = self.application_field
@@ -319,9 +323,6 @@ class OneToManyFieldWidget(widgets.Widget):
         except PermissionDenied:
             return ""
         layout = DataviewToken(
-            model=self.related_model,
-            user=user,
-            expiry=timezone.now() + timedelta(hours=1),
             dataview=TableDataView(
                 display_fields=[column.field for column in columns],
                 default_filters=serialize_filter_query_params(filters),
@@ -331,8 +332,9 @@ class OneToManyFieldWidget(widgets.Widget):
         )
         parent_context = get_token(request)
         rule = parent_context.policies.get(self.related_model) if parent_context is not None else None
+        expiry = request_token_expiry()
         token = RequestToken(
-            expiry=min(layout.expiry, parent_context.expiry) if parent_context is not None else layout.expiry,
+            expiry=min(expiry, parent_context.expiry) if parent_context is not None else expiry,
             dataviews={self.related_model: layout},
             policies={self.related_model: rule} if rule is not None else {},
         )

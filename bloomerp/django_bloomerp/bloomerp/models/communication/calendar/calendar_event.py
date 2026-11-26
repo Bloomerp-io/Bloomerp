@@ -1,7 +1,7 @@
 """Shared meetings with independent calendar placement and organizer identity."""
 
 from collections.abc import Callable, Iterable
-from datetime import datetime, timedelta
+from datetime import datetime
 from functools import partial
 from typing import TYPE_CHECKING, Any, ClassVar
 from urllib.parse import urlencode, urljoin
@@ -162,7 +162,6 @@ def calendar_booking_links_token(context: DataviewActionContext) -> RequestToken
     if inbox is None:
         return None
     user = context.request.user
-    expiry = timezone.now() + timedelta(hours=1)
     layout = next(
         view for view in BookingLink.bloomerp_config.model_view_settings.default_dataviews
         if view.is_default
@@ -234,9 +233,6 @@ def calendar_booking_links_token(context: DataviewActionContext) -> RequestToken
         if view.is_default
     )
     booking_dataview = DataviewToken(
-        model=BookingLink,
-        user=user,
-        expiry=expiry,
         dataview=layout,
         object_actions=[COPY_BOOKING_LINK_ACTION],
         dataview_actions=["add"] if can_create else [],
@@ -244,9 +240,6 @@ def calendar_booking_links_token(context: DataviewActionContext) -> RequestToken
         hide_filters=True,
     )
     booking_detail_view = DetailViewToken(
-        model=BookingLink,
-        user=user,
-        expiry=expiry,
         field_layout=detail_layout,
         tab_configuration=DetailTabsConfiguration(
             tabs=[
@@ -260,19 +253,13 @@ def calendar_booking_links_token(context: DataviewActionContext) -> RequestToken
         object_actions=None if can_view_model else [COPY_BOOKING_LINK_ACTION],
     )
     return RequestToken(
-        expiry=expiry,
         policies=policies,
         dataviews={
             BookingLink: booking_dataview,
-            BookingLinkSubmission: DataviewToken(
-                model=BookingLinkSubmission, user=user, expiry=expiry,
-                dataview=submission_layout, relationship_field="booking_link",
-            ),
+            BookingLinkSubmission: DataviewToken(dataview=submission_layout),
         },
         detail_views={BookingLink: booking_detail_view},
-        create_views={BookingLink: DetailViewToken(
-            model=BookingLink, user=user, expiry=expiry, field_layout=FieldLayout(rows=create_rows),
-        )} if can_create else {},
+        create_views={BookingLink: DetailViewToken(field_layout=FieldLayout(rows=create_rows))} if can_create else {},
     )
 
 

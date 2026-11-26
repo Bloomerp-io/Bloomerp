@@ -14,7 +14,7 @@ from bloomerp.permissions.manager import UserPolicyManager
 if TYPE_CHECKING:
     from bloomerp.models.communication.inbox.inbox import Inbox
     from bloomerp.models.communication.inbox.inbox_item import InboxItem
-    from bloomerp.tokens import PermissionToken
+    from bloomerp.permissions.definition import AccessRule
 
 
 def invitation_context(
@@ -180,22 +180,14 @@ def calendar_overlay_inboxes(
     return Inbox.objects.filter(pk__in=identifiers)
 
 
-def issue_calendar_token(
-    user: AbstractBloomerpUser, inbox_id: int, selected: list[str]
-) -> PermissionToken:
+def calendar_event_access_rule(inbox_id: int, selected: list[str]) -> AccessRule:
     """Build a grant for overlay reads and writes scoped to the current inbox."""
-    from datetime import timedelta
-
-    from django.utils import timezone
-
     from bloomerp.filters.definition import FilterCondition
-    from bloomerp.models.communication.calendar import CalendarEvent
     from bloomerp.permissions.definition import (
         AccessRule,
         BloomerpPermission,
         RowPolicyRuleContent,
     )
-    from bloomerp.tokens import PermissionToken
 
     # This endpoint delegates only after resolve_calendar_inbox checks ownership/sharing.
     view_condition = FilterCondition(
@@ -217,36 +209,18 @@ def issue_calendar_token(
         "organizing_inbox",
         "organizer_email",
     }
-    return PermissionToken(
-        model=CalendarEvent,
-        user=user,
-        expiry=timezone.now() + timedelta(hours=1),
-        rule=AccessRule(
-            row_permissions=[
-                RowPolicyRuleContent(
-                    conditions=[view_condition],
-                    permissions=[
-                        BloomerpPermission.VIEW,
-                    ],
-                ),
-                RowPolicyRuleContent(
-                    conditions=[
-                        FilterCondition(
-                            field_path="organizing_inbox",
-                            lookup_id="equals",
-                            value=str(inbox_id),
-                        )
-                    ],
-                    permissions=[BloomerpPermission.ADD, BloomerpPermission.CHANGE],
-                ),
-            ],
-            field_permissions={
-                field: [
-                    BloomerpPermission.VIEW,
-                    BloomerpPermission.ADD,
-                    BloomerpPermission.CHANGE,
-                ]
-                for field in fields
-            },
-        ),
+    return AccessRule(
+        row_permissions=[
+            RowPolicyRuleContent(conditions=[view_condition], permissions=[BloomerpPermission.VIEW]),
+            RowPolicyRuleContent(
+                conditions=[FilterCondition(
+                    field_path="organizing_inbox", lookup_id="equals", value=str(inbox_id),
+                )],
+                permissions=[BloomerpPermission.ADD, BloomerpPermission.CHANGE],
+            ),
+        ],
+        field_permissions={
+            field: [BloomerpPermission.VIEW, BloomerpPermission.ADD, BloomerpPermission.CHANGE]
+            for field in fields
+        },
     )

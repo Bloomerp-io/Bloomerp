@@ -829,13 +829,15 @@ class UserPolicyManager:
     def validate_filters(self, model_or_content_type: type[models.Model] | ContentType, filters: Filters) -> None:
         """Authorize filter dependencies without modifying filters or querysets.
 
-        Until execution can constrain related rows, traversals require explicit
-        unconditional related-row grants. Field access must cover every row
-        that can influence the predicate; a union of field IDs is insufficient.
+        A direct foreign-key equality can use view access to the selected row.
+        Traversals require unconditional related-row grants. Field access must
+        cover every row that can influence the predicate.
         """
-        from django.core.exceptions import PermissionDenied
+        from django.core.exceptions import PermissionDenied, ValidationError
 
+        from bloomerp.filters.compiler import resolve_condition
         from bloomerp.filters.resolver import FilterFieldResolver
+        from bloomerp.lookups.builtins.equals import EQUALS
         from bloomerp.permissions.compilers.base import BasePermissionCompiler
 
         model, _ = resolve_model_and_content_type(model_or_content_type)
@@ -906,13 +908,31 @@ class UserPolicyManager:
                     if application_field is None:
                         raise PermissionDenied("Filter field dependencies cannot be authorized")
                     require_field(application_field, related=traversed_relation)
-                    related_model = getattr(application_field._get_model_field(), "related_model", None)
+                    model_field = application_field._get_model_field()
+                    related_model = getattr(model_field, "related_model", None)
+                    if related_model is not None and related_model not in checked_relations:
+                        if any(unconditional(row_rule) for _, row_rule in grants(related_model)):
+                            checked_relations.add(related_model)
+                        elif (
+                            not traversed_relation
+                            and dependency.field == condition.field_path
+                            and condition.lookup_id == EQUALS.id
+                            and isinstance(model_field, models.ForeignKey)
+                            and model_field.target_field.primary_key
+                        ):
+                            try:
+                                _, _, lookup, related_pk = resolve_condition(condition, resolver=resolver)
+                            except (TypeError, ValueError, ValidationError) as error:
+                                raise PermissionDenied("Filtering requires access to the selected related record") from error
+                            if lookup.get_q_factory() is not EQUALS.q_factory:
+                                raise PermissionDenied("Related-row filtering requires an unconditional view grant")
+                            related_rows = self.get_queryset(related_model, BloomerpPermission.VIEW)
+                            if not related_rows.filter(pk=related_pk).exists():
+                                raise PermissionDenied("Filtering requires access to the selected related record")
+                        else:
+                            raise PermissionDenied("Related-row filtering requires an unconditional view grant until scoped execution is supported")
                     if related_model is not None:
                         traversed_relation = True
-                    if related_model is not None and related_model not in checked_relations:
-                        if not any(unconditional(row_rule) for _, row_rule in grants(related_model)):
-                            raise PermissionDenied("Related-row filtering requires an unconditional view grant until scoped execution is supported")
-                        checked_relations.add(related_model)
 
     def can_execute_filters(self, model_or_content_type, filters: Filters) -> bool:
         """Compatibility boolean wrapper; malformed filters still raise errors."""

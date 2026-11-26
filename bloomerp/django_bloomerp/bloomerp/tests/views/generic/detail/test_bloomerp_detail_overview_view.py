@@ -463,7 +463,7 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
     ) -> None:
         """Bind the detail layout and any scoped grant to the authenticated scenario."""
         context = RequestToken(
-            expiry=layout.expiry, detail_views={self.CustomerModel: layout},
+            expiry=timezone.now() + timedelta(minutes=15), detail_views={self.CustomerModel: layout},
             policies={self.CustomerModel: rule} if rule is not None else {},
         )
         scenario.headers = {**(scenario.headers or {}), **self.request_context_headers(context, scenario.user)}
@@ -471,7 +471,6 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
     def prepare_inline_detail_token(self, scenario: ModelRequestScenario) -> None:
         """Request two fields and an empty actions allowlist for this viewer."""
         layout = DetailViewToken(
-            model=self.CustomerModel, user=scenario.user, expiry=timezone.now() + timedelta(minutes=15),
             field_layout=FieldLayout(rows=[LayoutRow(
                 columns=2, title="Signed details", items=[LayoutItem(id="first_name"), LayoutItem(id="age")],
             )]),
@@ -511,7 +510,6 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
         todo = self.get_route("overview", model=Todo).url_name
         self.other_detail_url = reverse(todo, kwargs={"pk": self.customer.pk})
         layout = DetailViewToken(
-            model=self.CustomerModel, user=scenario.user, expiry=timezone.now() + timedelta(minutes=15),
             tab_configuration=DetailTabsConfiguration(name="Signed tabs", tabs=[
                 DetailTab(name="Record", url_name=overview),
                 DetailTabFolder(name="Links", tabs=[
@@ -556,7 +554,6 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
     def prepare_empty_signed_tabs(self, scenario: ModelRequestScenario) -> None:
         """Sign a field layout with an explicit empty tab strip."""
         layout = DetailViewToken(
-            model=self.CustomerModel, user=scenario.user, expiry=timezone.now() + timedelta(minutes=15),
             field_layout=FieldLayout(rows=[LayoutRow(columns=1, items=[LayoutItem(id="first_name")])]),
             tab_configuration=DetailTabsConfiguration(),
         )
@@ -574,7 +571,6 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
             user=self.normal_user, content_type=self.content_type, name="Private layout",
         )
         layout = DetailViewToken(
-            model=self.CustomerModel, user=scenario.user, expiry=timezone.now() + timedelta(minutes=15),
             preference_id=preference.pk,
         )
         self.prepare_layout_context(scenario, layout)
@@ -589,7 +585,6 @@ class TestBloomerpDetailOverviewView(BloomerpDetailViewTestCase):
             layout={"rows": [{"columns": 1, "items": [{"id": self.fields_by_name["first_name"].pk}]}]},
         )
         layout = DetailViewToken(
-            model=self.CustomerModel, user=scenario.user, expiry=timezone.now() + timedelta(minutes=15),
             preference_id=self.token_preference.pk, allow_layout_edit=True,
         )
         self.prepare_layout_context(scenario, layout)

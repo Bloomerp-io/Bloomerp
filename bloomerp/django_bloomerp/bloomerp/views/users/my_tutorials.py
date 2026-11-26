@@ -1,8 +1,6 @@
 import json
-from datetime import timedelta
 
 from django.contrib.contenttypes.models import ContentType
-from django.utils import timezone
 from django.views.generic import TemplateView
 
 from bloomerp.dataviews.card.config import CardDataView
@@ -16,8 +14,7 @@ from bloomerp.permissions.definition import (
     RowPolicyRuleContent,
 )
 from bloomerp.router import router
-from bloomerp.tokens import DataviewToken
-from bloomerp.tokens import PermissionToken
+from bloomerp.tokens import DataviewToken, RequestToken
 from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.dataview_mixin import DataviewMixin
 
@@ -41,33 +38,24 @@ class MyTutorialsView(BaseBloomerpView, DataviewMixin, TemplateView):
         """Use Tutorial as the model for the shared cards."""
         return ContentType.objects.get_for_model(Tutorial).pk
 
-    def get_permission_token(self) -> PermissionToken:
-        """Grant learners read access to the cards they are eligible to start."""
+    def get_dataview_request_token(self) -> RequestToken:
+        """Configure tutorial cards and grant access to tutorials the viewer can start."""
         view = BloomerpPermission.VIEW
-        return PermissionToken(
-            model=Tutorial,
-            user=self.request.user,
-            expiry=timezone.now() + timedelta(hours=1),
-            rule=AccessRule(
+        eligible = Filter(connector="AND", conditions=[STARTABLE_TUTORIALS])
+        return RequestToken(
+            policies={Tutorial: AccessRule(
                 row_permissions=[
                     RowPolicyRuleContent(permissions=[view], conditions=[STARTABLE_TUTORIALS]),
                 ],
                 field_permissions={"id": [view], "name": [view], "description": [view]},
-            ),
-        )
-
-    def get_dataview_token(self) -> DataviewToken:
-        """Pin the card layout, learner scope, and Start action for every viewer."""
-        eligible = Filter(connector="AND", conditions=[STARTABLE_TUTORIALS])
-        return DataviewToken(
-            model=Tutorial,
-            expiry=timezone.now() + timedelta(hours=1),
-            user=self.request.user,
-            dataview=CardDataView(
-                display_fields=["description"],
-                default_filters={"filter": json.dumps([eligible.model_dump(mode="json")])},
-                item_click_action_id="start-tutorial",
-            ),
-            object_actions=["start-tutorial"],
-            dataview_actions=[],
+            )},
+            dataviews={Tutorial: DataviewToken(
+                dataview=CardDataView(
+                    display_fields=["description"],
+                    default_filters={"filter": json.dumps([eligible.model_dump(mode="json")])},
+                    item_click_action_id="start-tutorial",
+                ),
+                object_actions=["start-tutorial"],
+                dataview_actions=[],
+            )},
         )

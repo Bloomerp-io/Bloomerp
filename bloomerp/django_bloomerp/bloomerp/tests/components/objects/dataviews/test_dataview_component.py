@@ -3,11 +3,13 @@ import json
 from collections.abc import Callable
 from datetime import timedelta
 from functools import partial
+from unittest.mock import patch
 from urllib.parse import parse_qsl, urlsplit
 
 from bs4 import BeautifulSoup
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
+from django.core import signing
 from django.db.models import Model, QuerySet
 from django.http import HttpResponse
 from django.utils import timezone
@@ -251,11 +253,9 @@ class TestDataviewComponent(BloomerpComponentTestCase):
     ) -> None:
         """Render an action and extract its filtered URL and context header."""
         layout = DataviewToken(
-            model=self.CustomerModel, user=self.admin_user, expiry=timezone.now() + timedelta(hours=1),
             dataview=TableDataView(display_fields=["first_name"]),
         )
         token = RequestToken(
-            expiry=layout.expiry,
             dataviews={self.CustomerModel: layout},
             detail_views={self.CustomerModel: detail_view_token} if detail_view_token is not None else {},
         )
@@ -289,6 +289,27 @@ class TestDataviewComponent(BloomerpComponentTestCase):
         self.assertEqual(response.context["dataview_request_context_id"], response.wsgi_request.headers[REQUEST_TOKEN_HEADER])
         return True
 
+    def prepare_cached_signed_layouts(self, scenario: RequestScenario) -> None:
+        """Store a legacy context whose unrelated detail override has an older expiry."""
+        context = RequestToken()
+        payload = context.serialize()
+        model_label = self.CustomerModel._meta.label_lower
+        audience = str(self.admin_user.pk)
+        payload["dataviews"] = {model_label: signing.dumps({
+            "model_label": model_label,
+            "audience": audience,
+            "expiry": context.expiry.isoformat(),
+            "dataview": TableDataView(display_fields=["first_name"]).model_dump(mode="json"),
+        }, salt="bloomerp.tokens.dataview.v1")}
+        payload["detail_views"] = {Todo._meta.label_lower: signing.dumps({
+            "model_label": Todo._meta.label_lower,
+            "audience": audience,
+            "expiry": (timezone.now() - timedelta(minutes=1)).isoformat(),
+            "tab_configuration": {"tabs": []},
+        }, salt="bloomerp.tokens.detail_view.v1")}
+        with patch.object(RequestToken, "serialize", return_value=payload):
+            scenario.headers = self.request_context_headers(context, self.admin_user)
+
     def prepare_scoped_access(self, scenario: RequestScenario) -> None:
         """Grant only the requested row and field through the request context."""
         self.set_view_type(TableDataView(display_fields=["age"]))(scenario)
@@ -317,9 +338,6 @@ class TestDataviewComponent(BloomerpComponentTestCase):
         customers = self.CustomerModel.objects
         action_rows = self.contains_entries(customers.filter(age=3), ["first_name"])
         detail_view_token = DetailViewToken(
-            model=self.CustomerModel,
-            user=self.admin_user,
-            expiry=timezone.now() + timedelta(hours=1),
             field_layout=FieldLayout(rows=[LayoutRow(columns=1, items=[LayoutItem(id="first_name")])]),
         )
         overlay_targets: tuple[ObjectActionTarget, ...] = ("modal", "drawer")
@@ -343,6 +361,13 @@ class TestDataviewComponent(BloomerpComponentTestCase):
             headers={"HX-Request": "true", "HX-Target": "bloomerp-general-use-drawer-body"},
             prepare=partial(self.prepare_dataview_action, target="drawer", detail_view_token=detail_view_token),
             expected=ExpectedResult(response_validators=[action_rows, self.renders_action_context]),
+        ))
+        target_scenarios.append(RequestScenario(
+            name="A cached request context uses its own expiry for all of its layouts",
+            user=self.admin_user,
+            view_kwargs=kwargs,
+            prepare=self.prepare_cached_signed_layouts,
+            expected=ExpectedResult(response_validators=self.contains_entries(customers.all(), ["first_name"])),
         ))
 
         customer_content_type = ContentType.objects.get_for_model(self.CustomerModel)

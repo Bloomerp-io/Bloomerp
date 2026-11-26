@@ -1,7 +1,8 @@
 """Embed the file-node dataview scoped to the current record's references."""
 
-from datetime import timedelta
 from typing import ClassVar
+
+from django.contrib.contenttypes.models import ContentType
 
 from bloomerp.files.access import FileAccessManager
 from bloomerp.filters.definition import Filter, FilterCondition, Filters
@@ -12,10 +13,8 @@ from bloomerp.permissions.definition import (
 )
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
-from bloomerp.tokens import PermissionToken
+from bloomerp.tokens import RequestToken
 from bloomerp.views.mixins.dataview_mixin import DataviewMixin
-from django.contrib.contenttypes.models import ContentType
-from django.utils import timezone
 
 from .base import BaseBloomerpDetailView
 
@@ -65,17 +64,14 @@ class BloomerpDetailFileListView(DataviewMixin, BaseBloomerpDetailView):
             ],
         )]
 
-    def get_permission_token(self) -> PermissionToken:
+    def get_dataview_request_token(self) -> RequestToken:
         """Delegate read access to files the viewer may read through this record."""
         reference_filter = self.get_dataview_filters()[0]
         readable_files = FileAccessManager(self.request.user).get_queryset(
             FileNode.objects.all(), related_object=self.object,
         )
-        return PermissionToken(
-            model=FileNode,
-            user=self.request.user,
-            expiry=timezone.now() + timedelta(hours=1),
-            rule=AccessRule(
+        return RequestToken(
+            policies={FileNode: AccessRule(
                 row_permissions=[RowPolicyRuleContent(
                     permissions=["view"],
                     conditions=[
@@ -88,5 +84,5 @@ class BloomerpDetailFileListView(DataviewMixin, BaseBloomerpDetailView):
                 field_permissions={field: ["view"] for field in (
                     "id", "name", "kind", "content", "meta", "datetime_created",
                 )},
-            ),
+            )},
         )

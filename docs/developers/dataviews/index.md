@@ -354,6 +354,19 @@ superclass response for unknown actions. Mutation actions must validate the
 HTTP method and check change permission for every affected object; receiving a
 permission-filtered view queryset does not itself grant write access.
 
+### Request context for embedded dataviews
+
+Override `DataviewMixin.get_dataview_request_token()` to supply an embedded
+view's context. In `RequestToken`, use model classes as keys for `policies`,
+`dataviews`, `detail_views`, and `create_views`. Use `DataviewToken` to provide
+either `preference_id` or an inline `dataview`. The request context owns the
+session binding and expiry for all of these settings. A view that uses the
+default hook inherits the active context.
+
+For component requests, pass the originating element to
+`fetchFromComponent(element, url, options)` or `getSdkForComponent(element)`.
+HTMX controls inherit the context from their rendered container.
+
 ## Availability and display fields
 
 `DataviewTypeDefinition` accepts two optional controls:

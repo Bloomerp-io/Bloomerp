@@ -1,25 +1,21 @@
 """Show the selected Inbox's shared calendar using the standard dataview grid."""
 
-from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 
 from django.contrib.contenttypes.models import ContentType
-from django.urls import reverse
 from django.utils.functional import cached_property
-from django.utils import timezone
 from django.views.generic import TemplateView
 
 from bloomerp.communication.calendar.access import (
+    calendar_event_access_rule,
     calendar_overlay_inboxes,
     calendar_overlay_selection,
-    issue_calendar_token,
     resolve_calendar_inbox,
 )
 from bloomerp.filters.definition import Filter, FilterCondition, Filters
 from bloomerp.models.communication.calendar import CalendarEvent
 from bloomerp.router import router
-from bloomerp.tokens import DataviewToken
-from bloomerp.tokens import PermissionToken
+from bloomerp.tokens import DataviewToken, RequestToken
 from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.dataview_mixin import DataviewMixin
 
@@ -76,22 +72,18 @@ class InboxCalendarView(BaseBloomerpView, DataviewMixin, TemplateView):
         """Give the frontend the current inbox for alignment and event creation."""
         return {"calendar_inbox": str(self.inbox.pk)}
 
-    def get_permission_token(self) -> PermissionToken:
-        """Delegate event access for the permission-checked calendar selection."""
-        return issue_calendar_token(self.request.user, self.inbox.pk, self.selected_calendar_ids)
-
-    def get_dataview_token(self) -> DataviewToken:
-        """Pin the Inbox Calendar layout and its scoped actions for all viewers."""
+    def get_dataview_request_token(self) -> RequestToken:
+        """Set the calendar layout, available actions, and access for the selected inboxes."""
         layout = next(
             view for view in CalendarEvent.bloomerp_config.model_view_settings.default_dataviews
             if view.view_type == "calendar" and view.is_default
         )
-        return DataviewToken(
-            model=CalendarEvent,
-            user=self.request.user,
-            expiry=timezone.now() + timedelta(hours=1),
-            dataview=layout,
-            dataview_actions=["add_calendars", "add", "bookings", "back_to_inbox"],
+        return RequestToken(
+            policies={CalendarEvent: calendar_event_access_rule(self.inbox.pk, self.selected_calendar_ids)},
+            dataviews={CalendarEvent: DataviewToken(
+                dataview=layout,
+                dataview_actions=["add_calendars", "add", "bookings", "back_to_inbox"],
+            )},
         )
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:

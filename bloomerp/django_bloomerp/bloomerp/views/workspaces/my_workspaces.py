@@ -1,7 +1,4 @@
-from datetime import timedelta
-
 from django.contrib.contenttypes.models import ContentType
-from django.utils import timezone
 from django.views.generic import TemplateView
 
 from bloomerp.dataviews.card.config import CardDataView
@@ -13,10 +10,13 @@ from bloomerp.models.workspaces.workspace import (
     OPEN_WORKSPACE,
     Workspace,
 )
-from bloomerp.permissions.definition import AccessRule, BloomerpPermission, RowPolicyRuleContent
+from bloomerp.permissions.definition import (
+    AccessRule,
+    BloomerpPermission,
+    RowPolicyRuleContent,
+)
 from bloomerp.router import router
-from bloomerp.tokens import DataviewToken
-from bloomerp.tokens import PermissionToken
+from bloomerp.tokens import DataviewToken, RequestToken
 from bloomerp.views.base import BaseBloomerpView
 from bloomerp.views.mixins.dataview_mixin import DataviewMixin
 
@@ -44,28 +44,19 @@ class MyWorkspacesView(BaseBloomerpView, DataviewMixin, TemplateView):
         """Use Workspace as the shared dataview's model."""
         return ContentType.objects.get_for_model(Workspace).pk
 
-    def get_permission_token(self) -> PermissionToken:
-        """Grant read access to the workspace cards currently available to this user."""
+    def get_dataview_request_token(self) -> RequestToken:
+        """Configure workspace cards and grant access to the viewer's available workspaces."""
         view = BloomerpPermission.VIEW
-        return PermissionToken(
-            model=Workspace,
-            user=self.request.user,
-            expiry=timezone.now() + timedelta(hours=1),
-            rule=AccessRule(
+        return RequestToken(
+            policies={Workspace: AccessRule(
                 row_permissions=[RowPolicyRuleContent(
                     permissions=[view], conditions=[AVAILABLE_WORKSPACE_CONDITION],
                 )],
                 field_permissions={"module_id": [view]},
-            ),
-        )
-
-    def get_dataview_token(self) -> DataviewToken:
-        """Pin the card layout, workspace scope, and available actions."""
-        return DataviewToken(
-            model=Workspace,
-            user=self.request.user,
-            expiry=timezone.now() + timedelta(hours=1),
-            dataview=CardDataView(display_fields=["module_id"], default_filters=WORKSPACE_FILTERS),
-            object_actions=[OPEN_WORKSPACE.id],
-            dataview_actions=[CREATE_WORKSPACE.id],
+            )},
+            dataviews={Workspace: DataviewToken(
+                dataview=CardDataView(display_fields=["module_id"], default_filters=WORKSPACE_FILTERS),
+                object_actions=[OPEN_WORKSPACE.id],
+                dataview_actions=[CREATE_WORKSPACE.id],
+            )},
         )

@@ -4,7 +4,7 @@ from typing import Any
 from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldDoesNotExist, ValidationError
-from django.db.models import ForeignKey, Q, QuerySet
+from django.db.models import Q, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
@@ -94,7 +94,7 @@ def resolve_dataview_preference(
     content_type_id: int,
     preference_id: int,
 ) -> UserListViewPreference:
-    """Resolve a preference available to the viewer or authorized by a trusted embedding."""
+    """Resolve the effective layout for a saved preference available to the viewer."""
     available = (
         PreferenceManager(request.user).get_available(
             UserListViewPreference, {"content_type_id": content_type_id},
@@ -104,15 +104,6 @@ def resolve_dataview_preference(
     )
     if available is not None:
         return available.effective_preference
-    layout_token = get_context_dataview_token(request, content_type_id)
-    context = get_token(request)
-    if (
-        layout_token is not None and layout_token.preference_id == preference_id
-        or context is not None and context.operation_preferences.get(content_type_id) == preference_id
-    ):
-        return get_object_or_404(
-            UserListViewPreference, pk=preference_id, content_type_id=content_type_id,
-        )
     raise Http404("Dataview preference not found")
 
 
@@ -139,23 +130,6 @@ def build_execution_dataview_state(
             raise Http404("Invalid dataview preference") from error
         preference = resolve_dataview_preference(request, content_type_id, preference_id)
     return _build_dataview_state(request, content_type_id, preference, calculate_count=False)
-
-
-def _scope_related_dataview(
-    request: HttpRequest, queryset: QuerySet, manager: UserPolicyManager, field_name: str,
-) -> QuerySet:
-    """Bind a signed related table to a parent record the viewer can access."""
-    field = queryset.model._meta.get_field(field_name)
-    parent_pk = request.GET.get("_arg_related_record")
-    if not isinstance(field, ForeignKey) or not parent_pk:
-        raise Http404
-    try:
-        parent = get_object_or_404(manager.get_queryset(field.related_model, BloomerpPermission.VIEW), pk=parent_pk)
-    except ValidationError as error:
-        raise Http404 from error
-    if not manager.has_access_to_object(parent, BloomerpPermission.VIEW, fields=[field.remote_field.name]):
-        raise Http404
-    return queryset.filter(**{field.name: parent})
 
 
 def _build_dataview_state(
@@ -201,8 +175,6 @@ def _build_dataview_state(
 
     manager = UserPolicyManager(request.user)
     queryset = manager.get_queryset(Model, BloomerpPermission.VIEW)
-    if token is not None and token.relationship_field is not None:
-        queryset = _scope_related_dataview(request, queryset, manager, token.relationship_field)
     if layout is not None and (config := get_model_config(Model)) and config.model_view_settings:
         scope = config.model_view_settings.embedded_queryset_scope
         if scope is not None:
@@ -564,9 +536,10 @@ def dataview(
     context_id = request_token_id(request)
     if preference_was_explicit and request.user.is_authenticated and state.preference.pk is not None:
         token = get_token(request) or RequestToken()
-        if token.operation_preferences.get(content_type_id) != state.preference.pk:
+        if state.model not in token.dataviews:
+            layout = DataviewToken(preference_id=state.preference.pk)
             token = token.model_copy(update={
-                "operation_preferences": {**token.operation_preferences, content_type_id: state.preference.pk},
+                "dataviews": {**token.dataviews, state.model: layout},
             })
             context_id = issue_token(token, request)
 

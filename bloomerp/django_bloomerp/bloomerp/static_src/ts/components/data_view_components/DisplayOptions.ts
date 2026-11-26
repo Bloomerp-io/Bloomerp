@@ -1,4 +1,4 @@
-import { requestContextHeaders } from "../../utils/requestContext";
+import { fetchFromComponent } from "../../utils/requestContext";
 import Sortable, { type SortableEvent } from "sortablejs";
 import BaseComponent, { getComponent, initComponents } from "../BaseComponent";
 import showMessage from "../../utils/messages";
@@ -165,13 +165,12 @@ export class DataViewDisplayOptions extends BaseComponent {
             formData.set("csrfmiddlewaretoken", csrfToken);
         }
 
-        const response = await fetch(url, {
+        const response = await fetchFromComponent(this.element, url, {
             method: "POST",
             body: formData,
             credentials: "same-origin",
             headers: {
                 "X-Requested-With": "XMLHttpRequest",
-                    ...requestContextHeaders(this.element, url),
                 ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
             },
         });

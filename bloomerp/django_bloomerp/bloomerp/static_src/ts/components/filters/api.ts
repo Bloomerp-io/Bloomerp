@@ -1,4 +1,4 @@
-import { requestContextHeaders } from "@/utils/requestContext";
+import { fetchFromComponent } from "@/utils/requestContext";
 import { getCsrfToken } from '@/utils/cookies';
 import { t } from '@/utils/i18n';
 import type { FieldGroup, FilterScope, LookupDefinition, Filter, SavedFilter } from './definition';
@@ -16,10 +16,9 @@ export class FilterApi {
         if (!post) Object.entries(data).forEach(([key, value]) => {
             if (value !== undefined) url.searchParams.set(key, String(value));
         });
-        const response = await fetch(url, {
+        const response = await fetchFromComponent(this.root, url, {
             method: post ? 'POST' : 'GET', credentials: 'same-origin', signal: this.controller.signal,
             headers: {
-                ...requestContextHeaders(this.root, url),
                 ...(post ? { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() ?? '' } : {}),
             },
             ...(post ? { body: JSON.stringify(data) } : {}),

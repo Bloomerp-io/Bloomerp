@@ -3,7 +3,7 @@ import { bindForeignValuePreviews } from "../../utils/foreignValuePreviews";
 import BaseComponent, { componentIdentifier, getComponent } from "../BaseComponent";
 import { getContextMenu, type ContextMenuItem } from "../../utils/contextMenu";
 import { getCsrfToken } from "../../utils/cookies";
-import { requestContextHeaders } from "../../utils/requestContext";
+import { fetchFromComponent } from "../../utils/requestContext";
 import showMessage from "../../utils/messages";
 import { MessageType } from "../UiMessage";
 import { DATAVIEW_ROOT, type DataViewContainer } from "./DataViewContainer";
@@ -51,10 +51,10 @@ export abstract class BaseDataViewComponent extends BaseComponent {
         this.mutationInFlight = true;
         const csrfToken = getCsrfToken();
         try {
-            const response = await fetch(url, {
+            const response = await fetchFromComponent(panel, url, {
                 method: "POST",
                 credentials: "same-origin",
-                headers: { ...requestContextHeaders(panel, url), ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}) },
+                headers: csrfToken ? { "X-CSRFToken": csrfToken } : undefined,
                 body: new URLSearchParams({ object_id: objectId }),
             });
             if (response.ok) {

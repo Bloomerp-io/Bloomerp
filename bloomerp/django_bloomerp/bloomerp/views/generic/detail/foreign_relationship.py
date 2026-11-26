@@ -11,7 +11,6 @@ from bloomerp.models.files import FileNode
 from bloomerp.permissions.definition import BloomerpPermission
 from bloomerp.permissions.manager import UserPolicyManager
 from bloomerp.router import router
-from bloomerp.tokens import DataviewToken, get_token
 from bloomerp.views.generic.detail.base import BaseBloomerpDetailView
 from bloomerp.views.mixins.dataview_mixin import DataviewMixin
 
@@ -47,24 +46,13 @@ class ForeignRelationshipView(DataviewMixin, BaseBloomerpDetailView):
 
     def get_dataview_filters(self) -> Filters:
         """Scope the dataview to records related to the current object."""
-        if self.relationship_dataview_token() is not None:
-            return []
         return [Filter(connector="AND", conditions=[FilterCondition(
             field_path=self.relationship_field_name, lookup_id="equals", value=str(self.object.pk),
         )])]
 
     def get_dataview_args(self) -> dict[str, str]:
-        """Pass the relationship field to the frontend's filter controls."""
-        args = {"hide_filters": self.relationship_field_name}
-        if self.relationship_dataview_token() is not None:
-            args["related_record"] = str(self.object.pk)
-        return args
-
-    def relationship_dataview_token(self) -> DataviewToken | None:
-        """Use the context's related layout when it targets this relationship."""
-        context = get_token(self.request)
-        token = context.dataviews.get(self.related_model) if context else None
-        return token if token and token.relationship_field == self.relationship_field_name else None
+        """Hide the parent relationship in the dataview's filter controls."""
+        return {"hide_filters": self.relationship_field_name}
 
 
 def _iter_foreign_relationship_specs() -> list[dict[str, Any]]:

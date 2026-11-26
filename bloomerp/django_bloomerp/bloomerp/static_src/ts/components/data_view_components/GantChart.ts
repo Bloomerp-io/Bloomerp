@@ -1,4 +1,4 @@
-import { requestContextHeaders } from "../../utils/requestContext";
+import { fetchFromComponent } from "../../utils/requestContext";
 import { componentIdentifier, getComponent } from "../BaseComponent";
 import { MessageType } from "../UiMessage";
 import { getCsrfToken } from "../../utils/cookies";
@@ -733,12 +733,11 @@ export class GantChart extends BaseDataViewComponent {
         this.mutationInFlight = true;
         const csrfToken = getCsrfToken();
         try {
-            const response = await fetch(url, {
+            const response = await fetchFromComponent(this.element, url, {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...requestContextHeaders(this.element, url),
                     ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
                 },
                 body: JSON.stringify({ updates }),

@@ -452,7 +452,7 @@ class TestInboxCalendarView(InboxCalendarFixtures, BloomerpViewTestCase):
         return True
 
     def booking_submissions_tab_is_scoped(self, response: HttpResponse) -> bool:
-        """Use a single header for list, details, and submissions without model-wide access."""
+        """Use the relationship filter and scoped permissions with the same drawer header."""
         booking = BookingLink.objects.get(title="Organized consultation")
         other_booking = BookingLink.objects.get(title="Destination consultation")
         same_inbox = BookingLink.objects.create(
@@ -498,19 +498,21 @@ class TestInboxCalendarView(InboxCalendarFixtures, BloomerpViewTestCase):
         loader = BeautifulSoup(submissions.content, "html.parser").select_one('[hx-trigger="load"]')
         table_url = loader["hx-get"]
         self.assertEqual(json.loads(loader["hx-headers"]), headers)
-        self.assertEqual(parse_qs(urlsplit(table_url).query)["_arg_related_record"], [str(booking.pk)])
+        self.assertEqual(parse_qs(urlsplit(table_url).query)["booking_link"], [str(booking.pk)])
         self.assertEqual(self.client.get(table_url).status_code, 403)
         rendered = self.client.get(table_url, headers=headers)
         self.assertContains(rendered, "Matching visitor")
         self.assertNotContains(rendered, "Other visitor")
         self.assertNotContains(rendered, "Other link in this inbox")
-        forged_table = self.client.get(
-            urlsplit(table_url).path, {"_arg_related_record": str(other_booking.pk)}, headers=headers,
+        out_of_scope = self.client.get(
+            urlsplit(table_url).path, {"booking_link": str(other_booking.pk)}, headers=headers,
         )
-        self.assertEqual(forged_table.status_code, 404)
+        self.assertEqual(out_of_scope.status_code, 403)
         self.source.user = self.outsider
         self.source.save(update_fields=["user"])
-        self.assertEqual(self.client.get(table_url, headers=headers).status_code, 404)
+        self.assertEqual(self.client.get(table_url, headers=headers).status_code, 403)
+        unfiltered = self.client.get(urlsplit(table_url).path, headers=headers)
+        self.assertNotContains(unfiltered, "Matching visitor")
         return True
 
     def booking_drawers_keep_separate_contexts(self, response: HttpResponse) -> bool:

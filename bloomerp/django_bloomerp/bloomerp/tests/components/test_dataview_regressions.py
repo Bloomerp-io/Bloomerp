@@ -753,8 +753,8 @@ class TestDataView(BaseBloomerpTestCaseWithModels):
         customer.refresh_from_db()
         self.assertEqual(customer.age, 42)
 
-    def test_explicit_embedded_preference_signs_renderer_operations(self):
-        """A shared container can authorize its unshared embedded preference."""
+    def test_explicit_embedded_preference_signs_renderer_operations(self) -> None:
+        """The same embedded preference renders on refresh and handles renderer operations."""
         content_type = ContentType.objects.get_for_model(self.CustomerModel)
         embedded_preference = UserListViewPreference.objects.create(
             user=self.normal_user,
@@ -779,6 +779,10 @@ class TestDataView(BaseBloomerpTestCaseWithModels):
         operation_url = markup.select_one("[data-kanban-move-url]")["data-kanban-move-url"]
         self.assertNotIn("_dataview_operation_context", operation_url)
         headers = json.loads(markup.select_one("[data-request-context-id]")["hx-headers"])
+
+        refresh_response = self.client.get(request.path, headers={**headers, "HX-Request": "true"})
+        self.assertContains(refresh_response, f'data-kanban-move-url="{operation_url}"', html=False)
+
         move_response = self.client.post(
             operation_url, {"object_id": customer.pk, "group_value": "42"}, headers=headers,
         )

@@ -1,11 +1,8 @@
-from datetime import timedelta
-
 from django.contrib.contenttypes.models import ContentType
-from django.utils import timezone
 
 from bloomerp.models.document_templates.document_template import DocumentTemplate
 from bloomerp.router import router
-from bloomerp.tokens import DataviewToken
+from bloomerp.tokens import DataviewToken, RequestToken
 from bloomerp.views.generic.detail.base import BaseBloomerpDetailView
 from bloomerp.views.mixins.dataview_mixin import DataviewMixin
 
@@ -27,17 +24,14 @@ class DocumentTemplateListDetailView(DataviewMixin, BaseBloomerpDetailView):
         """Use DocumentTemplate as the model rendered by the shared loader."""
         return ContentType.objects.get_for_model(DocumentTemplate).pk
 
-    def get_dataview_token(self) -> DataviewToken:
+    def get_dataview_request_token(self) -> RequestToken:
         """Pin the template table and generation context to the current record."""
         content_type_id = str(ContentType.objects.get_for_model(self.model).pk)
         layout = next(
             view for view in DocumentTemplate.bloomerp_config.model_view_settings.default_dataviews
             if view.is_default
         )
-        return DataviewToken(
-            model=DocumentTemplate,
-            user=self.request.user,
-            expiry=timezone.now() + timedelta(hours=1),
+        config = DataviewToken(
             dataview=layout.model_copy(update={
                 "default_filters": {"content_types": content_type_id},
                 "component_args": {
@@ -48,4 +42,5 @@ class DocumentTemplateListDetailView(DataviewMixin, BaseBloomerpDetailView):
             }),
             dataview_actions=["filter"],
         )
+        return RequestToken(dataviews={DocumentTemplate: config})
 

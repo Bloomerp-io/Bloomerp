@@ -1,4 +1,4 @@
-import { requestContextHeaders } from "../../utils/requestContext";
+import { fetchFromComponent } from "../../utils/requestContext";
 import { BaseDataViewCell } from "./BaseDataViewCell";
 import { BaseDataViewComponent } from "./BaseDataViewComponent";
 import { attachObjectPreviewTooltip } from "@/utils/objectPreviewTooltip";
@@ -87,9 +87,9 @@ export class FileBrowser extends BaseDataViewComponent {
                     data.set("model_label", modelLabel);
                     data.set("object_id", objectId);
                 }
-                const response = await fetch(url, {
+                const response = await fetchFromComponent(input, url, {
                     method: "POST", body: data, credentials: "same-origin", signal,
-                    headers: { "X-CSRFToken": getCsrfToken() ?? "", ...requestContextHeaders(input, url) },
+                    headers: { "X-CSRFToken": getCsrfToken() ?? "" },
                 });
                 if (!response.ok) throw new Error(`Could not upload ${file.name}`);
                 await response.json();

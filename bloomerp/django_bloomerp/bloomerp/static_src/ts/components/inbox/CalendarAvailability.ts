@@ -1,6 +1,5 @@
-import { requestContextHeaders } from "../../utils/requestContext";
 import BaseComponent from "../BaseComponent";
-import { getSdk } from "../../sdk/getSdk";
+import { getSdkForComponent } from "../../sdk/getSdk";
 import { t } from "../../utils/i18n";
 
 export interface AvailabilitySelection {
@@ -52,11 +51,10 @@ export default class CalendarAvailability extends BaseComponent {
         pane.setAttribute("aria-busy", "true");
         try {
             const users = this.selection.users;
-            const result = await getSdk().client.request<{ users: AvailabilityUser[] }>(this.element.dataset.url!, {
+            const result = await getSdkForComponent(this.element).client.request<{ users: AvailabilityUser[] }>(this.element.dataset.url!, {
                 query: {
                     day: this.selection!.day, timezone: this.selection!.timezone, users,
                 }, signal: controller.signal,
-                headers: requestContextHeaders(this.element, this.element.dataset.url!),
             });
             if (controller.signal.aborted) return;
             this.render(pane, result.users);

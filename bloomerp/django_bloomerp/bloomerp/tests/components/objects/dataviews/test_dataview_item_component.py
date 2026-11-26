@@ -114,14 +114,10 @@ class TestDataviewItemComponent(BloomerpComponentTestCase):
 
     def sign_layout(self, scenario: RequestScenario, model: type[Model], layout: BaseDataview) -> None:
         """Apply a signed inline layout and retain any existing query options."""
-        token = DataviewToken(
-            model=model,
-            user=self.admin_user,
-            expiry=timezone.now() + timedelta(minutes=5),
-            dataview=layout,
-        )
         self.context_headers = self.request_context_headers(
-            RequestToken(expiry=token.expiry, dataviews={model: token}), self.admin_user,
+            RequestToken(
+                expiry=timezone.now() + timedelta(minutes=5), dataviews={model: DataviewToken(dataview=layout)},
+            ), self.admin_user,
         )
         scenario.headers = {**(scenario.headers or {}), **self.context_headers}
         scenario.query_params = scenario.query_params or {}

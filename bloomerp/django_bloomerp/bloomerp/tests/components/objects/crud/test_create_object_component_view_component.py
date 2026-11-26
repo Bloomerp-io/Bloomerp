@@ -351,12 +351,11 @@ class TestCreateObjectComponentViewComponent(BloomerpComponentTestCase):
     def initiative_create_token(self, context: ObjectActionContext) -> RequestToken:
         """Issue context with a compact create layout for the current viewer."""
         layout = DetailViewToken(
-            model=Initiative, user=context.request.user, expiry=timezone.now() + timedelta(minutes=15),
             field_layout=FieldLayout(rows=[LayoutRow(columns=1, title="Quick initiative", items=[
                 LayoutItem(id="name"), LayoutItem(id="todos"),
             ])]),
         )
-        return RequestToken(expiry=layout.expiry, create_views={Initiative: layout})
+        return RequestToken(expiry=timezone.now() + timedelta(minutes=15), create_views={Initiative: layout})
 
     def related_create_initial(self, response: HttpResponse) -> bool:
         """Resolve the signed layout, preserve defaults, and carry the token to the full form."""

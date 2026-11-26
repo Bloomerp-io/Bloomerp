@@ -5,8 +5,6 @@ from django.views.generic.base import ContextMixin
 from bloomerp.filters.definition import Filters
 from bloomerp.filters.parser import serialize_filter_query_params
 from bloomerp.tokens import (
-    DataviewToken,
-    PermissionToken,
     RequestToken,
     get_token,
     issue_token,
@@ -69,22 +67,5 @@ class DataviewMixin(ContextMixin):
         return ctx
 
     def get_dataview_request_token(self) -> RequestToken | None:
-        """Create an independent context for a loader that supplies a layout or grant."""
-        layout = self.get_dataview_token()
-        permission = self.get_permission_token()
-        if layout is None and permission is None:
-            return None
-        expiry = min(token.expiry for token in (layout, permission) if token is not None)
-        return RequestToken(
-            expiry=expiry,
-            dataviews={layout.model: layout} if layout is not None else {},
-            policies={permission.model: permission.rule} if permission is not None else {},
-        )
-
-    def get_permission_token(self) -> PermissionToken | None:
-        """Return the optional permission grant for the dataview."""
-        return None
-
-    def get_dataview_token(self) -> DataviewToken | None:
-        """Return the optional signed layout selection for the dataview."""
+        """Return an independent context, or inherit the request's current context."""
         return None

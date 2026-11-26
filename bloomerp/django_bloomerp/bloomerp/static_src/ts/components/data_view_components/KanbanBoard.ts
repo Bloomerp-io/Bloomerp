@@ -1,4 +1,4 @@
-import { requestContextHeaders } from "../../utils/requestContext";
+import { fetchFromComponent } from "../../utils/requestContext";
 import { t as _ } from "@/utils/i18n";
 import { BaseDataViewComponent } from "./BaseDataViewComponent";
 import { getComponent } from "../BaseComponent";
@@ -388,11 +388,10 @@ export class KanbanBoard extends BaseDataViewComponent {
         });
 
         try {
-            const response = await fetch(moveUrl, {
+            const response = await fetchFromComponent(card, moveUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    ...requestContextHeaders(card, moveUrl),
                     ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
                 },
                 body,

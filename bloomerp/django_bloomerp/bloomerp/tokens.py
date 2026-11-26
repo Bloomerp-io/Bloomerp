@@ -10,6 +10,7 @@ from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AnonymousUser
+from django.contrib.contenttypes.models import ContentType
 from django.core import signing
 from django.core.cache import caches
 from django.core.exceptions import PermissionDenied
@@ -132,17 +133,16 @@ class ModelScopedToken(SignedToken):
         )
 
 
-class DataviewToken(ModelScopedToken):
-    """Carry an inline layout or saved preference reference for a single viewer."""
+class DataviewToken(BaseModel):
+    """Configure a model's dataview within a request context."""
 
-    signing_salt = "bloomerp.tokens.dataview.v1"
+    model_config = ConfigDict(extra="forbid")
 
     preference_id: PositiveInt | None = None
     dataview: SerializeAsAny[BaseDataview] | None = None
     object_actions: list[str] | None = None
     dataview_actions: list[str] | None = None
     create_url: str | None = None
-    relationship_field: str | None = None
     hide_filters: bool = False
 
     @field_validator("dataview", mode="before")
@@ -164,31 +164,16 @@ class DataviewToken(ModelScopedToken):
 
     @model_validator(mode="after")
     def validate_layout(self) -> Self:
-        """Require a viewer and exactly one layout source."""
-        if self.user is None:
-            raise ValueError("Supply a viewer")
+        """Require exactly one layout source."""
         if (self.preference_id is None) == (self.dataview is None):
             raise ValueError("Supply either preference_id or dataview")
         return self
 
-    @classmethod
-    def verify(
-        cls,
-        token: str,
-        *,
-        user: AbstractBaseUser | AnonymousUser | None = None,
-        model: type[Model] | None = None,
-    ) -> Self:
-        """Verify a layout against the model requested by the viewer."""
-        if model is None:
-            raise PermissionDenied("A dataview model is required")
-        return super().verify(token, user=user, model=model)
 
+class DetailViewToken(BaseModel):
+    """Configure a model's detail or create view within a request context."""
 
-class DetailViewToken(ModelScopedToken):
-    """Carry field layout and tab overrides for one signed-in viewer and model."""
-
-    signing_salt = "bloomerp.tokens.detail_view.v1"
+    model_config = ConfigDict(extra="forbid")
 
     preference_id: PositiveInt | None = None
     field_layout: FieldLayout | None = None
@@ -203,9 +188,7 @@ class DetailViewToken(ModelScopedToken):
 
     @model_validator(mode="after")
     def validate_layout(self) -> Self:
-        """Require a viewer and an override, and validate the field layout options."""
-        if self.user is None:
-            raise ValueError("Supply a viewer")
+        """Require an override and validate the field layout options."""
         if self.preference_id is not None and self.field_layout is not None:
             raise ValueError("Supply either preference_id or field_layout")
         if not self.has_layout_override and self.tab_configuration is None:
@@ -283,7 +266,6 @@ class RequestToken(BaseModel):
     dataviews: dict[type[Model], DataviewToken] = Field(default_factory=dict)
     detail_views: dict[type[Model], DetailViewToken] = Field(default_factory=dict)
     create_views: dict[type[Model], DetailViewToken] = Field(default_factory=dict)
-    operation_preferences: dict[int, int] = Field(default_factory=dict)
 
     def serialize(self) -> dict[str, Any]:
         """Encode model-scoped settings and policies for the server-side cache."""
@@ -305,32 +287,58 @@ class RequestToken(BaseModel):
                 }
                 for model, rule in self.policies.items()
             },
-            "dataviews": {model._meta.label_lower: token.sign() for model, token in self.dataviews.items()},
-            "detail_views": {model._meta.label_lower: token.sign() for model, token in self.detail_views.items()},
-            "create_views": {model._meta.label_lower: token.sign() for model, token in self.create_views.items()},
-            "operation_preferences": self.operation_preferences,
+            "dataviews": _serialize_view_configs(self.dataviews),
+            "detail_views": _serialize_view_configs(self.detail_views),
+            "create_views": _serialize_view_configs(self.create_views),
         }
 
     @classmethod
     def deserialize(cls, claims: dict[str, Any], user: AbstractBaseUser) -> Self:
-        """Resolve signed settings for the authenticated viewer and their canonical model labels."""
+        """Restore model-keyed configuration from the session-bound cache entry."""
+        dataviews = _deserialize_view_configs(claims["dataviews"], "dataview", user)
+        # Restore saved layouts from contexts issued before the layout sources were consolidated.
+        legacy_preferences = claims.get("operation_preferences", {})
+        if legacy_preferences:
+            for content_type_id, content_type in ContentType.objects.in_bulk(legacy_preferences).items():
+                model = content_type.model_class()
+                if model is not None and model not in dataviews:
+                    dataviews[model] = {"preference_id": legacy_preferences[content_type_id]}
         return cls.model_validate({
-            **claims,
+            "expiry": claims["expiry"],
             "policies": {apps.get_model(label): rule for label, rule in claims["policies"].items()},
-            "dataviews": _deserialize_view_tokens(claims["dataviews"], DataviewToken, user),
-            "detail_views": _deserialize_view_tokens(claims["detail_views"], DetailViewToken, user),
-            "create_views": _deserialize_view_tokens(claims.get("create_views", {}), DetailViewToken, user),
+            "dataviews": dataviews,
+            "detail_views": _deserialize_view_configs(claims["detail_views"], "detail_view", user),
+            "create_views": _deserialize_view_configs(claims.get("create_views", {}), "detail_view", user),
         })
 
 
-def _deserialize_view_tokens[Token: ModelScopedToken](
-    claims: dict[str, str], token_type: type[Token], user: AbstractBaseUser,
-) -> dict[type[Model], Token]:
-    """Restore model classes and check that each cached view belongs to its key."""
+def _serialize_view_configs[Config: BaseModel](
+    views: dict[type[Model], Config],
+) -> dict[str, dict[str, Any]]:
+    """Encode layout configuration under its owning model label."""
+    return {
+        model._meta.label_lower: config.model_dump(mode="json", by_alias=True, exclude_none=True)
+        for model, config in views.items()
+    }
+
+
+def _deserialize_view_configs(
+    claims: dict[str, dict[str, Any] | str], legacy_kind: str, user: AbstractBaseUser,
+) -> dict[type[Model], dict[str, Any]]:
+    """Restore model keys and read signed layouts from older cached contexts."""
     views = {}
     for label, value in claims.items():
-        model = apps.get_model(label)
-        views[model] = token_type.verify(value, user=user, model=model)
+        if isinstance(value, str):
+            try:
+                value = signing.loads(value, salt=f"bloomerp.tokens.{legacy_kind}.v1")
+            except signing.BadSignature as error:
+                raise PermissionDenied("Invalid cached view configuration") from error
+            if not isinstance(value, dict):
+                raise PermissionDenied("Invalid cached view configuration")
+            if value.pop("model_label", None) != label or value.pop("audience", None) != str(user.pk):
+                raise PermissionDenied("Cached view belongs to another model or user")
+            value.pop("expiry", None)
+        views[apps.get_model(label)] = value
     return views
 
 
@@ -372,7 +380,10 @@ def get_token(request: HttpRequest) -> RequestToken | None:
     claims = store.get(_request_token_cache_key(request, context_id))
     if claims is None:
         raise PermissionDenied("Request context expired or unavailable.")
-    token = RequestToken.deserialize(claims, request.user)
+    try:
+        token = RequestToken.deserialize(claims, request.user)
+    except (LookupError, ValueError) as error:
+        raise PermissionDenied("Invalid request context.") from error
     if token.expiry <= timezone.now():
         raise PermissionDenied("Request context expired.")
     request._bloomerp_request_token = token

@@ -1,5 +1,4 @@
-import { requestContextHeaders } from "../../utils/requestContext";
-import { getSdk } from "../../sdk/getSdk";
+import { getSdkForComponent } from "../../sdk/getSdk";
 import { t as _ } from "../../utils/i18n";
 
 /** Split pasted recipient lists without breaking quoted display names. */
@@ -307,10 +306,9 @@ export class EmailRecipients {
         const controller = new AbortController();
         this.searchRequest = controller;
         try {
-            const result = await getSdk().client.request<{ suggestions: { email: string; label: string; user_id?: string; display_name?: string }[] }>(
+            const result = await getSdkForComponent(this.source).client.request<{ suggestions: { email: string; label: string; user_id?: string; display_name?: string }[] }>(
                 this.searchUrl!, {
                     query: { q: query }, signal: controller.signal,
-                    headers: requestContextHeaders(this.source, this.searchUrl!),
                 },
             );
             if (controller.signal.aborted || this.entry.value.trim() !== query || document.activeElement !== this.entry) return;
